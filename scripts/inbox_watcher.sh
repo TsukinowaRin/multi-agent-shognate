@@ -168,6 +168,68 @@ normalize_special_command() {
     esac
 }
 
+enqueue_recovery_task_assigned() {
+    (
+        flock -x 200
+        INBOX_PATH="$INBOX" AGENT_ID="$AGENT_ID" python3 - << 'PY'
+import datetime
+import os
+import uuid
+import yaml
+
+inbox = os.environ.get("INBOX_PATH", "")
+agent_id = os.environ.get("AGENT_ID", "agent")
+
+try:
+    with open(inbox, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    messages = data.get("messages", []) or []
+
+    # Dedup guard: keep only one pending auto-recovery hint at a time.
+    for m in reversed(messages):
+        if (
+            m.get("from") == "inbox_watcher"
+            and m.get("type") == "task_assigned"
+            and m.get("read", False) is False
+            and "[auto-recovery]" in (m.get("content") or "")
+        ):
+            print("SKIP_DUPLICATE")
+            raise SystemExit(0)
+
+    now = datetime.datetime.now(datetime.timezone.utc).astimezone()
+    msg = {
+        "content": (
+            f"[auto-recovery] /clear 後の再着手通知。"
+            f"queue/tasks/{agent_id}.yaml を再読し、assigned タスクを即時再開せよ。"
+        ),
+        "from": "inbox_watcher",
+        "id": f"msg_auto_recovery_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}",
+        "read": False,
+        "timestamp": now.replace(microsecond=0).isoformat(),
+        "type": "task_assigned",
+    }
+    messages.append(msg)
+    data["messages"] = messages
+
+    tmp_path = f"{inbox}.tmp.{os.getpid()}"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(
+            data,
+            f,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )
+    os.replace(tmp_path, inbox)
+    print(msg["id"])
+except Exception:
+    # Best-effort safety net only. Primary /clear delivery must not fail here.
+    print("ERROR")
+PY
+    ) 200>"$LOCKFILE" 2>/dev/null
+}
+
 no_idle_full_read() {
     local trigger="${1:-timeout}"
     [ "${ASW_NO_IDLE_FULL_READ:-1}" = "1" ] || return 1
@@ -462,13 +524,28 @@ for s in data.get('specials', []):
     print(f'{t}\t{c}')
 " 2>/dev/null)
 
+    local clear_seen=0
     if [ -n "$specials" ]; then
         local msg_type msg_content cmd
         while IFS=$'\t' read -r msg_type msg_content; do
             [ -n "$msg_type" ] || continue
+            if [ "$msg_type" = "clear_command" ]; then
+                clear_seen=1
+            fi
             cmd=$(normalize_special_command "$msg_type" "$msg_content")
             [ -n "$cmd" ] && send_cli_command "$cmd"
         done <<< "$specials"
+    fi
+
+    # /clear は Codex で /new へ変換される。再起動直後の取りこぼし防止として
+    # 追加 task_assigned を自動投入し、次サイクルで確実に wake-up 可能にする。
+    if [ "$clear_seen" -eq 1 ]; then
+        local recovery_id
+        recovery_id=$(enqueue_recovery_task_assigned)
+        if [ -n "$recovery_id" ] && [ "$recovery_id" != "SKIP_DUPLICATE" ] && [ "$recovery_id" != "ERROR" ]; then
+            echo "[$(date)] [AUTO-RECOVERY] queued task_assigned for $AGENT_ID ($recovery_id)" >&2
+        fi
+        info=$(get_unread_info)
     fi
 
     # Send wake-up nudge for normal messages (with escalation)

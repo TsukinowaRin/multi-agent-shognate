@@ -136,3 +136,15 @@
   - `bash -n scripts/goza_no_ma.sh` → PASS
   - `rg -n \"select-pane -t .* -P\" scripts/goza_no_ma.sh` → 0件
   - mock zellij + tmux で `bash scripts/goza_no_ma.sh -s --no-attach --session <tmp>` 実行し、`pane-border-format` の色分岐が維持されることを確認。
+
+## 2026-02-11 (tab color not reflected on existing session fix)
+- 事象: 「タブカラーが変わっていない」報告。既存 tmux セッション再利用時に新スタイル再適用が走らないケースを確認。
+- 実装:
+  - `scripts/goza_no_ma.sh` の既存セッション分岐（`tmux has-session`）でも `pane-border-status` と `pane-border-format` を毎回再適用。
+  - 視認性向上のため見出し色を背景色ベースに変更（将軍=紫背景、家老=紺背景、足軽=茶背景）。
+- 検証:
+  - mock zellij + tmux で
+    - 1回目: `bash scripts/goza_no_ma.sh -s --no-attach --session <s>`
+    - 2回目: `bash scripts/goza_no_ma.sh --view-only --no-attach --session <s>`
+  - 2回目ログで既存セッション分岐を確認し、`tmux show-options -w` で `pane-border-format` 再適用を確認。
+  - `pane-style` 未設定（本文色に影響なし）を確認。

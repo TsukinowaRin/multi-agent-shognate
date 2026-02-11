@@ -150,6 +150,9 @@ if [[ ${#VISIBLE[@]} -eq 0 ]]; then
 fi
 
 if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
+  # 既存ビューでも毎回スタイルを再適用する
+  tmux set-option -t "$VIEW_SESSION":agents pane-border-status top >/dev/null 2>&1 || true
+  tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{?#{==:#{pane_title},shogun},#[fg=colour231,bg=colour54,bold],#{?#{==:#{pane_title},karo},#[fg=colour231,bg=colour19,bold],#[fg=colour231,bg=colour94,bold]}} #{pane_index}:#{pane_title} #[default]' >/dev/null 2>&1 || true
   if [[ "$NO_ATTACH" = true ]]; then
     echo "[INFO] tmux session already exists: $VIEW_SESSION"
     echo "       attach: tmux attach -t $VIEW_SESSION"
@@ -182,8 +185,8 @@ done
 
 # 見やすさ調整
 tmux set-option -t "$VIEW_SESSION":agents pane-border-status top >/dev/null 2>&1 || true
-# 将軍=紫、家老=紺、足軽=茶
-tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{?#{==:#{pane_title},shogun},#[fg=colour141],#{?#{==:#{pane_title},karo},#[fg=colour19],#[fg=colour130]}}#{pane_index}:#{pane_title}#[default]' >/dev/null 2>&1 || true
+# 将軍=紫、家老=紺、足軽=茶（見出し背景色つき）
+tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{?#{==:#{pane_title},shogun},#[fg=colour231,bg=colour54,bold],#{?#{==:#{pane_title},karo},#[fg=colour231,bg=colour19,bold],#[fg=colour231,bg=colour94,bold]}} #{pane_index}:#{pane_title} #[default]' >/dev/null 2>&1 || true
 
 tmux display-message -t "$VIEW_SESSION":agents "Attached agents: ${VISIBLE[*]}"
 if [[ "$NO_ATTACH" = true ]]; then

@@ -88,9 +88,9 @@
    - 期待結果: 新スクリプト名でヘルプが表示される。
 2. コマンド: `bash scripts/goza_no_ma.sh -s --no-attach`
    - 期待結果: tmux `pane-border-format` が以下の色分岐を含む。
-     - `shogun` → `colour141`
-     - `karo` → `colour19`
-     - その他（`ashigaru*`）→ `colour130`
+     - `shogun` → `bg=colour54`（紫系）
+     - `karo` → `bg=colour19`（紺系）
+     - その他（`ashigaru*`）→ `bg=colour94`（茶系）
 
 ## 追補（2026-02-11: 名称再変更）
 ### 要求
@@ -101,3 +101,15 @@
    - 期待結果: ヘルプ表示のコマンド例が `goza_no_ma.sh` になる。
 2. コマンド: `bash scripts/goza_no_ma.sh -s --no-attach`
    - 期待結果: `tmux` session 名既定値が `goza-no-ma` として作成される。
+
+## 追補（2026-02-11: タブ色のみ適用）
+### 要求
+1. ペイン本文の文字色は変更しない。
+2. タブ（ペイン見出し）色のみを役職別に適用する。
+3. 既存 tmux セッションへ再接続した場合も色設定を再適用する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/goza_no_ma.sh --view-only --no-attach --session <existing>`
+   - 期待結果: `pane-border-format` に役職別色分岐が設定される。
+2. コマンド: `tmux show-options -w -t <existing>:agents | rg '^pane-style'`
+   - 期待結果: `pane-style` が設定されず、本文色が変更されない。

@@ -174,3 +174,14 @@
 - 検証:
   - `sed -n '1,120p' README.md` で新構成を確認。
   - `rg -n \"goza_zellij|goza_tmux|--mux\" README.md` で新コマンド記載を確認。
+
+## 2026-02-11 (README operation addendum)
+- 要求: READMEに混在CLI運用（Codex/Gemini/LocalAPI）とWSL再起動後の最短手順を追記し、起動時の操作ミスを減らす。
+- 実装:
+  - `README.md` に「CLI割り当て例（Codex / Gemini / LocalAPI）」セクションを追加。
+  - `localapi` 用の環境変数（`LOCALAPI_BASE_URL` / `LOCALAPI_API_KEY` / `LOCALAPI_MODEL`）を明記。
+  - `README.md` に「WSL再起動後の最短手順」を追加し、`zellij list-sessions -n` をそのまま実行する案内を記載。
+  - `docs/REQS.md` に上記追補要求と受け入れ条件を追加。
+- 検証:
+  - `rg -n "localapi|LOCALAPI_BASE_URL|LOCALAPI_MODEL" README.md` → 期待文字列を確認。
+  - `rg -n "WSL再起動後の最短手順|zellij list-sessions -n" README.md` → 期待文字列を確認。

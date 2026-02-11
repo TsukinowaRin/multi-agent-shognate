@@ -116,6 +116,47 @@ cli:
       model: gemini-2.5-pro
 ```
 
+## CLI割り当て例（Codex / Gemini / LocalAPI）
+
+役職ごとにCLIを混在できます。以下は将軍・家老を `codex`、足軽を `gemini` と `localapi` に分ける例です。
+
+```yaml
+cli:
+  default: codex
+  agents:
+    shogun:
+      type: codex
+      model: gpt-5
+    karo:
+      type: codex
+      model: gpt-5
+    ashigaru1:
+      type: gemini
+      model: gemini-2.5-pro
+    ashigaru2:
+      type: localapi
+      model: qwen2.5-coder
+```
+
+`localapi` は `python3 scripts/localapi_repl.py` で起動され、以下の環境変数を参照します。
+
+- `LOCALAPI_BASE_URL`（例: `http://127.0.0.1:11434/v1`）
+- `LOCALAPI_API_KEY`
+- `LOCALAPI_MODEL`
+
+## WSL再起動後の最短手順
+
+```bash
+cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate
+bash scripts/goza_zellij.sh
+```
+
+セッション確認は次のコマンドをそのまま実行します（括弧や補足文を付けない）。
+
+```bash
+zellij list-sessions -n
+```
+
 ## トラブルシュート
 
 - タブ色が変わらない

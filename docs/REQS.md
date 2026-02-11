@@ -139,3 +139,14 @@
    - 期待結果: `goza_zellij.sh` / `goza_tmux.sh` / `goza_no_ma.sh --mux` の説明が含まれる。
 2. コマンド: `rg -n \"goza_zellij|goza_tmux|--mux\" README.md`
    - 期待結果: 新しい運用コマンドがREADME内に複数箇所で記載される。
+
+## 追補（2026-02-11: README運用補強）
+### 要求
+1. `Codex/Gemini/LocalAPI` の混在設定例を README に明記する。
+2. WSL再起動後の最短起動手順と、誤入力しにくいセッション確認コマンドを README に追加する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n \"localapi|LOCALAPI_BASE_URL|LOCALAPI_MODEL\" README.md`
+   - 期待結果: LocalAPIの設定説明がREADMEに存在する。
+2. コマンド: `rg -n \"WSL再起動後の最短手順|zellij list-sessions -n\" README.md`
+   - 期待結果: 最短手順と正しいセッション確認コマンドが記載される。

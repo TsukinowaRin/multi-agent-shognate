@@ -67,3 +67,19 @@
   - `PATH=/tmp/mock-zellij-bin:$PATH bash scripts/shutsujin_zellij.sh` → 起動ログと `queue/runtime/agent_cli.tsv` で `codex/codex/gemini/gemini` を確認
 - 注意:
   - Codex実行環境のsnap制約で実zellijコマンドは失敗（`timeout waiting for snap system profiles...`）。ユーザー実機での実zellij確認を前提。
+
+## 2026-02-11 (WSL再起動後ワンショット起動)
+- 要求: WSL再起動後に、1コマンドで起動し、区切られた画面で各エージェントへ接続できるようにする。
+- 実装:
+  - `scripts/start_command_room.sh` を追加。
+  - 起動フロー:
+    - `shutsujin_departure.sh` を呼び出して zellij バックエンド起動（`-s`/追加引数の透過対応）。
+    - `tmux` セッション `command-room` を作成し、分割ペインを並べる。
+    - 各ペインで `zellij attach shogun|karo|active_ashigaru...` を実行。
+  - `--view-only`（バックエンド再起動せずビューのみ）と `--session`（ビュー名変更）を実装。
+  - `.gitignore` に `!scripts/start_command_room.sh` を追加し追跡対象化。
+- 検証:
+  - `bash -n scripts/start_command_room.sh` → PASS
+  - `bash scripts/start_command_room.sh --help` → PASS
+- 注意:
+  - このCodex実行環境では snap 制約により実zellij attach のE2Eは不可。ユーザー実機での確認が最終。

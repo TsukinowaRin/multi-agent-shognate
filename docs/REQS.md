@@ -61,3 +61,16 @@
    - 期待結果: 起動ログに `shogun: codex`, `karo: codex`, `ashigaru1: gemini`, `ashigaru2: gemini` が表示される。
 3. コマンド: `cat queue/runtime/agent_cli.tsv`
    - 期待結果: 上記4エージェントのCLI割当が `codex/codex/gemini/gemini` で記録される。
+
+## 追補（2026-02-11: WSL再起動後の一発起動）
+### 要求
+1. WSL再起動後に1コマンドで起動できる導線を用意する。
+2. 画面は「区切りが明確な表示」（ペイン/タブ相当）で各エージェントに接続できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/start_command_room.sh -h`
+   - 期待結果: ヘルプが表示される。
+2. コマンド: `bash scripts/start_command_room.sh`
+   - 期待結果: `shutsujin_departure.sh` 実行後、`tmux` の分割ペイン画面に入り、各ペインで `zellij attach <agent>` が実行される。
+3. コマンド: `bash scripts/start_command_room.sh --view-only`
+   - 期待結果: バックエンドを再起動せず、既存 zellij セッションへのビュー接続のみ行う。

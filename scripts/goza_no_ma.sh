@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-VIEW_SESSION="${VIEW_SESSION:-onari-no-ma}"
+VIEW_SESSION="${VIEW_SESSION:-goza-no-ma}"
 SETUP_ONLY=false
 VIEW_ONLY=false
 NO_ATTACH=false
@@ -17,19 +17,19 @@ PASS_THROUGH=()
 usage() {
   cat << 'USAGE'
 Usage:
-  bash scripts/onari_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
+  bash scripts/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
 
 Options:
   -s, --setup-only   バックエンドは setup-only で起動（CLI未起動）
   --view-only        バックエンド起動をスキップし、ビューのみ起動
   --no-attach        tmuxへattachせず、ビュー作成だけ行う（検証向け）
-  --session NAME     tmux ビューセッション名（default: onari-no-ma）
+  --session NAME     tmux ビューセッション名（default: goza-no-ma）
   -h, --help         このヘルプ
 
 Examples:
-  bash scripts/onari_no_ma.sh
-  bash scripts/onari_no_ma.sh -s
-  bash scripts/onari_no_ma.sh -- --shogun-no-thinking
+  bash scripts/goza_no_ma.sh
+  bash scripts/goza_no_ma.sh -s
+  bash scripts/goza_no_ma.sh -- --shogun-no-thinking
 USAGE
 }
 

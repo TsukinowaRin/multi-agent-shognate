@@ -114,3 +114,15 @@
   - `bash -n scripts/onari_no_ma.sh` → PASS
   - `bash scripts/onari_no_ma.sh --help` → PASS
   - mock zellij + tmux で `-s --no-attach` 実行し、`pane-border-format` の色分岐と4ペイン生成を確認。
+
+## 2026-02-11 (goza naming update)
+- 要求: 部屋名を `御座の間`（goza）へ再変更する。
+- 実装:
+  - スクリプトを `scripts/goza_no_ma.sh` へ改名。
+  - 既定tmux session名を `goza-no-ma` に変更。
+  - `.gitignore` 許可リストを `!scripts/goza_no_ma.sh` に更新。
+  - `docs/REQS.md` のコマンド例を `goza_no_ma.sh` に更新。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bash scripts/goza_no_ma.sh --help` → PASS
+  - mock zellij + tmux で `bash scripts/goza_no_ma.sh -s --no-attach --session <tmp>` 実行し、4ペイン生成と色分岐維持を確認。

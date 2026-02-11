@@ -128,3 +128,14 @@
    - 期待結果: `--mux` 指定で tmux 強制起動が可能。
 4. コマンド: `bash scripts/goza_no_ma.sh --mux zellij -s --no-attach`
    - 期待結果: `--mux` 指定で zellij 強制起動が可能。
+
+## 追補（2026-02-11: README刷新）
+### 要求
+1. ルート `README.md` を新ツール中心の説明に書き換える。
+2. zellij/tmux 両モードの起動コマンドと使い分けが先頭で分かる構成にする。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `sed -n '1,120p' README.md`
+   - 期待結果: `goza_zellij.sh` / `goza_tmux.sh` / `goza_no_ma.sh --mux` の説明が含まれる。
+2. コマンド: `rg -n \"goza_zellij|goza_tmux|--mux\" README.md`
+   - 期待結果: 新しい運用コマンドがREADME内に複数箇所で記載される。

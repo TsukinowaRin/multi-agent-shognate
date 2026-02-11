@@ -163,3 +163,14 @@
   - `bash scripts/goza_zellij.sh --help` / `bash scripts/goza_tmux.sh --help` → ヘルプ到達確認
   - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → PASS
   - tmux実起動検証（`TERM=xterm bash scripts/goza_tmux.sh -s --no-attach`）で `goza_tmux` の案内文確認。
+
+## 2026-02-11 (README rewrite for new tools)
+- 要求: ルート `README.md` を新ツールの説明中心に書き換える。
+- 実装:
+  - `README.md` を全面更新。
+  - `goza_zellij.sh` / `goza_tmux.sh` / `goza_no_ma.sh --mux` を先頭で案内する構成に変更。
+  - 役割別タブ色（将軍/家老/足軽）と「本文色は変えない」方針を記載。
+  - 設定例、トラブルシュート、開発者向け補足を追加。
+- 検証:
+  - `sed -n '1,120p' README.md` で新構成を確認。
+  - `rg -n \"goza_zellij|goza_tmux|--mux\" README.md` で新コマンド記載を確認。

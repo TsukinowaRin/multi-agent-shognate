@@ -13,6 +13,7 @@ set -e
 # スクリプトのディレクトリを取得
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+ORIGINAL_ARGS=("$@")
 
 # 言語設定を読み取り（デフォルト: ja）
 LANG_SETTING="ja"
@@ -24,6 +25,39 @@ fi
 SHELL_SETTING="bash"
 if [ -f "./config/settings.yaml" ]; then
     SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
+fi
+
+# マルチプレクサ設定（デフォルト: tmux）
+MULTIPLEXER_SETTING="tmux"
+if [ -f "./config/settings.yaml" ]; then
+    # supports:
+    # multiplexer: tmux
+    # or
+    # multiplexer:\n#   default: tmux
+    _mux_inline=$(grep '^multiplexer:' ./config/settings.yaml 2>/dev/null | head -n1 | sed -E 's/^multiplexer:[[:space:]]*//')
+    _mux_nested=$(awk '
+      $0 ~ /^multiplexer:[[:space:]]*$/ {in_mux=1; next}
+      in_mux && $0 ~ /^[^[:space:]]/ {in_mux=0}
+      in_mux && $0 ~ /^[[:space:]]*default:[[:space:]]*/ {
+        sub(/^[[:space:]]*default:[[:space:]]*/, "", $0); print $0; exit
+      }
+    ' ./config/settings.yaml 2>/dev/null)
+    MULTIPLEXER_SETTING=$(printf '%s\n%s\n' "${_mux_inline}" "${_mux_nested}" | sed '/^$/d' | head -n1 | tr -d '\r' | tr -d '"' | tr -d '[:space:]')
+    MULTIPLEXER_SETTING=${MULTIPLEXER_SETTING:-tmux}
+fi
+
+# 環境変数による強制切替（設定ファイルより優先）
+# 例: MAS_MULTIPLEXER=tmux bash shutsujin_departure.sh
+if [ -n "${MAS_MULTIPLEXER:-}" ]; then
+    case "${MAS_MULTIPLEXER}" in
+        tmux|zellij)
+            MULTIPLEXER_SETTING="${MAS_MULTIPLEXER}"
+            ;;
+        *)
+            echo "[ERROR] Invalid MAS_MULTIPLEXER='${MAS_MULTIPLEXER}'. Use 'tmux' or 'zellij'." >&2
+            exit 1
+            ;;
+    esac
 fi
 
 # CLI Adapter読み込み（Multi-CLI Support）
@@ -134,13 +168,18 @@ while [[ $# -gt 0 ]]; do
             echo "                      未指定時は前回の状態を維持して起動"
             echo "  -k, --kessen        決戦の陣（全足軽をOpusで起動）"
             echo "                      未指定時は平時の陣（足軽1-4=Sonnet, 足軽5-8=Opus）"
-            echo "  -s, --setup-only    tmuxセッションのセットアップのみ（Claude起動なし）"
+            echo "  -s, --setup-only    セッションのセットアップのみ（CLI起動なし）"
             echo "  -t, --terminal      Windows Terminal で新しいタブを開く"
             echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
             echo "                      未指定時は config/settings.yaml の設定を使用"
             echo "  -S, --silent        サイレントモード（足軽の戦国echo表示を無効化・API節約）"
             echo "                      未指定時はshoutモード（タスク完了時に戦国風echo表示）"
             echo "  -h, --help          このヘルプを表示"
+            echo ""
+            echo "マルチプレクサ設定:"
+            echo "  config/settings.yaml の multiplexer.default で選択"
+            echo "  - tmux   : 既存互換モード"
+            echo "  - zellij : scripts/shutsujin_zellij.sh に自動委譲"
             echo ""
             echo "例:"
             echo "  ./shutsujin_departure.sh              # 前回の状態を維持して出陣"
@@ -191,6 +230,15 @@ if [ -n "$SHELL_OVERRIDE" ]; then
         echo "エラー: -shell オプションには bash または zsh を指定してください（指定値: $SHELL_OVERRIDE）"
         exit 1
     fi
+fi
+
+# zellijモード分岐（tmuxフロー互換を保つため専用スクリプトに委譲）
+if [ "$MULTIPLEXER_SETTING" = "zellij" ]; then
+    if [ -x "$SCRIPT_DIR/scripts/shutsujin_zellij.sh" ]; then
+        exec bash "$SCRIPT_DIR/scripts/shutsujin_zellij.sh" "${ORIGINAL_ARGS[@]}"
+    fi
+    echo "[ERROR] zellij mode requested, but scripts/shutsujin_zellij.sh not found." >&2
+    exit 1
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -553,6 +601,14 @@ if [ "$CLI_ADAPTER_LOADED" = true ]; then
             kimi)
                 MODEL_NAMES[$i]="Kimi"
                 ;;
+            gemini)
+                _gemini_model=$(get_agent_model "$_agent" 2>/dev/null || echo "gemini-2.5-pro")
+                MODEL_NAMES[$i]="${_gemini_model}"
+                ;;
+            localapi)
+                _local_model=$(get_agent_model "$_agent" 2>/dev/null || echo "local-model")
+                MODEL_NAMES[$i]="LocalAPI:${_local_model}"
+                ;;
         esac
     done
 fi
@@ -779,13 +835,13 @@ NINJA_EOF
     # 安全モード: phase2/phase3エスカレーションは無効、timeout周期処理も無効（event-drivenのみ）
     _shogun_watcher_cli=$(tmux show-options -p -t "shogun:main" -v @agent_cli 2>/dev/null || echo "claude")
     nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-        bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" shogun "shogun:main" "$_shogun_watcher_cli" \
+        MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" shogun "shogun:main" "$_shogun_watcher_cli" "tmux" \
         >> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" 2>&1 &
     disown
 
     # 家老のwatcher
     _karo_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${PANE_BASE}" -v @agent_cli 2>/dev/null || echo "claude")
-    nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" karo "multiagent:agents.${PANE_BASE}" "$_karo_watcher_cli" \
+    nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" karo "multiagent:agents.${PANE_BASE}" "$_karo_watcher_cli" "tmux" \
         >> "$SCRIPT_DIR/logs/inbox_watcher_karo.log" 2>&1 &
     disown
 
@@ -793,7 +849,7 @@ NINJA_EOF
     for i in {1..8}; do
         p=$((PANE_BASE + i))
         _ashi_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "ashigaru${i}" "multiagent:agents.${p}" "$_ashi_watcher_cli" \
+        nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "ashigaru${i}" "multiagent:agents.${p}" "$_ashi_watcher_cli" "tmux" \
             >> "$SCRIPT_DIR/logs/inbox_watcher_ashigaru${i}.log" 2>&1 &
         disown
     done

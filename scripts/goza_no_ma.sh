@@ -12,6 +12,7 @@ VIEW_SESSION="${VIEW_SESSION:-goza-no-ma}"
 SETUP_ONLY=false
 VIEW_ONLY=false
 NO_ATTACH=false
+MUX_MODE="${MUX_MODE:-zellij}"
 PASS_THROUGH=()
 
 usage() {
@@ -23,12 +24,14 @@ Options:
   -s, --setup-only   バックエンドは setup-only で起動（CLI未起動）
   --view-only        バックエンド起動をスキップし、ビューのみ起動
   --no-attach        tmuxへattachせず、ビュー作成だけ行う（検証向け）
+  --mux MODE         起動モードを指定（zellij|tmux, default: zellij）
   --session NAME     tmux ビューセッション名（default: goza-no-ma）
   -h, --help         このヘルプ
 
 Examples:
-  bash scripts/goza_no_ma.sh
-  bash scripts/goza_no_ma.sh -s
+  bash scripts/goza_no_ma.sh --mux zellij
+  bash scripts/goza_no_ma.sh --mux tmux
+  bash scripts/goza_no_ma.sh -s --mux zellij
   bash scripts/goza_no_ma.sh -- --shogun-no-thinking
 USAGE
 }
@@ -46,6 +49,15 @@ while [[ $# -gt 0 ]]; do
     --no-attach)
       NO_ATTACH=true
       shift
+      ;;
+    --mux)
+      if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+        MUX_MODE="$2"
+        shift 2
+      else
+        echo "[ERROR] --mux には zellij または tmux を指定してください" >&2
+        exit 1
+      fi
       ;;
     --session)
       if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
@@ -74,12 +86,17 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if ! command -v zellij >/dev/null 2>&1; then
-  echo "[ERROR] zellij が見つかりません。先に zellij をインストールしてください。" >&2
+if [[ "$MUX_MODE" != "zellij" && "$MUX_MODE" != "tmux" ]]; then
+  echo "[ERROR] --mux は zellij または tmux を指定してください（指定値: $MUX_MODE）" >&2
   exit 1
 fi
+
 if ! command -v tmux >/dev/null 2>&1; then
   echo "[ERROR] tmux が見つかりません。ビュー作成に tmux が必要です。" >&2
+  exit 1
+fi
+if [[ "$MUX_MODE" == "zellij" ]] && ! command -v zellij >/dev/null 2>&1; then
+  echo "[ERROR] zellij が見つかりません。zellij モードでは zellij が必要です。" >&2
   exit 1
 fi
 
@@ -89,7 +106,18 @@ if [[ "$VIEW_ONLY" != true ]]; then
     START_ARGS=("-s" "${START_ARGS[@]}")
   fi
 
-  bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
+  MAS_MULTIPLEXER="$MUX_MODE" bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
+fi
+
+if [[ "$MUX_MODE" == "tmux" ]]; then
+  if [[ "$NO_ATTACH" = true ]]; then
+    echo "[INFO] tmux mode started."
+    echo "       attach shogun: tmux attach-session -t shogun"
+    echo "       attach agents: tmux attach-session -t multiagent"
+    exit 0
+  fi
+  tmux attach-session -t shogun
+  exit 0
 fi
 
 mapfile -t AGENTS < <(python3 - << 'PY'

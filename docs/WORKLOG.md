@@ -148,3 +148,18 @@
     - 2回目: `bash scripts/goza_no_ma.sh --view-only --no-attach --session <s>`
   - 2回目ログで既存セッション分岐を確認し、`tmux show-options -w` で `pane-border-format` 再適用を確認。
   - `pane-style` 未設定（本文色に影響なし）を確認。
+
+## 2026-02-11 (dual mux mode commands)
+- 要求: zellij/tmux それぞれで専用コマンドを実行すれば、そのモードで起動するようにする。
+- 実装:
+  - `scripts/goza_no_ma.sh` に `--mux zellij|tmux` を追加。
+  - `shutsujin_departure.sh` に `MAS_MULTIPLEXER` 環境変数オーバーライドを追加（`tmux|zellij`）。
+  - `scripts/goza_zellij.sh` を追加（`goza_no_ma --mux zellij` ラッパー）。
+  - `scripts/goza_tmux.sh` を追加（`goza_no_ma --mux tmux` ラッパー）。
+  - `.gitignore` に新規スクリプト許可を追加。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/goza_no_ma.sh scripts/goza_zellij.sh scripts/goza_tmux.sh` → PASS
+  - `bash scripts/goza_no_ma.sh --help` → `--mux` 表示を確認
+  - `bash scripts/goza_zellij.sh --help` / `bash scripts/goza_tmux.sh --help` → ヘルプ到達確認
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → PASS
+  - tmux実起動検証（`TERM=xterm bash scripts/goza_tmux.sh -s --no-attach`）で `goza_tmux` の案内文確認。

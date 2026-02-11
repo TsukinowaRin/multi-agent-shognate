@@ -113,3 +113,18 @@
    - 期待結果: `pane-border-format` に役職別色分岐が設定される。
 2. コマンド: `tmux show-options -w -t <existing>:agents | rg '^pane-style'`
    - 期待結果: `pane-style` が設定されず、本文色が変更されない。
+
+## 追補（2026-02-11: zellij/tmux 両モード起動）
+### 要求
+1. zellij と tmux の両方で起動できること。
+2. 実行コマンドでモードを選択できること（zellijコマンド / tmuxコマンド）。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/goza_zellij.sh -s --no-attach`
+   - 期待結果: zellij モードで `shutsujin_departure.sh` が呼ばれ、zellij 向け起動導線が実行される。
+2. コマンド: `bash scripts/goza_tmux.sh -s --no-attach`
+   - 期待結果: tmux モードで起動し、`attach shogun/multiagent` の案内が表示される。
+3. コマンド: `bash scripts/goza_no_ma.sh --mux tmux -s --no-attach`
+   - 期待結果: `--mux` 指定で tmux 強制起動が可能。
+4. コマンド: `bash scripts/goza_no_ma.sh --mux zellij -s --no-attach`
+   - 期待結果: `--mux` 指定で zellij 強制起動が可能。

@@ -89,6 +89,8 @@
 !scripts/shutsujin_zellij.sh
 !scripts/localapi_repl.py
 !scripts/goza_no_ma.sh
+!scripts/goza_zellij.sh
+!scripts/goza_tmux.sh
 
 
 # SayTask (sample template only, not actual data)

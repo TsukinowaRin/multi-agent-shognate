@@ -126,3 +126,13 @@
   - `bash -n scripts/goza_no_ma.sh` → PASS
   - `bash scripts/goza_no_ma.sh --help` → PASS
   - mock zellij + tmux で `bash scripts/goza_no_ma.sh -s --no-attach --session <tmp>` 実行し、4ペイン生成と色分岐維持を確認。
+
+## 2026-02-11 (pane text color fix)
+- 要求: ペイン本文の文字色は通常のままにし、タブ（見出し）色のみ変更したい。
+- 実装:
+  - `scripts/goza_no_ma.sh` の `tmux select-pane -P "fg=..."` を削除。
+  - 色指定は `pane-border-format`（見出し）だけに限定。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `rg -n \"select-pane -t .* -P\" scripts/goza_no_ma.sh` → 0件
+  - mock zellij + tmux で `bash scripts/goza_no_ma.sh -s --no-attach --session <tmp>` 実行し、`pane-border-format` の色分岐が維持されることを確認。

@@ -184,16 +184,6 @@ done
 tmux set-option -t "$VIEW_SESSION":agents pane-border-status top >/dev/null 2>&1 || true
 # 将軍=紫、家老=紺、足軽=茶
 tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{?#{==:#{pane_title},shogun},#[fg=colour141],#{?#{==:#{pane_title},karo},#[fg=colour19],#[fg=colour130]}}#{pane_index}:#{pane_title}#[default]' >/dev/null 2>&1 || true
-for i in "${!VISIBLE[@]}"; do
-  pane_t="$VIEW_SESSION:agents.$i"
-  if [[ "${VISIBLE[$i]}" == "shogun" ]]; then
-    tmux select-pane -t "$pane_t" -P "fg=colour141" >/dev/null 2>&1 || true
-  elif [[ "${VISIBLE[$i]}" == "karo" ]]; then
-    tmux select-pane -t "$pane_t" -P "fg=colour19" >/dev/null 2>&1 || true
-  else
-    tmux select-pane -t "$pane_t" -P "fg=colour130" >/dev/null 2>&1 || true
-  fi
-done
 
 tmux display-message -t "$VIEW_SESSION":agents "Attached agents: ${VISIBLE[*]}"
 if [[ "$NO_ATTACH" = true ]]; then

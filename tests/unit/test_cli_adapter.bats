@@ -123,6 +123,28 @@ YAML
 cli:
   default: kimi
 YAML
+
+    # gemini settings
+    cat > "${TEST_TMP}/settings_gemini.yaml" << 'YAML'
+cli:
+  default: claude
+  agents:
+    ashigaru2:
+      type: gemini
+      model: gemini-2.5-pro
+YAML
+
+    # localapi settings
+    cat > "${TEST_TMP}/settings_localapi.yaml" << 'YAML'
+cli:
+  default: claude
+  agents:
+    ashigaru6:
+      type: localapi
+      model: qwen2.5-coder
+  commands:
+    localapi: "python3 scripts/localapi_repl.py"
+YAML
 }
 
 teardown() {
@@ -206,6 +228,18 @@ load_adapter_with() {
     load_adapter_with "${TEST_TMP}/settings_kimi_default.yaml"
     result=$(get_cli_type "ashigaru1")
     [ "$result" = "kimi" ]
+}
+
+@test "get_cli_type: gemini設定 ashigaru2 → gemini" {
+    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+    result=$(get_cli_type "ashigaru2")
+    [ "$result" = "gemini" ]
+}
+
+@test "get_cli_type: localapi設定 ashigaru6 → localapi" {
+    load_adapter_with "${TEST_TMP}/settings_localapi.yaml"
+    result=$(get_cli_type "ashigaru6")
+    [ "$result" = "localapi" ]
 }
 
 @test "get_cli_type: 未定義agent → default継承" {
@@ -294,10 +328,46 @@ load_adapter_with() {
     [ "$result" = "kimi --yolo --model k2.5" ]
 }
 
+@test "build_cli_command: kimi-cliのみ存在時は kimi-cli を使用" {
+    load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
+    mkdir -p "${TEST_TMP}/bin"
+    cat > "${TEST_TMP}/bin/kimi-cli" << 'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+    chmod +x "${TEST_TMP}/bin/kimi-cli"
+    PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru3")
+    [ "$result" = "kimi-cli --yolo --model k2.5" ]
+}
+
 @test "build_cli_command: kimi (モデル指定なし) → kimi --yolo --model k2.5" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(build_cli_command "ashigaru4")
     [ "$result" = "kimi --yolo --model k2.5" ]
+}
+
+@test "build_cli_command: gemini + model → gemini --yolo --model gemini-2.5-pro" {
+    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+    result=$(build_cli_command "ashigaru2")
+    [ "$result" = "gemini --yolo --model gemini-2.5-pro" ]
+}
+
+@test "build_cli_command: gemini-cliのみ存在時は gemini-cli を使用" {
+    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+    mkdir -p "${TEST_TMP}/bin"
+    cat > "${TEST_TMP}/bin/gemini-cli" << 'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+    chmod +x "${TEST_TMP}/bin/gemini-cli"
+    PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
+    [ "$result" = "gemini-cli --yolo --model gemini-2.5-pro" ]
+}
+
+@test "build_cli_command: localapi → python3 scripts/localapi_repl.py" {
+    load_adapter_with "${TEST_TMP}/settings_localapi.yaml"
+    result=$(build_cli_command "ashigaru6")
+    [ "$result" = "python3 scripts/localapi_repl.py" ]
 }
 
 @test "build_cli_command: cliセクションなし → claude フォールバック" {
@@ -358,6 +428,18 @@ load_adapter_with() {
     [ "$result" = "instructions/generated/kimi-shogun.md" ]
 }
 
+@test "get_instruction_file: ashigaru2 + gemini → instructions/generated/gemini-ashigaru.md" {
+    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+    result=$(get_instruction_file "ashigaru2")
+    [ "$result" = "instructions/generated/gemini-ashigaru.md" ]
+}
+
+@test "get_instruction_file: ashigaru6 + localapi → instructions/generated/localapi-ashigaru.md" {
+    load_adapter_with "${TEST_TMP}/settings_localapi.yaml"
+    result=$(get_instruction_file "ashigaru6")
+    [ "$result" = "instructions/generated/localapi-ashigaru.md" ]
+}
+
 @test "get_instruction_file: cli_type引数で明示指定 (codex)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_instruction_file "shogun" "codex")
@@ -388,6 +470,14 @@ load_adapter_with() {
     [ "$(get_instruction_file shogun kimi)" = "instructions/generated/kimi-shogun.md" ]
     [ "$(get_instruction_file karo kimi)" = "instructions/generated/kimi-karo.md" ]
     [ "$(get_instruction_file ashigaru7 kimi)" = "instructions/generated/kimi-ashigaru.md" ]
+    # gemini
+    [ "$(get_instruction_file shogun gemini)" = "instructions/generated/gemini-shogun.md" ]
+    [ "$(get_instruction_file karo gemini)" = "instructions/generated/gemini-karo.md" ]
+    [ "$(get_instruction_file ashigaru2 gemini)" = "instructions/generated/gemini-ashigaru.md" ]
+    # localapi
+    [ "$(get_instruction_file shogun localapi)" = "instructions/generated/localapi-shogun.md" ]
+    [ "$(get_instruction_file karo localapi)" = "instructions/generated/localapi-karo.md" ]
+    [ "$(get_instruction_file ashigaru6 localapi)" = "instructions/generated/localapi-ashigaru.md" ]
 }
 
 @test "get_instruction_file: 不明なagent_id → 空文字 + return 1" {
@@ -457,6 +547,21 @@ load_adapter_with() {
     [ "$status" -eq 0 ]
 }
 
+@test "validate_cli_availability: gemini mock (PATH操作)" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    mkdir -p "${TEST_TMP}/bin"
+    echo '#!/bin/bash' > "${TEST_TMP}/bin/gemini"
+    chmod +x "${TEST_TMP}/bin/gemini"
+    PATH="${TEST_TMP}/bin:$PATH" run validate_cli_availability "gemini"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_cli_availability: localapi python3あり → 0" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    run validate_cli_availability "localapi"
+    [ "$status" -eq 0 ]
+}
+
 @test "validate_cli_availability: codex未インストール → 1 + エラーメッセージ" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     # PATHからcodexを除外（空PATHは危険なのでminimal PATHを設定）
@@ -470,6 +575,13 @@ load_adapter_with() {
     PATH="/usr/bin:/bin" run validate_cli_availability "kimi"
     [ "$status" -eq 1 ]
     [[ "$output" == *"Kimi CLI not found"* ]]
+}
+
+@test "validate_cli_availability: gemini未インストール → 1 + エラーメッセージ" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    PATH="/usr/bin:/bin" run validate_cli_availability "gemini"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Gemini CLI not found"* ]]
 }
 
 # =============================================================================
@@ -546,4 +658,16 @@ load_adapter_with() {
     load_adapter_with "${TEST_TMP}/settings_kimi_default.yaml"
     result=$(get_agent_model "karo")
     [ "$result" = "k2.5" ]
+}
+
+@test "get_agent_model: gemini CLI ashigaru2 → gemini-2.5-pro (YAML指定)" {
+    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+    result=$(get_agent_model "ashigaru2")
+    [ "$result" = "gemini-2.5-pro" ]
+}
+
+@test "get_agent_model: localapi CLI ashigaru6 → qwen2.5-coder (YAML指定)" {
+    load_adapter_with "${TEST_TMP}/settings_localapi.yaml"
+    result=$(get_agent_model "ashigaru6")
+    [ "$result" = "qwen2.5-coder" ]
 }

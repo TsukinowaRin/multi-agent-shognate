@@ -3,7 +3,7 @@
 # Multi-CLI統合設計書 (reports/design_multi_cli_support.md) §2.2 準拠
 #
 # 提供関数:
-#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi"
+#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "gemini" | "localapi"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
 #   get_instruction_file(agent_id [,cli_type]) → 指示書パス
 #   validate_cli_availability(cli_type)     → 0=OK, 1=NG
@@ -15,7 +15,7 @@ CLI_ADAPTER_PROJECT_ROOT="$(cd "${CLI_ADAPTER_DIR}/.." && pwd)"
 CLI_ADAPTER_SETTINGS="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
 # 許可されたCLI種別
-CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi"
+CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi gemini localapi"
 
 # --- 内部ヘルパー ---
 
@@ -63,6 +63,23 @@ _cli_adapter_is_valid_cli() {
     return 1
 }
 
+# _cli_adapter_pick_executable primary fallback
+# primary が存在しなければ fallback を返す（どちらも無い場合は primary）
+_cli_adapter_pick_executable() {
+    local primary="$1"
+    local fallback="$2"
+
+    if command -v "$primary" >/dev/null 2>&1; then
+        echo "$primary"
+        return 0
+    fi
+    if command -v "$fallback" >/dev/null 2>&1; then
+        echo "$fallback"
+        return 0
+    fi
+    echo "$primary"
+}
+
 # --- 公開API ---
 
 # get_cli_type(agent_id)
@@ -86,18 +103,18 @@ try:
         print('claude'); sys.exit(0)
     agents = cli.get('agents', {})
     if not isinstance(agents, dict):
-        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi') else 'claude')
+        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','gemini','localapi') else 'claude')
         sys.exit(0)
     agent_cfg = agents.get('${agent_id}')
     if isinstance(agent_cfg, dict):
         t = agent_cfg.get('type', '')
-        if t in ('claude', 'codex', 'copilot', 'kimi'):
+        if t in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi'):
             print(t); sys.exit(0)
     elif isinstance(agent_cfg, str):
-        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi'):
+        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi'):
             print(agent_cfg); sys.exit(0)
     default = cli.get('default', 'claude')
-    if default in ('claude', 'codex', 'copilot', 'kimi'):
+    if default in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi'):
         print(default)
     else:
         print('claude', file=sys.stderr)
@@ -144,11 +161,27 @@ build_cli_command() {
             echo "copilot --yolo"
             ;;
         kimi)
-            local cmd="kimi --yolo"
+            local kimi_bin
+            kimi_bin=$(_cli_adapter_pick_executable "kimi" "kimi-cli")
+            local cmd="${kimi_bin} --yolo"
             if [[ -n "$model" ]]; then
                 cmd="$cmd --model $model"
             fi
             echo "$cmd"
+            ;;
+        gemini)
+            local gemini_bin
+            gemini_bin=$(_cli_adapter_pick_executable "gemini" "gemini-cli")
+            local cmd
+            cmd=$(_cli_adapter_read_yaml "cli.commands.gemini" "${gemini_bin} --yolo")
+            if [[ -n "$model" ]]; then
+                cmd="$cmd --model $model"
+            fi
+            echo "$cmd"
+            ;;
+        localapi)
+            # OpenAI互換ローカルAPI向けの軽量REPLクライアント（設定で上書き可）
+            _cli_adapter_read_yaml "cli.commands.localapi" "python3 scripts/localapi_repl.py"
             ;;
         *)
             echo "claude --dangerously-skip-permissions"
@@ -178,6 +211,8 @@ get_instruction_file() {
         codex)   echo "instructions/codex-${role}.md" ;;
         copilot) echo ".github/copilot-instructions-${role}.md" ;;
         kimi)    echo "instructions/generated/kimi-${role}.md" ;;
+        gemini)  echo "instructions/generated/gemini-${role}.md" ;;
+        localapi) echo "instructions/generated/localapi-${role}.md" ;;
         *)       echo "instructions/${role}.md" ;;
     esac
 }
@@ -209,6 +244,18 @@ validate_cli_availability() {
         kimi)
             if ! command -v kimi-cli &>/dev/null && ! command -v kimi &>/dev/null; then
                 echo "[ERROR] Kimi CLI not found. Install from https://platform.moonshot.cn/" >&2
+                return 1
+            fi
+            ;;
+        gemini)
+            if ! command -v gemini &>/dev/null && ! command -v gemini-cli &>/dev/null; then
+                echo "[ERROR] Gemini CLI not found. Install Gemini CLI and ensure 'gemini' or 'gemini-cli' is in PATH." >&2
+                return 1
+            fi
+            ;;
+        localapi)
+            if ! command -v python3 &>/dev/null; then
+                echo "[ERROR] python3 not found. localapi mode requires python3." >&2
                 return 1
             fi
             ;;
@@ -254,6 +301,20 @@ get_agent_model() {
                 shogun|karo)    echo "k2.5" ;;
                 ashigaru*)      echo "k2.5" ;;
                 *)              echo "k2.5" ;;
+            esac
+            ;;
+        gemini)
+            case "$agent_id" in
+                shogun|karo)    echo "gemini-2.5-pro" ;;
+                ashigaru*)      echo "gemini-2.5-pro" ;;
+                *)              echo "gemini-2.5-pro" ;;
+            esac
+            ;;
+        localapi)
+            case "$agent_id" in
+                shogun|karo)    echo "local-model" ;;
+                ashigaru*)      echo "local-model" ;;
+                *)              echo "local-model" ;;
             esac
             ;;
         *)

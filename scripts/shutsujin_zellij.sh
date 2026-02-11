@@ -118,6 +118,7 @@ PY
 fi
 
 AGENTS=("shogun" "karo" "${ACTIVE_ASHIGARU[@]}")
+ALL_MANAGED_AGENTS=("shogun" "karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
 
 mkdir -p queue/reports queue/tasks queue/inbox logs queue/runtime
 
@@ -167,6 +168,17 @@ session_exists() {
   zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -qx "$session"
 }
 
+is_selected_agent() {
+  local name="$1"
+  local agent
+  for agent in "${AGENTS[@]}"; do
+    if [ "$agent" = "$name" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 create_session() {
   local session="$1"
   if session_exists "$session"; then
@@ -192,6 +204,13 @@ send_line() {
 }
 
 log_war "⚔️ zellij セッションを構築中（1エージェント=1セッション）"
+# 非アクティブ化された管理セッションは削除して配備一覧を一致させる
+for stale in "${ALL_MANAGED_AGENTS[@]}"; do
+  if ! is_selected_agent "$stale" && session_exists "$stale"; then
+    zellij delete-session "$stale" --force >/dev/null 2>&1 || zellij kill-session "$stale" >/dev/null 2>&1 || true
+  fi
+done
+
 for agent in "${AGENTS[@]}"; do
   create_session "$agent"
   send_line "$agent" "cd \"$SCRIPT_DIR\" && export AGENT_ID=\"$agent\" && export DISPLAY_MODE=\"$DISPLAY_MODE\" && clear"

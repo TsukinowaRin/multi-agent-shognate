@@ -47,3 +47,17 @@
    - 期待結果: `shogun` / `karo` / `ashigaru1` のみセッション作成される。
 2. コマンド: `first_setup.sh` が生成する `config/settings.yaml` 雛形を確認
    - 期待結果: `multiplexer.default: zellij`、`topology.active_ashigaru: [ashigaru1]`、`cli.default: codex` が含まれる。
+
+## 追補（2026-02-11: 混在起動テスト）
+### 要求
+1. `Codex CLI` と `Gemini CLI` の混在起動を確認する。
+2. 配備は `shogun/karo=codex`、`ashigaru1/ashigaru2=gemini` とする。
+3. `topology.active_ashigaru` は2名構成（`ashigaru1`, `ashigaru2`）で起動できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/shutsujin_zellij.sh -s`
+   - 期待結果: セッション一覧が `shogun`, `karo`, `ashigaru1`, `ashigaru2` の4つのみになる。
+2. コマンド: `bash scripts/shutsujin_zellij.sh`
+   - 期待結果: 起動ログに `shogun: codex`, `karo: codex`, `ashigaru1: gemini`, `ashigaru2: gemini` が表示される。
+3. コマンド: `cat queue/runtime/agent_cli.tsv`
+   - 期待結果: 上記4エージェントのCLI割当が `codex/codex/gemini/gemini` で記録される。

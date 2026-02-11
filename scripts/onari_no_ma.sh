@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-VIEW_SESSION="${VIEW_SESSION:-command-room}"
+VIEW_SESSION="${VIEW_SESSION:-onari-no-ma}"
 SETUP_ONLY=false
 VIEW_ONLY=false
 NO_ATTACH=false
@@ -17,19 +17,19 @@ PASS_THROUGH=()
 usage() {
   cat << 'USAGE'
 Usage:
-  bash scripts/samurai_dojo.sh [options] [-- <shutsujin_departure.sh options>]
+  bash scripts/onari_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
 
 Options:
   -s, --setup-only   バックエンドは setup-only で起動（CLI未起動）
   --view-only        バックエンド起動をスキップし、ビューのみ起動
   --no-attach        tmuxへattachせず、ビュー作成だけ行う（検証向け）
-  --session NAME     tmux ビューセッション名（default: command-room）
+  --session NAME     tmux ビューセッション名（default: onari-no-ma）
   -h, --help         このヘルプ
 
 Examples:
-  bash scripts/samurai_dojo.sh
-  bash scripts/samurai_dojo.sh -s
-  bash scripts/samurai_dojo.sh -- --shogun-no-thinking
+  bash scripts/onari_no_ma.sh
+  bash scripts/onari_no_ma.sh -s
+  bash scripts/onari_no_ma.sh -- --shogun-no-thinking
 USAGE
 }
 
@@ -182,14 +182,16 @@ done
 
 # 見やすさ調整
 tmux set-option -t "$VIEW_SESSION":agents pane-border-status top >/dev/null 2>&1 || true
-# Shogunは紫、それ以外は藍色
-tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{?#{==:#{pane_title},shogun},#[fg=colour141],#[fg=colour63]}#{pane_index}:#{pane_title}#[default]' >/dev/null 2>&1 || true
+# 将軍=紫、家老=紺、足軽=茶
+tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{?#{==:#{pane_title},shogun},#[fg=colour141],#{?#{==:#{pane_title},karo},#[fg=colour19],#[fg=colour130]}}#{pane_index}:#{pane_title}#[default]' >/dev/null 2>&1 || true
 for i in "${!VISIBLE[@]}"; do
   pane_t="$VIEW_SESSION:agents.$i"
   if [[ "${VISIBLE[$i]}" == "shogun" ]]; then
     tmux select-pane -t "$pane_t" -P "fg=colour141" >/dev/null 2>&1 || true
+  elif [[ "${VISIBLE[$i]}" == "karo" ]]; then
+    tmux select-pane -t "$pane_t" -P "fg=colour19" >/dev/null 2>&1 || true
   else
-    tmux select-pane -t "$pane_t" -P "fg=colour63" >/dev/null 2>&1 || true
+    tmux select-pane -t "$pane_t" -P "fg=colour130" >/dev/null 2>&1 || true
   fi
 done
 

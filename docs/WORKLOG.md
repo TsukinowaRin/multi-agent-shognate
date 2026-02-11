@@ -98,3 +98,19 @@
   - `bash -n scripts/samurai_dojo.sh` → PASS
   - `bash scripts/samurai_dojo.sh --help` → PASS
   - mock zellij + tmux で `--no-attach` 実行し、tmux session/pane作成と pane-border-format 色指定を確認。
+
+## 2026-02-11 (onari room naming + role color split)
+- 要求: 「道場」命名を避け、上様来訪を意識した部屋名へ変更。加えて色分けを将軍/家老/足軽で分離。
+- 実装:
+  - スクリプトを `scripts/onari_no_ma.sh` へ改名（御成の間イメージ）。
+  - default tmux session 名を `onari-no-ma` に変更。
+  - ペイン見出し色を3段階に変更:
+    - `shogun`: `colour141`（紫）
+    - `karo`: `colour19`（紺）
+    - `ashigaru*`: `colour130`（茶）
+  - `.gitignore` 許可リストを `!scripts/onari_no_ma.sh` に更新。
+  - `docs/REQS.md` の起動コマンド名と受け入れ条件を更新。
+- 検証:
+  - `bash -n scripts/onari_no_ma.sh` → PASS
+  - `bash scripts/onari_no_ma.sh --help` → PASS
+  - mock zellij + tmux で `-s --no-attach` 実行し、`pane-border-format` の色分岐と4ペイン生成を確認。

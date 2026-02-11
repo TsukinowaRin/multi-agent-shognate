@@ -68,9 +68,26 @@
 2. 画面は「区切りが明確な表示」（ペイン/タブ相当）で各エージェントに接続できること。
 
 ### 受け入れ条件（観測可能）
-1. コマンド: `bash scripts/samurai_dojo.sh -h`
+1. コマンド: `bash scripts/onari_no_ma.sh -h`
    - 期待結果: ヘルプが表示される。
-2. コマンド: `bash scripts/samurai_dojo.sh`
+2. コマンド: `bash scripts/onari_no_ma.sh`
    - 期待結果: `shutsujin_departure.sh` 実行後、`tmux` の分割ペイン画面に入り、各ペインで `zellij attach <agent>` が実行される。
-3. コマンド: `bash scripts/samurai_dojo.sh --view-only`
+3. コマンド: `bash scripts/onari_no_ma.sh --view-only`
    - 期待結果: バックエンドを再起動せず、既存 zellij セッションへのビュー接続のみ行う。
+
+## 追補（2026-02-11: 上様向けの部屋設計と色）
+### 要求
+1. 起動スクリプト名は道場ではなく「上様来訪を意識した部屋名」にする。
+2. タブ（ペイン見出し）色は役職ごとに分ける。
+   - 将軍: 紫
+   - 家老: 紺
+   - 足軽: 茶
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/onari_no_ma.sh --help`
+   - 期待結果: 新スクリプト名でヘルプが表示される。
+2. コマンド: `bash scripts/onari_no_ma.sh -s --no-attach`
+   - 期待結果: tmux `pane-border-format` が以下の色分岐を含む。
+     - `shogun` → `colour141`
+     - `karo` → `colour19`
+     - その他（`ashigaru*`）→ `colour130`

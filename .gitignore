@@ -36,6 +36,8 @@
 !instructions/cli_specific/codex_tools.md
 !instructions/cli_specific/copilot_tools.md
 !instructions/cli_specific/kimi_tools.md
+!instructions/cli_specific/gemini_tools.md
+!instructions/cli_specific/localapi_tools.md
 
 # Multi-CLI: Build template parts (roles, common sections)
 !instructions/roles/
@@ -84,6 +86,9 @@
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh
 !scripts/build_instructions.sh
+!scripts/shutsujin_zellij.sh
+!scripts/localapi_repl.py
+!scripts/samurai_dojo.sh
 
 
 # SayTask (sample template only, not actual data)
@@ -92,7 +97,8 @@
 
 # Docs
 !docs/
-!docs/philosophy.md
+!docs/*.md
+!docs/**/*.md
 
 # Screenshots (masked — no secrets)
 !images/

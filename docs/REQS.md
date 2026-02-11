@@ -68,9 +68,9 @@
 2. 画面は「区切りが明確な表示」（ペイン/タブ相当）で各エージェントに接続できること。
 
 ### 受け入れ条件（観測可能）
-1. コマンド: `bash scripts/start_command_room.sh -h`
+1. コマンド: `bash scripts/samurai_dojo.sh -h`
    - 期待結果: ヘルプが表示される。
-2. コマンド: `bash scripts/start_command_room.sh`
+2. コマンド: `bash scripts/samurai_dojo.sh`
    - 期待結果: `shutsujin_departure.sh` 実行後、`tmux` の分割ペイン画面に入り、各ペインで `zellij attach <agent>` が実行される。
-3. コマンド: `bash scripts/start_command_room.sh --view-only`
+3. コマンド: `bash scripts/samurai_dojo.sh --view-only`
    - 期待結果: バックエンドを再起動せず、既存 zellij セッションへのビュー接続のみ行う。

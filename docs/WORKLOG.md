@@ -83,3 +83,18 @@
   - `bash scripts/start_command_room.sh --help` → PASS
 - 注意:
   - このCodex実行環境では snap 制約により実zellij attach のE2Eは不可。ユーザー実機での確認が最終。
+
+## 2026-02-11 (samurai naming + pane color)
+- 要求: 起動スクリプト名を侍らしい名称へ変更し、Shogunペインを紫・その他を藍色にする。
+- 実装:
+  - `scripts/start_command_room.sh` を `scripts/samurai_dojo.sh` へ改名。
+  - `scripts/samurai_dojo.sh` に `--no-attach` オプションを追加（検証用）。
+  - tmux pane border/title の色付けを追加:
+    - shogun: `colour141`（紫）
+    - その他: `colour63`（藍色）
+  - `.gitignore` の許可リストを `!scripts/samurai_dojo.sh` へ更新。
+  - `docs/REQS.md` のコマンド例を新スクリプト名へ更新。
+- 検証:
+  - `bash -n scripts/samurai_dojo.sh` → PASS
+  - `bash scripts/samurai_dojo.sh --help` → PASS
+  - mock zellij + tmux で `--no-attach` 実行し、tmux session/pane作成と pane-border-format 色指定を確認。

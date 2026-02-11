@@ -83,6 +83,37 @@ if [ "$SILENT_MODE" = true ]; then
   DISPLAY_MODE="silent"
 fi
 
+# tmux版と同じ世界観で表示する（zellijモード用）
+show_battle_cry() {
+  clear
+  echo ""
+  echo -e "\033[1;31m╔══════════════════════════════════════════════════════════════════════════════════╗\033[0m"
+  echo -e "\033[1;31m║\033[0m \033[1;33m███████╗██╗  ██╗██╗   ██╗████████╗███████╗██╗   ██╗     ██╗██╗███╗   ██╗\033[0m \033[1;31m║\033[0m"
+  echo -e "\033[1;31m║\033[0m \033[1;33m██╔════╝██║  ██║██║   ██║╚══██╔══╝██╔════╝██║   ██║     ██║██║████╗  ██║\033[0m \033[1;31m║\033[0m"
+  echo -e "\033[1;31m║\033[0m \033[1;33m███████╗███████║██║   ██║   ██║   ███████╗██║   ██║     ██║██║██╔██╗ ██║\033[0m \033[1;31m║\033[0m"
+  echo -e "\033[1;31m║\033[0m \033[1;33m╚════██║██╔══██║██║   ██║   ██║   ╚════██║██║   ██║██   ██║██║██║╚██╗██║\033[0m \033[1;31m║\033[0m"
+  echo -e "\033[1;31m║\033[0m \033[1;33m███████║██║  ██║╚██████╔╝   ██║   ███████║╚██████╔╝╚█████╔╝██║██║ ╚████║\033[0m \033[1;31m║\033[0m"
+  echo -e "\033[1;31m║\033[0m \033[1;33m╚══════╝╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚══════╝ ╚═════╝  ╚════╝ ╚═╝╚═╝  ╚═══╝\033[0m \033[1;31m║\033[0m"
+  echo -e "\033[1;31m╠══════════════════════════════════════════════════════════════════════════════════╣\033[0m"
+  echo -e "\033[1;31m║\033[0m       \033[1;37m出陣じゃーーー！！！\033[0m    \033[1;36m⚔\033[0m    \033[1;35m天下布武！\033[0m                          \033[1;31m║\033[0m"
+  echo -e "\033[1;31m╚══════════════════════════════════════════════════════════════════════════════════╝\033[0m"
+  echo ""
+}
+
+role_tab_label() {
+  local agent="$1"
+  case "$agent" in
+    shogun) echo "🟣 shogun" ;;
+    karo) echo "🔵 karo" ;;
+    ashigaru*) echo "🟤 ${agent}" ;;
+    *) echo "$agent" ;;
+  esac
+}
+
+show_battle_cry
+echo -e "  \033[1;33m天下布武！陣立てを開始いたす\033[0m (Setting up the battlefield)"
+echo ""
+
 # 有効化する足軽リスト（デフォルト: ashigaru1 のみ）
 ACTIVE_ASHIGARU=("ashigaru1")
 if [ -f "$SCRIPT_DIR/config/settings.yaml" ]; then
@@ -213,6 +244,7 @@ done
 
 for agent in "${AGENTS[@]}"; do
   create_session "$agent"
+  zellij -s "$agent" action rename-tab "$(role_tab_label "$agent")" >/dev/null 2>&1 || true
   send_line "$agent" "cd \"$SCRIPT_DIR\" && export AGENT_ID=\"$agent\" && export DISPLAY_MODE=\"$DISPLAY_MODE\" && clear"
   log_info "  └─ $agent セッション作成"
 done
@@ -220,10 +252,15 @@ done
 if [ "$SETUP_ONLY" = false ]; then
   log_war "👑 全エージェントCLIを起動中"
 
+  if ! get_first_available_cli >/dev/null 2>&1; then
+    echo "[ERROR] No supported CLI found. Install one of: claude, codex, gemini, localapi, copilot, kimi" >&2
+    exit 1
+  fi
+
   : > queue/runtime/agent_cli.tsv
   for agent in "${AGENTS[@]}"; do
-    cli_type=$(get_cli_type "$agent")
-    cli_cmd=$(build_cli_command "$agent")
+    cli_type=$(resolve_cli_type_for_agent "$agent")
+    cli_cmd=$(build_cli_command_with_type "$agent" "$cli_type")
 
     if [ "$agent" = "shogun" ] && [ "$SHOGUN_NO_THINKING" = true ] && [ "$cli_type" = "claude" ]; then
       cli_cmd="MAX_THINKING_TOKENS=0 $cli_cmd"

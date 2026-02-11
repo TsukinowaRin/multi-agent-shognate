@@ -66,6 +66,10 @@ bash scripts/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
 - 家老: 紺
 - 足軽: 茶
 
+補足:
+- この配色は `tmux` の御座の間ビュー（`goza_no_ma.sh`）で適用されます。
+- `zellij` へ直接 attach した場合は、タブ名を役職アイコンで表示します（`🟣 shogun` / `🔵 karo` / `🟤 ashigaru*`）。
+
 ## クイックスタート
 
 ### 前提
@@ -165,6 +169,9 @@ zellij list-sessions -n
   tmux kill-session -t goza-no-ma 2>/dev/null || true
   bash scripts/goza_zellij.sh
   ```
+
+- `Claude Code CLI not found` で止まる
+  - 現在は未導入CLIを自動フォールバックします。意図したCLIで固定したい場合は `config/settings.yaml` の `cli.default` / `cli.agents` を明示してください。
 
 - zellij モードで起動できない
   - `zellij --version` を確認。

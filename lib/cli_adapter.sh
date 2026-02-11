@@ -142,6 +142,14 @@ build_cli_command() {
     local agent_id="$1"
     local cli_type
     cli_type=$(get_cli_type "$agent_id")
+    build_cli_command_with_type "$agent_id" "$cli_type"
+}
+
+# build_cli_command_with_type(agent_id, cli_type)
+# 指定CLI種別でエージェント起動コマンドを返す
+build_cli_command_with_type() {
+    local agent_id="$1"
+    local cli_type="$2"
     local model
     model=$(get_agent_model "$agent_id")
 
@@ -187,6 +195,59 @@ build_cli_command() {
             echo "claude --dangerously-skip-permissions"
             ;;
     esac
+}
+
+# get_first_available_cli()
+# 現在の環境で利用可能なCLIを優先順で1つ返す
+get_first_available_cli() {
+    local c
+    for c in codex gemini localapi claude copilot kimi; do
+        case "$c" in
+            claude)
+                command -v claude &>/dev/null && { echo "claude"; return 0; }
+                ;;
+            codex)
+                command -v codex &>/dev/null && { echo "codex"; return 0; }
+                ;;
+            copilot)
+                command -v copilot &>/dev/null && { echo "copilot"; return 0; }
+                ;;
+            kimi)
+                (command -v kimi &>/dev/null || command -v kimi-cli &>/dev/null) && { echo "kimi"; return 0; }
+                ;;
+            gemini)
+                (command -v gemini &>/dev/null || command -v gemini-cli &>/dev/null) && { echo "gemini"; return 0; }
+                ;;
+            localapi)
+                command -v python3 &>/dev/null && { echo "localapi"; return 0; }
+                ;;
+        esac
+    done
+    return 1
+}
+
+# resolve_cli_type_for_agent(agent_id)
+# 設定上のCLIが未導入なら利用可能なCLIにフォールバックする
+resolve_cli_type_for_agent() {
+    local agent_id="$1"
+    local requested
+    requested=$(get_cli_type "$agent_id")
+
+    if validate_cli_availability "$requested" >/dev/null 2>&1; then
+        echo "$requested"
+        return 0
+    fi
+
+    local fallback
+    fallback=$(get_first_available_cli 2>/dev/null || true)
+    if [[ -n "$fallback" ]]; then
+        echo "[WARN] CLI '$requested' for agent '$agent_id' is unavailable. Falling back to '$fallback'." >&2
+        echo "$fallback"
+        return 0
+    fi
+
+    echo "$requested"
+    return 0
 }
 
 # get_instruction_file(agent_id [,cli_type])

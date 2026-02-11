@@ -185,3 +185,24 @@
 - 検証:
   - `rg -n "localapi|LOCALAPI_BASE_URL|LOCALAPI_MODEL" README.md` → 期待文字列を確認。
   - `rg -n "WSL再起動後の最短手順|zellij list-sessions -n" README.md` → 期待文字列を確認。
+
+## 2026-02-12 (zellij演出強化 + tmux CLIフォールバック)
+- 要求:
+  - zellijモードでもtmux相当の演出を表示したい。
+  - zellij直接attach時にも役職判別しやすくしたい（タブ色要望）。
+  - tmux起動がclaude未導入だけで停止しないようにしたい。
+- 実装:
+  - `scripts/shutsujin_zellij.sh` に出陣バナー（tmux版と同系統）を追加。
+  - `scripts/shutsujin_zellij.sh` でセッション作成時に `zellij action rename-tab` を実行し、役職ラベルを付与:
+    - `🟣 shogun`
+    - `🔵 karo`
+    - `🟤 ashigaru*`
+  - `lib/cli_adapter.sh` に以下のヘルパーを追加:
+    - `build_cli_command_with_type`
+    - `get_first_available_cli`
+    - `resolve_cli_type_for_agent`
+  - `shutsujin_departure.sh` のtmux起動で `resolve_cli_type_for_agent` を使うように変更し、未導入CLI時は利用可能CLIへフォールバック。
+  - `README.md` に「zellij直接attach時は役職アイコン表示」「Claude未導入時フォールバック」の補足を追記。
+- 検証:
+  - `bash -n lib/cli_adapter.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/goza_zellij.sh scripts/goza_tmux.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 107 tests PASS

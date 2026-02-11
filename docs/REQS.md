@@ -150,3 +150,17 @@
    - 期待結果: LocalAPIの設定説明がREADMEに存在する。
 2. コマンド: `rg -n \"WSL再起動後の最短手順|zellij list-sessions -n\" README.md`
    - 期待結果: 最短手順と正しいセッション確認コマンドが記載される。
+
+## 追補（2026-02-12: zellij演出強化とCLI依存緩和）
+### 要求
+1. zellijモードでも tmuxモード相当の出陣演出（バナー）を表示する。
+2. zellijの直接attach時に役職の視認性を上げる（タブ名の役職ラベル化）。
+3. tmuxモードが `claude` 未導入だけで停止しないようにする（利用可能CLIへのフォールバック）。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/shutsujin_zellij.sh -s`
+   - 期待結果: 出陣バナー表示後に zellij セッション作成ログが続く。
+2. コマンド: `rg -n "rename-tab|role_tab_label" scripts/shutsujin_zellij.sh`
+   - 期待結果: zellijタブ名に役職ラベル（絵文字付き）を設定する実装がある。
+3. コマンド: `rg -n "resolve_cli_type_for_agent|build_cli_command_with_type|get_first_available_cli" lib/cli_adapter.sh shutsujin_departure.sh`
+   - 期待結果: CLI未導入時のフォールバック経路が実装され、tmux起動時に利用される。

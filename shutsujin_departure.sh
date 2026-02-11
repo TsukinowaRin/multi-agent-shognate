@@ -585,7 +585,7 @@ fi
 if [ "$CLI_ADAPTER_LOADED" = true ]; then
     for i in {0..8}; do
         _agent="${AGENT_IDS[$i]}"
-        _cli=$(get_cli_type "$_agent")
+        _cli=$(resolve_cli_type_for_agent "$_agent")
         case "$_cli" in
             codex)
                 # config.tomlからモデル名と推論レベルを取得
@@ -636,8 +636,8 @@ echo ""
 if [ "$SETUP_ONLY" = false ]; then
     # CLI の存在チェック（Multi-CLI対応）
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
-        _default_cli=$(get_cli_type "")
-        if ! validate_cli_availability "$_default_cli"; then
+        if ! get_first_available_cli >/dev/null 2>&1; then
+            echo "[ERROR] No supported CLI found. Install one of: claude, codex, gemini, localapi, copilot, kimi" >&2
             exit 1
         fi
     else
@@ -655,8 +655,8 @@ if [ "$SETUP_ONLY" = false ]; then
     _shogun_cli_type="claude"
     _shogun_cmd="claude --model opus --dangerously-skip-permissions"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
-        _shogun_cli_type=$(get_cli_type "shogun")
-        _shogun_cmd=$(build_cli_command "shogun")
+        _shogun_cli_type=$(resolve_cli_type_for_agent "shogun")
+        _shogun_cmd=$(build_cli_command_with_type "shogun" "$_shogun_cli_type")
     fi
     tmux set-option -p -t "shogun:main" @agent_cli "$_shogun_cli_type"
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
@@ -677,8 +677,8 @@ if [ "$SETUP_ONLY" = false ]; then
     _karo_cli_type="claude"
     _karo_cmd="claude --model opus --dangerously-skip-permissions"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
-        _karo_cli_type=$(get_cli_type "karo")
-        _karo_cmd=$(build_cli_command "karo")
+        _karo_cli_type=$(resolve_cli_type_for_agent "karo")
+        _karo_cmd=$(build_cli_command_with_type "karo" "$_karo_cli_type")
     fi
     tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_karo_cli_type"
     tmux send-keys -t "multiagent:agents.${p}" "$_karo_cmd"
@@ -692,12 +692,12 @@ if [ "$SETUP_ONLY" = false ]; then
             _ashi_cli_type="claude"
             _ashi_cmd="claude --model opus --dangerously-skip-permissions"
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
-                _ashi_cli_type=$(get_cli_type "ashigaru${i}")
+                _ashi_cli_type=$(resolve_cli_type_for_agent "ashigaru${i}")
                 if [ "$_ashi_cli_type" = "claude" ]; then
                     # 決戦モード: claudeは全員Opus強制
                     _ashi_cmd="claude --model opus --dangerously-skip-permissions"
                 else
-                    _ashi_cmd=$(build_cli_command "ashigaru${i}")
+                    _ashi_cmd=$(build_cli_command_with_type "ashigaru${i}" "$_ashi_cli_type")
                 fi
             fi
             tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_ashi_cli_type"
@@ -716,8 +716,8 @@ if [ "$SETUP_ONLY" = false ]; then
                 _ashi_cmd="claude --model opus --dangerously-skip-permissions"
             fi
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
-                _ashi_cli_type=$(get_cli_type "ashigaru${i}")
-                _ashi_cmd=$(build_cli_command "ashigaru${i}")
+                _ashi_cli_type=$(resolve_cli_type_for_agent "ashigaru${i}")
+                _ashi_cmd=$(build_cli_command_with_type "ashigaru${i}" "$_ashi_cli_type")
             fi
             tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_ashi_cli_type"
             tmux send-keys -t "multiagent:agents.${p}" "$_ashi_cmd"

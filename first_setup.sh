@@ -175,6 +175,23 @@ fi
 RESULTS+=("tmux マウス設定: OK")
 
 # ============================================================
+# STEP 3.5: zellij チェック（任意）
+# ============================================================
+log_step "STEP 3.5: zellij チェック（任意）"
+
+if command -v zellij &> /dev/null; then
+    ZELLIJ_VERSION=$(zellij --version 2>/dev/null || echo "unknown")
+    log_success "zellij がインストール済みです ($ZELLIJ_VERSION)"
+    RESULTS+=("zellij: OK ($ZELLIJ_VERSION)")
+else
+    log_info "zellij は未インストールです（tmuxモードでは不要）"
+    log_info "zellijモードを使う場合は手動インストールしてください"
+    log_info "  Ubuntu: sudo apt install zellij"
+    log_info "  macOS:  brew install zellij"
+    RESULTS+=("zellij: optional (not installed)")
+fi
+
+# ============================================================
 # STEP 4: Node.js チェック
 # ============================================================
 log_step "STEP 4: Node.js チェック"
@@ -502,6 +519,18 @@ language: ja
 # zsh: zsh用プロンプト
 shell: bash
 
+# マルチプレクサ設定
+# tmux: 既存互換モード
+# zellij: zellij移植モード（1エージェント=1セッション）
+multiplexer:
+  default: zellij
+
+# 起動トポロジ設定
+topology:
+  # デフォルトは足軽1名のみ起動（必要時に追加）
+  active_ashigaru:
+    - ashigaru1
+
 # スキル設定
 skill:
   # スキル保存先（スキル名に shogun- プレフィックスを付けて保存）
@@ -514,6 +543,20 @@ skill:
 logging:
   level: info  # debug | info | warn | error
   path: "$SCRIPT_DIR/logs/"
+
+# Multi-CLI設定
+cli:
+  default: codex
+  agents:
+    shogun:
+      type: codex
+    karo:
+      type: codex
+    ashigaru1:
+      type: codex
+  commands:
+    gemini: "gemini --yolo"
+    localapi: "python3 scripts/localapi_repl.py"
 EOF
     log_success "settings.yaml を作成しました"
 else

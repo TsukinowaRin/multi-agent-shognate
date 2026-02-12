@@ -184,7 +184,16 @@ fi
 
 tmux_attach_session_cmd() {
   local session="$1"
-  printf 'cd "%s" && TMUX= tmux attach-session -t %q || (echo "[WARN] attach失敗: %s"; exec bash)' "$ROOT_DIR" "$session" "$session"
+  printf 'cd %q && TMUX= tmux attach-session -t %q || (echo %q; exec bash)' \
+    "$ROOT_DIR" "$session" "[WARN] attach失敗: $session"
+}
+
+kdl_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/ }"
+  printf '%s' "$value"
 }
 
 ZELLIJ_UI_SESSION="${ZELLIJ_UI_SESSION:-goza-no-ma-ui}"
@@ -192,16 +201,22 @@ zellij_ui_layout_file() {
   local tmux_target="$1"
   local tab_title="$2"
   local startup_cmd
+  local startup_cmd_escaped
   local pane_name
+  local pane_name_escaped
+  local tab_title_escaped
   local layout_file="${TMPDIR:-/tmp}/zellij_ui_${ZELLIJ_UI_SESSION}.kdl"
   startup_cmd="$(tmux_attach_session_cmd "$tmux_target")"
+  startup_cmd_escaped="$(kdl_escape "$startup_cmd")"
   pane_name="${tab_title}"
+  pane_name_escaped="$(kdl_escape "$pane_name")"
+  tab_title_escaped="$(kdl_escape "$tab_title")"
   cat > "$layout_file" <<EOF
 layout {
-    tab name="${tab_title}" {
-        pane name="${pane_name}" {
+    tab name="${tab_title_escaped}" {
+        pane name="${pane_name_escaped}" {
             command "bash";
-            args "-lc" "$startup_cmd";
+            args "-lc" "${startup_cmd_escaped}";
         }
     }
 }

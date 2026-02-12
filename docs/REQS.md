@@ -351,3 +351,16 @@
    - 期待結果: 役職別の連携順序ルールが初動命令へ組み込まれている。
 3. コマンド: `bash -n scripts/goza_no_ma.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh`
    - 期待結果: 構文エラーなし。
+
+## 追補（2026-02-12: 足軽AAの人数連動 + zellij KDLクォート修正）
+### 要求
+1. 起動バナーの足軽AAを `topology.active_ashigaru` の人数に応じて増減させる。
+2. `goza_zellij` 起動時の `Failed to parse Zellij configuration`（KDLクォート崩れ）を解消する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "render_ashigaru_ascii|ACTIVE_ASHIGARU_COUNT" shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+   - 期待結果: 両起動スクリプトで人数連動のAA描画関数が使われている。
+2. コマンド: `rg -n "kdl_escape|tmux_attach_session_cmd|args \\\"-lc\\\"" scripts/goza_no_ma.sh`
+   - 期待結果: zellij layout 生成時にKDLエスケープ処理がある。
+3. コマンド: `bash -n scripts/goza_no_ma.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+   - 期待結果: 構文エラーなし。

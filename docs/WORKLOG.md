@@ -546,3 +546,27 @@
 - 判断メモ:
   - この修正で「attach失敗時に長いコマンドが枠名として残る」症状を抑止。
   - 役職別初動命令に順序ルールを明示し、CLI差分があっても統率フローを維持しやすくした。
+
+## 2026-02-12 (足軽AAの人数連動 + zellij KDLパース失敗修正)
+- 要求:
+  - 起動時の足軽AAを実際の配備人数に合わせて増減したい。
+  - `goza_zellij` 実行時に `Failed to parse Zellij configuration` で起動失敗する問題を直したい。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `tmux_attach_session_cmd` を `%q` ベースへ変更し、埋め込みコマンドのクォート崩れを抑止。
+    - `kdl_escape` を追加し、layout生成時に `\` / `"` / 改行をKDL向けにエスケープ。
+    - `zellij_ui_layout_file` で `args "-lc" "..."` にエスケープ済みコマンドを埋め込むよう変更。
+  - `shutsujin_departure.sh`
+    - `render_ashigaru_ascii` を追加。
+    - `show_battle_cry` の足軽AAを固定8体から人数連動描画へ変更。
+  - `scripts/shutsujin_zellij.sh`
+    - 同様に `render_ashigaru_ascii` を追加。
+    - `show_battle_cry` の足軽AAを人数連動描画へ変更。
+- Docs:
+  - `docs/REQS.md` に本件追補（AA人数連動 + KDLクォート修正）を追加。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh` → PASS
+  - `bats tests/unit/test_send_wakeup.bats --timing` → 36 tests PASS
+- 判断メモ:
+  - KDLパース失敗は layout 文字列への未エスケープ挿入が主因。`kdl_escape` 導入で再発を防止。
+  - AAは視覚演出なので、まず1〜8体を安定表示する実装を優先した。

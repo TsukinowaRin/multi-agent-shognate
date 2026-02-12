@@ -188,52 +188,57 @@ tmux_attach_session_cmd() {
 }
 
 ZELLIJ_UI_SESSION="${ZELLIJ_UI_SESSION:-goza-no-ma-ui}"
-
-zellij_session_exists() {
-  local session="$1"
-  zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -qx "$session"
+zellij_ui_layout_file() {
+  local tmux_target="$1"
+  local tab_title="$2"
+  local layout_file="${TMPDIR:-/tmp}/zellij_ui_${ZELLIJ_UI_SESSION}.kdl"
+  cat > "$layout_file" <<EOF
+layout {
+    tab name="${tab_title}" {
+        pane command="bash" {
+            args "-lc" "cd \\\"$ROOT_DIR\\\" && TMUX= tmux attach-session -t \\\"$tmux_target\\\" || (echo \\\"[WARN] attach失敗: $tmux_target\\\"; exec bash)"
+        }
+    }
 }
-
-zellij_create_ui_session() {
-  local session="$1"
-  if zellij_session_exists "$session"; then
-    zellij delete-session "$session" --force >/dev/null 2>&1 || zellij kill-session "$session" >/dev/null 2>&1 || true
-  fi
-  if zellij attach --create-background "$session" >/dev/null 2>&1; then
-    return 0
-  fi
-  zellij attach --create-background --session "$session" >/dev/null 2>&1
-}
-
-zellij_send_line() {
-  local session="$1"
-  local text="$2"
-  zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
-  zellij -s "$session" action write 13 >/dev/null 2>&1 || \
-  zellij -s "$session" action write 10 >/dev/null 2>&1 || \
-  zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
+EOF
+  echo "$layout_file"
 }
 
 zellij_ui_attach_tmux_target() {
   local tmux_target="$1"
   local pane_title="$2"
+  local layout_file
+  layout_file="$(zellij_ui_layout_file "$tmux_target" "$pane_title")"
 
-  if ! zellij_create_ui_session "$ZELLIJ_UI_SESSION"; then
-    echo "[ERROR] zellij UI session の作成に失敗しました: $ZELLIJ_UI_SESSION" >&2
-    exit 1
-  fi
-  sleep 0.2
-  zellij -s "$ZELLIJ_UI_SESSION" action rename-tab "$pane_title" >/dev/null 2>&1 || true
-  zellij_send_line "$ZELLIJ_UI_SESSION" "cd \"$ROOT_DIR\" && TMUX= tmux attach-session -t \"$tmux_target\" || (echo \"[WARN] attach失敗: $tmux_target\"; exec bash)" || \
-    echo "[WARN] zellij UI へ attach コマンド送信に失敗しました" >&2
+  # 既存UIセッションは一旦削除して、毎回同じ構成で作り直す
+  zellij delete-session "$ZELLIJ_UI_SESSION" --force >/dev/null 2>&1 || \
+    zellij kill-session "$ZELLIJ_UI_SESSION" >/dev/null 2>&1 || true
 
   if [[ "$NO_ATTACH" = true ]]; then
-    echo "[INFO] zellij UI session created: $ZELLIJ_UI_SESSION"
-    echo "       attach: zellij attach $ZELLIJ_UI_SESSION"
+    # 非アタッチ時は従来どおり背景セッションだけ作成
+    if zellij attach --create-background "$ZELLIJ_UI_SESSION" >/dev/null 2>&1 || \
+       zellij attach --create-background --session "$ZELLIJ_UI_SESSION" >/dev/null 2>&1; then
+      echo "[INFO] zellij UI session created: $ZELLIJ_UI_SESSION"
+      echo "       attach: zellij attach $ZELLIJ_UI_SESSION"
+      return 0
+    fi
+    echo "[ERROR] zellij UI background session の作成に失敗しました: $ZELLIJ_UI_SESSION" >&2
+    return 1
+  fi
+
+  # 0.41系では --new-session-with-layout が最も安定
+  if zellij --new-session-with-layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
     return 0
   fi
-  zellij attach "$ZELLIJ_UI_SESSION"
-  return 0
+  # 旧互換フォールバック
+  if zellij --layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
+    return 0
+  fi
+  if zellij --layout "$layout_file" attach -c "$ZELLIJ_UI_SESSION"; then
+    return 0
+  fi
+  echo "[ERROR] zellij UI 起動に失敗しました（layout: $layout_file）" >&2
+  return 1
 }
 
 tmux_new_view_session() {

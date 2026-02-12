@@ -241,6 +241,10 @@ zellij list-sessions -n
 
 - Codex/Gemini が起動していないように見える
   - `-s`（setup-only）を付けていないコマンドで起動しているか確認。
+  - `inotifywait` がないと watcher は起動しません（対話自体は可能ですが、通知連携は無効）。
+  ```bash
+  sudo apt install -y inotify-tools
+  ```
   - 起動割り当て確認:
   ```bash
   cat queue/runtime/agent_cli.tsv

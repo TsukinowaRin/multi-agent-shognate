@@ -278,3 +278,14 @@
    - 期待結果: `--ui` オプションと zellij UI + tmux backend 導線が実装・文書化されている。
 3. コマンド: `rg -n "inotifywait 未導入|command -v inotifywait" shutsujin_departure.sh scripts/shutsujin_zellij.sh`
    - 期待結果: watcher 起動前に inotifywait 前提チェックが追加されている。
+
+## 追補（2026-02-12: zellij UI attach の安定化）
+### 要求
+1. zellij UI モードで「zellijは起動するが tmux attach が走らない」不安定挙動を解消する。
+2. `zellij action write-chars` 依存を下げ、セッション起動時に tmux attach を確実に実行する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "zellij_ui_layout_file|new-session-with-layout|--layout .*attach -c" scripts/goza_no_ma.sh`
+   - 期待結果: zellij UI 起動が layout ベースになっている。
+2. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
+   - 期待結果: zellij UI 内で tmux 画面（`goza-no-ma`）へ直接入る。

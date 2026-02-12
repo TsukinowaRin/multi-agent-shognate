@@ -397,3 +397,28 @@
   - `bats tests/unit/test_send_wakeup.bats --timing` → 36 PASS
   - `bats tests/unit/test_cli_adapter.bats --timing` → 71 PASS
   - `bash scripts/goza_no_ma.sh --help` で `--ui` 表示を確認。
+
+## 2026-02-12 (zellijは開くが対話不可問題の修正)
+- 事象:
+  - ユーザー環境で zellij UI は起動するが、Codex/Gemini と対話できない。
+  - 画面が zellij のデフォルトシェル表示のままになり、tmux attach が実行されていない。
+- 原因:
+  - zellij UI 側で `action write-chars` によるコマンド注入を使っていたため、環境差分で入力注入が不安定だった。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - zellij UI 起動を `layout` ベースに変更。
+    - `zellij_ui_layout_file` を追加し、タブ起動時に `tmux attach-session -t <target>` を直接実行するKDLを生成。
+    - `zellij_ui_attach_tmux_target` で以下の順に起動:
+      1) `zellij --new-session-with-layout <layout> -s <ui_session>`
+      2) `zellij --layout <layout> -s <ui_session>`
+      3) `zellij --layout <layout> attach -c <ui_session>`
+    - 既存 UI セッションを毎回再生成して stale 状態を排除。
+  - `scripts/shutsujin_zellij.sh` / `shutsujin_departure.sh`
+    - `inotifywait` 未導入時は watcher を起動せず、明示警告だけ出して継続。
+  - `README.md` / `docs/REQS.md`
+    - `inotify-tools` 前提と zellij UI attach 安定化要件を追記。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh scripts/goza_zellij.sh scripts/goza_tmux.sh scripts/shutsujin_zellij.sh shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_send_wakeup.bats --timing` → 36 PASS
+  - `bats tests/unit/test_cli_adapter.bats --timing` → 71 PASS
+  - `rg -n "zellij_ui_layout_file|new-session-with-layout|inotifywait" ...` で実装箇所確認。

@@ -18,6 +18,7 @@ MUX_MODE="${MUX_MODE:-zellij}"
 UI_MODE="${UI_MODE:-}"
 VIEW_TEMPLATE="${VIEW_TEMPLATE:-}"
 PASS_THROUGH=()
+CLI_ADAPTER_LOADED=false
 
 usage() {
   cat << 'USAGE'
@@ -113,6 +114,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [ -f "$ROOT_DIR/lib/cli_adapter.sh" ]; then
+  # shellcheck source=/dev/null
+  source "$ROOT_DIR/lib/cli_adapter.sh" || true
+  CLI_ADAPTER_LOADED=true
+fi
+
 if [[ "$MUX_MODE" != "zellij" && "$MUX_MODE" != "tmux" ]]; then
   echo "[ERROR] --mux は zellij または tmux を指定してください（指定値: $MUX_MODE）" >&2
   exit 1
@@ -173,13 +180,21 @@ if [[ "$MUX_MODE" == "zellij" || "$UI_MODE" == "zellij" ]] && ! command -v zelli
   exit 1
 fi
 
-if [[ "$VIEW_ONLY" != true ]]; then
-  START_ARGS=("${PASS_THROUGH[@]}")
-  if [[ "$SETUP_ONLY" = true ]]; then
-    START_ARGS=("-s" "${START_ARGS[@]}")
-  fi
+PURE_ZELLIJ_GOZA=0
+if [[ "$MUX_MODE" == "zellij" && "$UI_MODE" == "zellij" && "$VIEW_TEMPLATE" == "goza_room" ]]; then
+  PURE_ZELLIJ_GOZA=1
+fi
 
-  MAS_MULTIPLEXER="$MUX_MODE" bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
+if [[ "$VIEW_ONLY" != true ]]; then
+  if [[ "$PURE_ZELLIJ_GOZA" -eq 1 ]]; then
+    mkdir -p "$ROOT_DIR/queue/reports" "$ROOT_DIR/queue/tasks" "$ROOT_DIR/queue/inbox" "$ROOT_DIR/logs" "$ROOT_DIR/queue/runtime"
+  else
+    START_ARGS=("${PASS_THROUGH[@]}")
+    if [[ "$SETUP_ONLY" = true ]]; then
+      START_ARGS=("-s" "${START_ARGS[@]}")
+    fi
+    MAS_MULTIPLEXER="$MUX_MODE" bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
+  fi
 fi
 
 tmux_attach_session_cmd() {
@@ -276,10 +291,24 @@ zellij_ui_attach_tmux_target() {
   return 1
 }
 
-zellij_agent_attach_cmd() {
+zellij_agent_pane_cmd() {
   local agent="$1"
-  printf 'cd %q && ZELLIJ= zellij attach %q || (echo %q; exec bash)' \
-    "$ROOT_DIR" "$agent" "[WARN] attach失敗: $agent"
+  local cli_type="codex"
+  local cli_cmd="codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
+
+  if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
+    cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
+    cli_cmd="$(build_cli_command_with_type "$agent" "$cli_type" 2>/dev/null || echo "$cli_cmd")"
+  fi
+
+  if [[ "$SETUP_ONLY" == "true" ]]; then
+    printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && clear && exec bash' \
+      "$ROOT_DIR" "$agent" "shout"
+    return 0
+  fi
+
+  printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && clear && %s; echo %q; exec bash' \
+    "$ROOT_DIR" "$agent" "shout" "$cli_cmd" "[INFO] ${agent} pane ended. Waiting at shell."
 }
 
 zellij_collect_active_agents() {
@@ -351,7 +380,7 @@ zellij_pure_goza_layout_file() {
       local startup_cmd
       local startup_cmd_escaped
       pane_name_escaped="$(kdl_escape "$agent")"
-      startup_cmd="$(zellij_agent_attach_cmd "$agent")"
+      startup_cmd="$(zellij_agent_pane_cmd "$agent")"
       startup_cmd_escaped="$(kdl_escape "$startup_cmd")"
       cat <<EOF
         pane name="${pane_name_escaped}" {
@@ -537,20 +566,12 @@ fi
 # pure zellij goza_room: agent sessions を複数ペインで一括表示する。
 if [[ "$UI_MODE" == "zellij" ]]; then
   mapfile -t AGENTS < <(zellij_collect_active_agents)
-  zellij_sessions="$(zellij list-sessions -n 2>/dev/null || true)"
-  VISIBLE=()
-  for a in "${AGENTS[@]}"; do
-    if echo "$zellij_sessions" | awk '{print $1}' | grep -qx "$a"; then
-      VISIBLE+=("$a")
-    fi
-  done
-  if [[ ${#VISIBLE[@]} -eq 0 ]]; then
-    echo "[ERROR] 表示対象の zellij session が見つかりませんでした。" >&2
-    echo "        先に: bash shutsujin_departure.sh" >&2
+  if [[ ${#AGENTS[@]} -eq 0 ]]; then
+    echo "[ERROR] 表示対象エージェントを解決できませんでした。" >&2
     exit 1
   fi
-  echo "[INFO] pure zellij 御座の間で起動します: ${VISIBLE[*]}"
-  zellij_pure_attach_goza_room "${VISIBLE[@]}"
+  echo "[INFO] pure zellij 御座の間で起動します: ${AGENTS[*]}"
+  zellij_pure_attach_goza_room "${AGENTS[@]}"
   exit 0
 fi
 

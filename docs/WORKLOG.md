@@ -661,3 +661,20 @@
   - `rg -n "zellij_pure_goza_layout_file|zellij_pure_attach_goza_room|zellij_agent_attach_cmd" scripts/goza_no_ma.sh` で実装確認。
 - 判断メモ:
   - pure zellijではtmux演出（色付き罫線）は使わず、まず「将軍が見える分割画面」を優先した。
+
+## 2026-02-13 (nested zellij解消: pure goza_room を直接CLI起動へ変更)
+- 背景:
+  - ユーザー実機で、pure zellijの `goza_room` が「1つのzellij内に複数zellijをattach」する表示となり、UIが重複して見づらかった。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - pure zellij + goza_room で backend の per-session attach を使わない経路へ変更。
+    - `zellij_agent_pane_cmd` を追加し、各paneで `AGENT_ID` をセットしてCLIを直接起動。
+    - `PURE_ZELLIJ_GOZA` 判定を追加し、このモードでは `shutsujin_departure.sh` のbackend生成をスキップ（重複セッション回避）。
+    - pure goza_room の表示対象は「既存zellij sessionの有無」ではなく `config/settings.yaml` の active agent 構成を直接採用。
+  - `README.md`
+    - goza_room pure zellij が「ネストattachではなく直接起動」であることを明記。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `rg -n "zellij_agent_pane_cmd|PURE_ZELLIJ_GOZA|build_cli_command_with_type" scripts/goza_no_ma.sh` で実装確認。
+- 判断メモ:
+  - まず「見やすさと操作性（ネスト排除）」を優先し、pure zellij表示の違和感を解消。

@@ -409,5 +409,7 @@
 ### 受け入れ条件（観測可能）
 1. コマンド: `rg -n "zellij_pure_goza_layout_file|zellij_pure_attach_goza_room|zellij_agent_attach_cmd|pure zellij 御座の間" scripts/goza_no_ma.sh`
    - 期待結果: pure zellij goza_room 用のlayout生成と起動処理が存在する。
-2. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
+2. コマンド: `rg -n "zellij_agent_pane_cmd|export AGENT_ID|build_cli_command_with_type" scripts/goza_no_ma.sh`
+   - 期待結果: ネストattachではなく、pane内でエージェントCLIを直接起動する実装がある。
+3. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
    - 期待結果: zellijで分割ペイン表示が開き、`shogun` ペインが表示される。

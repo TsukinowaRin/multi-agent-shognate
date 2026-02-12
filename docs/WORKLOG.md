@@ -517,3 +517,32 @@
 - 判断メモ:
   - 役職正本とCLI最適化を分離することで、運用指示の一貫性とCLI差分の追従性を両立。
   - 再生成失敗時は警告継続にし、起動停止リスクを回避した。
+
+## 2026-02-12 (zellij枠名の露出抑止 + 階層連携順序の明示)
+- 要求:
+  - zellij UI利用時に枠タイトルへ `bash -lc ...` が露出する挙動を改善したい。
+  - 将軍→家老→足軽の順序連携を起動初動で明示し、実運用で順番を守らせたい。
+  - オリジナルREADME_jaの階層連携に沿った実装へ寄せたい。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `zellij_ui_layout_file` で `startup_cmd` 生成を `tmux_attach_session_cmd` 経由に統一。
+    - zellij layout の `pane` に `name="..."` を追加し、UI上の枠名を明示化。
+    - `zellij_ui_attach_tmux_target` に `tmux has-session` 事前チェックを追加。
+      - attach先が無い場合は明示エラーで停止し、長いコマンド露出のまま待機しない。
+  - `shutsujin_departure.sh`
+    - `role_linkage_directive` を追加。
+    - `send_startup_bootstrap_tmux` の初動命令へ、役職別の連携順序（将軍→家老→足軽）を埋め込み。
+      - 将軍: `queue/shogun_to_karo.yaml` + inbox経由で家老へ委譲
+      - 家老: `queue/tasks/ashigaruN.yaml` + inboxで足軽起動
+      - 足軽: `queue/reports/<agent>_report.yaml` + inboxで家老へ報告
+  - `scripts/shutsujin_zellij.sh`
+    - 同等の `role_linkage_directive` を追加。
+    - `send_startup_bootstrap_zellij` に役職別連携順序を組み込み、tmux経路と挙動統一。
+- Docs:
+  - `docs/REQS.md` に「zellij表示名の正常化 + 連携順序強制」の追補要件と受け入れ条件を追加。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh` → PASS
+  - `bats tests/unit/test_send_wakeup.bats --timing` → 36 tests PASS
+- 判断メモ:
+  - この修正で「attach失敗時に長いコマンドが枠名として残る」症状を抑止。
+  - 役職別初動命令に順序ルールを明示し、CLI差分があっても統率フローを維持しやすくした。

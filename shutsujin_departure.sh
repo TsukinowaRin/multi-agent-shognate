@@ -132,10 +132,13 @@ send_startup_bootstrap_tmux() {
         optimized_instruction_file="$role_instruction_file"
     fi
 
+    local linkage_rule
+    linkage_rule="$(role_linkage_directive "$agent_id")"
+
     if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
-        startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、次に ${optimized_instruction_file} を読んで ${cli_type} 向け手順差分を適用せよ。読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+        startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、次に ${optimized_instruction_file} を読んで ${cli_type} 向け手順差分を適用せよ。${linkage_rule} 読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
     else
-        startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+        startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${linkage_rule} 読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
     fi
 
     tmux send-keys -t "$pane_target" "$startup_msg"
@@ -152,6 +155,24 @@ ensure_generated_instructions() {
     if ! bash "$ensure_script"; then
         log_info "⚠️  指示書再生成に失敗しました。既存 generated を使用して継続します"
     fi
+}
+
+role_linkage_directive() {
+    local agent_id="$1"
+    case "$agent_id" in
+        shogun)
+            echo "連携順序: 殿の指示を受けたら、必ず『将軍→家老→足軽』で委譲せよ。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
+            ;;
+        karo)
+            echo "連携順序: 将軍命令を受けたら、家老がサブタスク分解し queue/tasks/ashigaruN.yaml へ割当、inboxで該当足軽を起動せよ。人間へ直接報告せず、dashboardと既定フローを守れ。"
+            ;;
+        ashigaru*)
+            echo "連携順序: 足軽は自分の task YAML のみ処理し、完了後は queue/reports/${agent_id}_report.yaml + inbox通知で家老へ報告せよ。将軍・人間への直接連絡は禁止。"
+            ;;
+        *)
+            echo "連携順序: 将軍→家老→足軽の指揮系統を順守せよ。"
+            ;;
+    esac
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

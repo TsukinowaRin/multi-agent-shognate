@@ -192,12 +192,14 @@ zellij_ui_layout_file() {
   local tmux_target="$1"
   local tab_title="$2"
   local startup_cmd
+  local pane_name
   local layout_file="${TMPDIR:-/tmp}/zellij_ui_${ZELLIJ_UI_SESSION}.kdl"
-  startup_cmd="cd '$ROOT_DIR' && TMUX= tmux attach-session -t '$tmux_target' || (echo '[WARN] attach失敗: $tmux_target'; exec bash)"
+  startup_cmd="$(tmux_attach_session_cmd "$tmux_target")"
+  pane_name="${tab_title}"
   cat > "$layout_file" <<EOF
 layout {
     tab name="${tab_title}" {
-        pane {
+        pane name="${pane_name}" {
             command "bash";
             args "-lc" "$startup_cmd";
         }
@@ -211,6 +213,12 @@ zellij_ui_attach_tmux_target() {
   local tmux_target="$1"
   local pane_title="$2"
   local layout_file
+
+  if ! tmux has-session -t "$tmux_target" 2>/dev/null; then
+    echo "[ERROR] tmux target session not found: $tmux_target" >&2
+    return 1
+  fi
+
   layout_file="$(zellij_ui_layout_file "$tmux_target" "$pane_title")"
 
   # 既存UIセッションは一旦削除して、毎回同じ構成で作り直す

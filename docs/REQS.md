@@ -337,3 +337,17 @@
    - 期待結果: source変更時は `scripts/build_instructions.sh` が実行され、未変更時は up-to-date メッセージを出して終了する。
 4. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing`
    - 期待結果: 全テストPASS（既存の環境依存skipのみ許容）。
+
+## 追補（2026-02-12: zellij表示名の正常化 + 将軍→家老→足軽の連携順序強制）
+### 要求
+1. `zellij UI + tmux backend` 利用時に、枠タイトルへ長い `bash -lc ...` コマンド文字列が露出しないようにする。
+2. 起動初動命令で、将軍・家老・足軽それぞれに「将軍→家老→足軽」連携順序を明示し、役割外の直接連携を抑止する。
+3. 実装方針はオリジナルREADME_ja（将軍→家老→足軽の階層連携）に沿う。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "pane name=|tmux target session not found|zellij_ui_layout_file" scripts/goza_no_ma.sh`
+   - 期待結果: zellijレイアウトで pane 名を明示し、attach先tmuxセッション存在チェックがある。
+2. コマンド: `rg -n "role_linkage_directive|将軍→家老→足軽|queue/shogun_to_karo.yaml|queue/tasks/ashigaruN.yaml|queue/reports/" shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+   - 期待結果: 役職別の連携順序ルールが初動命令へ組み込まれている。
+3. コマンド: `bash -n scripts/goza_no_ma.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+   - 期待結果: 構文エラーなし。

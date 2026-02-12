@@ -411,6 +411,19 @@ if [[ "$VIEW_TEMPLATE" == "shogun_only" ]]; then
   exit 0
 fi
 
+# pure zellij (backend=zellij, ui=zellij) では tmuxビューを使わない。
+# goza_room はハイブリッド専用として案内し、将軍へ直attachする。
+if [[ "$UI_MODE" == "zellij" ]]; then
+  echo "[WARN] pure zellij モードでは goza_room 俯瞰ビューは未対応です。"
+  echo "       俯瞰が必要なら: bash scripts/goza_hybrid.sh --template goza_room"
+  if [[ "$NO_ATTACH" = true ]]; then
+    echo "[INFO] pure zellij mode ready. attach: zellij attach shogun"
+    exit 0
+  fi
+  zellij attach shogun
+  exit 0
+fi
+
 echo "[INFO] zellij + goza_room は tmux ビューで表示します（バックエンドは zellij セッション）。"
 
 role_border_color() {

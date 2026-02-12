@@ -90,6 +90,7 @@
 !scripts/localapi_repl.py
 !scripts/goza_no_ma.sh
 !scripts/goza_zellij.sh
+!scripts/goza_hybrid.sh
 !scripts/goza_tmux.sh
 !scripts/configure_agents.sh
 !scripts/history_book.sh

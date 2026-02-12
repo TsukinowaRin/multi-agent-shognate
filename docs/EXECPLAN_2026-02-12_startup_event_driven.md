@@ -63,6 +63,8 @@
 - 2026-02-12 23:24 JST: zellij UI layoutへ `tab-bar` / `status-bar` pluginを追加。
 - 2026-02-12 23:24 JST: Gemini既定モデルを `gemini-3-pro` へ更新（adapter/config/README/tests）。
 - 2026-02-12 23:24 JST: `bash -n` と `bats`（108件）で検証PASS。
+- 2026-02-12 23:52 JST: `goza_zellij` を pure zellij化し、旧動作は `goza_hybrid.sh` へ分離。
+- 2026-02-12 23:52 JST: tmux/hybrid起動で Gemini高負荷画面に対する自動 `Keep trying` 再試行を追加。
 
 ## Surprises & Discoveries
 - `inbox_watcher` で Codex向け `/clear -> /new` 変換がPhase3エスカレーションからも発火し、作業中割り込みを誘発していた。
@@ -74,8 +76,9 @@
 - D2: Geminiの既定は固定バージョンではなく最新Pro系名（`gemini-3-pro`）へ更新する。
 - D3: 歴史書は新規daemonを増やさず、`inbox_write` 完了時に生成して運用コストを抑える。
 - D4: 初動命令はCLI起動確認後に送信し、入力欄残留（手動Enter要求）を回避する。
+- D5: 「zellij操作を優先したい」要求に合わせ、`goza_zellij` を pure zellij にし、俯瞰用途は `goza_hybrid` へ分離。
 
 ## Outcomes & Retrospective
 - 主要要求（自動初動送信、イベント駆動抑制、言語統一、Gemini既定更新、歴史書生成、zellij操作バー追加）を実装完了。
 - watcher割り込みの根本（Phase3 `/clear`）を既定で抑制したため、`/new is disabled while a task is in progress` 再発リスクを低減。
-- 残リスク: zellij UI plugin表示は実機TTY環境での最終確認が必要。
+- 残リスク: Gemini API側の高負荷自体は解消不能であり、自動再試行は対症療法。

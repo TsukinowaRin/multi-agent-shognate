@@ -615,3 +615,29 @@
 - 判断メモ:
   - 割り込み問題の主因はwatcherエスカレーションだったため、まず既定で無効化して対話安定性を優先。
   - zellij layoutの実機表示確認は、snap権限の都合でこの実行環境では不可。ユーザーWSL実機で確認が必要。
+
+## 2026-02-12 (pure zellij / hybrid / tmux 分離 + Gemini高負荷再試行)
+- 背景:
+  - ユーザー報告: `goza_zellij` 実行時に zellij操作とtmux操作が混在して直感的でない。
+  - Gemini paneで `We are currently experiencing high demand` が出て停止するケースがあった。
+- 実装:
+  - `scripts/goza_zellij.sh`
+    - 役割を pure zellij に変更（`--mux zellij --ui zellij`）。
+  - `scripts/goza_hybrid.sh`（新規）
+    - 旧 `goza_zellij` 相当（`--mux tmux --ui zellij`）を分離。
+  - `scripts/goza_no_ma.sh`
+    - `MUX=zellij` かつ `UI=zellij` で `goza_room` 指定時は、tmuxビューへ入らず `shogun` 直attachへフォールバック。
+    - 併せて `goza_hybrid.sh --template goza_room` を案内。
+  - `shutsujin_departure.sh`
+    - `auto_retry_gemini_busy_tmux` を追加し、Gemini高負荷画面（Keep trying/Stop）で `1` を自動送信して再試行。
+  - `README.md`
+    - pure zellij / hybrid / tmux の3モード説明へ更新。
+    - Gemini高負荷時の挙動をトラブルシュートへ追記。
+  - `.gitignore`
+    - 新規 `scripts/goza_hybrid.sh` を公開対象に追加。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/goza_no_ma.sh scripts/goza_zellij.sh scripts/goza_hybrid.sh scripts/shutsujin_zellij.sh scripts/inbox_watcher.sh scripts/inbox_write.sh scripts/history_book.sh scripts/configure_agents.sh` → PASS
+  - `bats tests/unit/test_send_wakeup.bats --timing` → 36 PASS
+- 判断メモ:
+  - zellijとtmuxの責務を分離することで、ユーザーが「純正zellij操作」を選ぶ経路を確保。
+  - 御座の間俯瞰はtmux描画前提のため、hybrid/tmux専用とした。

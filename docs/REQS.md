@@ -386,3 +386,17 @@
    - 期待結果: 歴史書が生成され、直近のcmd/タスク/報告要約が人間可読で記録される。
 5. コマンド: `rg -n "default_tab_template|zellij:status-bar|zellij:tab-bar" scripts/goza_no_ma.sh`
    - 期待結果: zellij UI layoutにstatus/tab bar pluginが含まれる。
+
+## 追補（2026-02-12: pure zellij / hybrid / tmux の運用分離 + Gemini高負荷再試行）
+### 要求
+1. `zellij` 操作をそのまま使いたい場合に、tmux内包なしの pure zellij モードで起動できること。
+2. 御座の間俯瞰（tmux画面）を使いたい場合に、hybrid モード（tmux backend + zellij ui）を明示コマンドで起動できること。
+3. Gemini CLI が `We are currently experiencing high demand` を返したとき、tmux/hybrid起動では `Keep trying` を自動選択して再試行すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `sed -n '1,40p' scripts/goza_zellij.sh scripts/goza_hybrid.sh scripts/goza_tmux.sh`
+   - 期待結果: `goza_zellij.sh` は `--mux zellij --ui zellij`、`goza_hybrid.sh` は `--mux tmux --ui zellij`、`goza_tmux.sh` は `--mux tmux --ui tmux` を呼ぶ。
+2. コマンド: `rg -n "pure zellij|goza_hybrid|goza_room 俯瞰ビューは未対応" scripts/goza_no_ma.sh README.md`
+   - 期待結果: pure zellij と hybrid の責務分離が明記されている。
+3. コマンド: `rg -n "auto_retry_gemini_busy_tmux|experiencing high demand|Keep trying" shutsujin_departure.sh README.md`
+   - 期待結果: Gemini高負荷時の自動再試行処理と運用説明が存在する。

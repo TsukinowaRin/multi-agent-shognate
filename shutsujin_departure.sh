@@ -105,6 +105,30 @@ auto_accept_gemini_trust_prompt_tmux() {
     return 0
 }
 
+# Gemini CLI の高負荷画面（Keep trying/Stop）を自動で継続選択
+auto_retry_gemini_busy_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local i
+    local pane_text
+
+    [ "$cli_type" = "gemini" ] || return 0
+
+    for i in {1..20}; do
+        pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
+        if echo "$pane_text" | grep -q "We are currently experiencing high demand"; then
+            tmux send-keys -t "$pane_target" "1"
+            tmux send-keys -t "$pane_target" Enter
+            log_info "  └─ ${agent_id}: Gemini high-demand を自動再試行"
+            sleep 2
+            return 0
+        fi
+        sleep 1
+    done
+    return 0
+}
+
 # 役割指示書の初動読み込み命令を各CLIへ投入（Claude挙動に近づける）
 send_startup_bootstrap_tmux() {
     local pane_target="$1"
@@ -953,6 +977,16 @@ if [ "$SETUP_ONLY" = false ]; then
         p=$((PANE_BASE + i + 1))
         _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
         auto_accept_gemini_trust_prompt_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
+    done
+
+    # Gemini高負荷応答（Keep trying/Stop）を自動再試行
+    auto_retry_gemini_busy_tmux "shogun:main" "shogun" "$_shogun_cli_type"
+    auto_retry_gemini_busy_tmux "multiagent:agents.${PANE_BASE}" "karo" "$_karo_cli_type"
+    for i in "${!ACTIVE_ASHIGARU[@]}"; do
+        _agent="${ACTIVE_ASHIGARU[$i]}"
+        p=$((PANE_BASE + i + 1))
+        _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
+        auto_retry_gemini_busy_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
     done
 
     if [ "$KESSEN_MODE" = true ]; then

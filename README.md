@@ -96,6 +96,8 @@ bash scripts/goza_zellij.sh
 bash scripts/goza_tmux.sh
 ```
 
+`tmux` モードでも `config/settings.yaml` の `topology.active_ashigaru` に追従して、家老+指定足軽人数で起動します。
+
 ## 設定ファイル
 
 `config/settings.yaml` の代表項目:

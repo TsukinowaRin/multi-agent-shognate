@@ -175,3 +175,16 @@
    - 期待結果: 役職ごとに枠色を適用する処理が存在する。
 2. コマンド: `rg -n "pane-border-format" scripts/goza_no_ma.sh`
    - 期待結果: `#{pane_index}:#{pane_title}` の単純形式が使われ、条件式内カンマ衝突を回避している。
+
+## 追補（2026-02-12: tmuxのactive_ashigaru追従）
+### 要求
+1. tmuxモードでも `topology.active_ashigaru` を反映し、配備人数を動的化する。
+2. CLI起動・watcher起動・表示メッセージが active 構成と一致する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "ACTIVE_ASHIGARU|MULTIAGENT_IDS|MULTIAGENT_COUNT" shutsujin_departure.sh`
+   - 期待結果: active_ashigaru を読み取って配備配列を組み立てる実装がある。
+2. コマンド: `rg -n "for i in \\\"\\$\\{!ACTIVE_ASHIGARU\\[@\\]\\}\\\"" shutsujin_departure.sh`
+   - 期待結果: 足軽のCLI起動・watcher起動が active_ashigaru のみ対象になっている。
+3. コマンド: `rg -n "MULTIAGENT_COUNT" shutsujin_departure.sh`
+   - 期待結果: 配備人数・手動起動案内・布陣表示に動的人数が使われている。

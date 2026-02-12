@@ -224,3 +224,19 @@
   - `bash -n scripts/goza_no_ma.sh` → PASS
   - `rg -n "apply_role_border_styles|role_border_color|pane-border-style|pane-active-border-style" scripts/goza_no_ma.sh` → 実装行を確認
   - `rg -n "pane-border-format" scripts/goza_no_ma.sh` → 単純形式のみであることを確認
+
+## 2026-02-12 (tmux: active_ashigaru 構成に追従)
+- 要求:
+  - tmuxモードでも zellij同様に `topology.active_ashigaru` を反映したい。
+  - 起動ペイン数、CLI起動対象、watcher対象、布陣表示を同じ active 構成で揃えたい。
+- 実装:
+  - `shutsujin_departure.sh` に `ACTIVE_ASHIGARU` 読み取り処理を追加（YAMLの数値/文字列を正規化）。
+  - `MULTIAGENT_IDS=("karo" + active_ashigaru)` と `MULTIAGENT_COUNT` を導入。
+  - multiagentのペイン生成を固定3x3から動的タイル分割へ変更。
+  - 足軽CLI起動ループを固定 `ashigaru1..8` から `ACTIVE_ASHIGARU` ループへ変更。
+  - watcher起動も active 足軽のみ対象化し、件数表示を動的化。
+  - 布陣図と setup-only の案内表示を動的人数・汎用CLI文言へ更新。
+- 検証:
+  - `bash -n shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 107 tests PASS
+  - `TERM=xterm MAS_MULTIPLEXER=tmux bash shutsujin_departure.sh -s` は実行環境のtmuxソケット制約で失敗（`error connecting to /tmp/tmux-1000/default (Operation not permitted)`）。静的検証とユニットテストで回帰なしを確認。

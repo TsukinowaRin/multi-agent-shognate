@@ -259,7 +259,13 @@ send_line() {
   local session="$1"
   local text="$2"
   zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
-  zellij -s "$session" action write 13 >/dev/null 2>&1 || return 1
+  if zellij -s "$session" action write 13 >/dev/null 2>&1; then
+    return 0
+  fi
+  if zellij -s "$session" action write 10 >/dev/null 2>&1; then
+    return 0
+  fi
+  zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
 }
 
 log_war "⚔️ zellij セッションを構築中（1エージェント=1セッション）"
@@ -273,7 +279,9 @@ done
 for agent in "${AGENTS[@]}"; do
   create_session "$agent"
   zellij -s "$agent" action rename-tab "$(role_tab_label "$agent")" >/dev/null 2>&1 || true
-  send_line "$agent" "cd \"$SCRIPT_DIR\" && export AGENT_ID=\"$agent\" && export DISPLAY_MODE=\"$DISPLAY_MODE\" && clear"
+  if ! send_line "$agent" "cd \"$SCRIPT_DIR\" && export AGENT_ID=\"$agent\" && export DISPLAY_MODE=\"$DISPLAY_MODE\" && clear"; then
+    echo "[WARN] failed to send bootstrap command to $agent" >&2
+  fi
   log_info "  └─ $agent セッション作成"
 done
 
@@ -294,7 +302,9 @@ if [ "$SETUP_ONLY" = false ]; then
       cli_cmd="MAX_THINKING_TOKENS=0 $cli_cmd"
     fi
 
-    send_line "$agent" "$cli_cmd"
+    if ! send_line "$agent" "$cli_cmd"; then
+      echo "[WARN] failed to send CLI launch command to $agent ($cli_type)" >&2
+    fi
     printf "%s\t%s\n" "$agent" "$cli_type" >> queue/runtime/agent_cli.tsv
     log_info "  └─ $agent: $cli_type"
   done

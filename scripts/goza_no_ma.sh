@@ -283,9 +283,9 @@ echo "[INFO] zellij + goza_room は tmux ビューで表示します（バック
 role_border_color() {
   local role="$1"
   case "$role" in
-    shogun) echo "colour54" ;;   # 紫
-    karo) echo "colour19" ;;     # 紺
-    ashigaru*) echo "colour94" ;;# 茶
+    *shogun*) echo "colour54" ;;    # 紫
+    *karo*) echo "colour19" ;;      # 紺
+    *ashigaru*) echo "colour94" ;;  # 茶
     *) echo "colour248" ;;
   esac
 }
@@ -296,7 +296,11 @@ apply_role_border_styles() {
   local color
 
   tmux set-option -t "$VIEW_SESSION":agents pane-border-status top >/dev/null 2>&1 || true
-  tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{pane_index}:#{pane_title}' >/dev/null 2>&1 || true
+  tmux set-option -t "$VIEW_SESSION":agents pane-border-style 'fg=colour240' >/dev/null 2>&1 || true
+  tmux set-option -t "$VIEW_SESSION":agents pane-active-border-style 'fg=colour240' >/dev/null 2>&1 || true
+  tmux set-option -t "$VIEW_SESSION":agents pane-border-format \
+    '#{?#{m:*shogun*,#{pane_title}},#[fg=colour231#,bg=colour54#,bold] #{pane_index}:#{pane_title} #[default],#{?#{m:*karo*,#{pane_title}},#[fg=colour231#,bg=colour19#,bold] #{pane_index}:#{pane_title} #[default],#{?#{m:*ashigaru*,#{pane_title}},#[fg=colour231#,bg=colour94#,bold] #{pane_index}:#{pane_title} #[default],#{pane_index}:#{pane_title}}}' \
+    >/dev/null 2>&1 || true
 
   while IFS= read -r pane; do
     title="$(tmux display-message -p -t "$pane" '#{pane_title}' 2>/dev/null || true)"

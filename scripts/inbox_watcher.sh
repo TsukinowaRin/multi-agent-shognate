@@ -1,8 +1,8 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
 # inbox_watcher.sh — メールボックス監視＆起動シグナル配信
-# Usage: bash scripts/inbox_watcher.sh <agent_id> <pane_target> [cli_type]
-# Example: bash scripts/inbox_watcher.sh karo multiagent:0.0 claude
+# Usage: bash scripts/inbox_watcher.sh <agent_id> <pane_target> [cli_type] [mux_type]
+# Example: bash scripts/inbox_watcher.sh karo multiagent:0.0 claude tmux
 #
 # 設計思想:
 #   メッセージ本体はファイル（inbox YAML）に書く = 確実
@@ -30,7 +30,8 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
     AGENT_ID="$1"
     PANE_TARGET="$2"
-    CLI_TYPE="${3:-claude}"  # CLI種別（claude/codex/copilot）。未指定→claude（後方互換）
+    CLI_TYPE="${3:-claude}"  # CLI種別（claude/codex/copilot/kimi/gemini/localapi）
+    MUX_TYPE="${4:-tmux}"    # multiplexer種別（tmux/zellij）。未指定→tmux（後方互換）
 
     INBOX="$SCRIPT_DIR/queue/inbox/${AGENT_ID}.yaml"
     LOCKFILE="${INBOX}.lock"
@@ -46,7 +47,7 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
         echo "messages: []" > "$INBOX"
     fi
 
-    echo "[$(date)] inbox_watcher started — agent: $AGENT_ID, pane: $PANE_TARGET, cli: $CLI_TYPE" >&2
+    echo "[$(date)] inbox_watcher started — agent: $AGENT_ID, pane: $PANE_TARGET, cli: $CLI_TYPE, mux: $MUX_TYPE" >&2
 
     # Ensure inotifywait is available
     if ! command -v inotifywait &>/dev/null; then
@@ -117,17 +118,77 @@ disable_normal_nudge() {
 
 is_valid_cli_type() {
     case "${1:-}" in
-        claude|codex|copilot|kimi) return 0 ;;
+        claude|codex|copilot|kimi|gemini|localapi) return 0 ;;
         *) return 1 ;;
     esac
+}
+
+is_tmux_mode() {
+    [ "${MUX_TYPE:-tmux}" = "tmux" ]
+}
+
+mux_send_text() {
+    local text="$1"
+    if is_tmux_mode; then
+        timeout 5 tmux send-keys -t "$PANE_TARGET" "$text" 2>/dev/null
+    else
+        timeout 5 zellij -s "$PANE_TARGET" action write-chars "$text" 2>/dev/null
+    fi
+}
+
+mux_send_enter() {
+    if is_tmux_mode; then
+        timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
+    else
+        timeout 5 zellij -s "$PANE_TARGET" action write 13 2>/dev/null || \
+        timeout 5 zellij -s "$PANE_TARGET" action write 10 2>/dev/null || \
+        timeout 5 zellij -s "$PANE_TARGET" action write-chars $'\n' 2>/dev/null
+    fi
+}
+
+mux_send_ctrl_c() {
+    if is_tmux_mode; then
+        timeout 5 tmux send-keys -t "$PANE_TARGET" C-c 2>/dev/null
+    else
+        timeout 5 zellij -s "$PANE_TARGET" action write 3 2>/dev/null
+    fi
+}
+
+mux_send_ctrl_u() {
+    if is_tmux_mode; then
+        timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
+    else
+        timeout 2 zellij -s "$PANE_TARGET" action write 21 2>/dev/null
+    fi
+}
+
+mux_send_escape_double() {
+    if is_tmux_mode; then
+        timeout 5 tmux send-keys -t "$PANE_TARGET" Escape Escape 2>/dev/null
+    else
+        timeout 5 zellij -s "$PANE_TARGET" action write 27 2>/dev/null
+        sleep 0.1
+        timeout 5 zellij -s "$PANE_TARGET" action write 27 2>/dev/null
+    fi
+}
+
+mux_capture_pane_tail() {
+    if is_tmux_mode; then
+        timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -15
+    else
+        # zellij has no stable external capture API for a specific pane/session.
+        echo ""
+    fi
 }
 
 get_effective_cli_type() {
     local pane_cli_raw=""
     local pane_cli=""
 
-    pane_cli_raw=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @agent_cli 2>/dev/null || true)
-    pane_cli=$(echo "$pane_cli_raw" | tr -d '\r' | head -n1 | tr -d '[:space:]')
+    if is_tmux_mode; then
+        pane_cli_raw=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @agent_cli 2>/dev/null || true)
+        pane_cli=$(echo "$pane_cli_raw" | tr -d '\r' | head -n1 | tr -d '[:space:]')
+    fi
 
     if is_valid_cli_type "$pane_cli"; then
         if is_valid_cli_type "${CLI_TYPE:-}" && [ "$pane_cli" != "${CLI_TYPE}" ]; then
@@ -324,9 +385,9 @@ send_cli_command() {
             # /clearはCodexでは未定義コマンドでCLI終了してしまうため、/newに変換
             if [[ "$cmd" == "/clear" ]]; then
                 echo "[$(date)] [SEND-KEYS] Codex /clear→/new: starting new conversation for $AGENT_ID" >&2
-                timeout 5 tmux send-keys -t "$PANE_TARGET" "/new" 2>/dev/null
+                mux_send_text "/new"
                 sleep 0.3
-                timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
+                mux_send_enter
                 sleep 3
                 return 0
             fi
@@ -339,17 +400,55 @@ send_cli_command() {
             # Copilot: /clearはCtrl-C+再起動, /model非対応→スキップ
             if [[ "$cmd" == "/clear" ]]; then
                 echo "[$(date)] [SEND-KEYS] Copilot /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
-                timeout 5 tmux send-keys -t "$PANE_TARGET" C-c 2>/dev/null
+                mux_send_ctrl_c
                 sleep 2
-                timeout 5 tmux send-keys -t "$PANE_TARGET" "copilot --yolo" 2>/dev/null
+                mux_send_text "copilot --yolo"
                 sleep 0.3
-                timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
+                mux_send_enter
                 sleep 3
                 return 0
             fi
             if [[ "$cmd" == /model* ]]; then
                 echo "[$(date)] Skipping $cmd (not supported on copilot)" >&2
                 return 0
+            fi
+            ;;
+        gemini)
+            if [[ "$cmd" == "/clear" ]]; then
+                echo "[$(date)] [SEND-KEYS] Gemini /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
+                mux_send_ctrl_c
+                sleep 1
+                mux_send_text "${GEMINI_RESTART_CMD:-gemini --yolo}"
+                sleep 0.3
+                mux_send_enter
+                sleep 2
+                return 0
+            fi
+            if [[ "$cmd" == /model* ]]; then
+                echo "[$(date)] Skipping $cmd (model switch may be unsupported on gemini CLI)" >&2
+                return 0
+            fi
+            ;;
+        localapi)
+            if [[ "$cmd" == "/clear" ]]; then
+                echo "[$(date)] [SEND-KEYS] LocalAPI /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
+                mux_send_ctrl_c
+                sleep 1
+                mux_send_text "${LOCALAPI_RESTART_CMD:-python3 scripts/localapi_repl.py}"
+                sleep 0.3
+                mux_send_enter
+                sleep 2
+                return 0
+            fi
+            if [[ "$cmd" == /model* ]]; then
+                local model_name
+                model_name=$(echo "$cmd" | sed -E 's#^/model[[:space:]]+##')
+                if [[ -n "$model_name" ]]; then
+                    actual_cmd=":model $model_name"
+                else
+                    echo "[$(date)] Skipping malformed model switch command for localapi: '$cmd'" >&2
+                    return 0
+                fi
             fi
             ;;
         # claude: commands pass through as-is
@@ -359,12 +458,12 @@ send_cli_command() {
     # Clear stale input first, then send command (text and Enter separated for Codex TUI)
     # Codex CLI: C-c when idle causes CLI to exit — skip it
     if [[ "$effective_cli" != "codex" ]]; then
-        timeout 5 tmux send-keys -t "$PANE_TARGET" C-c 2>/dev/null
+        mux_send_ctrl_c
         sleep 0.5
     fi
-    timeout 5 tmux send-keys -t "$PANE_TARGET" "$actual_cmd" 2>/dev/null
+    mux_send_text "$actual_cmd"
     sleep 0.3
-    timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
+    mux_send_enter
 
     # /clear needs extra wait time before follow-up
     if [[ "$actual_cmd" == "/clear" ]]; then
@@ -387,7 +486,11 @@ agent_has_self_watch() {
 # Returns 0 (true) if agent is busy, 1 if idle.
 agent_is_busy() {
     local pane_content
-    pane_content=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -15)
+    pane_content=$(mux_capture_pane_tail)
+    if ! is_tmux_mode; then
+        # zellij mode: external per-pane capture is not available in stable CLI.
+        return 1
+    fi
     # Codex CLI: "Working", "Thinking", "Planning", "Sending"
     # Claude CLI: thinking spinner, tool execution
     if echo "$pane_content" | grep -qiE '(Working|Thinking|Planning|Sending|esc to interrupt)'; then
@@ -424,9 +527,9 @@ send_wakeup() {
 
     # 優先度3: tmux send-keys（テキストとEnterを分離 — Codex TUI対策）
     echo "[$(date)] [SEND-KEYS] Sending nudge to $PANE_TARGET for $AGENT_ID" >&2
-    if timeout 5 tmux send-keys -t "$PANE_TARGET" "$nudge" 2>/dev/null; then
+    if mux_send_text "$nudge"; then
         sleep 0.3
-        timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
+        mux_send_enter
         echo "[$(date)] Wake-up sent to $AGENT_ID (${unread_count} unread)" >&2
         return 0
     fi
@@ -462,17 +565,17 @@ send_wakeup_with_escape() {
 
     echo "[$(date)] [SEND-KEYS] ESCALATION Phase 2: Escape×2 + nudge for $AGENT_ID (cli=$effective_cli)" >&2
     # Escape×2 to exit any mode
-    timeout 5 tmux send-keys -t "$PANE_TARGET" Escape Escape 2>/dev/null
+    mux_send_escape_double
     sleep 0.5
     # C-c to clear stale input (but Codex CLI terminates on C-c when idle, so skip it)
     if [[ "$effective_cli" != "codex" ]]; then
-        timeout 5 tmux send-keys -t "$PANE_TARGET" C-c 2>/dev/null
+        mux_send_ctrl_c
         sleep 0.5
         c_ctrl_state="sent"
     fi
-    if timeout 5 tmux send-keys -t "$PANE_TARGET" "$nudge" 2>/dev/null; then
+    if mux_send_text "$nudge"; then
         sleep 0.3
-        timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
+        mux_send_enter
         echo "[$(date)] Escape+nudge sent to $AGENT_ID (${unread_count} unread, cli=$effective_cli, C-c=$c_ctrl_state)" >&2
         return 0
     fi
@@ -499,7 +602,7 @@ process_unread() {
         fi
         FIRST_UNREAD_SEEN=0
         if ! agent_is_busy; then
-            timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
+            mux_send_ctrl_u
         fi
         return 0
     fi
@@ -607,7 +710,7 @@ for s in data.get('specials', []):
         # Clear stale nudge text from input field (Codex CLI prefills last input on idle).
         # Only send C-u when agent is idle — during Working it would be disruptive.
         if ! agent_is_busy; then
-            timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
+            mux_send_ctrl_u
         fi
     fi
 }

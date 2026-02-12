@@ -253,3 +253,14 @@
    - 期待結果: zellij goza_room の表示責務が明示されている。
 2. コマンド: `rg -n "TMUX_VIEW_WIDTH|TMUX_VIEW_HEIGHT|tmux new-session -d -x|tmux_split_right_ratio|tmux_split_down_pane" scripts/goza_no_ma.sh README.md`
    - 期待結果: tmux ビューに仮想サイズ指定と分割リトライ処理が実装されている。
+
+## 追補（2026-02-12: 御座の間タブ色反映 + zellij CLI投入安定化）
+### 要求
+1. 御座の間（tmuxビュー）で、役職別タブ色が確実に反映されること。
+2. zellijセッションへのコマンド投入で Enter が効かない環境差分を吸収し、CLI自動起動を安定化すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "pane-border-format|m:\\*shogun\\*|m:\\*karo\\*|m:\\*ashigaru\\*" scripts/goza_no_ma.sh`
+   - 期待結果: 役職別のタブ色分岐が `pane-border-format` に実装されている。
+2. コマンド: `rg -n "action write 13|action write 10|write-chars \\$'\\\\n'" scripts/shutsujin_zellij.sh scripts/inbox_watcher.sh`
+   - 期待結果: zellij Enter送信の互換フォールバックが実装されている。

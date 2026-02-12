@@ -205,6 +205,10 @@ zellij list-sessions -n
   tmux kill-session -t goza-no-ma 2>/dev/null || true
   bash scripts/goza_zellij.sh
   ```
+  - 反映確認（役職別の色付きヘッダ書式）:
+  ```bash
+  tmux show-options -w -t goza-no-ma:agents | rg '^pane-border-format'
+  ```
 
 - `Claude Code CLI not found` で止まる
   - 現在は未導入CLIを自動フォールバックします。意図したCLIで固定したい場合は `config/settings.yaml` の `cli.default` / `cli.agents` を明示してください。
@@ -229,6 +233,18 @@ zellij list-sessions -n
 - 既存バックエンドを残して再接続したい
   ```bash
   bash scripts/goza_no_ma.sh --view-only --mux zellij
+  ```
+
+- Codex/Gemini が起動していないように見える
+  - `-s`（setup-only）を付けていないコマンドで起動しているか確認。
+  - 起動割り当て確認:
+  ```bash
+  cat queue/runtime/agent_cli.tsv
+  ```
+  - watcherログ確認:
+  ```bash
+  tail -n 80 logs/inbox_watcher_shogun.log
+  tail -n 80 logs/inbox_watcher_karo.log
   ```
 
 ## 開発者メモ

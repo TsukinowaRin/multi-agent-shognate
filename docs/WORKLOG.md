@@ -345,3 +345,32 @@
   - `rg -n "TMUX_VIEW_WIDTH|TMUX_VIEW_HEIGHT|tmux_new_view_session|tmux_split_right_ratio_run|tmux_split_right_ratio_pane|tmux_split_down_pane|zellij \+ goza_room" scripts/goza_no_ma.sh README.md docs/REQS.md` → 実装行を確認
   - `bash scripts/goza_no_ma.sh --help` → オプション表示を確認
   - 実機起動確認は本実行環境のtmuxソケット権限制約で未実施（`error connecting to /tmp/tmux-1000/default (Operation not permitted)`）
+
+## 2026-02-12 (御座の間タブ色未反映 + zellij CLI未起動感の修正)
+- 事象:
+  - ユーザー画面で御座の間ビューの枠/タブ色が全体的に緑のまま。
+  - zellij各セッションで Codex/Gemini が自動起動していないように見える。
+- 原因想定:
+  - タイトルが `Zellij (shogun)` のような文字列で、既存の厳密一致判定（`shogun`/`karo`/`ashigaru*`）に一致しないケースがある。
+  - zellijの `action write 13` が環境/バージョン差分で Enter として効かないケースがある。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - 役職判定を厳密一致から部分一致へ変更（`*shogun*` / `*karo*` / `*ashigaru*`）。
+    - `pane-border-format` に役職別の色付きヘッダを直接実装（将軍=紫、家老=紺、足軽=茶）。
+    - 枠線自体は中立色に固定し、タブ色で視認性を担保。
+  - `scripts/shutsujin_zellij.sh`
+    - `send_line` の Enter送信にフォールバック追加:
+      - `action write 13` → `action write 10` → `write-chars $'\\n'`
+    - ブートストラップ/CLI投入失敗時に警告ログを出すよう変更。
+  - `scripts/inbox_watcher.sh`
+    - zellijモードの Enter送信を同様のフォールバック方式へ更新。
+  - `README.md`
+    - タブ色確認コマンド（`pane-border-format`）を追加。
+    - CLI未起動時の確認手順（`queue/runtime/agent_cli.tsv` と watcherログ）を追加。
+  - `docs/REQS.md`
+    - 本修正の追補要件と受け入れ条件を追加。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh scripts/shutsujin_zellij.sh scripts/inbox_watcher.sh` → PASS
+  - `bats tests/unit/test_send_wakeup.bats --timing` → 36 tests PASS
+  - `bats tests/unit/test_cli_adapter.bats --timing` → 71 tests PASS
+  - 実機tmux/zellij表示確認は本実行環境制約のため未実施（ユーザーWSLで確認が必要）。

@@ -60,7 +60,7 @@ bash scripts/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
 
 ## 役職ごとのタブ色（御座の間ビュー）
 
-タブ（ペイン見出し）だけ色が付く設計です。本文の文字色は変更しません。
+御座の間ビュー（tmux）では、枠線色を役職別に分けます。本文の文字色は変更しません。
 
 - 将軍: 紫
 - 家老: 紺

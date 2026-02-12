@@ -164,3 +164,14 @@
    - 期待結果: zellijタブ名に役職ラベル（絵文字付き）を設定する実装がある。
 3. コマンド: `rg -n "resolve_cli_type_for_agent|build_cli_command_with_type|get_first_available_cli" lib/cli_adapter.sh shutsujin_departure.sh`
    - 期待結果: CLI未導入時のフォールバック経路が実装され、tmux起動時に利用される。
+
+## 追補（2026-02-12: 御座の間枠色の役職別適用）
+### 要求
+1. zellij運用時の御座の間ビューで、枠色を階級別に分ける（全枠黄緑を解消）。
+2. `pane-border-format` の崩れ表示（色コード文字列露出）を防ぐ。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "apply_role_border_styles|role_border_color|pane-border-style|pane-active-border-style" scripts/goza_no_ma.sh`
+   - 期待結果: 役職ごとに枠色を適用する処理が存在する。
+2. コマンド: `rg -n "pane-border-format" scripts/goza_no_ma.sh`
+   - 期待結果: `#{pane_index}:#{pane_title}` の単純形式が使われ、条件式内カンマ衝突を回避している。

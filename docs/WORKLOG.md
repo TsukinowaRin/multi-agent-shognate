@@ -206,3 +206,21 @@
 - 検証:
   - `bash -n lib/cli_adapter.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/goza_zellij.sh scripts/goza_tmux.sh` → PASS
   - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 107 tests PASS
+
+## 2026-02-12 (御座の間: 枠色を階級別に修正)
+- 要求:
+  - zellij運用時の御座の間ビューで、全枠が黄緑になる問題を解消したい。
+  - 将軍/家老/足軽で枠色を分離したい。
+  - 見出しに色コード断片が露出する表示崩れを解消したい。
+- 実装:
+  - `scripts/goza_no_ma.sh` に `role_border_color` / `apply_role_border_styles` を追加。
+  - 各ペインタイトル（`shogun`/`karo`/`ashigaru*`）を読み取り、`pane-border-style` と `pane-active-border-style` をペイン単位で設定。
+    - `shogun`: `colour54`（紫）
+    - `karo`: `colour19`（紺）
+    - `ashigaru*`: `colour94`（茶）
+  - `pane-border-format` は条件式を廃止し、`#{pane_index}:#{pane_title}` の単純形式に変更。
+  - 既存セッション再接続時も `apply_role_border_styles` を再適用。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `rg -n "apply_role_border_styles|role_border_color|pane-border-style|pane-active-border-style" scripts/goza_no_ma.sh` → 実装行を確認
+  - `rg -n "pane-border-format" scripts/goza_no_ma.sh` → 単純形式のみであることを確認

@@ -120,6 +120,32 @@ if [[ "$MUX_MODE" == "tmux" ]]; then
   exit 0
 fi
 
+role_border_color() {
+  local role="$1"
+  case "$role" in
+    shogun) echo "colour54" ;;   # 紫
+    karo) echo "colour19" ;;     # 紺
+    ashigaru*) echo "colour94" ;;# 茶
+    *) echo "colour248" ;;
+  esac
+}
+
+apply_role_border_styles() {
+  local pane
+  local title
+  local color
+
+  tmux set-option -t "$VIEW_SESSION":agents pane-border-status top >/dev/null 2>&1 || true
+  tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{pane_index}:#{pane_title}' >/dev/null 2>&1 || true
+
+  while IFS= read -r pane; do
+    title="$(tmux display-message -p -t "$pane" '#{pane_title}' 2>/dev/null || true)"
+    color="$(role_border_color "$title")"
+    tmux set-option -p -t "$pane" pane-border-style "fg=${color}" >/dev/null 2>&1 || true
+    tmux set-option -p -t "$pane" pane-active-border-style "fg=${color}" >/dev/null 2>&1 || true
+  done < <(tmux list-panes -t "$VIEW_SESSION":agents -F '#{pane_id}' 2>/dev/null || true)
+}
+
 mapfile -t AGENTS < <(python3 - << 'PY'
 from pathlib import Path
 
@@ -179,8 +205,7 @@ fi
 
 if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
   # 既存ビューでも毎回スタイルを再適用する
-  tmux set-option -t "$VIEW_SESSION":agents pane-border-status top >/dev/null 2>&1 || true
-  tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{?#{==:#{pane_title},shogun},#[fg=colour231,bg=colour54,bold],#{?#{==:#{pane_title},karo},#[fg=colour231,bg=colour19,bold],#[fg=colour231,bg=colour94,bold]}} #{pane_index}:#{pane_title} #[default]' >/dev/null 2>&1 || true
+  apply_role_border_styles
   if [[ "$NO_ATTACH" = true ]]; then
     echo "[INFO] tmux session already exists: $VIEW_SESSION"
     echo "       attach: tmux attach -t $VIEW_SESSION"
@@ -212,9 +237,7 @@ for i in "${!VISIBLE[@]}"; do
 done
 
 # 見やすさ調整
-tmux set-option -t "$VIEW_SESSION":agents pane-border-status top >/dev/null 2>&1 || true
-# 将軍=紫、家老=紺、足軽=茶（見出し背景色つき）
-tmux set-option -t "$VIEW_SESSION":agents pane-border-format '#{?#{==:#{pane_title},shogun},#[fg=colour231,bg=colour54,bold],#{?#{==:#{pane_title},karo},#[fg=colour231,bg=colour19,bold],#[fg=colour231,bg=colour94,bold]}} #{pane_index}:#{pane_title} #[default]' >/dev/null 2>&1 || true
+apply_role_border_styles
 
 tmux display-message -t "$VIEW_SESSION":agents "Attached agents: ${VISIBLE[*]}"
 if [[ "$NO_ATTACH" = true ]]; then

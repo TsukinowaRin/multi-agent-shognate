@@ -81,6 +81,56 @@ log_war() {
     echo -e "\033[1;31m【戦】\033[0m $1"
 }
 
+# Gemini CLI 初回の trust folder プロンプトを自動承認する（1回のみ）
+auto_accept_gemini_trust_prompt_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local i
+    local pane_text
+
+    [ "$cli_type" = "gemini" ] || return 0
+
+    for i in {1..20}; do
+        pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -60 || true)"
+        if echo "$pane_text" | grep -q "Do you trust this folder"; then
+            tmux send-keys -t "$pane_target" "1"
+            tmux send-keys -t "$pane_target" Enter
+            log_info "  └─ ${agent_id}: Gemini trust prompt を自動承認"
+            sleep 1
+            return 0
+        fi
+        sleep 1
+    done
+    return 0
+}
+
+# 役割指示書の初動読み込み命令を各CLIへ投入（Claude挙動に近づける）
+send_startup_bootstrap_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local instruction_file=""
+    local startup_msg=""
+
+    if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        instruction_file="$(get_instruction_file "$agent_id" "$cli_type" 2>/dev/null || true)"
+    fi
+
+    if [ -z "$instruction_file" ]; then
+        case "$agent_id" in
+            shogun) instruction_file="instructions/shogun.md" ;;
+            karo) instruction_file="instructions/karo.md" ;;
+            ashigaru*) instruction_file="instructions/ashigaru.md" ;;
+            *) instruction_file="AGENTS.md" ;;
+        esac
+    fi
+
+    startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${instruction_file} を読み、役割・口調・禁止事項を適用せよ。読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+    tmux send-keys -t "$pane_target" "$startup_msg"
+    tmux send-keys -t "$pane_target" Enter
+}
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # プロンプト生成関数（bash/zsh対応）
 # ───────────────────────────────────────────────────────────────────────────────
@@ -775,6 +825,27 @@ if [ "$SETUP_ONLY" = false ]; then
         done
         log_info "  └─ 足軽（平時の陣: ${#ACTIVE_ASHIGARU[@]}名）"
     fi
+
+    # Gemini初回 trust prompt 自動承認
+    auto_accept_gemini_trust_prompt_tmux "shogun:main" "shogun" "$_shogun_cli_type"
+    auto_accept_gemini_trust_prompt_tmux "multiagent:agents.${PANE_BASE}" "karo" "$_karo_cli_type"
+    for i in "${!ACTIVE_ASHIGARU[@]}"; do
+        _agent="${ACTIVE_ASHIGARU[$i]}"
+        p=$((PANE_BASE + i + 1))
+        _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
+        auto_accept_gemini_trust_prompt_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
+    done
+
+    # 各エージェントへ初動命令を投入（CLI共通）
+    send_startup_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
+    send_startup_bootstrap_tmux "multiagent:agents.${PANE_BASE}" "karo" "$_karo_cli_type"
+    for i in "${!ACTIVE_ASHIGARU[@]}"; do
+        _agent="${ACTIVE_ASHIGARU[$i]}"
+        p=$((PANE_BASE + i + 1))
+        _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
+        send_startup_bootstrap_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
+    done
+    log_info "📜 各エージェントへ初動命令を投入（役割指示書の自動読込）"
 
     if [ "$KESSEN_MODE" = true ]; then
         log_success "✅ 決戦の陣で出陣！全軍Opus！"

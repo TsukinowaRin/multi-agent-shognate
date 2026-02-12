@@ -299,3 +299,14 @@
    - 期待結果: 将軍/家老/足軽のCLI割当が `agent_cli.tsv` に書き込まれる実装がある。
 2. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
    - 期待結果: 起動ログに `ashigaru1（...）` / `ashigaru2（...）` のCLI種別が表示される。
+
+## 追補（2026-02-12: 即作業開始の初動自動化）
+### 要求
+1. 起動後に各エージェントが「ただCLIを開くだけ」で止まらず、役割指示書を自動読込して待機すること。
+2. Gemini初回の trust folder プロンプトを自動承認し、手動操作を減らすこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "send_startup_bootstrap_tmux|初動命令を投入" shutsujin_departure.sh`
+   - 期待結果: 全エージェントへ初動命令を送る実装がある。
+2. コマンド: `rg -n "auto_accept_gemini_trust_prompt_tmux|Do you trust this folder" shutsujin_departure.sh`
+   - 期待結果: Gemini trust プロンプト自動承認ロジックがある。

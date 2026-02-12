@@ -447,3 +447,20 @@
   - `bash -n shutsujin_departure.sh` → PASS
   - `bats tests/unit/test_cli_adapter.bats --timing` → 71 PASS
   - `rg -n "queue/runtime/agent_cli.tsv|printf .*\\t.*_cli_type" shutsujin_departure.sh` で記録処理を確認。
+
+## 2026-02-12 (即作業開始向けの初動自動化)
+- 背景:
+  - ユーザー所感: 「CLIが開くだけで、将軍/家老/足軽として即仕事にならない」。
+  - 具体的には Gemini の trust プロンプトで足軽が停止し、役割読込も自動化されていなかった。
+- 実装:
+  - `shutsujin_departure.sh` に以下を追加。
+    - `auto_accept_gemini_trust_prompt_tmux`: Gemini pane に `Do you trust this folder` が出たら `1 + Enter` を自動送信。
+    - `send_startup_bootstrap_tmux`: 全エージェントへ初動命令を送信（AGENTS.md + CLI別指示書を読ませ、`ready:<agent>` 返答で待機）。
+  - 起動シーケンスへ組み込み。
+    - CLI起動直後に Gemini trust 自動承認。
+    - 続いて全エージェントへ初動命令を投入。
+  - 既存の `agent_cli.tsv` 記録と併用し、誰がどのCLIで起動したか追跡可能化。
+- 検証:
+  - `bash -n shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats --timing` → 71 PASS
+  - `rg -n "auto_accept_gemini_trust_prompt_tmux|send_startup_bootstrap_tmux|初動命令を投入" shutsujin_departure.sh` で実装を確認。

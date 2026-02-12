@@ -13,6 +13,7 @@ SETUP_ONLY=false
 VIEW_ONLY=false
 NO_ATTACH=false
 MUX_MODE="${MUX_MODE:-zellij}"
+VIEW_TEMPLATE="${VIEW_TEMPLATE:-}"
 PASS_THROUGH=()
 
 usage() {
@@ -25,12 +26,15 @@ Options:
   --view-only        バックエンド起動をスキップし、ビューのみ起動
   --no-attach        tmuxへattachせず、ビュー作成だけ行う（検証向け）
   --mux MODE         起動モードを指定（zellij|tmux, default: zellij）
+  --template NAME    表示テンプレート（shogun_only|goza_room）
   --session NAME     tmux ビューセッション名（default: goza-no-ma）
   -h, --help         このヘルプ
 
 Examples:
   bash scripts/goza_no_ma.sh --mux zellij
   bash scripts/goza_no_ma.sh --mux tmux
+  bash scripts/goza_no_ma.sh --template shogun_only
+  bash scripts/goza_no_ma.sh --template goza_room
   bash scripts/goza_no_ma.sh -s --mux zellij
   bash scripts/goza_no_ma.sh -- --shogun-no-thinking
 USAGE
@@ -56,6 +60,15 @@ while [[ $# -gt 0 ]]; do
         shift 2
       else
         echo "[ERROR] --mux には zellij または tmux を指定してください" >&2
+        exit 1
+      fi
+      ;;
+    --template)
+      if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+        VIEW_TEMPLATE="$2"
+        shift 2
+      else
+        echo "[ERROR] --template には shogun_only または goza_room を指定してください" >&2
         exit 1
       fi
       ;;
@@ -91,6 +104,44 @@ if [[ "$MUX_MODE" != "zellij" && "$MUX_MODE" != "tmux" ]]; then
   exit 1
 fi
 
+if [[ -z "$VIEW_TEMPLATE" ]]; then
+  VIEW_TEMPLATE="$(python3 - "$MUX_MODE" << 'PY'
+import sys
+from pathlib import Path
+
+mux = sys.argv[1]
+template = ""
+
+try:
+    import yaml  # type: ignore
+except Exception:
+    yaml = None
+
+if yaml:
+    sp = Path("config/settings.yaml")
+    if sp.exists():
+        cfg = yaml.safe_load(sp.read_text(encoding="utf-8")) or {}
+        template = str(((cfg.get("startup") or {}).get("template") or "")).strip()
+
+    if not template:
+        tp = Path(f"templates/multiplexer/{mux}_templates.yaml")
+        if tp.exists():
+            tcfg = yaml.safe_load(tp.read_text(encoding="utf-8")) or {}
+            template = str((tcfg.get("default") or "")).strip()
+
+if not template:
+    template = "shogun_only"
+
+print(template)
+PY
+)"
+fi
+
+if [[ "$VIEW_TEMPLATE" != "shogun_only" && "$VIEW_TEMPLATE" != "goza_room" ]]; then
+  echo "[ERROR] --template は shogun_only または goza_room を指定してください（指定値: $VIEW_TEMPLATE）" >&2
+  exit 1
+fi
+
 if ! command -v tmux >/dev/null 2>&1; then
   echo "[ERROR] tmux が見つかりません。ビュー作成に tmux が必要です。" >&2
   exit 1
@@ -109,14 +160,66 @@ if [[ "$VIEW_ONLY" != true ]]; then
   MAS_MULTIPLEXER="$MUX_MODE" bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
 fi
 
+tmux_attach_session_cmd() {
+  local session="$1"
+  printf 'cd "%s" && TMUX= tmux attach-session -t %q || (echo "[WARN] attach失敗: %s"; exec bash)' "$ROOT_DIR" "$session" "$session"
+}
+
 if [[ "$MUX_MODE" == "tmux" ]]; then
-  if [[ "$NO_ATTACH" = true ]]; then
-    echo "[INFO] tmux mode started."
-    echo "       attach shogun: tmux attach-session -t shogun"
-    echo "       attach agents: tmux attach-session -t multiagent"
+  if [[ "$VIEW_TEMPLATE" == "shogun_only" ]]; then
+    if [[ "$NO_ATTACH" = true ]]; then
+      echo "[INFO] tmux mode started (template: shogun_only)."
+      echo "       attach shogun: tmux attach-session -t shogun"
+      exit 0
+    fi
+    tmux attach-session -t shogun
     exit 0
   fi
-  tmux attach-session -t shogun
+
+  # template: goza_room
+  if ! tmux has-session -t shogun 2>/dev/null || ! tmux has-session -t multiagent 2>/dev/null; then
+    echo "[ERROR] shogun または multiagent セッションが存在しません。" >&2
+    echo "        先に: bash shutsujin_departure.sh -s" >&2
+    exit 1
+  fi
+
+  if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
+    if [[ "$NO_ATTACH" = true ]]; then
+      echo "[INFO] tmux view session already exists: $VIEW_SESSION"
+      echo "       attach: tmux attach -t $VIEW_SESSION"
+      exit 0
+    fi
+    tmux attach -t "$VIEW_SESSION"
+    exit 0
+  fi
+
+  tmux new-session -d -s "$VIEW_SESSION" -n overview "$(tmux_attach_session_cmd shogun)"
+  tmux split-window -h -t "$VIEW_SESSION":overview "$(tmux_attach_session_cmd multiagent)"
+  tmux select-layout -t "$VIEW_SESSION":overview even-horizontal >/dev/null 2>&1 || true
+  tmux select-pane -t "$VIEW_SESSION":overview.0 -T "shogun"
+  tmux select-pane -t "$VIEW_SESSION":overview.1 -T "multiagent"
+
+  if [[ "$NO_ATTACH" = true ]]; then
+    echo "[INFO] tmux view session created: $VIEW_SESSION"
+    echo "       attach: tmux attach -t $VIEW_SESSION"
+    exit 0
+  fi
+  tmux attach -t "$VIEW_SESSION"
+  exit 0
+fi
+
+if [[ "$VIEW_TEMPLATE" == "shogun_only" ]]; then
+  if ! zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -qx "shogun"; then
+    echo "[ERROR] shogun zellij session が見つかりませんでした。" >&2
+    echo "        先に: bash shutsujin_departure.sh -s" >&2
+    exit 1
+  fi
+  if [[ "$NO_ATTACH" = true ]]; then
+    echo "[INFO] zellij mode started (template: shogun_only)."
+    echo "       attach: zellij attach shogun"
+    exit 0
+  fi
+  zellij attach shogun
   exit 0
 fi
 

@@ -525,6 +525,12 @@ shell: bash
 multiplexer:
   default: zellij
 
+# 起動テンプレート
+# shogun_only: 将軍セッションへ直接アタッチ（既定）
+# goza_room:   御座の間ビューを作成して全体を俯瞰
+startup:
+  template: shogun_only
+
 # 起動トポロジ設定
 topology:
   # デフォルトは足軽1名のみ起動（必要時に追加）

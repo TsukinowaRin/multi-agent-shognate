@@ -1,0 +1,12 @@
+default: shogun_only
+
+templates:
+  shogun_only:
+    description: "将軍セッションへ直接アタッチ"
+    view: "single_session"
+    attach_target: "shogun"
+
+  goza_room:
+    description: "御座の間ビュー（tmux経由で active エージェント全体を表示）"
+    view: "goza_overview"
+    tmux_view_session: "goza-no-ma"

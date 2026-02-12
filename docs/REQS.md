@@ -202,3 +202,17 @@
    - 期待結果: 既定マルチプレクサが zellij になっている。
 3. コマンド: `rg -n "zellij モード優先|zellij attach.*配色|zellij テーマ" README.md`
    - 期待結果: zellij優先方針と配色責務の説明がREADMEに存在する。
+
+## 追補（2026-02-12: tmux/zellij テンプレート運用）
+### 要求
+1. tmux/zellij それぞれの表示テンプレート定義を用意する。
+2. Multi Agents Shogunate の既定起動でテンプレートを適用できるようにする。
+3. 既定テンプレートは `shogun_only` とし、`goza_room` を明示指定で利用可能にする。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `ls templates/multiplexer/*.yaml`
+   - 期待結果: `tmux_templates.yaml` と `zellij_templates.yaml` が存在する。
+2. コマンド: `rg -n "--template|shogun_only|goza_room" scripts/goza_no_ma.sh`
+   - 期待結果: テンプレート指定オプションと分岐処理がある。
+3. コマンド: `rg -n "startup:\\n  template: shogun_only|template: shogun_only" config/settings.yaml first_setup.sh`
+   - 期待結果: 既定テンプレートが `shogun_only` に設定されている。

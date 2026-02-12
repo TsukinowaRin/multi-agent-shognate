@@ -2,6 +2,7 @@
 
 このリポジトリは、将軍・家老・足軽の階層で複数AI CLIを並列運用するための実行基盤です。  
 現在の運用は **zellij モード優先**、`tmux` は互換サブ手段として対応しています。
+既定テンプレートは `shogun_only`（将軍セッションへ直接アタッチ）です。
 
 ## いま使う起動コマンド
 
@@ -19,6 +20,12 @@ bash scripts/goza_tmux.sh
 ```bash
 bash scripts/goza_no_ma.sh --mux zellij
 bash scripts/goza_no_ma.sh --mux tmux
+```
+
+### 4. 全体俯瞰テンプレートで起動（御座の間）
+```bash
+bash scripts/goza_zellij.sh --template goza_room
+bash scripts/goza_tmux.sh --template goza_room
 ```
 
 ## 主要スクリプト
@@ -57,6 +64,8 @@ bash scripts/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
   - tmuxへ自動attachせず、ビュー作成のみ。
 - `--session <name>`
   - 御座の間ビュー用の tmux セッション名（デフォルト: `goza-no-ma`）。
+- `--template shogun_only|goza_room`
+  - 表示テンプレートを選択（デフォルト: `shogun_only`）。
 
 ## 役職ごとのタブ色（御座の間ビュー）
 
@@ -89,11 +98,15 @@ bash first_setup.sh
 ### 日次運用
 
 ```bash
-# zellij で運用
+# zellij で運用（既定: shogun_only）
 bash scripts/goza_zellij.sh
 
-# tmux で運用
+# tmux で運用（既定: shogun_only）
 bash scripts/goza_tmux.sh
+
+# 全体俯瞰（御座の間）で運用
+bash scripts/goza_zellij.sh --template goza_room
+bash scripts/goza_tmux.sh --template goza_room
 ```
 
 `tmux` モードでも `config/settings.yaml` の `topology.active_ashigaru` に追従して、家老+指定足軽人数で起動します。
@@ -107,6 +120,8 @@ language: ja
 shell: bash
 multiplexer:
   default: zellij
+startup:
+  template: shogun_only
 topology:
   active_ashigaru:
     - ashigaru1
@@ -196,3 +211,4 @@ zellij list-sessions -n
 - `scripts/goza_zellij.sh` / `scripts/goza_tmux.sh` は運用コマンドとして固定。
 - `scripts/goza_no_ma.sh` は共通ロジックを持つため、機能追加はここを起点に行う。
 - `shutsujin_departure.sh` 側は `MAS_MULTIPLEXER` によりモードを強制可能。
+- テンプレート定義は `templates/multiplexer/tmux_templates.yaml` と `templates/multiplexer/zellij_templates.yaml`。

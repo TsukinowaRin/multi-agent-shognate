@@ -258,3 +258,24 @@
   - `bash -n shutsujin_departure.sh` → PASS
   - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 107 tests PASS
   - `rg -n "エージェントCLIの起動を確認中|pane_current_command|@agent_cli" shutsujin_departure.sh` で汎用判定ロジックを確認。
+
+## 2026-02-12 (tmux/zellij テンプレート導入)
+- 要求:
+  - tmuxは将軍のみ表示か？という混乱を解消し、tmux/zellijで共通のテンプレート概念で起動したい。
+  - Multi Agents Shogunateの既定起動でテンプレートを適用したい。
+- 実装:
+  - `scripts/goza_no_ma.sh` に `--template shogun_only|goza_room` を追加。
+  - 既定テンプレートは `config/settings.yaml` の `startup.template`（未設定時はテンプレートYAMLのdefault、最終fallbackは `shogun_only`）。
+  - `tmux + shogun_only`: 将軍セッションへ直接attach。
+  - `tmux + goza_room`: `goza-no-ma` ビューで `shogun` と `multiagent` を2分割表示。
+  - `zellij + shogun_only`: `zellij attach shogun`。
+  - `zellij + goza_room`: 既存の御座の間（activeエージェント俯瞰）を使用。
+  - テンプレート定義ファイルを追加:
+    - `templates/multiplexer/tmux_templates.yaml`
+    - `templates/multiplexer/zellij_templates.yaml`
+  - `config/settings.yaml` と `first_setup.sh` の設定雛形に `startup.template: shogun_only` を追加。
+  - READMEにテンプレート運用手順を追記。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh shutsujin_departure.sh first_setup.sh` → PASS
+  - `bash scripts/goza_no_ma.sh --help` で `--template` が表示されることを確認。
+  - `ls templates/multiplexer/*.yaml` でテンプレートファイル存在を確認。

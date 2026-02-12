@@ -1,0 +1,13 @@
+default: shogun_only
+
+templates:
+  shogun_only:
+    description: "将軍セッションへ直接アタッチ"
+    view: "single_session"
+    attach_target: "shogun"
+
+  goza_room:
+    description: "御座の間ビュー（shogun + multiagent）"
+    view: "dual_session_overview"
+    left: "shogun"
+    right: "multiagent"

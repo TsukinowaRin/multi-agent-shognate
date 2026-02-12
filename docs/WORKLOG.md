@@ -316,3 +316,32 @@
   - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 107 tests PASS（1 testは環境依存で skip 表示あり）
   - `bash scripts/shutsujin_zellij.sh -s` → 本環境は snap版zellij制約で実機セッション作成失敗（`snap-confine ... permission denied`）だが、AA表示と人数連動表示は出力確認
   - `bash scripts/goza_no_ma.sh --mux tmux --template goza_room -s --no-attach` → 本環境tmuxソケット制約で失敗（`error connecting to /tmp/tmux-1000/default`）
+
+## 2026-02-12 (zellij goza_room確認 + size missing改善)
+- 事象:
+  - ユーザー報告: `bash scripts/goza_zellij.sh --template goza_room` 実行時に tmux が起動しているように見える。
+  - ユーザー報告: tmux 実行時に終了間際 `size missing` が出る。
+- 判断:
+  - 現行設計では `zellij + goza_room` は「バックエンド=zellij（各エージェントセッション）」を維持し、俯瞰ビューのみ tmux を使う仕様。
+  - この責務をログとREADME/REQSで明示する。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `TMUX_VIEW_WIDTH` / `TMUX_VIEW_HEIGHT`（既定 `200x60`）を追加。
+    - ビューセッション作成を `tmux new-session -d -x ... -y ...` に変更し、サイズ未確定時の失敗を抑制。
+    - 右分割/縦分割にリトライ付きヘルパーを追加。
+      - `tmux_split_right_ratio_run`
+      - `tmux_split_right_ratio_pane`
+      - `tmux_split_down_pane`
+    - zellij goza_room 時に責務を明示するログを追加:
+      - `[INFO] zellij + goza_room は tmux ビューで表示します（バックエンドは zellij セッション）。`
+  - `README.md`
+    - zellij goza_room の表示責務（tmuxビュー使用）を明記。
+    - `TMUX_VIEW_WIDTH` / `TMUX_VIEW_HEIGHT` の説明を追加。
+    - `size missing` 対処コマンドを追加。
+  - `docs/REQS.md`
+    - 本修正要求（責務明確化 + size missing対策）と受け入れ条件を追記。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh README.md docs/REQS.md` → PASS
+  - `rg -n "TMUX_VIEW_WIDTH|TMUX_VIEW_HEIGHT|tmux_new_view_session|tmux_split_right_ratio_run|tmux_split_right_ratio_pane|tmux_split_down_pane|zellij \+ goza_room" scripts/goza_no_ma.sh README.md docs/REQS.md` → 実装行を確認
+  - `bash scripts/goza_no_ma.sh --help` → オプション表示を確認
+  - 実機起動確認は本実行環境のtmuxソケット権限制約で未実施（`error connecting to /tmp/tmux-1000/default (Operation not permitted)`）

@@ -9,6 +9,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 VIEW_SESSION="${VIEW_SESSION:-goza-no-ma}"
+TMUX_VIEW_WIDTH="${TMUX_VIEW_WIDTH:-200}"
+TMUX_VIEW_HEIGHT="${TMUX_VIEW_HEIGHT:-60}"
 SETUP_ONLY=false
 VIEW_ONLY=false
 NO_ATTACH=false
@@ -165,6 +167,57 @@ tmux_attach_session_cmd() {
   printf 'cd "%s" && TMUX= tmux attach-session -t %q || (echo "[WARN] attach失敗: %s"; exec bash)' "$ROOT_DIR" "$session" "$session"
 }
 
+tmux_new_view_session() {
+  local session="$1"
+  local window="$2"
+  local cmd="$3"
+  tmux new-session -d -x "$TMUX_VIEW_WIDTH" -y "$TMUX_VIEW_HEIGHT" -s "$session" -n "$window" "$cmd"
+}
+
+tmux_split_right_ratio_run() {
+  local target="$1"
+  local cmd="$2"
+  local fallback_cols
+  fallback_cols=$(( TMUX_VIEW_WIDTH * 35 / 100 ))
+  if [[ "$fallback_cols" -lt 20 ]]; then
+    fallback_cols=20
+  fi
+  tmux split-window -h -p 35 -t "$target" "$cmd" 2>/dev/null || \
+    tmux split-window -h -l "$fallback_cols" -t "$target" "$cmd"
+}
+
+tmux_split_right_ratio_pane() {
+  local target="$1"
+  local cmd="$2"
+  local fallback_cols
+  local pane
+  fallback_cols=$(( TMUX_VIEW_WIDTH * 35 / 100 ))
+  if [[ "$fallback_cols" -lt 20 ]]; then
+    fallback_cols=20
+  fi
+  pane="$(tmux split-window -h -p 35 -P -F '#{pane_id}' -t "$target" "$cmd" 2>/dev/null || true)"
+  if [[ -z "$pane" ]]; then
+    pane="$(tmux split-window -h -l "$fallback_cols" -P -F '#{pane_id}' -t "$target" "$cmd" 2>/dev/null || true)"
+  fi
+  echo "$pane"
+}
+
+tmux_split_down_pane() {
+  local target="$1"
+  local cmd="$2"
+  local fallback_rows
+  local pane
+  fallback_rows=$(( TMUX_VIEW_HEIGHT / 2 ))
+  if [[ "$fallback_rows" -lt 10 ]]; then
+    fallback_rows=10
+  fi
+  pane="$(tmux split-window -v -P -F '#{pane_id}' -t "$target" "$cmd" 2>/dev/null || true)"
+  if [[ -z "$pane" ]]; then
+    pane="$(tmux split-window -v -l "$fallback_rows" -P -F '#{pane_id}' -t "$target" "$cmd" 2>/dev/null || true)"
+  fi
+  echo "$pane"
+}
+
 if [[ "$MUX_MODE" == "tmux" ]]; then
   if [[ "$VIEW_TEMPLATE" == "shogun_only" ]]; then
     if [[ "$NO_ATTACH" = true ]]; then
@@ -193,9 +246,9 @@ if [[ "$MUX_MODE" == "tmux" ]]; then
     exit 0
   fi
 
-  tmux new-session -d -s "$VIEW_SESSION" -n overview "$(tmux_attach_session_cmd shogun)"
+  tmux_new_view_session "$VIEW_SESSION" "overview" "$(tmux_attach_session_cmd shogun)"
   # 将軍を広く見せる（左65% / 右35%）
-  tmux split-window -h -p 35 -t "$VIEW_SESSION":overview "$(tmux_attach_session_cmd multiagent)"
+  tmux_split_right_ratio_run "$VIEW_SESSION":overview "$(tmux_attach_session_cmd multiagent)"
   tmux select-layout -t "$VIEW_SESSION":overview main-vertical >/dev/null 2>&1 || true
   tmux set-window-option -t "$VIEW_SESSION":overview main-pane-width 65% >/dev/null 2>&1 || true
   tmux select-pane -t "$VIEW_SESSION":overview.0 -T "shogun"
@@ -224,6 +277,8 @@ if [[ "$VIEW_TEMPLATE" == "shogun_only" ]]; then
   zellij attach shogun
   exit 0
 fi
+
+echo "[INFO] zellij + goza_room は tmux ビューで表示します（バックエンドは zellij セッション）。"
 
 role_border_color() {
   local role="$1"
@@ -327,7 +382,7 @@ attach_cmd() {
 
 # 1ペイン目（将軍）
 first="${VISIBLE[0]}"
-tmux new-session -d -s "$VIEW_SESSION" -n agents "$(attach_cmd "$first")"
+tmux_new_view_session "$VIEW_SESSION" "agents" "$(attach_cmd "$first")"
 tmux select-pane -t "$VIEW_SESSION":agents.0 -T "$first"
 
 # 2ペイン目以降（将軍を大きく、残りを右側へ積む）
@@ -338,9 +393,9 @@ for i in "${!VISIBLE[@]}"; do
   agent="${VISIBLE[$i]}"
   new_pane=""
   if [[ "$i" -eq 1 ]]; then
-    new_pane="$(tmux split-window -h -p 35 -t "$VIEW_SESSION":agents -P -F '#{pane_id}' "$(attach_cmd "$agent")")"
+    new_pane="$(tmux_split_right_ratio_pane "$VIEW_SESSION":agents "$(attach_cmd "$agent")")"
   else
-    new_pane="$(tmux split-window -v -t "$VIEW_SESSION":agents.1 -P -F '#{pane_id}' "$(attach_cmd "$agent")")"
+    new_pane="$(tmux_split_down_pane "$VIEW_SESSION":agents.1 "$(attach_cmd "$agent")")"
   fi
   tmux select-layout -t "$VIEW_SESSION":agents main-vertical >/dev/null 2>&1 || true
   tmux set-window-option -t "$VIEW_SESSION":agents main-pane-width 65% >/dev/null 2>&1 || true

@@ -242,3 +242,14 @@
    - 期待結果: 御座の間ビューが作成され、`main-pane-width 65%` を使った将軍優先レイアウトになる。
 4. コマンド: `rg -n "show_battle_cry|ACTIVE_ASHIGARU_COUNT|main-pane-width 65%" scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh shutsujin_departure.sh`
    - 期待結果: zellij/tmux両起動系でAA演出と人数連動、将軍優先レイアウトの実装が確認できる。
+
+## 追補（2026-02-12: zellij御座の間の表示責務明確化 + size missing対策）
+### 要求
+1. `bash scripts/goza_zellij.sh --template goza_room` の動作責務を明確化する（バックエンド=zellij、ビュー=tmux）。
+2. `tmux` ビュー生成時の `size missing` エラーを回避する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "zellij \\+ goza_room は tmux ビュー" scripts/goza_no_ma.sh README.md`
+   - 期待結果: zellij goza_room の表示責務が明示されている。
+2. コマンド: `rg -n "TMUX_VIEW_WIDTH|TMUX_VIEW_HEIGHT|tmux new-session -d -x|tmux_split_right_ratio|tmux_split_down_pane" scripts/goza_no_ma.sh README.md`
+   - 期待結果: tmux ビューに仮想サイズ指定と分割リトライ処理が実装されている。

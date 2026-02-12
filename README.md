@@ -41,7 +41,7 @@ bash scripts/goza_tmux.sh --template goza_room
 - `scripts/goza_no_ma.sh`
   - 共通フロントエンド。
   - `--mux zellij|tmux` で明示的に起動モードを選択できます。
-  - zellij モードでは御座の間ビュー（tmux）を作成してエージェントセッションへ attach します。
+  - zellij モードの `--template goza_room` は、バックエンドを zellij のまま維持しつつ、表示ビューのみ tmux を使います（複数 zellij セッションの同時俯瞰のため）。
 
 - `shutsujin_departure.sh`
   - 実際の出陣処理本体。
@@ -66,6 +66,8 @@ bash scripts/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
   - 御座の間ビュー用の tmux セッション名（デフォルト: `goza-no-ma`）。
 - `--template shogun_only|goza_room`
   - 表示テンプレートを選択（デフォルト: `shogun_only`）。
+- `TMUX_VIEW_WIDTH` / `TMUX_VIEW_HEIGHT`
+  - 御座の間ビュー作成時の tmux 仮想サイズを上書き（デフォルト: `200x60`）。
 
 ## 構成CUI（足軽人数・CLI割り当て）
 
@@ -216,6 +218,12 @@ zellij list-sessions -n
   - 代替で tmux モードを使用:
   ```bash
   bash scripts/goza_tmux.sh
+  ```
+
+- `size missing` が出る
+  - 御座の間ビューの仮想サイズ不足が原因です。次で再実行してください。
+  ```bash
+  TMUX_VIEW_WIDTH=220 TMUX_VIEW_HEIGHT=70 bash scripts/goza_zellij.sh --template goza_room
   ```
 
 - 既存バックエンドを残して再接続したい

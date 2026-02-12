@@ -289,3 +289,13 @@
    - 期待結果: zellij UI 起動が layout ベースになっている。
 2. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
    - 期待結果: zellij UI 内で tmux 画面（`goza-no-ma`）へ直接入る。
+
+## 追補（2026-02-12: tmux内部運用時のCLI割当可視化）
+### 要求
+1. `--mux tmux` 運用でも `queue/runtime/agent_cli.tsv` に実割当を記録し、役職ごとのCLI起動結果を確認できるようにする。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "queue/runtime/agent_cli.tsv|printf .*\\t.*_cli_type" shutsujin_departure.sh`
+   - 期待結果: 将軍/家老/足軽のCLI割当が `agent_cli.tsv` に書き込まれる実装がある。
+2. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
+   - 期待結果: 起動ログに `ashigaru1（...）` / `ashigaru2（...）` のCLI種別が表示される。

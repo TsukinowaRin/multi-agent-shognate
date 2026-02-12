@@ -689,6 +689,8 @@ if [ "$SETUP_ONLY" = false ]; then
     fi
 
     log_war "👑 全エージェントCLIを起動中..."
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    : > "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
 
     # 将軍: CLI Adapter経由でコマンド構築
     _shogun_cli_type="claude"
@@ -707,6 +709,7 @@ if [ "$SETUP_ONLY" = false ]; then
         tmux send-keys -t shogun:main Enter
         log_info "  └─ 将軍（${_shogun_cli_type}）、召喚完了"
     fi
+    printf "shogun\t%s\n" "$_shogun_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
 
     # 少し待機（安定のため）
     sleep 1
@@ -723,6 +726,7 @@ if [ "$SETUP_ONLY" = false ]; then
     tmux send-keys -t "multiagent:agents.${p}" "$_karo_cmd"
     tmux send-keys -t "multiagent:agents.${p}" Enter
     log_info "  └─ 家老（${_karo_cli_type}）、召喚完了"
+    printf "karo\t%s\n" "$_karo_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
 
     if [ "$KESSEN_MODE" = true ]; then
         # 決戦の陣: CLI Adapter経由（claudeはOpus強制）
@@ -743,8 +747,10 @@ if [ "$SETUP_ONLY" = false ]; then
             tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_ashi_cli_type"
             tmux send-keys -t "multiagent:agents.${p}" "$_ashi_cmd"
             tmux send-keys -t "multiagent:agents.${p}" Enter
+            printf "%s\t%s\n" "$_agent" "$_ashi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
+            log_info "  └─ ${_agent}（${_ashi_cli_type}）、召喚完了"
         done
-        log_info "  └─ 足軽（決戦の陣: ${#ACTIVE_ASHIGARU[@]}名）、召喚完了"
+        log_info "  └─ 足軽（決戦の陣: ${#ACTIVE_ASHIGARU[@]}名）"
     else
         # 平時の陣: CLI Adapter経由（デフォルト: 1-4=Sonnet, 5-8=Opus）
         for i in "${!ACTIVE_ASHIGARU[@]}"; do
@@ -764,8 +770,10 @@ if [ "$SETUP_ONLY" = false ]; then
             tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_ashi_cli_type"
             tmux send-keys -t "multiagent:agents.${p}" "$_ashi_cmd"
             tmux send-keys -t "multiagent:agents.${p}" Enter
+            printf "%s\t%s\n" "$_agent" "$_ashi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
+            log_info "  └─ ${_agent}（${_ashi_cli_type}）、召喚完了"
         done
-        log_info "  └─ 足軽（平時の陣: ${#ACTIVE_ASHIGARU[@]}名）、召喚完了"
+        log_info "  └─ 足軽（平時の陣: ${#ACTIVE_ASHIGARU[@]}名）"
     fi
 
     if [ "$KESSEN_MODE" = true ]; then

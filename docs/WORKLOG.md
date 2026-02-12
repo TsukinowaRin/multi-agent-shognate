@@ -434,3 +434,16 @@
 - 検証:
   - `bash -n scripts/goza_no_ma.sh` → PASS
   - 生成テンプレート断片を `sed` で確認し、`command/args` ノード形式になっていることを確認。
+
+## 2026-02-12 (tmux内部運用での agent_cli.tsv 更新)
+- 事象:
+  - ユーザー確認で `queue/runtime/agent_cli.tsv` が `shogun/karo/ashigaru1/2 = codex` となっていた。
+  - ただしこの時点の `goza_zellij` は `--mux tmux --ui zellij` 運用へ移行済みで、`agent_cli.tsv` が tmux経路で更新されていなかった。
+- 修正:
+  - `shutsujin_departure.sh` の tmux 起動経路で `queue/runtime/agent_cli.tsv` を毎回初期化・書き込み。
+  - 将軍/家老/足軽の各起動時に `printf "<agent>\t<cli_type>"` を追記。
+  - 足軽起動ログを個別表示（`ashigaru1（...）` 形式）へ変更。
+- 検証:
+  - `bash -n shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats --timing` → 71 PASS
+  - `rg -n "queue/runtime/agent_cli.tsv|printf .*\\t.*_cli_type" shutsujin_departure.sh` で記録処理を確認。

@@ -422,3 +422,15 @@
   - `bats tests/unit/test_send_wakeup.bats --timing` → 36 PASS
   - `bats tests/unit/test_cli_adapter.bats --timing` → 71 PASS
   - `rg -n "zellij_ui_layout_file|new-session-with-layout|inotifywait" ...` で実装箇所確認。
+
+## 2026-02-12 (zellij layout KDL parse error 修正)
+- 事象:
+  - `goza_zellij.sh --template goza_room` 実行時に `Failed to parse Zellij configuration` が発生。
+  - 生成KDLの `pane command="bash" { args ... }` が 0.41.2 で受理されなかった。
+- 修正:
+  - `scripts/goza_no_ma.sh` のレイアウト生成を 0.41系互換の記法へ変更。
+    - `pane { command "bash"; args "-lc" "..."; }`
+  - 起動コマンド文字列のクォートを簡素化し、KDL文字列内の過剰エスケープを除去。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - 生成テンプレート断片を `sed` で確認し、`command/args` ノード形式になっていることを確認。

@@ -191,12 +191,15 @@ ZELLIJ_UI_SESSION="${ZELLIJ_UI_SESSION:-goza-no-ma-ui}"
 zellij_ui_layout_file() {
   local tmux_target="$1"
   local tab_title="$2"
+  local startup_cmd
   local layout_file="${TMPDIR:-/tmp}/zellij_ui_${ZELLIJ_UI_SESSION}.kdl"
+  startup_cmd="cd '$ROOT_DIR' && TMUX= tmux attach-session -t '$tmux_target' || (echo '[WARN] attach失敗: $tmux_target'; exec bash)"
   cat > "$layout_file" <<EOF
 layout {
     tab name="${tab_title}" {
-        pane command="bash" {
-            args "-lc" "cd \\\"$ROOT_DIR\\\" && TMUX= tmux attach-session -t \\\"$tmux_target\\\" || (echo \\\"[WARN] attach失敗: $tmux_target\\\"; exec bash)"
+        pane {
+            command "bash";
+            args "-lc" "$startup_cmd";
         }
     }
 }

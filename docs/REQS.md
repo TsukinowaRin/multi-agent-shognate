@@ -216,3 +216,29 @@
    - 期待結果: テンプレート指定オプションと分岐処理がある。
 3. コマンド: `rg -n "startup:\\n  template: shogun_only|template: shogun_only" config/settings.yaml first_setup.sh`
    - 期待結果: 既定テンプレートが `shogun_only` に設定されている。
+
+## 追補（2026-02-12: テスト優先の設定反映）
+### 要求
+1. ユーザー編集なしで `config/settings.yaml` をテストしやすい構成へ更新する。
+2. テスト時は全体俯瞰できるよう `startup.template` を `goza_room` にする。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "startup:|template: goza_room" config/settings.yaml`
+   - 期待結果: 既定テンプレートが `goza_room` になっている。
+
+## 追補（2026-02-12: 構成CUI + zellij表示改善）
+### 要求
+1. 足軽人数と各エージェントCLI種別を、対話的に設定できるCUIを追加する。
+2. 起動時バナーの足軽人数表示を `topology.active_ashigaru` に連動させる。
+3. `zellij` の御座の間ビューで、将軍ペインを大きく表示する（tmux同等の主従レイアウト）。
+4. `zellij` モード起動時にも tmux 相当のAA演出を表示する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/configure_agents.sh` を実行し、対話入力で保存
+   - 期待結果: `config/settings.yaml` の `topology.active_ashigaru` と `cli.agents` が入力値どおり更新される。
+2. コマンド: `bash scripts/shutsujin_zellij.sh -s`
+   - 期待結果: バナーに `【 足 軽 隊 列 ・ N 名 配 備 】` が表示され、`N` が `active_ashigaru` の件数と一致する。
+3. コマンド: `bash scripts/goza_no_ma.sh --mux zellij --template goza_room -s --no-attach`
+   - 期待結果: 御座の間ビューが作成され、`main-pane-width 65%` を使った将軍優先レイアウトになる。
+4. コマンド: `rg -n "show_battle_cry|ACTIVE_ASHIGARU_COUNT|main-pane-width 65%" scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh shutsujin_departure.sh`
+   - 期待結果: zellij/tmux両起動系でAA演出と人数連動、将軍優先レイアウトの実装が確認できる。

@@ -241,6 +241,41 @@ if [ "$MULTIPLEXER_SETTING" = "zellij" ]; then
     exit 1
 fi
 
+# 有効化する足軽リスト（デフォルト: ashigaru1-8）
+ACTIVE_ASHIGARU=("ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
+if [ -f "./config/settings.yaml" ]; then
+    mapfile -t _active_from_yaml < <(python3 - << 'PY' 2>/dev/null || true
+import yaml
+from pathlib import Path
+p = Path("config/settings.yaml")
+cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+v = ((cfg.get("topology") or {}).get("active_ashigaru") or [])
+out = []
+for x in v:
+    if isinstance(x, int):
+        if 1 <= x <= 8:
+            out.append(f"ashigaru{x}")
+    elif isinstance(x, str):
+        s = x.strip()
+        if s.isdigit():
+            i = int(s)
+            if 1 <= i <= 8:
+                out.append(f"ashigaru{i}")
+        elif s.startswith("ashigaru") and s[8:].isdigit():
+            i = int(s[8:])
+            if 1 <= i <= 8:
+                out.append(f"ashigaru{i}")
+if out:
+    for i in out:
+        print(i)
+PY
+)
+    if [ "${#_active_from_yaml[@]}" -gt 0 ]; then
+        ACTIVE_ASHIGARU=("${_active_from_yaml[@]}")
+    fi
+fi
+ACTIVE_ASHIGARU_COUNT=${#ACTIVE_ASHIGARU[@]}
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 出陣バナー表示（CC0ライセンスASCIIアート使用）
 # ───────────────────────────────────────────────────────────────────────────────
@@ -250,7 +285,11 @@ fi
 # "all files and scripts in this repo are released CC0 / kopimi!"
 # ═══════════════════════════════════════════════════════════════════════════════
 show_battle_cry() {
-    clear
+    if [ -t 1 ]; then
+        clear || true
+    else
+        echo ""
+    fi
 
     # タイトルバナー（色付き）
     echo ""
@@ -270,7 +309,7 @@ show_battle_cry() {
     # 足軽隊列（オリジナル）
     # ═══════════════════════════════════════════════════════════════════════════
     echo -e "\033[1;34m  ╔═════════════════════════════════════════════════════════════════════════════╗\033[0m"
-    echo -e "\033[1;34m  ║\033[0m                    \033[1;37m【 足 軽 隊 列 ・ 八 名 配 備 】\033[0m                      \033[1;34m║\033[0m"
+    echo -e "\033[1;34m  ║\033[0m                    \033[1;37m【 足 軽 隊 列 ・ ${ACTIVE_ASHIGARU_COUNT} 名 配 備 】\033[0m                      \033[1;34m║\033[0m"
     echo -e "\033[1;34m  ╚═════════════════════════════════════════════════════════════════════════════╝\033[0m"
 
     cat << 'ASHIGARU_EOF'
@@ -294,7 +333,7 @@ ASHIGARU_EOF
     echo -e "\033[1;33m  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\033[0m"
     echo -e "\033[1;33m  ┃\033[0m  \033[1;37m🏯 multi-agent-shogun\033[0m  〜 \033[1;36m戦国マルチエージェント統率システム\033[0m 〜           \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┃\033[0m                                                                           \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m    \033[1;35m将軍\033[0m: プロジェクト統括    \033[1;31m家老\033[0m: タスク管理    \033[1;34m足軽\033[0m: 実働部隊×8      \033[1;33m┃\033[0m"
+    echo -e "\033[1;33m  ┃\033[0m    \033[1;35m将軍\033[0m: プロジェクト統括    \033[1;31m家老\033[0m: タスク管理    \033[1;34m足軽\033[0m: 実働部隊×${ACTIVE_ASHIGARU_COUNT}      \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\033[0m"
     echo ""
 }
@@ -510,40 +549,6 @@ echo ""
 
 # pane-base-index を取得（1 の環境ではペインは 1,2,... になる）
 PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
-
-# 有効化する足軽リスト（デフォルト: ashigaru1-8）
-ACTIVE_ASHIGARU=("ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
-if [ -f "./config/settings.yaml" ]; then
-    mapfile -t _active_from_yaml < <(python3 - << 'PY' 2>/dev/null || true
-import yaml
-from pathlib import Path
-p = Path("config/settings.yaml")
-cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
-v = ((cfg.get("topology") or {}).get("active_ashigaru") or [])
-out = []
-for x in v:
-    if isinstance(x, int):
-        if 1 <= x <= 8:
-            out.append(f"ashigaru{x}")
-    elif isinstance(x, str):
-        s = x.strip()
-        if s.isdigit():
-            i = int(s)
-            if 1 <= i <= 8:
-                out.append(f"ashigaru{i}")
-        elif s.startswith("ashigaru") and s[8:].isdigit():
-            i = int(s[8:])
-            if 1 <= i <= 8:
-                out.append(f"ashigaru{i}")
-if out:
-    for i in out:
-        print(i)
-PY
-)
-    if [ "${#_active_from_yaml[@]}" -gt 0 ]; then
-        ACTIVE_ASHIGARU=("${_active_from_yaml[@]}")
-    fi
-fi
 
 MULTIAGENT_IDS=("karo" "${ACTIVE_ASHIGARU[@]}")
 MULTIAGENT_COUNT=${#MULTIAGENT_IDS[@]}

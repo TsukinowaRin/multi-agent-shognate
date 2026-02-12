@@ -26,7 +26,7 @@ Options:
   --view-only        バックエンド起動をスキップし、ビューのみ起動
   --no-attach        tmuxへattachせず、ビュー作成だけ行う（検証向け）
   --mux MODE         起動モードを指定（zellij|tmux, default: zellij）
-  --template NAME    表示テンプレート（shogun_only|goza_room）
+  --template NAME    表示テンプレート（shogun_only|goza_room, default: settings）
   --session NAME     tmux ビューセッション名（default: goza-no-ma）
   -h, --help         このヘルプ
 
@@ -194,8 +194,10 @@ if [[ "$MUX_MODE" == "tmux" ]]; then
   fi
 
   tmux new-session -d -s "$VIEW_SESSION" -n overview "$(tmux_attach_session_cmd shogun)"
-  tmux split-window -h -t "$VIEW_SESSION":overview "$(tmux_attach_session_cmd multiagent)"
-  tmux select-layout -t "$VIEW_SESSION":overview even-horizontal >/dev/null 2>&1 || true
+  # 将軍を広く見せる（左65% / 右35%）
+  tmux split-window -h -p 35 -t "$VIEW_SESSION":overview "$(tmux_attach_session_cmd multiagent)"
+  tmux select-layout -t "$VIEW_SESSION":overview main-vertical >/dev/null 2>&1 || true
+  tmux set-window-option -t "$VIEW_SESSION":overview main-pane-width 65% >/dev/null 2>&1 || true
   tmux select-pane -t "$VIEW_SESSION":overview.0 -T "shogun"
   tmux select-pane -t "$VIEW_SESSION":overview.1 -T "multiagent"
 
@@ -323,20 +325,28 @@ attach_cmd() {
   printf 'cd "%s" && zellij attach %q || (echo "[WARN] attach失敗: %s"; exec bash)' "$ROOT_DIR" "$agent" "$agent"
 }
 
-# 1ペイン目
+# 1ペイン目（将軍）
 first="${VISIBLE[0]}"
 tmux new-session -d -s "$VIEW_SESSION" -n agents "$(attach_cmd "$first")"
 tmux select-pane -t "$VIEW_SESSION":agents.0 -T "$first"
 
-# 2ペイン目以降
+# 2ペイン目以降（将軍を大きく、残りを右側へ積む）
 for i in "${!VISIBLE[@]}"; do
   if [[ "$i" -eq 0 ]]; then
     continue
   fi
   agent="${VISIBLE[$i]}"
-  tmux split-window -t "$VIEW_SESSION":agents -v "$(attach_cmd "$agent")"
-  tmux select-layout -t "$VIEW_SESSION":agents tiled >/dev/null 2>&1 || true
-  tmux select-pane -t "$VIEW_SESSION":agents."$i" -T "$agent" >/dev/null 2>&1 || true
+  new_pane=""
+  if [[ "$i" -eq 1 ]]; then
+    new_pane="$(tmux split-window -h -p 35 -t "$VIEW_SESSION":agents -P -F '#{pane_id}' "$(attach_cmd "$agent")")"
+  else
+    new_pane="$(tmux split-window -v -t "$VIEW_SESSION":agents.1 -P -F '#{pane_id}' "$(attach_cmd "$agent")")"
+  fi
+  tmux select-layout -t "$VIEW_SESSION":agents main-vertical >/dev/null 2>&1 || true
+  tmux set-window-option -t "$VIEW_SESSION":agents main-pane-width 65% >/dev/null 2>&1 || true
+  if [[ -n "$new_pane" ]]; then
+    tmux select-pane -t "$new_pane" -T "$agent" >/dev/null 2>&1 || true
+  fi
 done
 
 # 見やすさ調整

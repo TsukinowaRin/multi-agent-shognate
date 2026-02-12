@@ -67,6 +67,22 @@ bash scripts/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
 - `--template shogun_only|goza_room`
   - 表示テンプレートを選択（デフォルト: `shogun_only`）。
 
+## 構成CUI（足軽人数・CLI割り当て）
+
+`config/settings.yaml` を対話で更新するCUIを用意しています。
+
+```bash
+bash scripts/configure_agents.sh
+```
+
+設定できる内容:
+
+- `topology.active_ashigaru`（足軽人数/配備）
+- `cli.default`
+- `cli.agents`（`shogun` / `karo` / `ashigaruN` ごとの `type` / `model`）
+- `multiplexer.default`
+- `startup.template`
+
 ## 役職ごとのタブ色（御座の間ビュー）
 
 御座の間ビュー（tmux）では、枠線色を役職別に分けます。本文の文字色は変更しません。
@@ -110,6 +126,7 @@ bash scripts/goza_tmux.sh --template goza_room
 ```
 
 `tmux` モードでも `config/settings.yaml` の `topology.active_ashigaru` に追従して、家老+指定足軽人数で起動します。
+起動バナーの「足軽配備人数」表示も `topology.active_ashigaru` の人数に連動します。
 
 ## 設定ファイル
 

@@ -279,3 +279,40 @@
   - `bash -n scripts/goza_no_ma.sh shutsujin_departure.sh first_setup.sh` → PASS
   - `bash scripts/goza_no_ma.sh --help` で `--template` が表示されることを確認。
   - `ls templates/multiplexer/*.yaml` でテンプレートファイル存在を確認。
+
+## 2026-02-12 (テスト優先設定へ切替)
+- 要求:
+  - `settings.yaml` はエージェント側で変更し、ユーザーはテスト実行だけしたい。
+- 実装:
+  - `config/settings.yaml` の `startup.template` を `shogun_only` から `goza_room` に変更。
+  - `docs/REQS.md` に上記要求と受け入れ条件を追記。
+- 検証:
+  - `rg -n "startup:|template: goza_room" config/settings.yaml` で設定変更を確認。
+
+## 2026-02-12 (構成CUI + zellij表示改善の仕上げ)
+- 要求:
+  - 足軽人数・役職別CLIを簡単に編集できるCUI/GUIを追加したい。
+  - 起動時の足軽人数表示を構成に連動させたい。
+  - zellij御座の間ビューを均等4分割ではなく将軍優先表示にしたい。
+  - zellij起動時にもtmux相当のAA演出を表示したい。
+- 実装:
+  - `scripts/configure_agents.sh` を追加し、対話形式で以下を更新可能化。
+    - `multiplexer.default`
+    - `startup.template`
+    - `topology.active_ashigaru`
+    - `cli.default`
+    - `cli.agents.<role>.{type,model}`
+  - `scripts/configure_agents.sh` の出力混入バグを修正。
+    - `prompt_choice` / `prompt_model` の案内表示を標準エラーへ分離し、`settings.yaml` へのゴミ文字混入を防止。
+  - `scripts/goza_no_ma.sh` の zellij `goza_room` レイアウトを将軍優先に変更（`main-pane-width 65%`）。
+  - `scripts/goza_no_ma.sh` で分割直後の `pane_id` を使ってタイトル設定するよう改善し、枠色適用の安定性を向上。
+  - `scripts/shutsujin_zellij.sh` / `shutsujin_departure.sh` のバナー人数表示を `ACTIVE_ASHIGARU_COUNT` 連動に統一。
+  - `scripts/shutsujin_zellij.sh` / `shutsujin_departure.sh` の `clear` を非TTY環境で失敗しないよう修正（`set -e` で即死しないようにした）。
+  - `README.md` に `scripts/configure_agents.sh` の使い方と人数連動表示を追記。
+  - `docs/REQS.md` に本要求の追補、`docs/INDEX.md` の更新日を追記。
+- 検証:
+  - `bash -n scripts/configure_agents.sh scripts/goza_no_ma.sh scripts/shutsujin_zellij.sh shutsujin_departure.sh` → PASS
+  - `printf ... | bash scripts/configure_agents.sh` → `config/settings.yaml` が正しいYAMLで更新されることを確認
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 107 tests PASS（1 testは環境依存で skip 表示あり）
+  - `bash scripts/shutsujin_zellij.sh -s` → 本環境は snap版zellij制約で実機セッション作成失敗（`snap-confine ... permission denied`）だが、AA表示と人数連動表示は出力確認
+  - `bash scripts/goza_no_ma.sh --mux tmux --template goza_room -s --no-attach` → 本環境tmuxソケット制約で失敗（`error connecting to /tmp/tmux-1000/default`）

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # WSL再起動後のワンコマンド起動 + 分割ビュー
-# - バックエンド: zellij セッション群（shogun/karo/ashigaru*）
-# - 表示: tmux の分割ペインで各 zellij session に attach
+# - バックエンド: tmux または zellij
+# - 表示: tmux または zellij（zellij UI + tmux backend も対応）
 
 set -euo pipefail
 
@@ -15,6 +15,7 @@ SETUP_ONLY=false
 VIEW_ONLY=false
 NO_ATTACH=false
 MUX_MODE="${MUX_MODE:-zellij}"
+UI_MODE="${UI_MODE:-}"
 VIEW_TEMPLATE="${VIEW_TEMPLATE:-}"
 PASS_THROUGH=()
 
@@ -27,7 +28,8 @@ Options:
   -s, --setup-only   バックエンドは setup-only で起動（CLI未起動）
   --view-only        バックエンド起動をスキップし、ビューのみ起動
   --no-attach        tmuxへattachせず、ビュー作成だけ行う（検証向け）
-  --mux MODE         起動モードを指定（zellij|tmux, default: zellij）
+  --mux MODE         バックエンド起動モード（zellij|tmux, default: zellij）
+  --ui MODE          表示モード（zellij|tmux, default: muxと同じ）
   --template NAME    表示テンプレート（shogun_only|goza_room, default: settings）
   --session NAME     tmux ビューセッション名（default: goza-no-ma）
   -h, --help         このヘルプ
@@ -35,6 +37,7 @@ Options:
 Examples:
   bash scripts/goza_no_ma.sh --mux zellij
   bash scripts/goza_no_ma.sh --mux tmux
+  bash scripts/goza_no_ma.sh --mux tmux --ui zellij
   bash scripts/goza_no_ma.sh --template shogun_only
   bash scripts/goza_no_ma.sh --template goza_room
   bash scripts/goza_no_ma.sh -s --mux zellij
@@ -62,6 +65,15 @@ while [[ $# -gt 0 ]]; do
         shift 2
       else
         echo "[ERROR] --mux には zellij または tmux を指定してください" >&2
+        exit 1
+      fi
+      ;;
+    --ui)
+      if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+        UI_MODE="$2"
+        shift 2
+      else
+        echo "[ERROR] --ui には zellij または tmux を指定してください" >&2
         exit 1
       fi
       ;;
@@ -103,6 +115,14 @@ done
 
 if [[ "$MUX_MODE" != "zellij" && "$MUX_MODE" != "tmux" ]]; then
   echo "[ERROR] --mux は zellij または tmux を指定してください（指定値: $MUX_MODE）" >&2
+  exit 1
+fi
+
+if [[ -z "$UI_MODE" ]]; then
+  UI_MODE="$MUX_MODE"
+fi
+if [[ "$UI_MODE" != "zellij" && "$UI_MODE" != "tmux" ]]; then
+  echo "[ERROR] --ui は zellij または tmux を指定してください（指定値: $UI_MODE）" >&2
   exit 1
 fi
 
@@ -148,8 +168,8 @@ if ! command -v tmux >/dev/null 2>&1; then
   echo "[ERROR] tmux が見つかりません。ビュー作成に tmux が必要です。" >&2
   exit 1
 fi
-if [[ "$MUX_MODE" == "zellij" ]] && ! command -v zellij >/dev/null 2>&1; then
-  echo "[ERROR] zellij が見つかりません。zellij モードでは zellij が必要です。" >&2
+if [[ "$MUX_MODE" == "zellij" || "$UI_MODE" == "zellij" ]] && ! command -v zellij >/dev/null 2>&1; then
+  echo "[ERROR] zellij が見つかりません。zellij backend/UI では zellij が必要です。" >&2
   exit 1
 fi
 
@@ -165,6 +185,55 @@ fi
 tmux_attach_session_cmd() {
   local session="$1"
   printf 'cd "%s" && TMUX= tmux attach-session -t %q || (echo "[WARN] attach失敗: %s"; exec bash)' "$ROOT_DIR" "$session" "$session"
+}
+
+ZELLIJ_UI_SESSION="${ZELLIJ_UI_SESSION:-goza-no-ma-ui}"
+
+zellij_session_exists() {
+  local session="$1"
+  zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -qx "$session"
+}
+
+zellij_create_ui_session() {
+  local session="$1"
+  if zellij_session_exists "$session"; then
+    zellij delete-session "$session" --force >/dev/null 2>&1 || zellij kill-session "$session" >/dev/null 2>&1 || true
+  fi
+  if zellij attach --create-background "$session" >/dev/null 2>&1; then
+    return 0
+  fi
+  zellij attach --create-background --session "$session" >/dev/null 2>&1
+}
+
+zellij_send_line() {
+  local session="$1"
+  local text="$2"
+  zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
+  zellij -s "$session" action write 13 >/dev/null 2>&1 || \
+  zellij -s "$session" action write 10 >/dev/null 2>&1 || \
+  zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
+}
+
+zellij_ui_attach_tmux_target() {
+  local tmux_target="$1"
+  local pane_title="$2"
+
+  if ! zellij_create_ui_session "$ZELLIJ_UI_SESSION"; then
+    echo "[ERROR] zellij UI session の作成に失敗しました: $ZELLIJ_UI_SESSION" >&2
+    exit 1
+  fi
+  sleep 0.2
+  zellij -s "$ZELLIJ_UI_SESSION" action rename-tab "$pane_title" >/dev/null 2>&1 || true
+  zellij_send_line "$ZELLIJ_UI_SESSION" "cd \"$ROOT_DIR\" && TMUX= tmux attach-session -t \"$tmux_target\" || (echo \"[WARN] attach失敗: $tmux_target\"; exec bash)" || \
+    echo "[WARN] zellij UI へ attach コマンド送信に失敗しました" >&2
+
+  if [[ "$NO_ATTACH" = true ]]; then
+    echo "[INFO] zellij UI session created: $ZELLIJ_UI_SESSION"
+    echo "       attach: zellij attach $ZELLIJ_UI_SESSION"
+    return 0
+  fi
+  zellij attach "$ZELLIJ_UI_SESSION"
+  return 0
 }
 
 tmux_new_view_session() {
@@ -219,47 +288,56 @@ tmux_split_down_pane() {
 }
 
 if [[ "$MUX_MODE" == "tmux" ]]; then
+  tmux_target=""
+
   if [[ "$VIEW_TEMPLATE" == "shogun_only" ]]; then
-    if [[ "$NO_ATTACH" = true ]]; then
-      echo "[INFO] tmux mode started (template: shogun_only)."
-      echo "       attach shogun: tmux attach-session -t shogun"
-      exit 0
+    tmux_target="shogun"
+  else
+    # template: goza_room
+    if ! tmux has-session -t shogun 2>/dev/null || ! tmux has-session -t multiagent 2>/dev/null; then
+      echo "[ERROR] shogun または multiagent セッションが存在しません。" >&2
+      echo "        先に: bash shutsujin_departure.sh -s" >&2
+      exit 1
     fi
-    tmux attach-session -t shogun
+
+    if ! tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
+      tmux_new_view_session "$VIEW_SESSION" "overview" "$(tmux_attach_session_cmd shogun)"
+      # 将軍を広く見せる（左65% / 右35%）
+      tmux_split_right_ratio_run "$VIEW_SESSION":overview "$(tmux_attach_session_cmd multiagent)"
+      tmux select-layout -t "$VIEW_SESSION":overview main-vertical >/dev/null 2>&1 || true
+      tmux set-window-option -t "$VIEW_SESSION":overview main-pane-width 65% >/dev/null 2>&1 || true
+      tmux select-pane -t "$VIEW_SESSION":overview.0 -T "shogun"
+      tmux select-pane -t "$VIEW_SESSION":overview.1 -T "multiagent"
+    fi
+    tmux_target="$VIEW_SESSION"
+  fi
+
+  if [[ "$UI_MODE" == "zellij" ]]; then
+    if [[ "$VIEW_TEMPLATE" == "goza_room" ]]; then
+      echo "[INFO] zellij UI + tmux backend で表示します（tmux target: $tmux_target）。"
+      zellij_ui_attach_tmux_target "$tmux_target" "御座の間 (tmux-core)"
+    else
+      echo "[INFO] zellij UI + tmux backend で表示します（tmux target: $tmux_target）。"
+      zellij_ui_attach_tmux_target "$tmux_target" "将軍本陣 (tmux-core)"
+    fi
     exit 0
   fi
-
-  # template: goza_room
-  if ! tmux has-session -t shogun 2>/dev/null || ! tmux has-session -t multiagent 2>/dev/null; then
-    echo "[ERROR] shogun または multiagent セッションが存在しません。" >&2
-    echo "        先に: bash shutsujin_departure.sh -s" >&2
-    exit 1
-  fi
-
-  if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
-    if [[ "$NO_ATTACH" = true ]]; then
-      echo "[INFO] tmux view session already exists: $VIEW_SESSION"
-      echo "       attach: tmux attach -t $VIEW_SESSION"
-      exit 0
-    fi
-    tmux attach -t "$VIEW_SESSION"
-    exit 0
-  fi
-
-  tmux_new_view_session "$VIEW_SESSION" "overview" "$(tmux_attach_session_cmd shogun)"
-  # 将軍を広く見せる（左65% / 右35%）
-  tmux_split_right_ratio_run "$VIEW_SESSION":overview "$(tmux_attach_session_cmd multiagent)"
-  tmux select-layout -t "$VIEW_SESSION":overview main-vertical >/dev/null 2>&1 || true
-  tmux set-window-option -t "$VIEW_SESSION":overview main-pane-width 65% >/dev/null 2>&1 || true
-  tmux select-pane -t "$VIEW_SESSION":overview.0 -T "shogun"
-  tmux select-pane -t "$VIEW_SESSION":overview.1 -T "multiagent"
 
   if [[ "$NO_ATTACH" = true ]]; then
-    echo "[INFO] tmux view session created: $VIEW_SESSION"
-    echo "       attach: tmux attach -t $VIEW_SESSION"
+    if [[ "$VIEW_TEMPLATE" == "goza_room" ]]; then
+      echo "[INFO] tmux view session ready: $tmux_target"
+      echo "       attach: tmux attach -t $tmux_target"
+    else
+      echo "[INFO] tmux mode started (template: shogun_only)."
+      echo "       attach shogun: tmux attach-session -t shogun"
+    fi
     exit 0
   fi
-  tmux attach -t "$VIEW_SESSION"
+  if [[ "$VIEW_TEMPLATE" == "goza_room" ]]; then
+    tmux attach -t "$tmux_target"
+  else
+    tmux attach-session -t shogun
+  fi
   exit 0
 fi
 

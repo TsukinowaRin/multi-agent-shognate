@@ -912,32 +912,36 @@ NINJA_EOF
     pkill -f "inotifywait.*queue/inbox" 2>/dev/null || true
     sleep 1
 
-    # 将軍のwatcher（ntfy受信の自動起床に必要）
-    # 安全モード: phase2/phase3エスカレーションは無効、timeout周期処理も無効（event-drivenのみ）
-    _shogun_watcher_cli=$(tmux show-options -p -t "shogun:main" -v @agent_cli 2>/dev/null || echo "claude")
-    nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-        MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" shogun "shogun:main" "$_shogun_watcher_cli" "tmux" \
-        >> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" 2>&1 &
-    disown
-
-    # 家老のwatcher
-    _karo_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${PANE_BASE}" -v @agent_cli 2>/dev/null || echo "claude")
-    nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" karo "multiagent:agents.${PANE_BASE}" "$_karo_watcher_cli" "tmux" \
-        >> "$SCRIPT_DIR/logs/inbox_watcher_karo.log" 2>&1 &
-    disown
-
-    # 足軽のwatcher（active_ashigaruのみ）
-    for i in "${!ACTIVE_ASHIGARU[@]}"; do
-        _agent="${ACTIVE_ASHIGARU[$i]}"
-        p=$((PANE_BASE + i + 1))
-        _ashi_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$_agent" "multiagent:agents.${p}" "$_ashi_watcher_cli" "tmux" \
-            >> "$SCRIPT_DIR/logs/inbox_watcher_${_agent}.log" 2>&1 &
+    if command -v inotifywait >/dev/null 2>&1; then
+        # 将軍のwatcher（ntfy受信の自動起床に必要）
+        # 安全モード: phase2/phase3エスカレーションは無効、timeout周期処理も無効（event-drivenのみ）
+        _shogun_watcher_cli=$(tmux show-options -p -t "shogun:main" -v @agent_cli 2>/dev/null || echo "claude")
+        nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
+            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" shogun "shogun:main" "$_shogun_watcher_cli" "tmux" \
+            >> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" 2>&1 &
         disown
-    done
 
-    _watcher_total=$((2 + ${#ACTIVE_ASHIGARU[@]}))
-    log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
+        # 家老のwatcher
+        _karo_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${PANE_BASE}" -v @agent_cli 2>/dev/null || echo "claude")
+        nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" karo "multiagent:agents.${PANE_BASE}" "$_karo_watcher_cli" "tmux" \
+            >> "$SCRIPT_DIR/logs/inbox_watcher_karo.log" 2>&1 &
+        disown
+
+        # 足軽のwatcher（active_ashigaruのみ）
+        for i in "${!ACTIVE_ASHIGARU[@]}"; do
+            _agent="${ACTIVE_ASHIGARU[$i]}"
+            p=$((PANE_BASE + i + 1))
+            _ashi_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
+            nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$_agent" "multiagent:agents.${p}" "$_ashi_watcher_cli" "tmux" \
+                >> "$SCRIPT_DIR/logs/inbox_watcher_${_agent}.log" 2>&1 &
+            disown
+        done
+
+        _watcher_total=$((2 + ${#ACTIVE_ASHIGARU[@]}))
+        log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
+    else
+        log_info "⚠️  inotifywait 未導入のため inbox_watcher はスキップ（sudo apt install -y inotify-tools）"
+    fi
 
     # STEP 6.7 は廃止 — CLAUDE.md Session Start (step 1: tmux agent_id) で各自が自律的に
     # 自分のinstructions/*.mdを読み込む。検証済み (2026-02-08)。

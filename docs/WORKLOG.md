@@ -374,3 +374,26 @@
   - `bats tests/unit/test_send_wakeup.bats --timing` → 36 tests PASS
   - `bats tests/unit/test_cli_adapter.bats --timing` → 71 tests PASS
   - 実機tmux/zellij表示確認は本実行環境制約のため未実施（ユーザーWSLで確認が必要）。
+
+## 2026-02-12 (zellij操作デフォルト + tmux内部運用へ切替)
+- 要求:
+  - zellijの操作/UIを使いたい。
+  - 内部はtmuxで動かし、tmux派ユーザーは従来どおりtmux直接運用できるようにしたい。
+- 実装:
+  - `scripts/goza_zellij.sh` を `--mux tmux --ui zellij` 呼び出しへ変更（デフォルト導線を「zellij UI + tmux backend」に切替）。
+  - `scripts/goza_tmux.sh` を `--mux tmux --ui tmux` 明示呼び出しに変更。
+  - `scripts/goza_no_ma.sh` に `--ui zellij|tmux` を追加。
+    - `--mux` をバックエンド、`--ui` を表示レイヤーとして分離。
+    - `--mux tmux --ui zellij` 時は tmux 側で `shogun/multiagent` または `goza-no-ma` を準備し、zellij UI セッション（`goza-no-ma-ui`）から tmux attach を実行。
+  - `scripts/goza_no_ma.sh` に zellij UI セッション作成・コマンド投入ヘルパーを追加。
+    - `zellij_create_ui_session`
+    - `zellij_send_line`
+    - `zellij_ui_attach_tmux_target`
+  - `scripts/shutsujin_zellij.sh` / `shutsujin_departure.sh` に `inotifywait` 事前チェックを追加。
+    - 未導入時は watcher を起動せず、導入コマンドを明示して継続。
+  - `README.md` と `docs/REQS.md` を新運用モデルに合わせて更新。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh scripts/goza_zellij.sh scripts/goza_tmux.sh scripts/shutsujin_zellij.sh shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_send_wakeup.bats --timing` → 36 PASS
+  - `bats tests/unit/test_cli_adapter.bats --timing` → 71 PASS
+  - `bash scripts/goza_no_ma.sh --help` で `--ui` 表示を確認。

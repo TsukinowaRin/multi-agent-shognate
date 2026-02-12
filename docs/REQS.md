@@ -264,3 +264,17 @@
    - 期待結果: 役職別のタブ色分岐が `pane-border-format` に実装されている。
 2. コマンド: `rg -n "action write 13|action write 10|write-chars \\$'\\\\n'" scripts/shutsujin_zellij.sh scripts/inbox_watcher.sh`
    - 期待結果: zellij Enter送信の互換フォールバックが実装されている。
+
+## 追補（2026-02-12: zellij操作デフォルト + tmux内部運用）
+### 要求
+1. デフォルト運用は zellij UI とし、内部オーケストレーションは tmux で動作させる。
+2. tmux派ユーザー向けに、tmux直接運用導線を維持する。
+3. `inotifywait` 未導入時に watcher が即死し続ける問題を起動時に明示し、不要な起動を抑止する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `sed -n '1,40p' scripts/goza_zellij.sh scripts/goza_tmux.sh`
+   - 期待結果: `goza_zellij.sh` は `--mux tmux --ui zellij`、`goza_tmux.sh` は `--mux tmux --ui tmux` を呼ぶ。
+2. コマンド: `rg -n "--ui|zellij UI \\+ tmux backend|zellij_ui_attach_tmux_target" scripts/goza_no_ma.sh README.md`
+   - 期待結果: `--ui` オプションと zellij UI + tmux backend 導線が実装・文書化されている。
+3. コマンド: `rg -n "inotifywait 未導入|command -v inotifywait" shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+   - 期待結果: watcher 起動前に inotifywait 前提チェックが追加されている。

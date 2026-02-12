@@ -309,14 +309,18 @@ if [ "$SETUP_ONLY" = false ]; then
     log_info "  └─ $agent: $cli_type"
   done
 
-  log_info "📬 inbox_watcher を起動中 (MUX_TYPE=zellij)"
-  for agent in "${AGENTS[@]}"; do
-    cli_type=$(awk -F '\t' -v a="$agent" '$1==a{print $2}' queue/runtime/agent_cli.tsv | tail -n1)
-    if ! pgrep -f "scripts/inbox_watcher.sh ${agent} ${agent} .* zellij" >/dev/null 2>&1; then
-      nohup env MUX_TYPE=zellij bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$agent" "$agent" "$cli_type" "zellij" \
-        >> "$SCRIPT_DIR/logs/inbox_watcher_${agent}.log" 2>&1 &
-    fi
-  done
+  if command -v inotifywait >/dev/null 2>&1; then
+    log_info "📬 inbox_watcher を起動中 (MUX_TYPE=zellij)"
+    for agent in "${AGENTS[@]}"; do
+      cli_type=$(awk -F '\t' -v a="$agent" '$1==a{print $2}' queue/runtime/agent_cli.tsv | tail -n1)
+      if ! pgrep -f "scripts/inbox_watcher.sh ${agent} ${agent} .* zellij" >/dev/null 2>&1; then
+        nohup env MUX_TYPE=zellij bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$agent" "$agent" "$cli_type" "zellij" \
+          >> "$SCRIPT_DIR/logs/inbox_watcher_${agent}.log" 2>&1 &
+      fi
+    done
+  else
+    log_info "⚠️  inotifywait 未導入のため inbox_watcher はスキップ（sudo apt install -y inotify-tools）"
+  fi
 
   log_success "✅ zellij モードで起動完了"
 else

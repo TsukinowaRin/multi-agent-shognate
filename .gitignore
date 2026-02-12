@@ -92,6 +92,7 @@
 !scripts/goza_zellij.sh
 !scripts/goza_tmux.sh
 !scripts/configure_agents.sh
+!scripts/history_book.sh
 
 
 # SayTask (sample template only, not actual data)
@@ -134,3 +135,8 @@
 !.github/
 !.github/workflows/
 !.github/workflows/*.yml
+
+# Added by ashigaru2 to resolve deadlock
+# The queue directory is essential for agent communication
+!queue/
+!queue/**

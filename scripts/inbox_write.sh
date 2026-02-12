@@ -90,6 +90,9 @@ except Exception as e:
 
     ) 200>"$LOCKFILE"; then
         # Success
+        if [ -x "$SCRIPT_DIR/scripts/history_book.sh" ]; then
+            bash "$SCRIPT_DIR/scripts/history_book.sh" >/dev/null 2>&1 || true
+        fi
         exit 0
     else
         # Lock timeout or error

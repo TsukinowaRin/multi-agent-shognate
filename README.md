@@ -113,6 +113,10 @@ bash scripts/configure_agents.sh
 
 人間が将軍とだけ会話する運用なら、起動後はそのまま左の将軍ペインに入力すれば動作します。
 
+補足:
+- zellij下部の操作バー（キーガイド）は `goza_no_ma.sh` のlayoutで表示されます。
+- 画面下にガイドが見えない場合は、`bash scripts/goza_zellij.sh --view-only` で再接続してください。
+
 ## クイックスタート
 
 ### 前提
@@ -167,10 +171,10 @@ cli:
   agents:
     ashigaru1:
       type: gemini
-      model: gemini-2.5-pro
+      model: gemini-3-pro
     ashigaru2:
       type: gemini
-      model: gemini-2.5-pro
+      model: gemini-3-pro
 ```
 
 ## CLI割り当て例（Codex / Gemini / LocalAPI）
@@ -189,7 +193,7 @@ cli:
       model: gpt-5
     ashigaru1:
       type: gemini
-      model: gemini-2.5-pro
+      model: gemini-3-pro
     ashigaru2:
       type: localapi
       model: qwen2.5-coder
@@ -212,6 +216,15 @@ bash scripts/goza_zellij.sh
 
 ```bash
 zellij list-sessions -n
+```
+
+## 歴史書（会話履歴要約）
+
+人間向け要約は `queue/history/rekishi_book.md` に自動生成されます。
+
+```bash
+bash scripts/history_book.sh
+sed -n '1,80p' queue/history/rekishi_book.md
 ```
 
 ## トラブルシュート

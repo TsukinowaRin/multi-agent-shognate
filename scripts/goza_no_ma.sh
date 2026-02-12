@@ -213,6 +213,15 @@ zellij_ui_layout_file() {
   tab_title_escaped="$(kdl_escape "$tab_title")"
   cat > "$layout_file" <<EOF
 layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar";
+        }
+        children
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar";
+        }
+    }
     tab name="${tab_title_escaped}" {
         pane name="${pane_name_escaped}" {
             command "bash";

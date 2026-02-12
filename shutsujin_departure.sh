@@ -113,6 +113,9 @@ send_startup_bootstrap_tmux() {
     local role_instruction_file=""
     local optimized_instruction_file=""
     local startup_msg=""
+    local lang_rule=""
+    local event_rule=""
+    local report_rule=""
 
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
@@ -134,11 +137,14 @@ send_startup_bootstrap_tmux() {
 
     local linkage_rule
     linkage_rule="$(role_linkage_directive "$agent_id")"
+    lang_rule="$(language_directive)"
+    event_rule="$(event_driven_directive "$agent_id")"
+    report_rule="$(reporting_chain_directive "$agent_id")"
 
     if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
-        startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、次に ${optimized_instruction_file} を読んで ${cli_type} 向け手順差分を適用せよ。${linkage_rule} 読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、続けて ${optimized_instruction_file} を読んで ${cli_type} 向け差分を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
     else
-        startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${linkage_rule} 読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
     fi
 
     tmux send-keys -t "$pane_target" "$startup_msg"
@@ -171,6 +177,47 @@ role_linkage_directive() {
             ;;
         *)
             echo "連携順序: 将軍→家老→足軽の指揮系統を順守せよ。"
+            ;;
+    esac
+}
+
+language_directive() {
+    if [ "${LANG_SETTING:-ja}" = "ja" ]; then
+        echo "言語規則: 以後の応答は日本語（戦国口調）で統一せよ。"
+    else
+        echo "Language rule: Follow system language '${LANG_SETTING}' for all outputs (include all agent communication)."
+    fi
+}
+
+event_driven_directive() {
+    local agent_id="$1"
+    case "$agent_id" in
+        shogun)
+            echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、殿の次入力を待て。自分で実装作業に入るな。"
+            ;;
+        karo|ashigaru*)
+            echo "イベント駆動規則: ポーリング禁止。inboxイベント起点でタスク処理し、未読処理後は待機へ戻れ。"
+            ;;
+        *)
+            echo "イベント駆動規則: inboxイベント起点で処理し、完了後は待機へ戻れ。"
+            ;;
+    esac
+}
+
+reporting_chain_directive() {
+    local agent_id="$1"
+    case "$agent_id" in
+        shogun)
+            echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
+            ;;
+        karo)
+            echo "報告規則: タスク完了時は将軍へ要約を返し、人間へ直接報告しない。"
+            ;;
+        ashigaru*)
+            echo "報告規則: 完了報告は必ず家老へ返す。将軍・人間へ直接報告しない。"
+            ;;
+        *)
+            echo "報告規則: 指揮系統（将軍→家老→足軽）を守って報告せよ。"
             ;;
     esac
 }
@@ -763,7 +810,7 @@ if [ "$CLI_ADAPTER_LOADED" = true ]; then
                 MODEL_NAMES[$i]="Kimi"
                 ;;
             gemini)
-                _gemini_model=$(get_agent_model "$_agent" 2>/dev/null || echo "gemini-2.5-pro")
+                _gemini_model=$(get_agent_model "$_agent" 2>/dev/null || echo "gemini-3-pro")
                 MODEL_NAMES[$i]="${_gemini_model}"
                 ;;
             localapi)
@@ -908,17 +955,6 @@ if [ "$SETUP_ONLY" = false ]; then
         auto_accept_gemini_trust_prompt_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
     done
 
-    # 各エージェントへ初動命令を投入（CLI共通）
-    send_startup_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
-    send_startup_bootstrap_tmux "multiagent:agents.${PANE_BASE}" "karo" "$_karo_cli_type"
-    for i in "${!ACTIVE_ASHIGARU[@]}"; do
-        _agent="${ACTIVE_ASHIGARU[$i]}"
-        p=$((PANE_BASE + i + 1))
-        _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        send_startup_bootstrap_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
-    done
-    log_info "📜 各エージェントへ初動命令を投入（役割指示書の自動読込）"
-
     if [ "$KESSEN_MODE" = true ]; then
         log_success "✅ 決戦の陣で出陣！全軍Opus！"
     else
@@ -1047,6 +1083,18 @@ NINJA_EOF
         log_info "⚠️  一部CLIの起動確認は未完了（タイムアウト）ですが、処理を継続します"
     fi
 
+    # 各エージェントへ初動命令を投入（CLI起動確認後）
+    # 先に投入すると入力欄に残りやすいため、ready確認フェーズ後に送る。
+    send_startup_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
+    send_startup_bootstrap_tmux "multiagent:agents.${PANE_BASE}" "karo" "$_karo_cli_type"
+    for i in "${!ACTIVE_ASHIGARU[@]}"; do
+        _agent="${ACTIVE_ASHIGARU[$i]}"
+        p=$((PANE_BASE + i + 1))
+        _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
+        send_startup_bootstrap_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
+    done
+    log_info "📜 初動命令を自動送信（ready後すぐに入力可能な状態へ移行）"
+
     # ═══════════════════════════════════════════════════════════════════
     # STEP 6.6: inbox_watcher起動（全エージェント）
     # ═══════════════════════════════════════════════════════════════════
@@ -1074,7 +1122,8 @@ NINJA_EOF
 
         # 家老のwatcher
         _karo_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${PANE_BASE}" -v @agent_cli 2>/dev/null || echo "claude")
-        nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" karo "multiagent:agents.${PANE_BASE}" "$_karo_watcher_cli" "tmux" \
+        nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
+            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" karo "multiagent:agents.${PANE_BASE}" "$_karo_watcher_cli" "tmux" \
             >> "$SCRIPT_DIR/logs/inbox_watcher_karo.log" 2>&1 &
         disown
 
@@ -1083,7 +1132,8 @@ NINJA_EOF
             _agent="${ACTIVE_ASHIGARU[$i]}"
             p=$((PANE_BASE + i + 1))
             _ashi_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-            nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$_agent" "multiagent:agents.${p}" "$_ashi_watcher_cli" "tmux" \
+            nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
+                MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$_agent" "multiagent:agents.${p}" "$_ashi_watcher_cli" "tmux" \
                 >> "$SCRIPT_DIR/logs/inbox_watcher_${_agent}.log" 2>&1 &
             disown
         done
@@ -1097,6 +1147,9 @@ NINJA_EOF
     # STEP 6.7 は廃止 — CLAUDE.md Session Start (step 1: tmux agent_id) で各自が自律的に
     # 自分のinstructions/*.mdを読み込む。検証済み (2026-02-08)。
     log_info "📜 指示書読み込みは各エージェントが自律実行（CLAUDE.md Session Start）"
+    if [ -x "$SCRIPT_DIR/scripts/history_book.sh" ]; then
+        bash "$SCRIPT_DIR/scripts/history_book.sh" >/dev/null 2>&1 || true
+    fi
     echo ""
 fi
 

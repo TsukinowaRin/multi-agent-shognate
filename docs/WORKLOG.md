@@ -570,3 +570,48 @@
 - 判断メモ:
   - KDLパース失敗は layout 文字列への未エスケープ挿入が主因。`kdl_escape` 導入で再発を防止。
   - AAは視覚演出なので、まず1〜8体を安定表示する実装を優先した。
+
+## 2026-02-12 (初動自動送信 + watcher割り込み抑止 + 歴史書導入)
+- 要求:
+  - 起動直後の最初の命令を自動送信し、手動Enterなしで開始したい。
+  - `/new is disabled while a task is in progress` 系の割り込みを抑止したい。
+  - 全エージェントへ言語設定（ja/en）を反映し、イベント駆動を徹底したい。
+  - Gemini既定モデルを最新Pro系へ更新したい。
+  - 人間向け履歴要約「歴史書」を自動生成したい。
+  - zellij UI下部の操作バーを復活させたい。
+- 実装:
+  - `shutsujin_departure.sh`
+    - 初動命令を `ready:<agent>` 即時送信 + 言語規則 + イベント駆動 + 報告連鎖込みに改修。
+    - 初動命令の投入タイミングを「CLI起動確認後」へ移動（入力欄残留を抑止）。
+    - watcher起動envを将軍/家老/足軽すべて `ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0` に統一。
+    - 起動時に `scripts/history_book.sh` を呼び出すよう追加。
+  - `scripts/shutsujin_zellij.sh`
+    - 同等の初動命令（ready即時送信・言語・イベント駆動・報告連鎖）へ改修。
+    - CLI起動後 `sleep 2` を挟んでから初動命令を送信。
+    - watcher起動envを `ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0` に統一。
+    - 起動時に `scripts/history_book.sh` を呼び出すよう追加。
+  - `scripts/inbox_watcher.sh`
+    - Codexの `/clear` について、`source_context=escalation` 時は `/new` 変換を抑止。
+    - special message経由のみ `/clear -> /new` を許可。
+  - `scripts/goza_no_ma.sh`
+    - zellij layoutへ `default_tab_template` + `zellij:tab-bar` / `zellij:status-bar` pluginを追加。
+  - `scripts/history_book.sh`（新規）
+    - `queue/shogun_to_karo.yaml` / `queue/tasks` / `queue/reports` / `queue/inbox` から
+      `queue/history/rekishi_book.md` を生成。
+  - `scripts/inbox_write.sh`
+    - inbox書込成功時に `history_book.sh` を自動実行。
+  - `lib/cli_adapter.sh` / `config/settings.yaml` / `README.md` / `tests/unit/test_cli_adapter.bats`
+    - Gemini既定モデルを `gemini-3-pro` へ更新。
+  - `scripts/configure_agents.sh`
+    - gemini/kimi/localapi でCLI別の既定モデル候補を提示する補助関数を追加。
+- Docs:
+  - `docs/REQS.md` に本件追補を追加。
+  - `docs/EXECPLAN_2026-02-12_startup_event_driven.md` を新規追加し進捗更新。
+  - `docs/INDEX.md` の Plans にExecPlanを登録。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/inbox_watcher.sh scripts/inbox_write.sh scripts/history_book.sh scripts/configure_agents.sh lib/cli_adapter.sh` → PASS
+  - `bash scripts/history_book.sh && sed -n '1,80p' queue/history/rekishi_book.md` → 生成PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 108 tests PASS（環境依存skip 1）
+- 判断メモ:
+  - 割り込み問題の主因はwatcherエスカレーションだったため、まず既定で無効化して対話安定性を優先。
+  - zellij layoutの実機表示確認は、snap権限の都合でこの実行環境では不可。ユーザーWSL実機で確認が必要。

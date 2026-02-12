@@ -386,9 +386,9 @@ get_agent_model() {
             ;;
         gemini)
             case "$agent_id" in
-                shogun|karo)    echo "gemini-2.5-pro" ;;
-                ashigaru*)      echo "gemini-2.5-pro" ;;
-                *)              echo "gemini-2.5-pro" ;;
+                shogun|karo)    echo "gemini-3-pro" ;;
+                ashigaru*)      echo "gemini-3-pro" ;;
+                *)              echo "gemini-3-pro" ;;
             esac
             ;;
         localapi)

@@ -374,6 +374,7 @@ PY
 # 実行時にtmux paneの @agent_cli を再確認し、ドリフト時はpane値を優先する。
 send_cli_command() {
     local cmd="$1"
+    local source_context="${2:-manual}"
     local effective_cli
     effective_cli=$(get_effective_cli_type)
 
@@ -382,8 +383,12 @@ send_cli_command() {
     case "$effective_cli" in
         codex)
             # Codex: /clear不存在→/newで新規会話開始, /model非対応→スキップ
-            # /clearはCodexでは未定義コマンドでCLI終了してしまうため、/newに変換
+            # escalation経由の/clearは対話中断を招くため抑止し、明示clear_command時のみ/new変換する。
             if [[ "$cmd" == "/clear" ]]; then
+                if [[ "$source_context" == "escalation" ]]; then
+                    echo "[$(date)] [SKIP] Codex escalation /clear suppressed for $AGENT_ID (avoid /new interruption)" >&2
+                    return 0
+                fi
                 echo "[$(date)] [SEND-KEYS] Codex /clear→/new: starting new conversation for $AGENT_ID" >&2
                 mux_send_text "/new"
                 sleep 0.3
@@ -636,7 +641,7 @@ for s in data.get('specials', []):
                 clear_seen=1
             fi
             cmd=$(normalize_special_command "$msg_type" "$msg_content")
-            [ -n "$cmd" ] && send_cli_command "$cmd"
+            [ -n "$cmd" ] && send_cli_command "$cmd" "special"
         done <<< "$specials"
     fi
 
@@ -692,7 +697,7 @@ for s in data.get('specials', []):
             # Phase 3 (4+ min): /clear (throttled to once per 5 min)
             if [ "$LAST_CLEAR_TS" -lt "$((now - ESCALATE_COOLDOWN))" ]; then
                 echo "[$(date)] ESCALATION Phase 3: Agent $AGENT_ID unresponsive for ${age}s. Sending /clear." >&2
-                send_cli_command "/clear"
+                send_cli_command "/clear" "escalation"
                 LAST_CLEAR_TS=$now
                 FIRST_UNREAD_SEEN=0  # Reset — will re-detect on next cycle
             else

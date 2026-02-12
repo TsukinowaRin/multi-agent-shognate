@@ -364,3 +364,25 @@
    - 期待結果: zellij layout 生成時にKDLエスケープ処理がある。
 3. コマンド: `bash -n scripts/goza_no_ma.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh`
    - 期待結果: 構文エラーなし。
+
+## 追補（2026-02-12: 初動自動送信・イベント駆動安定化・言語統一）
+### 要求
+1. 起動直後の最初の命令は、ユーザー手動Enterなしで自動送信されること（Ready後すぐ人間が入力できる状態）。
+2. Gemini既定モデルを最新Pro系へ更新すること（`gemini-2.5-pro` 固定を廃止）。
+3. 全エージェント運用をイベント駆動優先とし、watcherの過剰エスカレーション（`/new` 割り込み）を抑止すること。
+4. システム言語（`config/settings.yaml` の `language`）を、将軍/家老/足軽の全初動命令に反映すること。
+5. 家老→将軍→人間の報告フロー、および「将軍は原則家老へ委譲」を初動命令へ明示すること。
+6. 人間向けの履歴要約「歴史書」を自動生成すること。
+7. zellij UI（tmux backend表示）で下部操作バー（status/help）を表示し、操作導線を復元すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "send_startup_bootstrap_tmux|language_directive|event_driven_directive|ready:" shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+   - 期待結果: 初動命令に言語指定・イベント駆動指定・ready応答指示が含まれている。
+2. コマンド: `rg -n "ASW_DISABLE_ESCALATION=1|ASW_PROCESS_TIMEOUT=0" shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+   - 期待結果: watcher起動時にエスカレーション抑止設定が適用される。
+3. コマンド: `rg -n "gemini-3-pro|latest pro|gemini model" lib/cli_adapter.sh config/settings.yaml README.md`
+   - 期待結果: Gemini既定モデル・設定例が最新Pro系へ更新される。
+4. コマンド: `bash scripts/history_book.sh && sed -n '1,80p' queue/history/rekishi_book.md`
+   - 期待結果: 歴史書が生成され、直近のcmd/タスク/報告要約が人間可読で記録される。
+5. コマンド: `rg -n "default_tab_template|zellij:status-bar|zellij:tab-bar" scripts/goza_no_ma.sh`
+   - 期待結果: zellij UI layoutにstatus/tab bar pluginが含まれる。

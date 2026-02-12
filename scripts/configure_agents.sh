@@ -120,6 +120,16 @@ prompt_model() {
   fi
 }
 
+default_model_for_cli() {
+  local cli="$1"
+  case "$cli" in
+    gemini) echo "gemini-3-pro" ;;
+    kimi) echo "k2.5" ;;
+    localapi) echo "local-model" ;;
+    *) echo "" ;;
+  esac
+}
+
 default_language="$(read_current_value "language" "ja")"
 default_shell="$(read_current_value "shell" "bash")"
 default_mux="$(read_current_multiplexer)"
@@ -150,16 +160,16 @@ if ! [[ "$ashigaru_count" =~ ^[1-8]$ ]]; then
 fi
 
 shogun_cli="$(prompt_choice "shogun の CLI を選択" "$cli_default" "codex" "gemini" "claude" "localapi" "kimi" "copilot")"
-shogun_model="$(prompt_model "shogun" "$shogun_cli" "")"
+shogun_model="$(prompt_model "shogun" "$shogun_cli" "$(default_model_for_cli "$shogun_cli")")"
 karo_cli="$(prompt_choice "karo の CLI を選択" "$cli_default" "codex" "gemini" "claude" "localapi" "kimi" "copilot")"
-karo_model="$(prompt_model "karo" "$karo_cli" "")"
+karo_model="$(prompt_model "karo" "$karo_cli" "$(default_model_for_cli "$karo_cli")")"
 
 declare -a ASHI_CLI
 declare -a ASHI_MODEL
 for ((i=1; i<=ashigaru_count; i++)); do
   role="ashigaru${i}"
   ASHI_CLI[$i]="$(prompt_choice "${role} の CLI を選択" "$cli_default" "codex" "gemini" "claude" "localapi" "kimi" "copilot")"
-  ASHI_MODEL[$i]="$(prompt_model "${role}" "${ASHI_CLI[$i]}" "")"
+  ASHI_MODEL[$i]="$(prompt_model "${role}" "${ASHI_CLI[$i]}" "$(default_model_for_cli "${ASHI_CLI[$i]}")")"
 done
 
 {

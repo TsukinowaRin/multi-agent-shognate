@@ -311,6 +311,9 @@ send_startup_bootstrap_zellij() {
   local role_instruction_file=""
   local optimized_instruction_file=""
   local startup_msg=""
+  local lang_rule=""
+  local event_rule=""
+  local report_rule=""
 
   role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
   optimized_instruction_file="$(get_instruction_file "$agent_id" "$cli_type" 2>/dev/null || true)"
@@ -330,11 +333,14 @@ send_startup_bootstrap_zellij() {
 
   local linkage_rule
   linkage_rule="$(role_linkage_directive "$agent_id")"
+  lang_rule="$(language_directive)"
+  event_rule="$(event_driven_directive "$agent_id")"
+  report_rule="$(reporting_chain_directive "$agent_id")"
 
   if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
-    startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、次に ${optimized_instruction_file} を読んで ${cli_type} 向け手順差分を適用せよ。${linkage_rule} 読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+    startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、続けて ${optimized_instruction_file} を読んで ${cli_type} 向け差分を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
   else
-    startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${linkage_rule} 読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+    startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
   fi
 
   if ! send_line "$agent_id" "$startup_msg"; then
@@ -356,6 +362,47 @@ role_linkage_directive() {
       ;;
     *)
       echo "連携順序: 将軍→家老→足軽の指揮系統を順守せよ。"
+      ;;
+  esac
+}
+
+language_directive() {
+  if [ "${LANG_SETTING:-ja}" = "ja" ]; then
+    echo "言語規則: 以後の応答は日本語（戦国口調）で統一せよ。"
+  else
+    echo "Language rule: Follow system language '${LANG_SETTING}' for all outputs (include all agent communication)."
+  fi
+}
+
+event_driven_directive() {
+  local agent_id="$1"
+  case "$agent_id" in
+    shogun)
+      echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、殿の次入力を待て。自分で実装作業に入るな。"
+      ;;
+    karo|ashigaru*)
+      echo "イベント駆動規則: ポーリング禁止。inboxイベント起点でタスク処理し、未読処理後は待機へ戻れ。"
+      ;;
+    *)
+      echo "イベント駆動規則: inboxイベント起点で処理し、完了後は待機へ戻れ。"
+      ;;
+  esac
+}
+
+reporting_chain_directive() {
+  local agent_id="$1"
+  case "$agent_id" in
+    shogun)
+      echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
+      ;;
+    karo)
+      echo "報告規則: タスク完了時は将軍へ要約を返し、人間へ直接報告しない。"
+      ;;
+    ashigaru*)
+      echo "報告規則: 完了報告は必ず家老へ返す。将軍・人間へ直接報告しない。"
+      ;;
+    *)
+      echo "報告規則: 指揮系統（将軍→家老→足軽）を守って報告せよ。"
       ;;
   esac
 }
@@ -399,22 +446,34 @@ if [ "$SETUP_ONLY" = false ]; then
     if ! send_line "$agent" "$cli_cmd"; then
       echo "[WARN] failed to send CLI launch command to $agent ($cli_type)" >&2
     fi
-    send_startup_bootstrap_zellij "$agent" "$cli_type"
     printf "%s\t%s\n" "$agent" "$cli_type" >> queue/runtime/agent_cli.tsv
     log_info "  └─ $agent: $cli_type"
   done
+
+  # CLI起動直後の入力取りこぼしを避けるため、少し待ってから初動命令を送る。
+  sleep 2
+  for agent in "${AGENTS[@]}"; do
+    cli_type="$(awk -F '\t' -v a="$agent" '$1==a{print $2}' queue/runtime/agent_cli.tsv | tail -n1)"
+    send_startup_bootstrap_zellij "$agent" "$cli_type"
+  done
+  log_info "📜 初動命令を自動送信（ready後すぐに入力可能な状態へ移行）"
 
   if command -v inotifywait >/dev/null 2>&1; then
     log_info "📬 inbox_watcher を起動中 (MUX_TYPE=zellij)"
     for agent in "${AGENTS[@]}"; do
       cli_type=$(awk -F '\t' -v a="$agent" '$1==a{print $2}' queue/runtime/agent_cli.tsv | tail -n1)
       if ! pgrep -f "scripts/inbox_watcher.sh ${agent} ${agent} .* zellij" >/dev/null 2>&1; then
-        nohup env MUX_TYPE=zellij bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$agent" "$agent" "$cli_type" "zellij" \
+        nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
+          MUX_TYPE=zellij bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$agent" "$agent" "$cli_type" "zellij" \
           >> "$SCRIPT_DIR/logs/inbox_watcher_${agent}.log" 2>&1 &
       fi
     done
   else
     log_info "⚠️  inotifywait 未導入のため inbox_watcher はスキップ（sudo apt install -y inotify-tools）"
+  fi
+
+  if [ -x "$SCRIPT_DIR/scripts/history_book.sh" ]; then
+    bash "$SCRIPT_DIR/scripts/history_book.sh" >/dev/null 2>&1 || true
   fi
 
   log_success "✅ zellij モードで起動完了"

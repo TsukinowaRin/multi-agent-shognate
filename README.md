@@ -100,6 +100,19 @@ bash scripts/configure_agents.sh
 - この配色は `tmux` の御座の間ビュー（`goza_no_ma.sh`）で適用されます。
 - `goza_zellij.sh` 利用時は zellij UI 上で tmux画面を操作するため、役職色は tmux 側の設定が反映されます。
 
+## 操作方法（zellij表示時）
+
+`goza_zellij.sh` は「zellij UI + tmux backend」です。  
+見た目は zellij タブですが、ペイン操作は tmux 側で行います。
+
+- 起動直後のアクティブペイン: 将軍（`shogun`）
+- ペイン切替（推奨）: マウスで将軍ペインをクリック
+- ペイン切替（キーボード）:
+  - `Ctrl+b` → 矢印キー（方向移動）
+  - `Ctrl+b` → `o`（次のペイン）
+
+人間が将軍とだけ会話する運用なら、起動後はそのまま左の将軍ペインに入力すれば動作します。
+
 ## クイックスタート
 
 ### 前提

@@ -295,6 +295,19 @@ tmux_split_down_pane() {
   echo "$pane"
 }
 
+tmux_focus_shogun_for_human() {
+  local template="$1"
+  local target="$2"
+  if [[ "$template" == "goza_room" ]]; then
+    tmux select-window -t "${target}:overview" >/dev/null 2>&1 || true
+    tmux select-pane -t "${target}:overview.0" >/dev/null 2>&1 || true
+    tmux set-option -t "${target}:overview" mouse on >/dev/null 2>&1 || true
+  else
+    tmux select-window -t "shogun:main" >/dev/null 2>&1 || true
+    tmux select-pane -t "shogun:main.0" >/dev/null 2>&1 || true
+  fi
+}
+
 if [[ "$MUX_MODE" == "tmux" ]]; then
   tmux_target=""
 
@@ -319,6 +332,8 @@ if [[ "$MUX_MODE" == "tmux" ]]; then
     fi
     tmux_target="$VIEW_SESSION"
   fi
+
+  tmux_focus_shogun_for_human "$VIEW_TEMPLATE" "$tmux_target"
 
   if [[ "$UI_MODE" == "zellij" ]]; then
     if [[ "$VIEW_TEMPLATE" == "goza_room" ]]; then

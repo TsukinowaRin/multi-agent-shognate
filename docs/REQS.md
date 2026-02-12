@@ -310,3 +310,14 @@
    - 期待結果: 全エージェントへ初動命令を送る実装がある。
 2. コマンド: `rg -n "auto_accept_gemini_trust_prompt_tmux|Do you trust this folder" shutsujin_departure.sh`
    - 期待結果: Gemini trust プロンプト自動承認ロジックがある。
+
+## 追補（2026-02-12: 人間は将軍ペイン固定）
+### 要求
+1. 起動直後のアクティブペインは将軍に固定する。
+2. zellij表示時のペイン切替方法（tmux操作）をREADMEに明記する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "tmux_focus_shogun_for_human|select-pane -t .*overview.0|select-window -t .*overview" scripts/goza_no_ma.sh`
+   - 期待結果: 御座の間で将軍ペインをアクティブ化する処理がある。
+2. コマンド: `rg -n "操作方法（zellij表示時）|Ctrl\\+b|起動直後のアクティブペイン: 将軍" README.md`
+   - 期待結果: 人間向けの操作説明がREADMEにある。

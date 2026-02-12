@@ -464,3 +464,19 @@
   - `bash -n shutsujin_departure.sh` → PASS
   - `bats tests/unit/test_cli_adapter.bats --timing` → 71 PASS
   - `rg -n "auto_accept_gemini_trust_prompt_tmux|send_startup_bootstrap_tmux|初動命令を投入" shutsujin_departure.sh` で実装を確認。
+
+## 2026-02-12 (将軍ペインを起動直後アクティブ化 + 操作説明追加)
+- 要求:
+  - 人間は将軍としか会話しないため、起動直後は将軍ペインをアクティブにしたい。
+  - zellij表示時のペイン切替方法が分からないため、操作を明示したい。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `tmux_focus_shogun_for_human` を追加。
+    - `goza_room` では `goza-no-ma:overview.0`（将軍）を起動直後に選択。
+    - 併せて `goza-no-ma:overview` に `mouse on` を設定（クリック切替を有効化）。
+  - `README.md`
+    - 「操作方法（zellij表示時）」を追加。
+    - 起動直後の将軍アクティブ、`Ctrl+b + 矢印` / `Ctrl+b + o` を記載。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `rg -n "tmux_focus_shogun_for_human|overview.0|mouse on" scripts/goza_no_ma.sh` で実装確認。

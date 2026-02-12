@@ -276,6 +276,129 @@ zellij_ui_attach_tmux_target() {
   return 1
 }
 
+zellij_agent_attach_cmd() {
+  local agent="$1"
+  printf 'cd %q && ZELLIJ= zellij attach %q || (echo %q; exec bash)' \
+    "$ROOT_DIR" "$agent" "[WARN] attach失敗: $agent"
+}
+
+zellij_collect_active_agents() {
+  python3 - << 'PY'
+from pathlib import Path
+
+try:
+    import yaml
+except Exception:
+    print("shogun")
+    print("karo")
+    print("ashigaru1")
+    raise SystemExit(0)
+
+cfg = {}
+p = Path("config/settings.yaml")
+if p.exists():
+    cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+
+active = (cfg.get("topology") or {}).get("active_ashigaru") or ["ashigaru1"]
+normalized = []
+for x in active:
+    if isinstance(x, int):
+        if 1 <= x <= 8:
+            normalized.append(f"ashigaru{x}")
+        continue
+    s = str(x).strip()
+    if s.isdigit():
+        i = int(s)
+        if 1 <= i <= 8:
+            normalized.append(f"ashigaru{i}")
+    elif s.startswith("ashigaru") and s[8:].isdigit():
+        i = int(s[8:])
+        if 1 <= i <= 8:
+            normalized.append(f"ashigaru{i}")
+
+if not normalized:
+    normalized = ["ashigaru1"]
+
+agents = ["shogun", "karo"] + normalized
+for a in agents:
+    print(a)
+PY
+}
+
+zellij_pure_goza_layout_file() {
+  local tab_title="$1"
+  shift
+  local agents=("$@")
+  local layout_file="${TMPDIR:-/tmp}/zellij_pure_goza_${ZELLIJ_UI_SESSION}.kdl"
+  local tab_title_escaped
+  tab_title_escaped="$(kdl_escape "$tab_title")"
+
+  {
+    echo "layout {"
+    echo "    default_tab_template {"
+    echo "        pane size=1 borderless=true {"
+    echo "            plugin location=\"zellij:tab-bar\";"
+    echo "        }"
+    echo "        children"
+    echo "        pane size=2 borderless=true {"
+    echo "            plugin location=\"zellij:status-bar\";"
+    echo "        }"
+    echo "    }"
+    echo "    tab name=\"${tab_title_escaped}\" {"
+    local agent
+    for agent in "${agents[@]}"; do
+      local pane_name_escaped
+      local startup_cmd
+      local startup_cmd_escaped
+      pane_name_escaped="$(kdl_escape "$agent")"
+      startup_cmd="$(zellij_agent_attach_cmd "$agent")"
+      startup_cmd_escaped="$(kdl_escape "$startup_cmd")"
+      cat <<EOF
+        pane name="${pane_name_escaped}" {
+            command "bash";
+            args "-lc" "${startup_cmd_escaped}";
+        }
+EOF
+    done
+    echo "    }"
+    echo "}"
+  } > "$layout_file"
+
+  echo "$layout_file"
+}
+
+zellij_pure_attach_goza_room() {
+  local agents=("$@")
+  local layout_file
+  layout_file="$(zellij_pure_goza_layout_file "御座の間 (zellij-core)" "${agents[@]}")"
+
+  zellij delete-session "$ZELLIJ_UI_SESSION" --force >/dev/null 2>&1 || \
+    zellij kill-session "$ZELLIJ_UI_SESSION" >/dev/null 2>&1 || true
+
+  if [[ "$NO_ATTACH" = true ]]; then
+    if zellij attach --create-background "$ZELLIJ_UI_SESSION" >/dev/null 2>&1 || \
+       zellij attach --create-background --session "$ZELLIJ_UI_SESSION" >/dev/null 2>&1; then
+      echo "[INFO] pure zellij goza session created: $ZELLIJ_UI_SESSION"
+      echo "       attach: zellij attach $ZELLIJ_UI_SESSION"
+      return 0
+    fi
+    echo "[ERROR] pure zellij goza session の背景起動に失敗しました: $ZELLIJ_UI_SESSION" >&2
+    return 1
+  fi
+
+  if zellij --new-session-with-layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
+    return 0
+  fi
+  if zellij --layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
+    return 0
+  fi
+  if zellij --layout "$layout_file" attach -c "$ZELLIJ_UI_SESSION"; then
+    return 0
+  fi
+  echo "[ERROR] pure zellij 御座の間起動に失敗しました（layout: $layout_file）" >&2
+  return 1
+}
+
 tmux_new_view_session() {
   local session="$1"
   local window="$2"
@@ -411,16 +534,23 @@ if [[ "$VIEW_TEMPLATE" == "shogun_only" ]]; then
   exit 0
 fi
 
-# pure zellij (backend=zellij, ui=zellij) では tmuxビューを使わない。
-# goza_room はハイブリッド専用として案内し、将軍へ直attachする。
+# pure zellij goza_room: agent sessions を複数ペインで一括表示する。
 if [[ "$UI_MODE" == "zellij" ]]; then
-  echo "[WARN] pure zellij モードでは goza_room 俯瞰ビューは未対応です。"
-  echo "       俯瞰が必要なら: bash scripts/goza_hybrid.sh --template goza_room"
-  if [[ "$NO_ATTACH" = true ]]; then
-    echo "[INFO] pure zellij mode ready. attach: zellij attach shogun"
-    exit 0
+  mapfile -t AGENTS < <(zellij_collect_active_agents)
+  zellij_sessions="$(zellij list-sessions -n 2>/dev/null || true)"
+  VISIBLE=()
+  for a in "${AGENTS[@]}"; do
+    if echo "$zellij_sessions" | awk '{print $1}' | grep -qx "$a"; then
+      VISIBLE+=("$a")
+    fi
+  done
+  if [[ ${#VISIBLE[@]} -eq 0 ]]; then
+    echo "[ERROR] 表示対象の zellij session が見つかりませんでした。" >&2
+    echo "        先に: bash shutsujin_departure.sh" >&2
+    exit 1
   fi
-  zellij attach shogun
+  echo "[INFO] pure zellij 御座の間で起動します: ${VISIBLE[*]}"
+  zellij_pure_attach_goza_room "${VISIBLE[@]}"
   exit 0
 fi
 
@@ -456,47 +586,7 @@ apply_role_border_styles() {
   done < <(tmux list-panes -t "$VIEW_SESSION":agents -F '#{pane_id}' 2>/dev/null || true)
 }
 
-mapfile -t AGENTS < <(python3 - << 'PY'
-from pathlib import Path
-
-try:
-    import yaml
-except Exception:
-    print("shogun")
-    print("karo")
-    print("ashigaru1")
-    raise SystemExit(0)
-
-cfg = {}
-p = Path("config/settings.yaml")
-if p.exists():
-    cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
-
-active = (cfg.get("topology") or {}).get("active_ashigaru") or ["ashigaru1"]
-normalized = []
-for x in active:
-    if isinstance(x, int):
-        if 1 <= x <= 8:
-            normalized.append(f"ashigaru{x}")
-        continue
-    s = str(x).strip()
-    if s.isdigit():
-        i = int(s)
-        if 1 <= i <= 8:
-            normalized.append(f"ashigaru{i}")
-    elif s.startswith("ashigaru") and s[8:].isdigit():
-        i = int(s[8:])
-        if 1 <= i <= 8:
-            normalized.append(f"ashigaru{i}")
-
-if not normalized:
-    normalized = ["ashigaru1"]
-
-agents = ["shogun", "karo"] + normalized
-for a in agents:
-    print(a)
-PY
-)
+mapfile -t AGENTS < <(zellij_collect_active_agents)
 
 # 実在する zellij セッションのみ表示対象にする
 zellij_sessions="$(zellij list-sessions -n 2>/dev/null || true)"

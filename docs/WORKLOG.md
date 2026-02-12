@@ -641,3 +641,23 @@
 - 判断メモ:
   - zellijとtmuxの責務を分離することで、ユーザーが「純正zellij操作」を選ぶ経路を確保。
   - 御座の間俯瞰はtmux描画前提のため、hybrid/tmux専用とした。
+
+## 2026-02-12 (pure zellij goza_room のペイン分割対応)
+- 背景:
+  - ユーザー報告: `goza_zellij` 起動時に将軍が見えず、単一のコマンドラインに見える。
+  - 要望: zellijを開いた時点でペイン分割された画面（将軍含む）を表示したい。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `zellij_collect_active_agents` を共通化（設定から shogun/karo/active_ashigaru を抽出）。
+    - `zellij_agent_attach_cmd` を追加（`ZELLIJ=` で nested attach を実行）。
+    - `zellij_pure_goza_layout_file` を追加（pure zellij用の複数pane layoutを動的生成）。
+    - `zellij_pure_attach_goza_room` を追加（layoutで `goza-no-ma-ui` を起動）。
+    - `UI=zellij` かつ `template=goza_room` で、pure zellij複数ペイン表示へ分岐。
+  - `README.md`
+    - pure zellijでも `goza_room` が使える説明へ更新。
+    - 運用例に `bash scripts/goza_zellij.sh --template goza_room` を追加。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `rg -n "zellij_pure_goza_layout_file|zellij_pure_attach_goza_room|zellij_agent_attach_cmd" scripts/goza_no_ma.sh` で実装確認。
+- 判断メモ:
+  - pure zellijではtmux演出（色付き罫線）は使わず、まず「将軍が見える分割画面」を優先した。

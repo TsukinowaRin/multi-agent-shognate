@@ -54,7 +54,8 @@ bash scripts/goza_tmux.sh --template goza_room
 - `scripts/goza_no_ma.sh`
   - 共通フロントエンド。
   - `--mux`（バックエンド）と `--ui`（表示）を分離して指定できます。
-  - `goza_room` の俯瞰テンプレートは tmux描画を使うため、`hybrid` または `tmux` で使います。
+  - `goza_room` は pure zellij でも複数ペイン表示に対応（agent sessionを束ねて表示）。
+  - 役職別の色付き罫線演出は `hybrid` / `tmux` 側で提供します。
 
 - `shutsujin_departure.sh`
   - 実際の出陣処理本体。
@@ -159,6 +160,7 @@ bash scripts/goza_hybrid.sh
 bash scripts/goza_tmux.sh
 
 # 全体俯瞰（御座の間）で運用
+bash scripts/goza_zellij.sh --template goza_room
 bash scripts/goza_hybrid.sh --template goza_room
 bash scripts/goza_tmux.sh --template goza_room
 ```

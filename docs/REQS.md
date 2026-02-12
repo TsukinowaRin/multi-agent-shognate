@@ -400,3 +400,14 @@
    - 期待結果: pure zellij と hybrid の責務分離が明記されている。
 3. コマンド: `rg -n "auto_retry_gemini_busy_tmux|experiencing high demand|Keep trying" shutsujin_departure.sh README.md`
    - 期待結果: Gemini高負荷時の自動再試行処理と運用説明が存在する。
+
+## 追補（2026-02-12: pure zellij の goza_room ペイン分割表示）
+### 要求
+1. `goza_zellij.sh --template goza_room` で、pure zellij のまま複数ペイン（将軍/家老/足軽）を表示すること。
+2. 起動直後に将軍ペインが見える（単一の素のコマンドライン画面で終わらない）こと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "zellij_pure_goza_layout_file|zellij_pure_attach_goza_room|zellij_agent_attach_cmd|pure zellij 御座の間" scripts/goza_no_ma.sh`
+   - 期待結果: pure zellij goza_room 用のlayout生成と起動処理が存在する。
+2. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
+   - 期待結果: zellijで分割ペイン表示が開き、`shogun` ペインが表示される。

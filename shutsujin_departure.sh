@@ -27,8 +27,8 @@ if [ -f "./config/settings.yaml" ]; then
     SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
 fi
 
-# マルチプレクサ設定（デフォルト: tmux）
-MULTIPLEXER_SETTING="tmux"
+# マルチプレクサ設定（デフォルト: zellij）
+MULTIPLEXER_SETTING="zellij"
 if [ -f "./config/settings.yaml" ]; then
     # supports:
     # multiplexer: tmux
@@ -43,7 +43,7 @@ if [ -f "./config/settings.yaml" ]; then
       }
     ' ./config/settings.yaml 2>/dev/null)
     MULTIPLEXER_SETTING=$(printf '%s\n%s\n' "${_mux_inline}" "${_mux_nested}" | sed '/^$/d' | head -n1 | tr -d '\r' | tr -d '"' | tr -d '[:space:]')
-    MULTIPLEXER_SETTING=${MULTIPLEXER_SETTING:-tmux}
+    MULTIPLEXER_SETTING=${MULTIPLEXER_SETTING:-zellij}
 fi
 
 # 環境変数による強制切替（設定ファイルより優先）
@@ -665,7 +665,7 @@ log_success "  └─ 家老・足軽の陣、構築完了"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 6: Claude Code 起動（-s / --setup-only のときはスキップ）
+# STEP 6: CLI 起動（-s / --setup-only のときはスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
     # CLI の存在チェック（Multi-CLI対応）
@@ -683,7 +683,7 @@ if [ "$SETUP_ONLY" = false ]; then
         fi
     fi
 
-    log_war "👑 全軍に Claude Code を召喚中..."
+    log_war "👑 全エージェントCLIを起動中..."
 
     # 将軍: CLI Adapter経由でコマンド構築
     _shogun_cli_type="claude"
@@ -841,16 +841,55 @@ NINJA_EOF
     echo -e "                               \033[0;36m[ASCII Art: syntax-samurai/ryu - CC0 1.0 Public Domain]\033[0m"
     echo ""
 
-    echo "  Claude Code の起動を待機中（最大30秒）..."
+    echo "  エージェントCLIの起動を確認中（最大30秒）..."
 
-    # 将軍の起動を確認（最大30秒待機）
+    # 各ペインの current_command が期待CLIに遷移したかを確認
+    _all_cli_ready=false
     for i in {1..30}; do
-        if tmux capture-pane -t shogun:main -p | grep -q "bypass permissions"; then
-            echo "  └─ 将軍の Claude Code 起動確認完了（${i}秒）"
+        _ready_count=0
+        _total_count=0
+
+        # 将軍
+        _shogun_cli=$(tmux show-options -p -t "shogun:main" -v @agent_cli 2>/dev/null || echo "claude")
+        _shogun_cmd=$(tmux display-message -p -t "shogun:main" "#{pane_current_command}" 2>/dev/null || echo "")
+        _total_count=$((_total_count + 1))
+        case "$_shogun_cli" in
+            claude)  [[ "$_shogun_cmd" =~ ^(claude)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+            codex)   [[ "$_shogun_cmd" =~ ^(codex)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+            copilot) [[ "$_shogun_cmd" =~ ^(copilot)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+            kimi)    [[ "$_shogun_cmd" =~ ^(kimi|kimi-cli)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+            gemini)  [[ "$_shogun_cmd" =~ ^(gemini|gemini-cli)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+            localapi) [[ "$_shogun_cmd" =~ ^(python3|python)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+        esac
+
+        # 家老 + 足軽
+        for _idx in "${!MULTIAGENT_IDS[@]}"; do
+            p=$((PANE_BASE + _idx))
+            _pane_target="multiagent:agents.${p}"
+            _expected_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
+            _pane_cmd=$(tmux display-message -p -t "$_pane_target" "#{pane_current_command}" 2>/dev/null || echo "")
+            _total_count=$((_total_count + 1))
+            case "$_expected_cli" in
+                claude)  [[ "$_pane_cmd" =~ ^(claude)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+                codex)   [[ "$_pane_cmd" =~ ^(codex)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+                copilot) [[ "$_pane_cmd" =~ ^(copilot)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+                kimi)    [[ "$_pane_cmd" =~ ^(kimi|kimi-cli)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+                gemini)  [[ "$_pane_cmd" =~ ^(gemini|gemini-cli)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+                localapi) [[ "$_pane_cmd" =~ ^(python3|python)$ ]] && _ready_count=$((_ready_count + 1)) ;;
+            esac
+        done
+
+        if [ "$_ready_count" -ge "$_total_count" ] && [ "$_total_count" -gt 0 ]; then
+            echo "  └─ ${_ready_count}/${_total_count} エージェントCLI起動を確認（${i}秒）"
+            _all_cli_ready=true
             break
         fi
         sleep 1
     done
+
+    if [ "$_all_cli_ready" != true ]; then
+        log_info "⚠️  一部CLIの起動確認は未完了（タイムアウト）ですが、処理を継続します"
+    fi
 
     # ═══════════════════════════════════════════════════════════════════
     # STEP 6.6: inbox_watcher起動（全エージェント）

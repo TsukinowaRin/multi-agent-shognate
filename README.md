@@ -1,7 +1,7 @@
 # multi-agent-shogun (運用ガイド)
 
 このリポジトリは、将軍・家老・足軽の階層で複数AI CLIを並列運用するための実行基盤です。  
-現在の運用は **zellij モード** と **tmux モード** の両方に対応しています。
+現在の運用は **zellij モード優先**、`tmux` は互換サブ手段として対応しています。
 
 ## いま使う起動コマンド
 
@@ -174,6 +174,10 @@ zellij list-sessions -n
 
 - `Claude Code CLI not found` で止まる
   - 現在は未導入CLIを自動フォールバックします。意図したCLIで固定したい場合は `config/settings.yaml` の `cli.default` / `cli.agents` を明示してください。
+
+- 枠色/背景色はどこで変えるか
+  - 御座の間（`goza_no_ma.sh`）の枠色は、このリポジトリ側で制御しています（役職別に自動適用）。
+  - `zellij attach` で直接開いた画面の配色は zellij テーマ設定の影響を受けます。こちらはユーザー環境側（`~/.config/zellij/config.kdl` など）で調整する方式です。
 
 - zellij モードで起動できない
   - `zellij --version` を確認。

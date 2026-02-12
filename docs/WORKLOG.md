@@ -240,3 +240,21 @@
   - `bash -n shutsujin_departure.sh` → PASS
   - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 107 tests PASS
   - `TERM=xterm MAS_MULTIPLEXER=tmux bash shutsujin_departure.sh -s` は実行環境のtmuxソケット制約で失敗（`error connecting to /tmp/tmux-1000/default (Operation not permitted)`）。静的検証とユニットテストで回帰なしを確認。
+
+## 2026-02-12 (起動判定のCLI汎用化 + zellij優先)
+- 要求:
+  - 「Claude Code起動判定」依存を除去し、各エージェントCLIの起動で判定したい。
+  - zellijを第一手段、tmuxをサブ手段にしたい。
+  - 枠色/背景色の変更責務（リポジトリ側かユーザー環境側か）を明確化したい。
+- 実装:
+  - `shutsujin_departure.sh` の既定 `MULTIPLEXER_SETTING` を `zellij` に変更。
+  - `shutsujin_departure.sh` の待機ログを
+    - `Claude Code の起動を待機中...`
+    - `将軍の Claude Code 起動確認完了...`
+    から、各ペインの `@agent_cli` と `pane_current_command` を照合するCLI汎用判定へ変更。
+  - ログ文言を `全エージェントCLIを起動中` に変更。
+  - `README.md` に zellij優先方針と「御座の間枠色はリポジトリ側、zellij直接attach画面の配色はユーザー側テーマ設定」の説明を追記。
+- 検証:
+  - `bash -n shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 107 tests PASS
+  - `rg -n "エージェントCLIの起動を確認中|pane_current_command|@agent_cli" shutsujin_departure.sh` で汎用判定ロジックを確認。

@@ -188,3 +188,17 @@
    - 期待結果: 足軽のCLI起動・watcher起動が active_ashigaru のみ対象になっている。
 3. コマンド: `rg -n "MULTIAGENT_COUNT" shutsujin_departure.sh`
    - 期待結果: 配備人数・手動起動案内・布陣表示に動的人数が使われている。
+
+## 追補（2026-02-12: CLI起動判定の汎用化 + zellij優先）
+### 要求
+1. 起動判定を `Claude Code` 固有文字列依存から、各エージェントのCLI種別に基づく判定へ変更する。
+2. マルチプレクサ未設定時の既定は `zellij` を優先し、`tmux` はサブ手段とする。
+3. 枠色/背景色の変更責務（リポジトリ側とユーザー環境側）をREADMEに明記する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "エージェントCLIの起動を確認中|pane_current_command|@agent_cli" shutsujin_departure.sh`
+   - 期待結果: CLI種別ベースの起動確認ロジックが存在する。
+2. コマンド: `rg -n "MULTIPLEXER_SETTING=\\\"zellij\\\"|MULTIPLEXER_SETTING=\\$\\{MULTIPLEXER_SETTING:-zellij\\}" shutsujin_departure.sh`
+   - 期待結果: 既定マルチプレクサが zellij になっている。
+3. コマンド: `rg -n "zellij モード優先|zellij attach.*配色|zellij テーマ" README.md`
+   - 期待結果: zellij優先方針と配色責務の説明がREADMEに存在する。

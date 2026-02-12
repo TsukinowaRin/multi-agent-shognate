@@ -68,6 +68,17 @@ else
   exit 1
 fi
 
+ensure_generated_instructions() {
+  local ensure_script="$SCRIPT_DIR/scripts/ensure_generated_instructions.sh"
+  if [ ! -x "$ensure_script" ]; then
+    log_info "⚠️  指示書再生成スクリプトが見つからないため、既存 generated を使用します"
+    return 0
+  fi
+  if ! bash "$ensure_script"; then
+    log_info "⚠️  指示書再生成に失敗しました。既存 generated を使用して継続します"
+  fi
+}
+
 LANG_SETTING="ja"
 SHELL_SETTING="bash"
 if [ -f "$SCRIPT_DIR/config/settings.yaml" ]; then
@@ -268,6 +279,42 @@ send_line() {
   zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
 }
 
+send_startup_bootstrap_zellij() {
+  local agent_id="$1"
+  local cli_type="$2"
+  local role_instruction_file=""
+  local optimized_instruction_file=""
+  local startup_msg=""
+
+  role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
+  optimized_instruction_file="$(get_instruction_file "$agent_id" "$cli_type" 2>/dev/null || true)"
+
+  if [ -z "$role_instruction_file" ]; then
+    case "$agent_id" in
+      shogun) role_instruction_file="instructions/shogun.md" ;;
+      karo) role_instruction_file="instructions/karo.md" ;;
+      ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
+      *) role_instruction_file="AGENTS.md" ;;
+    esac
+  fi
+
+  if [ -z "$optimized_instruction_file" ] || [ ! -f "$SCRIPT_DIR/$optimized_instruction_file" ]; then
+    optimized_instruction_file="$role_instruction_file"
+  fi
+
+  if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
+    startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、次に ${optimized_instruction_file} を読んで ${cli_type} 向け手順差分を適用せよ。読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+  else
+    startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+  fi
+
+  if ! send_line "$agent_id" "$startup_msg"; then
+    echo "[WARN] failed to send startup bootstrap to $agent_id" >&2
+  fi
+}
+
+ensure_generated_instructions
+
 log_war "⚔️ zellij セッションを構築中（1エージェント=1セッション）"
 # 非アクティブ化された管理セッションは削除して配備一覧を一致させる
 for stale in "${ALL_MANAGED_AGENTS[@]}"; do
@@ -305,6 +352,7 @@ if [ "$SETUP_ONLY" = false ]; then
     if ! send_line "$agent" "$cli_cmd"; then
       echo "[WARN] failed to send CLI launch command to $agent ($cli_type)" >&2
     fi
+    send_startup_bootstrap_zellij "$agent" "$cli_type"
     printf "%s\t%s\n" "$agent" "$cli_type" >> queue/runtime/agent_cli.tsv
     log_info "  └─ $agent: $cli_type"
   done

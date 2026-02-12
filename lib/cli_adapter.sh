@@ -5,7 +5,8 @@
 # 提供関数:
 #   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "gemini" | "localapi"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
-#   get_instruction_file(agent_id [,cli_type]) → 指示書パス
+#   get_role_instruction_file(agent_id)     → 役職共通指示書パス
+#   get_instruction_file(agent_id [,cli_type]) → CLI最適化指示書パス
 #   validate_cli_availability(cli_type)     → 0=OK, 1=NG
 #   get_agent_model(agent_id)               → "opus" | "sonnet" | "haiku" | "k2.5"
 
@@ -250,8 +251,27 @@ resolve_cli_type_for_agent() {
     return 0
 }
 
+# get_role_instruction_file(agent_id)
+# 役職共通（CLI非依存）の正本指示書パスを返す
+get_role_instruction_file() {
+    local agent_id="$1"
+    local role
+
+    case "$agent_id" in
+        shogun)    role="shogun" ;;
+        karo)      role="karo" ;;
+        ashigaru*) role="ashigaru" ;;
+        *)
+            echo "" >&2
+            return 1
+            ;;
+    esac
+
+    echo "instructions/${role}.md"
+}
+
 # get_instruction_file(agent_id [,cli_type])
-# CLIが自動読込すべき指示書ファイルのパスを返す
+# CLI最適化済みの指示書ファイルのパスを返す
 get_instruction_file() {
     local agent_id="$1"
     local cli_type="${2:-$(get_cli_type "$agent_id")}"
@@ -268,13 +288,13 @@ get_instruction_file() {
     esac
 
     case "$cli_type" in
-        claude)  echo "instructions/${role}.md" ;;
-        codex)   echo "instructions/codex-${role}.md" ;;
-        copilot) echo ".github/copilot-instructions-${role}.md" ;;
-        kimi)    echo "instructions/generated/kimi-${role}.md" ;;
-        gemini)  echo "instructions/generated/gemini-${role}.md" ;;
+        claude)   echo "instructions/generated/${role}.md" ;;
+        codex)    echo "instructions/generated/codex-${role}.md" ;;
+        copilot)  echo "instructions/generated/copilot-${role}.md" ;;
+        kimi)     echo "instructions/generated/kimi-${role}.md" ;;
+        gemini)   echo "instructions/generated/gemini-${role}.md" ;;
         localapi) echo "instructions/generated/localapi-${role}.md" ;;
-        *)       echo "instructions/${role}.md" ;;
+        *)        echo "instructions/generated/${role}.md" ;;
     esac
 }
 

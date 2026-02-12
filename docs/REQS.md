@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-02-11
+最終更新: 2026-02-12
 出典: 直近ユーザープロンプト
 
 ## 要求
@@ -321,3 +321,19 @@
    - 期待結果: 御座の間で将軍ペインをアクティブ化する処理がある。
 2. コマンド: `rg -n "操作方法（zellij表示時）|Ctrl\\+b|起動直後のアクティブペイン: 将軍" README.md`
    - 期待結果: 人間向けの操作説明がREADMEにある。
+
+## 追補（2026-02-12: 役職別正本MDの必読 + 最適化MD自動同期）
+### 要求
+1. 起動時に、将軍/家老/足軽それぞれが役職共通の正本MD（`instructions/shogun.md` / `instructions/karo.md` / `instructions/ashigaru.md`）を必ず読む。
+2. その後、CLI種別に応じた最適化MD（Codex/Gemini/Claude等）を追読できるようにする。
+3. 正本や部品MDが更新された場合、最適化MD（`instructions/generated/*.md`）を自動再生成して起動時に反映する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "get_role_instruction_file|send_startup_bootstrap_tmux|send_startup_bootstrap_zellij" lib/cli_adapter.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+   - 期待結果: 役職共通MDとCLI最適化MDを分けて扱う実装がある。
+2. コマンド: `rg -n "ensure_generated_instructions|ensure_generated_instructions.sh" shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+   - 期待結果: 起動時に再生成チェックを実行するフローがある。
+3. コマンド: `bash scripts/ensure_generated_instructions.sh`
+   - 期待結果: source変更時は `scripts/build_instructions.sh` が実行され、未変更時は up-to-date メッセージを出して終了する。
+4. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing`
+   - 期待結果: 全テストPASS（既存の環境依存skipのみ許容）。

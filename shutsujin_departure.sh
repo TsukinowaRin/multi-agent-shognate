@@ -110,25 +110,48 @@ send_startup_bootstrap_tmux() {
     local pane_target="$1"
     local agent_id="$2"
     local cli_type="$3"
-    local instruction_file=""
+    local role_instruction_file=""
+    local optimized_instruction_file=""
     local startup_msg=""
 
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
-        instruction_file="$(get_instruction_file "$agent_id" "$cli_type" 2>/dev/null || true)"
+        role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
+        optimized_instruction_file="$(get_instruction_file "$agent_id" "$cli_type" 2>/dev/null || true)"
     fi
 
-    if [ -z "$instruction_file" ]; then
+    if [ -z "$role_instruction_file" ]; then
         case "$agent_id" in
-            shogun) instruction_file="instructions/shogun.md" ;;
-            karo) instruction_file="instructions/karo.md" ;;
-            ashigaru*) instruction_file="instructions/ashigaru.md" ;;
-            *) instruction_file="AGENTS.md" ;;
+            shogun) role_instruction_file="instructions/shogun.md" ;;
+            karo) role_instruction_file="instructions/karo.md" ;;
+            ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
+            *) role_instruction_file="AGENTS.md" ;;
         esac
     fi
 
-    startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${instruction_file} を読み、役割・口調・禁止事項を適用せよ。読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+    if [ -z "$optimized_instruction_file" ] || [ ! -f "$SCRIPT_DIR/$optimized_instruction_file" ]; then
+        optimized_instruction_file="$role_instruction_file"
+    fi
+
+    if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
+        startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、次に ${optimized_instruction_file} を読んで ${cli_type} 向け手順差分を適用せよ。読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+    else
+        startup_msg="【初動命令】あなたは${agent_id}。まず AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。読み込み完了後は 'ready:${agent_id}' と1行だけ返答して待機。"
+    fi
+
     tmux send-keys -t "$pane_target" "$startup_msg"
     tmux send-keys -t "$pane_target" Enter
+}
+
+ensure_generated_instructions() {
+    local ensure_script="$SCRIPT_DIR/scripts/ensure_generated_instructions.sh"
+    if [ ! -x "$ensure_script" ]; then
+        log_info "⚠️  指示書再生成スクリプトが見つからないため、既存 generated を使用します"
+        return 0
+    fi
+
+    if ! bash "$ensure_script"; then
+        log_info "⚠️  指示書再生成に失敗しました。既存 generated を使用して継続します"
+    fi
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -281,6 +304,9 @@ if [ -n "$SHELL_OVERRIDE" ]; then
         exit 1
     fi
 fi
+
+# 役職正本/CLI最適化指示書の差分がある場合は自動再生成
+ensure_generated_instructions
 
 # zellijモード分岐（tmuxフロー互換を保つため専用スクリプトに委譲）
 if [ "$MULTIPLEXER_SETTING" = "zellij" ]; then

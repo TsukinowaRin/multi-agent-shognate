@@ -13,6 +13,7 @@
 
 ## Plans
 - `docs/EXECPLAN_2026-02-10_zellij_multi_cli.md` - zellij移植とCLI拡張の実行計画。
+- `docs/EXECPLAN_2026-02-12_role_instruction_sync.md` - 役職別正本MDの必読化と最適化MD自動同期の実行計画。
 - `docs/EXECPLAN_TEMPLATE.md` - ExecPlanテンプレート。
 
 ## Logs

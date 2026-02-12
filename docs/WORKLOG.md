@@ -480,3 +480,40 @@
 - 検証:
   - `bash -n scripts/goza_no_ma.sh` → PASS
   - `rg -n "tmux_focus_shogun_for_human|overview.0|mouse on" scripts/goza_no_ma.sh` で実装確認。
+
+## 2026-02-12 (役職別正本MD必読 + 最適化MD自動同期)
+- 要求:
+  - 将軍/家老/足軽で役職ごとの正本MDを必読化したい。
+  - 正本変更時に Codex/Gemini/Claude などの最適化MDを自動追従させたい。
+- 実装:
+  - `lib/cli_adapter.sh`
+    - `get_role_instruction_file()` を追加（`instructions/<role>.md` を返す）。
+    - `get_instruction_file()` の返却先を `instructions/generated/*` に統一。
+      - `claude` → `instructions/generated/<role>.md`
+      - `codex|copilot|kimi|gemini|localapi` → `instructions/generated/<cli>-<role>.md`
+  - `scripts/ensure_generated_instructions.sh` を新規追加。
+    - `instructions/`（generated除外）と `CLAUDE.md` をソースとしてmtime比較。
+    - 差分があれば `scripts/build_instructions.sh` を自動実行。
+  - `shutsujin_departure.sh`
+    - 起動初期に `ensure_generated_instructions` を実行。
+    - `send_startup_bootstrap_tmux` を更新し、
+      - まず役職共通MD
+      - 次にCLI最適化MD（存在時のみ）
+      の順で読ませる初動命令に変更。
+  - `scripts/shutsujin_zellij.sh`
+    - 起動初期に `ensure_generated_instructions` を実行。
+    - `send_startup_bootstrap_zellij` を追加し、tmux経路と同じ「正本→最適化」初動命令を送信。
+  - `tests/unit/test_cli_adapter.bats`
+    - `get_instruction_file` の期待値を `instructions/generated/*` へ更新。
+    - `get_role_instruction_file` のユニットテストを追加。
+- Docs:
+  - `docs/REQS.md` に本要求の追補（受け入れ条件）を追加。
+  - `docs/EXECPLAN_2026-02-12_role_instruction_sync.md` を新規追加。
+  - `docs/INDEX.md` の Plans に新ExecPlanを登録。
+- 検証:
+  - `bash -n lib/cli_adapter.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/ensure_generated_instructions.sh` → PASS
+  - `bash scripts/ensure_generated_instructions.sh` → `[INFO] generated instruction files are up to date.`
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats --timing` → 108 tests PASS（claude未導入環境の既存skip 1件のみ）
+- 判断メモ:
+  - 役職正本とCLI最適化を分離することで、運用指示の一貫性とCLI差分の追従性を両立。
+  - 再生成失敗時は警告継続にし、起動停止リスクを回避した。

@@ -774,3 +774,33 @@
 - 判断メモ:
   - 送信不発の主因は「改行文字注入」と「Enterキーイベント」がCLI側で等価でない点。
   - 起動前送信は固定短時間待機が短すぎるため、CLI別待機 + 再試行に変更した。
+
+## 2026-02-13 (Gemini/Codex Autoモデル化 + inbox_watcher調査)
+- 背景:
+  - ユーザー要望: Gemini/Codex はモデル固定をやめ、CLI側Auto選択に統一したい。
+  - ユーザー報告: Codexで初動文面は入るが送信されない、Geminiで起動前送信が起きる。
+  - ユーザー要望: inbox_watcherの状況を自走で調査してほしい。
+- 実装:
+  - `lib/cli_adapter.sh`
+    - gemini で `model=auto/default/空` の場合は `--model` を付与しない仕様へ変更。
+    - gemini既定モデルを `auto` に変更。
+  - `config/settings.yaml`
+    - `ashigaru1/2` の gemini model を `auto` に変更。
+  - `scripts/configure_agents.sh`
+    - gemini既定モデル候補を `auto` に変更。
+  - `scripts/goza_no_ma.sh`
+    - 送信処理を `write-chars(本文)` + Enterキー送信（`write 13/10`）優先に再調整。
+    - 初動注入の待機をCLI別に維持しつつ、再送制御を継続。
+    - 足軽2名時は横方向（上下段）配置で正方形寄りに補正。
+  - `README.md` / `tests/unit/test_cli_adapter.bats` / `docs/REQS.md`
+    - gemini model記載を `auto` 運用へ更新。
+- inbox_watcher調査結果:
+  - `logs/inbox_watcher_*.log` を確認。
+  - 過去ログに `inotifywait not found` が多数（当時の未導入起動）。
+  - 直近ログでは watcher 起動自体は継続しており、tmux運用時に未読メッセージのエスカレーション履歴（Phase2/Phase3）が記録されている。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh lib/cli_adapter.sh scripts/configure_agents.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats --timing` → 72 tests PASS
+- 判断メモ:
+  - Auto運用は「モデル指定しない」ことが本体のため、geminiは `--model` 非付与を仕様化。
+  - codexは既存実装が `--model` を付けないため、実質Auto運用を維持。

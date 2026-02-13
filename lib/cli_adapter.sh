@@ -183,7 +183,7 @@ build_cli_command_with_type() {
             gemini_bin=$(_cli_adapter_pick_executable "gemini" "gemini-cli")
             local cmd
             cmd=$(_cli_adapter_read_yaml "cli.commands.gemini" "${gemini_bin} --yolo")
-            if [[ -n "$model" ]]; then
+            if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
                 cmd="$cmd --model $model"
             fi
             echo "$cmd"
@@ -386,9 +386,9 @@ get_agent_model() {
             ;;
         gemini)
             case "$agent_id" in
-                shogun|karo)    echo "gemini-3-preview" ;;
-                ashigaru*)      echo "gemini-3-preview" ;;
-                *)              echo "gemini-3-preview" ;;
+                shogun|karo)    echo "auto" ;;
+                ashigaru*)      echo "auto" ;;
+                *)              echo "auto" ;;
             esac
             ;;
         localapi)

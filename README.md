@@ -188,10 +188,10 @@ cli:
   agents:
     ashigaru1:
       type: gemini
-      model: gemini-3-preview
+      model: auto
     ashigaru2:
       type: gemini
-      model: gemini-3-preview
+      model: auto
 ```
 
 ## CLI割り当て例（Codex / Gemini / LocalAPI）
@@ -204,17 +204,17 @@ cli:
   agents:
     shogun:
       type: codex
-      model: gpt-5
     karo:
       type: codex
-      model: gpt-5
     ashigaru1:
       type: gemini
-      model: gemini-3-preview
+      model: auto
     ashigaru2:
       type: localapi
       model: qwen2.5-coder
 ```
+
+`codex` は `--model` を固定せず CLI 側の自動選択（Auto）で起動します。`gemini` は `model: auto` 指定で同様に Auto 運用です。
 
 `localapi` は `python3 scripts/localapi_repl.py` で起動され、以下の環境変数を参照します。
 

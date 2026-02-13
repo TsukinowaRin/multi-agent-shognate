@@ -123,7 +123,7 @@ prompt_model() {
 default_model_for_cli() {
   local cli="$1"
   case "$cli" in
-    gemini) echo "gemini-3-preview" ;;
+    gemini) echo "auto" ;;
     kimi) echo "k2.5" ;;
     localapi) echo "local-model" ;;
     *) echo "" ;;

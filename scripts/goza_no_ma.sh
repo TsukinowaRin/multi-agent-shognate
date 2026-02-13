@@ -479,15 +479,16 @@ zellij_send_line_to_session() {
   local text="$2"
 
   zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
-  # Enterキー送信（改行文字の注入ではなくキーイベント）
-  sleep 0.08
+  sleep 0.1
   if zellij -s "$session" action write 13 >/dev/null 2>&1; then
     return 0
   fi
+  sleep 0.1
   if zellij -s "$session" action write 10 >/dev/null 2>&1; then
     return 0
   fi
-  zellij -s "$session" action write 13 >/dev/null 2>&1 || return 1
+  sleep 0.1
+  zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
 }
 
 zellij_bootstrap_pure_goza_background() {
@@ -496,7 +497,7 @@ zellij_bootstrap_pure_goza_background() {
   local agents=("$@")
   (
     # CLI起動直後の入力取りこぼしを避ける
-    sleep 4
+    sleep 8
     local idx
     local agent
     local cli_type
@@ -512,9 +513,9 @@ zellij_bootstrap_pure_goza_background() {
         cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
       fi
       case "$cli_type" in
-        gemini) wait_sec=6 ;;
-        codex) wait_sec=2 ;;
-        *) wait_sec=3 ;;
+        gemini) wait_sec=4 ;;
+        codex) wait_sec=1 ;;
+        *) wait_sec=2 ;;
       esac
       sleep "$wait_sec"
       startup_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type")"
@@ -612,7 +613,7 @@ EOF
       return
     fi
     if [[ "$count" -eq 2 ]]; then
-      echo "${indent}pane split_direction=\"vertical\" {"
+      echo "${indent}pane split_direction=\"horizontal\" {"
       zellij_emit_agent_leaf "${indent}    " "${local_agents[0]}"
       zellij_emit_agent_leaf "${indent}    " "${local_agents[1]}"
       echo "${indent}}"

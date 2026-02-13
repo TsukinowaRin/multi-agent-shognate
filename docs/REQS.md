@@ -368,7 +368,7 @@
 ## 追補（2026-02-12: 初動自動送信・イベント駆動安定化・言語統一）
 ### 要求
 1. 起動直後の最初の命令は、ユーザー手動Enterなしで自動送信されること（Ready後すぐ人間が入力できる状態）。
-2. Gemini既定モデルを `Gemini 3 Preview` 系へ更新すること（旧固定値を廃止）。
+2. Gemini既定モデルを `auto` とし、CLI側に最新モデル選択を委ねること。
 3. 全エージェント運用をイベント駆動優先とし、watcherの過剰エスカレーション（`/new` 割り込み）を抑止すること。
 4. システム言語（`config/settings.yaml` の `language`）を、将軍/家老/足軽の全初動命令に反映すること。
 5. 家老→将軍→人間の報告フロー、および「将軍は原則家老へ委譲」を初動命令へ明示すること。
@@ -380,8 +380,8 @@
    - 期待結果: 初動命令に言語指定・イベント駆動指定・ready応答指示が含まれている。
 2. コマンド: `rg -n "ASW_DISABLE_ESCALATION=1|ASW_PROCESS_TIMEOUT=0" shutsujin_departure.sh scripts/shutsujin_zellij.sh`
    - 期待結果: watcher起動時にエスカレーション抑止設定が適用される。
-3. コマンド: `rg -n "gemini-3-preview|gemini model" lib/cli_adapter.sh config/settings.yaml README.md`
-   - 期待結果: Gemini既定モデル・設定例が `Gemini 3 Preview` 系へ更新される。
+3. コマンド: `rg -n "model: auto|gemini model|gemini --yolo" lib/cli_adapter.sh config/settings.yaml README.md`
+   - 期待結果: Gemini既定モデル・設定例が `auto` 運用へ更新される。
 4. コマンド: `bash scripts/history_book.sh && sed -n '1,80p' queue/history/rekishi_book.md`
    - 期待結果: 歴史書が生成され、直近のcmd/タスク/報告要約が人間可読で記録される。
 5. コマンド: `rg -n "default_tab_template|zellij:status-bar|zellij:tab-bar" scripts/goza_no_ma.sh`
@@ -453,7 +453,7 @@
 ### 受け入れ条件（観測可能）
 1. コマンド: `rg -n "zellij_send_line_to_session|action write 13|action write 10" scripts/goza_no_ma.sh`
    - 期待結果: 初動送信が Enter キー送信を優先し、再試行する実装がある。
-2. コマンド: `rg -n "wait_sec|gemini\\) wait_sec=6|for attempt in 1 2 3" scripts/goza_no_ma.sh`
-   - 期待結果: CLI種別に応じた待機と再送で、起動前送信を抑止する実装がある。
-3. コマンド: `rg -n "size=\\\"46%\\\"|size=\\\"32%\\\"|size=\\\"22%\\\"|count == 2|split_direction=\\\"vertical\\\"" scripts/goza_no_ma.sh`
+2. コマンド: `rg -n "wait_sec|gemini\\) wait_sec=|for attempt in 1 2 3" scripts/goza_no_ma.sh`
+   - 期待結果: CLI種別に応じた待機と再送で、起動前送信を抑止する実装がある（`gemini/codex/others` の待機差分）。
+3. コマンド: `rg -n "size=\\\"46%\\\"|size=\\\"32%\\\"|size=\\\"22%\\\"|count == 2|split_direction=\\\"horizontal\\\"" scripts/goza_no_ma.sh`
    - 期待結果: 将軍・家老の縦長優先と、足軽の正方形寄り配置が実装されている。

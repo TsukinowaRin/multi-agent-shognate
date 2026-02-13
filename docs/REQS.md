@@ -470,3 +470,20 @@
    - 期待結果: `claude` が解決され、`claude --dangerously-skip-permissions` 系コマンドが返る。
 3. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
    - 期待結果: 将軍/家老ペインで Claude が起動し、初動命令が自動送信される。
+
+## 追補（2026-02-13: 役職別CLI配備の固定 + 初動注入先ずれ修正）
+### 要求
+1. 役職CLI配備を以下へ固定する。
+   - 将軍: Claude Code
+   - 家老: Codex
+   - 足軽: Gemini CLI
+2. pure zellij の初動注入で、役職ごとの命令が別ペインへずれる問題を解消する。
+3. 足軽2名時はコンパクト表示を維持しつつ、注入順序を安定させる。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `cat config/settings.yaml`
+   - 期待結果: `shogun=claude`, `karo=codex`, `ashigaru1/2=gemini` になっている。
+2. コマンド: `rg -n "zellij_focus_shogun_anchor|zellij_focus_direction|zellij_send_bootstrap_current_pane" scripts/goza_no_ma.sh`
+   - 期待結果: 将軍アンカーへ寄せてから役職順に注入する処理がある。
+3. コマンド: `rg -n "count -ge 4|focus_direction.*down|for attempt in 1 2 3" scripts/goza_no_ma.sh`
+   - 期待結果: 4ペイン構成（将軍/家老/足軽1/足軽2）の順次注入と再試行が実装されている。

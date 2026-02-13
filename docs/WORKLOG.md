@@ -820,3 +820,25 @@
   - `logs/inbox_watcher_*.log` を確認し、過去の `inotifywait not found` と、tmux運用時のエスカレーション履歴を確認。
 - 判断メモ:
   - ユーザー実機では Gemini CLI 導入済みのため、今回のフォールバック警告はこの実行環境固有の差分。
+
+## 2026-02-13 (役職別CLI固定 + 初動注入先ずれ修正)
+- 背景:
+  - ユーザー要望: 将軍=Claude、家老=Codex、足軽=Gemini に固定したい。
+  - ユーザー報告: pure zellij で初動命令の注入先がずれ（将軍文面が足軽へ等）、足軽2で未注入が出る。
+- 実装:
+  - `config/settings.yaml`（ローカル設定）
+    - `shogun: claude(opus)` / `karo: codex` / `ashigaru1,2: gemini(auto)` に更新。
+  - `scripts/goza_no_ma.sh`
+    - 初動注入ロジックを再設計。
+      - `zellij_focus_shogun_anchor`: 左上（将軍）へフォーカス寄せ。
+      - `zellij_focus_direction`: 方向移動アクションのラッパー。
+      - `zellij_send_bootstrap_current_pane`: 現在ペインへ送信+再試行。
+      - 送信順を固定化（将軍→家老→足軽1→足軽2）し、4体超は循環フォーカスで処理。
+    - 足軽2名時レイアウトを上下配置（`split_direction="vertical"`）に戻し、注入順の安定化に合わせた。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `source lib/cli_adapter.sh` で配備解決確認。
+    - この実行環境では gemini未導入のため ashigaru は codexへフォールバック（ユーザー環境差分）。
+  - `rg -n "zellij_focus_shogun_anchor|zellij_focus_direction|zellij_send_bootstrap_current_pane|count -ge 4" scripts/goza_no_ma.sh` で実装確認。
+- 判断メモ:
+  - 先ずれの主因は `focus-next-pane` の開始位置依存だったため、方向移動で将軍アンカーへ寄せてから役職順送信へ変更。

@@ -495,50 +495,126 @@ zellij_bootstrap_pure_goza_background() {
   local session="$1"
   shift
   local agents=("$@")
+
+  zellij_focus_direction() {
+    local _session="$1"
+    local _dir="$2"
+    zellij -s "$_session" action move-focus "$_dir" >/dev/null 2>&1 && return 0
+    zellij -s "$_session" action move-focus-or-tab "$_dir" >/dev/null 2>&1 && return 0
+    return 1
+  }
+
+  zellij_focus_shogun_anchor() {
+    local _session="$1"
+    local _i
+    for _i in {1..6}; do zellij_focus_direction "$_session" "left" || true; done
+    for _i in {1..6}; do zellij_focus_direction "$_session" "up" || true; done
+  }
+
+  zellij_send_bootstrap_current_pane() {
+    local _session="$1"
+    local _agent="$2"
+    local _cli_type="$3"
+    local _wait="$4"
+    local _startup_msg
+    local _sent
+    local _attempt
+
+    sleep "$_wait"
+    _startup_msg="$(goza_startup_bootstrap_message "$_agent" "$_cli_type")"
+    _sent=0
+    for _attempt in 1 2 3; do
+      if zellij_send_line_to_session "$_session" "$_startup_msg"; then
+        _sent=1
+        break
+      fi
+      sleep 0.8
+    done
+    if [[ "$_sent" -ne 1 ]]; then
+      echo "[WARN] pure zellij bootstrap send failed: ${_agent}" >&2
+    fi
+  }
+
   (
     # CLI起動直後の入力取りこぼしを避ける
     sleep 8
     local idx
     local agent
     local cli_type
-    local startup_msg
     local wait_sec
-    local sent
-    local attempt
     local count="${#agents[@]}"
+    local role_cli=()
+
     for idx in "${!agents[@]}"; do
       agent="${agents[$idx]}"
       cli_type="codex"
       if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
         cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
       fi
-      case "$cli_type" in
+      role_cli[$idx]="$cli_type"
+    done
+
+    # まず将軍アンカー（左上）へ寄せて、役職順に送る
+    zellij_focus_shogun_anchor "$session"
+
+    if [[ "$count" -ge 1 ]]; then
+      case "${role_cli[0]}" in
         gemini) wait_sec=4 ;;
         codex) wait_sec=1 ;;
         *) wait_sec=2 ;;
       esac
-      sleep "$wait_sec"
-      startup_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type")"
-      sent=0
-      for attempt in 1 2 3; do
-        if zellij_send_line_to_session "$session" "$startup_msg"; then
-          sent=1
-          break
+      zellij_send_bootstrap_current_pane "$session" "${agents[0]}" "${role_cli[0]}" "$wait_sec"
+    fi
+
+    if [[ "$count" -ge 2 ]]; then
+      zellij_focus_direction "$session" "right" || zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
+      case "${role_cli[1]}" in
+        gemini) wait_sec=4 ;;
+        codex) wait_sec=1 ;;
+        *) wait_sec=2 ;;
+      esac
+      zellij_send_bootstrap_current_pane "$session" "${agents[1]}" "${role_cli[1]}" "$wait_sec"
+    fi
+
+    if [[ "$count" -ge 3 ]]; then
+      zellij_focus_direction "$session" "right" || zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
+      case "${role_cli[2]}" in
+        gemini) wait_sec=4 ;;
+        codex) wait_sec=1 ;;
+        *) wait_sec=2 ;;
+      esac
+      zellij_send_bootstrap_current_pane "$session" "${agents[2]}" "${role_cli[2]}" "$wait_sec"
+    fi
+
+    if [[ "$count" -ge 4 ]]; then
+      # 足軽2体目は同列下方向（count=2時の上下配置）を優先
+      zellij_focus_direction "$session" "down" || zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
+      case "${role_cli[3]}" in
+        gemini) wait_sec=4 ;;
+        codex) wait_sec=1 ;;
+        *) wait_sec=2 ;;
+      esac
+      zellij_send_bootstrap_current_pane "$session" "${agents[3]}" "${role_cli[3]}" "$wait_sec"
+    fi
+
+    # 5体目以降は循環フォーカスで処理
+    if [[ "$count" -gt 4 ]]; then
+      for idx in "${!agents[@]}"; do
+        if [[ "$idx" -lt 4 ]]; then
+          continue
         fi
-        sleep 0.8
-      done
-      if [[ "$sent" -ne 1 ]]; then
-        echo "[WARN] pure zellij bootstrap send failed: ${agent}" >&2
-      fi
-      if [[ "$idx" -lt $((count - 1)) ]]; then
         zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
-      fi
-      sleep 0.4
-    done
+        case "${role_cli[$idx]}" in
+          gemini) wait_sec=4 ;;
+          codex) wait_sec=1 ;;
+          *) wait_sec=2 ;;
+        esac
+        zellij_send_bootstrap_current_pane "$session" "${agents[$idx]}" "${role_cli[$idx]}" "$wait_sec"
+      done
+    fi
+
     # 最後に将軍ペインへフォーカスを戻す
-    for ((idx=0; idx<count-1; idx++)); do
-      zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
-    done
+    zellij_focus_shogun_anchor "$session"
   ) >/dev/null 2>&1 &
 }
 
@@ -613,7 +689,7 @@ EOF
       return
     fi
     if [[ "$count" -eq 2 ]]; then
-      echo "${indent}pane split_direction=\"horizontal\" {"
+      echo "${indent}pane split_direction=\"vertical\" {"
       zellij_emit_agent_leaf "${indent}    " "${local_agents[0]}"
       zellij_emit_agent_leaf "${indent}    " "${local_agents[1]}"
       echo "${indent}}"

@@ -457,3 +457,16 @@
    - 期待結果: CLI種別に応じた待機と再送で、起動前送信を抑止する実装がある（`gemini/codex/others` の待機差分）。
 3. コマンド: `rg -n "size=\\\"46%\\\"|size=\\\"32%\\\"|size=\\\"22%\\\"|count == 2|split_direction=\\\"horizontal\\\"" scripts/goza_no_ma.sh`
    - 期待結果: 将軍・家老の縦長優先と、足軽の正方形寄り配置が実装されている。
+
+## 追補（2026-02-13: Claude連携の実機検証）
+### 要求
+1. Claude Code導入済み環境で、将軍/家老を Claude 起動へ切り替えて検証できること。
+2. Gemini/Codex は Auto 方針（モデル固定しない）を維持すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `claude --version`
+   - 期待結果: Claude Code CLI のバージョンが表示される。
+2. コマンド: `source lib/cli_adapter.sh && resolve_cli_type_for_agent shogun && build_cli_command shogun`
+   - 期待結果: `claude` が解決され、`claude --dangerously-skip-permissions` 系コマンドが返る。
+3. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
+   - 期待結果: 将軍/家老ペインで Claude が起動し、初動命令が自動送信される。

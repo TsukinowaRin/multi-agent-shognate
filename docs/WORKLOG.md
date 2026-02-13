@@ -804,3 +804,19 @@
 - 判断メモ:
   - Auto運用は「モデル指定しない」ことが本体のため、geminiは `--model` 非付与を仕様化。
   - codexは既存実装が `--model` を付けないため、実質Auto運用を維持。
+
+## 2026-02-13 (Claude連携テスト準備 + inbox_watcherログ確認)
+- 背景:
+  - ユーザー要望: Claude Pro契約後、Claude連携を実機で試したい。
+  - 指示: inbox_watcherは自走で調査。
+- 実施:
+  - `claude --version` を確認し、CLI導入を確認（2.1.41）。
+  - `config/settings.yaml` をローカルでテスト構成へ更新。
+    - `shogun/karo: claude (opus)`
+    - `ashigaru1/2: gemini (auto)`
+  - `lib/cli_adapter.sh` を source して agent別の解決結果を確認。
+- 観測結果:
+  - この実行環境では `gemini` コマンド未検出のため、`resolve_cli_type_for_agent` が `codex` へフォールバックした。
+  - `logs/inbox_watcher_*.log` を確認し、過去の `inotifywait not found` と、tmux運用時のエスカレーション履歴を確認。
+- 判断メモ:
+  - ユーザー実機では Gemini CLI 導入済みのため、今回のフォールバック警告はこの実行環境固有の差分。

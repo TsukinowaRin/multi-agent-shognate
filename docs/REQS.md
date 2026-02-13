@@ -501,3 +501,16 @@
    - 期待結果: Gemini向け初動命令に `@` 形式の明示的読込指示が含まれる。
 3. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
    - 期待結果: 将軍/家老/足軽1/足軽2の各ペインで初動命令が自動送信され、`ashigaru2` が沈黙しない。
+
+## 追補（2026-02-13: 足軽増員時の初動注入スケーラビリティ）
+### 要求
+1. 足軽が増えても、初動注入がフォーカス移動順序に依存してズレないこと。
+2. pure zellij の各ペインで、対象エージェント自身が初動命令を受け取ること（役職混線しないこと）。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "bootstrap_line=|tty_path=\\\"\\$\\(tty\\)\\\"|printf \\\"%s\\\\r\\\" \\\"\\$bootstrap_line\\\"" scripts/goza_no_ma.sh`
+   - 期待結果: 各pane内のTTYへ初動命令を直接送る実装が存在する。
+2. コマンド: `rg -n "pure zellij では各pane内で自動初動送信" scripts/goza_no_ma.sh`
+   - 期待結果: 外部フォーカス注入ではなく、pane内送信方式を採用している。
+3. コマンド: `bash scripts/goza_zellij.sh --template goza_room`（`active_ashigaru` を3名以上に設定）
+   - 期待結果: 増員構成でも各足軽ペインが自分向け初動命令を受け取り、沈黙しない。

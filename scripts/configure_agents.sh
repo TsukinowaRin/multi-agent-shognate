@@ -53,7 +53,7 @@ read_current_ashigaru_count() {
   c="$(awk '
     $0 ~ /^topology:[[:space:]]*$/ {in_t=1; next}
     in_t && $0 ~ /^[^[:space:]]/ {in_t=0}
-    in_t && $0 ~ /^[[:space:]]*-[[:space:]]*ashigaru[1-8][[:space:]]*$/ {n++}
+    in_t && $0 ~ /^[[:space:]]*-[[:space:]]*ashigaru[1-9][0-9]*[[:space:]]*$/ {n++}
     END {print n+0}
   ' "$SETTINGS_PATH" 2>/dev/null || true)"
   if [[ "${c:-0}" -lt 1 ]]; then
@@ -152,10 +152,10 @@ template="$(prompt_choice "startup.template を選択" "$default_template" "shog
 cli_default="$(prompt_choice "cli.default を選択" "$default_cli" "codex" "gemini" "claude" "localapi" "kimi" "copilot")"
 
 echo "" >&2
-read -r -p "足軽人数を入力 (1-8) [default: $default_count]: " count_input
+read -r -p "足軽人数を入力 (1以上) [default: $default_count]: " count_input
 ashigaru_count="${count_input:-$default_count}"
-if ! [[ "$ashigaru_count" =~ ^[1-8]$ ]]; then
-  echo "入力エラー: 足軽人数は 1-8 で指定してください。" >&2
+if ! [[ "$ashigaru_count" =~ ^[1-9][0-9]*$ ]]; then
+  echo "入力エラー: 足軽人数は 1以上の整数で指定してください。" >&2
   exit 1
 fi
 

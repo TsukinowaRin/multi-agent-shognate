@@ -1,13 +1,39 @@
 #!/bin/bash
 set -euo pipefail
 
-# Keep inbox watchers alive in a persistent tmux-hosted shell.
+# Keep inbox watchers alive in a persistent multiplexer-hosted shell.
 # This script is designed to run forever.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 mkdir -p logs queue/inbox
+MUX_TYPE="tmux"
+
+if [ -f "$SCRIPT_DIR/config/settings.yaml" ]; then
+    _mux_from_yaml=$(python3 - << 'PY' 2>/dev/null || echo "tmux"
+import yaml
+try:
+    with open("config/settings.yaml", "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    m = cfg.get("multiplexer")
+    if isinstance(m, dict):
+        print(m.get("default", "tmux"))
+    elif isinstance(m, str):
+        print(m)
+    else:
+        print("tmux")
+except Exception:
+    print("tmux")
+PY
+)
+    MUX_TYPE=$(echo "$_mux_from_yaml" | tr -d '\r' | head -n1 | tr -d '[:space:]')
+fi
+
+if [ -f "$SCRIPT_DIR/lib/cli_adapter.sh" ]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/lib/cli_adapter.sh"
+fi
 
 ensure_inbox_file() {
     local agent="$1"
@@ -16,9 +42,103 @@ ensure_inbox_file() {
     fi
 }
 
+refresh_active_ashigaru() {
+    mapfile -t ACTIVE_ASHIGARU < <(python3 - << 'PY' 2>/dev/null || true
+import yaml
+from pathlib import Path
+
+p = Path("config/settings.yaml")
+if not p.exists():
+    print("ashigaru1")
+    raise SystemExit(0)
+
+cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+v = ((cfg.get("topology") or {}).get("active_ashigaru") or [])
+out = []
+seen = set()
+for x in v:
+    if isinstance(x, int):
+        if x >= 1:
+            name = f"ashigaru{x}"
+            if name not in seen:
+                out.append(name)
+                seen.add(name)
+    elif isinstance(x, str):
+        s = x.strip()
+        if s.isdigit():
+            i = int(s)
+            if i >= 1:
+                name = f"ashigaru{i}"
+                if name not in seen:
+                    out.append(name)
+                    seen.add(name)
+        elif s.startswith("ashigaru") and s[8:].isdigit() and int(s[8:]) >= 1:
+            if s not in seen:
+                out.append(s)
+                seen.add(s)
+
+if not out:
+    out = ["ashigaru1"]
+for name in out:
+    print(name)
+PY
+)
+    if [ "${#ACTIVE_ASHIGARU[@]}" -eq 0 ]; then
+        ACTIVE_ASHIGARU=("ashigaru1")
+    fi
+}
+
+agent_in_active_list() {
+    local target="$1"
+    local a
+    for a in "${ACTIVE_ASHIGARU[@]}"; do
+        if [ "$a" = "$target" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 pane_exists() {
     local pane="$1"
-    tmux list-panes -a -F "#{session_name}:#{window_name}.#{pane_index}" 2>/dev/null | grep -qx "$pane"
+    if [ "$MUX_TYPE" = "zellij" ]; then
+        zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -qx "$pane"
+    else
+        tmux list-panes -a -F "#{session_name}:#{window_name}.#{pane_index}" 2>/dev/null | grep -qx "$pane"
+    fi
+}
+
+resolve_cli_type() {
+    local agent="$1"
+    local pane="$2"
+
+    # zellijモードではruntimeファイル優先
+    if [ "$MUX_TYPE" = "zellij" ] && [ -f "$SCRIPT_DIR/queue/runtime/agent_cli.tsv" ]; then
+        local cli_runtime
+        cli_runtime=$(awk -F '\t' -v a="$agent" '$1==a{print $2}' "$SCRIPT_DIR/queue/runtime/agent_cli.tsv" | tail -n1)
+        if [ -n "$cli_runtime" ]; then
+            echo "$cli_runtime"
+            return 0
+        fi
+    fi
+
+    # tmuxモード: pane option参照
+    if [ "$MUX_TYPE" = "tmux" ]; then
+        local cli_tmux
+        cli_tmux=$(tmux show-options -p -t "$pane" -v @agent_cli 2>/dev/null || true)
+        cli_tmux=$(echo "$cli_tmux" | tr -d '\r' | head -n1 | tr -d '[:space:]')
+        if [ -n "$cli_tmux" ]; then
+            echo "$cli_tmux"
+            return 0
+        fi
+    fi
+
+    # fallback: cli_adapter か codex
+    if declare -F get_cli_type >/dev/null 2>&1; then
+        get_cli_type "$agent"
+    else
+        echo "codex"
+    fi
 }
 
 start_watcher_if_missing() {
@@ -32,24 +152,59 @@ start_watcher_if_missing() {
         return 0
     fi
 
-    if pgrep -f "scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1; then
+    if pgrep -f "scripts/inbox_watcher.sh ${agent} ${pane} " >/dev/null 2>&1; then
         return 0
     fi
 
-    cli=$(tmux show-options -p -t "$pane" -v @agent_cli 2>/dev/null || echo "codex")
-    nohup bash scripts/inbox_watcher.sh "$agent" "$pane" "$cli" >> "$log_file" 2>&1 &
+    # 同一agentの古い pane_target を掴んだ watcher が残っている場合は再同期する
+    if pgrep -f "scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1; then
+        pkill -f "scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1 || true
+        sleep 0.2
+    fi
+
+    cli=$(resolve_cli_type "$agent" "$pane")
+    nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
+        MUX_TYPE="$MUX_TYPE" bash scripts/inbox_watcher.sh "$agent" "$pane" "$cli" "$MUX_TYPE" >> "$log_file" 2>&1 &
+}
+
+cleanup_stale_watchers() {
+    local line pid cmd agent
+    while IFS= read -r line; do
+        pid="${line%% *}"
+        cmd="${line#* }"
+        if [[ "$cmd" =~ scripts/inbox_watcher\.sh[[:space:]]+(ashigaru[1-9][0-9]*)[[:space:]] ]]; then
+            agent="${BASH_REMATCH[1]}"
+            if ! agent_in_active_list "$agent"; then
+                kill "$pid" >/dev/null 2>&1 || true
+            fi
+        fi
+    done < <(pgrep -af "scripts/inbox_watcher.sh" || true)
 }
 
 while true; do
-    start_watcher_if_missing "shogun" "shogun:main.0" "logs/inbox_watcher_shogun.log"
-    start_watcher_if_missing "karo" "multiagent:agents.0" "logs/inbox_watcher_karo.log"
-    start_watcher_if_missing "ashigaru1" "multiagent:agents.1" "logs/inbox_watcher_ashigaru1.log"
-    start_watcher_if_missing "ashigaru2" "multiagent:agents.2" "logs/inbox_watcher_ashigaru2.log"
-    start_watcher_if_missing "ashigaru3" "multiagent:agents.3" "logs/inbox_watcher_ashigaru3.log"
-    start_watcher_if_missing "ashigaru4" "multiagent:agents.4" "logs/inbox_watcher_ashigaru4.log"
-    start_watcher_if_missing "ashigaru5" "multiagent:agents.5" "logs/inbox_watcher_ashigaru5.log"
-    start_watcher_if_missing "ashigaru6" "multiagent:agents.6" "logs/inbox_watcher_ashigaru6.log"
-    start_watcher_if_missing "ashigaru7" "multiagent:agents.7" "logs/inbox_watcher_ashigaru7.log"
-    start_watcher_if_missing "ashigaru8" "multiagent:agents.8" "logs/inbox_watcher_ashigaru8.log"
+    if ! command -v inotifywait >/dev/null 2>&1; then
+        sleep 30
+        continue
+    fi
+
+    refresh_active_ashigaru
+    cleanup_stale_watchers
+
+    if [ "$MUX_TYPE" = "zellij" ]; then
+        start_watcher_if_missing "shogun" "shogun" "logs/inbox_watcher_shogun.log"
+        start_watcher_if_missing "karo" "karo" "logs/inbox_watcher_karo.log"
+        for agent in "${ACTIVE_ASHIGARU[@]}"; do
+            start_watcher_if_missing "$agent" "$agent" "logs/inbox_watcher_${agent}.log"
+        done
+    else
+        PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
+        start_watcher_if_missing "shogun" "shogun:main.${PANE_BASE}" "logs/inbox_watcher_shogun.log"
+        start_watcher_if_missing "karo" "multiagent:agents.${PANE_BASE}" "logs/inbox_watcher_karo.log"
+        for i in "${!ACTIVE_ASHIGARU[@]}"; do
+            agent="${ACTIVE_ASHIGARU[$i]}"
+            pane=$((PANE_BASE + i + 1))
+            start_watcher_if_missing "$agent" "multiagent:agents.${pane}" "logs/inbox_watcher_${agent}.log"
+        done
+    fi
     sleep 5
 done

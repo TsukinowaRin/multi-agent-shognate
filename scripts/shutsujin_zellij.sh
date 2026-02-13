@@ -104,20 +104,27 @@ p = Path("config/settings.yaml")
 cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
 v = ((cfg.get("topology") or {}).get("active_ashigaru") or [])
 out = []
+seen = set()
 for x in v:
     if isinstance(x, int):
-        if 1 <= x <= 8:
-            out.append(f"ashigaru{x}")
+        if x >= 1:
+            name = f"ashigaru{x}"
+            if name not in seen:
+                out.append(name)
+                seen.add(name)
     elif isinstance(x, str):
         s = x.strip()
         if s.isdigit():
             i = int(s)
-            if 1 <= i <= 8:
-                out.append(f"ashigaru{i}")
-        elif s.startswith("ashigaru") and s[8:].isdigit():
-            i = int(s[8:])
-            if 1 <= i <= 8:
-                out.append(f"ashigaru{i}")
+            if i >= 1:
+                name = f"ashigaru{i}"
+                if name not in seen:
+                    out.append(name)
+                    seen.add(name)
+        elif s.startswith("ashigaru") and s[8:].isdigit() and int(s[8:]) >= 1:
+            if s not in seen:
+                out.append(s)
+                seen.add(s)
 if out:
     for i in out:
         print(i)
@@ -128,6 +135,43 @@ PY
   fi
 fi
 ACTIVE_ASHIGARU_COUNT=${#ACTIVE_ASHIGARU[@]}
+
+KNOWN_ASHIGARU=("${ACTIVE_ASHIGARU[@]}")
+mapfile -t _known_from_files < <(python3 - << 'PY' 2>/dev/null || true
+import re
+from pathlib import Path
+ids = set()
+for p in Path("queue/tasks").glob("ashigaru*.yaml"):
+    m = re.fullmatch(r"ashigaru([1-9][0-9]*)\.yaml", p.name)
+    if m:
+        ids.add(int(m.group(1)))
+for p in Path("queue/reports").glob("ashigaru*_report.yaml"):
+    m = re.fullmatch(r"ashigaru([1-9][0-9]*)_report\.yaml", p.name)
+    if m:
+        ids.add(int(m.group(1)))
+for p in Path("queue/inbox").glob("ashigaru*.yaml"):
+    m = re.fullmatch(r"ashigaru([1-9][0-9]*)\.yaml", p.name)
+    if m:
+        ids.add(int(m.group(1)))
+for i in sorted(ids):
+    print(f"ashigaru{i}")
+PY
+)
+for _a in "${_known_from_files[@]}"; do
+  _found=0
+  for _b in "${KNOWN_ASHIGARU[@]}"; do
+    if [ "$_a" = "$_b" ]; then
+      _found=1
+      break
+    fi
+  done
+  if [ "$_found" -eq 0 ]; then
+    KNOWN_ASHIGARU+=("$_a")
+  fi
+done
+if [ "${#KNOWN_ASHIGARU[@]}" -eq 0 ]; then
+  KNOWN_ASHIGARU=("ashigaru1")
+fi
 
 # tmux版と同じ世界観で表示する（zellijモード用）
 show_battle_cry() {
@@ -166,7 +210,10 @@ show_battle_cry() {
 render_ashigaru_ascii() {
   local count="$1"
   local i
+  local from=1
+  local to=0
   local row1="" row2="" row3="" row4="" row5="" row6="" row7=""
+  local per_row=8
 
   if ! [[ "$count" =~ ^[0-9]+$ ]]; then
     count=1
@@ -174,29 +221,33 @@ render_ashigaru_ascii() {
   if [ "$count" -lt 1 ]; then
     count=1
   fi
-  if [ "$count" -gt 8 ]; then
-    count=8
-  fi
+  while [ "$from" -le "$count" ]; do
+    to=$((from + per_row - 1))
+    if [ "$to" -gt "$count" ]; then
+      to="$count"
+    fi
+    row1="" row2="" row3="" row4="" row5="" row6="" row7=""
+    for ((i=from; i<=to; i++)); do
+      row1+="       /\\  "
+      row2+="      /||\\ "
+      row3+="     /_||\\ "
+      row4+="       ||  "
+      row5+="      /||\\ "
+      row6+="      /  \\ "
+      row7+="     [足${i}] "
+    done
 
-  for ((i=1; i<=count; i++)); do
-    row1+="       /\\  "
-    row2+="      /||\\ "
-    row3+="     /_||\\ "
-    row4+="       ||  "
-    row5+="      /||\\ "
-    row6+="      /  \\ "
-    row7+="     [足${i}] "
+    echo ""
+    echo "$row1"
+    echo "$row2"
+    echo "$row3"
+    echo "$row4"
+    echo "$row5"
+    echo "$row6"
+    echo "$row7"
+    echo ""
+    from=$((to + 1))
   done
-
-  echo ""
-  echo "$row1"
-  echo "$row2"
-  echo "$row3"
-  echo "$row4"
-  echo "$row5"
-  echo "$row6"
-  echo "$row7"
-  echo ""
 }
 
 role_tab_label() {
@@ -214,15 +265,15 @@ echo -e "  \033[1;33m天下布武！陣立てを開始いたす\033[0m (Setting 
 echo ""
 
 AGENTS=("shogun" "karo" "${ACTIVE_ASHIGARU[@]}")
-ALL_MANAGED_AGENTS=("shogun" "karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "ashigaru6" "ashigaru7" "ashigaru8")
 
 mkdir -p queue/reports queue/tasks queue/inbox logs queue/runtime
 
 if [ "$CLEAN_MODE" = true ]; then
   log_info "📜 クリーン初期化を実施"
-  for i in {1..8}; do
-    cat > "queue/tasks/ashigaru${i}.yaml" << TASK_EOF
-# 足軽${i}専用タスクファイル
+  for _agent in "${KNOWN_ASHIGARU[@]}"; do
+    _num="${_agent#ashigaru}"
+    cat > "queue/tasks/${_agent}.yaml" << TASK_EOF
+# 足軽${_num}専用タスクファイル
 task:
   task_id: null
   parent_cmd: null
@@ -232,8 +283,8 @@ task:
   timestamp: ""
 TASK_EOF
 
-    cat > "queue/reports/ashigaru${i}_report.yaml" << REPORT_EOF
-worker_id: ashigaru${i}
+    cat > "queue/reports/${_agent}_report.yaml" << REPORT_EOF
+worker_id: ${_agent}
 task_id: null
 timestamp: ""
 status: idle
@@ -411,8 +462,9 @@ ensure_generated_instructions
 
 log_war "⚔️ zellij セッションを構築中（1エージェント=1セッション）"
 # 非アクティブ化された管理セッションは削除して配備一覧を一致させる
-for stale in "${ALL_MANAGED_AGENTS[@]}"; do
-  if ! is_selected_agent "$stale" && session_exists "$stale"; then
+mapfile -t _managed_sessions < <(zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -E '^(shogun|karo|ashigaru[1-9][0-9]*)$' || true)
+for stale in "${_managed_sessions[@]}"; do
+  if ! is_selected_agent "$stale"; then
     zellij delete-session "$stale" --force >/dev/null 2>&1 || zellij kill-session "$stale" >/dev/null 2>&1 || true
   fi
 done

@@ -69,6 +69,8 @@
 - 2026-02-13 22:20 JST: Gemini向け初動文面を `@AGENTS.md @instructions/...` の明示形式へ調整し、起動直後の読込失敗を低減。
 - 2026-02-13 22:20 JST: Gemini初期ゲート（trust/high-demand）に対し、軽い先行入力を追加して初動投入成功率を改善。
 - 2026-02-13 22:45 JST: pure zellij の初動注入を各pane内TTY送信方式へ切替（外部フォーカス注入を停止）し、足軽増員時の注入先ずれリスクを低減。
+- 2026-02-13 23:20 JST: 足軽番号の上限固定（1..8）を撤廃し、`ashigaru9+` を許容するよう `shutsujin_departure.sh` / `shutsujin_zellij.sh` / `goza_no_ma.sh` / `configure_agents.sh` を更新。
+- 2026-02-13 23:20 JST: `watcher_supervisor.sh` を動的足軽配備 + pane不一致再同期 + escalation無効デフォルトに更新し、偽通知ループを抑止。
 
 ## Surprises & Discoveries
 - `inbox_watcher` で Codex向け `/clear -> /new` 変換がPhase3エスカレーションからも発火し、作業中割り込みを誘発していた。
@@ -84,9 +86,12 @@
 - D6: pure zellij の注入順は「現在フォーカス依存」ではなく「将軍アンカーからの再フォーカス」に固定し、レイアウト差で先ずれしない方針を採用。
 - D7: GeminiはCLI起動直後の対話ゲートが不安定なため、初動命令の前に軽いゲート通過入力を入れる。
 - D8: 足軽増員時の安定性を優先し、pure zellij は「pane内TTYへ直接送信」を正とする（フォーカス移動型注入は採用しない）。
+- D9: 足軽上限は固定しない方針とし、`ashigaruN (N>=1)` を正規名として受け付ける。
+- D10: watcher の同期ずれ対策は「再起動」ではなく「pane-target一致検証と stale watcher 再生成」を優先する。
 
 ## Outcomes & Retrospective
 - 主要要求（自動初動送信、イベント駆動抑制、言語統一、Gemini既定更新、歴史書生成、zellij操作バー追加）を実装完了。
 - watcher割り込みの根本（Phase3 `/clear`）を既定で抑制したため、`/new is disabled while a task is in progress` 再発リスクを低減。
 - 残リスク: Gemini API側の高負荷自体は解消不能であり、自動再試行は対症療法。
 - 追加残リスク: pane内TTY送信でも、CLI側が初回画面で入力受理しない場合があり、待機秒数の微調整は環境差で必要になりうる。
+- 追加残リスク: 足軽を極端に増やすと tmux の tiled レイアウト可読性が低下するため、実運用ではテンプレート/UI分割方針の追加調整が必要。

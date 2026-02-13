@@ -346,20 +346,27 @@ if p.exists():
 
 active = (cfg.get("topology") or {}).get("active_ashigaru") or ["ashigaru1"]
 normalized = []
+seen = set()
 for x in active:
     if isinstance(x, int):
-        if 1 <= x <= 8:
-            normalized.append(f"ashigaru{x}")
+        if x >= 1:
+            name = f"ashigaru{x}"
+            if name not in seen:
+                normalized.append(name)
+                seen.add(name)
         continue
     s = str(x).strip()
     if s.isdigit():
         i = int(s)
-        if 1 <= i <= 8:
-            normalized.append(f"ashigaru{i}")
-    elif s.startswith("ashigaru") and s[8:].isdigit():
-        i = int(s[8:])
-        if 1 <= i <= 8:
-            normalized.append(f"ashigaru{i}")
+        if i >= 1:
+            name = f"ashigaru{i}"
+            if name not in seen:
+                normalized.append(name)
+                seen.add(name)
+    elif s.startswith("ashigaru") and s[8:].isdigit() and int(s[8:]) >= 1:
+        if s not in seen:
+            normalized.append(s)
+            seen.add(s)
 
 if not normalized:
     normalized = ["ashigaru1"]

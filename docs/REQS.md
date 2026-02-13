@@ -514,3 +514,18 @@
    - 期待結果: 外部フォーカス注入ではなく、pane内送信方式を採用している。
 3. コマンド: `bash scripts/goza_zellij.sh --template goza_room`（`active_ashigaru` を3名以上に設定）
    - 期待結果: 増員構成でも各足軽ペインが自分向け初動命令を受け取り、沈黙しない。
+
+## 追補（2026-02-13: 足軽9名以上対応 + watcher同期ずれ改善）
+### 要求
+1. 足軽人数の上限を撤廃し、`active_ashigaru` で `ashigaru9` 以上を指定しても起動できること。
+2. `shutsujin_departure.sh` / `shutsujin_zellij.sh` / `goza_no_ma.sh` で `ashigaruN` パースを 9以上に対応させること。
+3. `watcher_supervisor.sh` で stale pane を掴んだ watcher を再同期し、偽通知ループ（同期ずれ）を抑止すること。
+4. CUI設定 (`configure_agents.sh`) で足軽人数入力を 9以上へ拡張すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "ashigaru\\[1-9\\]\\[0-9\\]\\*|i >= 1|x >= 1" shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/configure_agents.sh`
+   - 期待結果: 足軽番号の上限固定（1..8）が撤廃されている。
+2. コマンド: `rg -n "ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0|scripts/inbox_watcher.sh \\$\\{agent\\} \\$\\{pane\\}" scripts/watcher_supervisor.sh`
+   - 期待結果: supervisor 起動 watcher に安全フラグが付き、pane不一致時に再同期する実装がある。
+3. コマンド: `bash -n shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/configure_agents.sh scripts/watcher_supervisor.sh`
+   - 期待結果: 構文エラーなし。

@@ -884,3 +884,35 @@
 - 判断メモ:
   - 増員耐性は「外部制御の賢さ」より「各pane自己完結」の方が安定。
   - フォーカス注入関数は残置しているが、pure zellij の標準経路では未使用。
+
+## 2026-02-13 (足軽9名以上対応 + ashigaru2同期ずれ対策)
+- 背景:
+  - ユーザー要望: 足軽を9名以上へ増員しても安定稼働させたい。
+  - ユーザー報告: `ashigaru2` で偽通知（同期ずれ）と待機ループが発生。
+  - 調査: `watcher_supervisor.sh` は固定1..8配列かつ escalation抑止フラグ未設定で watcher 起動しており、pane不一致時の再同期も未実装。
+- 実装:
+  - `shutsujin_departure.sh`
+    - `active_ashigaru` パースの上限固定（<=8）を撤廃し、`ashigaruN (N>=1)` を許容。
+    - clean時の task/report/inbox 初期化対象を固定1..8ではなく `KNOWN_ASHIGARU`（active + 既存ファイル）へ変更。
+    - 起動時AAを複数段表示へ変更し、人数が8を超えても表示できるようにした。
+  - `scripts/shutsujin_zellij.sh`
+    - `active_ashigaru` パース上限撤廃。
+    - staleセッション削除を固定1..8から `zellij list-sessions` の動的検出へ変更。
+    - clean時初期化対象を `KNOWN_ASHIGARU` へ変更。
+    - 人数連動AAを複数段表示へ変更。
+  - `scripts/goza_no_ma.sh`
+    - `zellij_collect_active_agents` の足軽番号上限撤廃。
+  - `scripts/configure_agents.sh`
+    - 足軽人数入力を `1以上の整数` に拡張（旧: 1-8）。
+  - `scripts/watcher_supervisor.sh`
+    - active足軽を毎ループで動的読込（`ashigaru9+` 対応）。
+    - pane一致 watcher が無ければ stale watcher をkillして再起動する再同期ロジックを追加。
+    - watcher起動envを `ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0` に統一。
+    - 非active足軽の stale watcher を定期掃除する処理を追加。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/configure_agents.sh scripts/watcher_supervisor.sh` → PASS
+  - `rg -n "ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0" scripts/watcher_supervisor.sh` → 反映確認
+  - `rg -n "ashigaru\\[1-9\\]\\[0-9\\]\\*|i >= 1|x >= 1" shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/configure_agents.sh` → 上限撤廃確認
+- 判断メモ:
+  - 同期ずれは「ashigaru2の能力不足」ではなく、監視プロセスのpane追従不足と安全フラグ差分が主因。
+  - まず watcher層を安定化し、その上で役職フローに戻す方が再現性が高い。

@@ -188,10 +188,10 @@ cli:
   agents:
     ashigaru1:
       type: gemini
-      model: gemini-3-pro
+      model: gemini-3-preview
     ashigaru2:
       type: gemini
-      model: gemini-3-pro
+      model: gemini-3-preview
 ```
 
 ## CLI割り当て例（Codex / Gemini / LocalAPI）
@@ -210,7 +210,7 @@ cli:
       model: gpt-5
     ashigaru1:
       type: gemini
-      model: gemini-3-pro
+      model: gemini-3-preview
     ashigaru2:
       type: localapi
       model: qwen2.5-coder

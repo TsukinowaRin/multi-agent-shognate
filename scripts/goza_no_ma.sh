@@ -478,22 +478,16 @@ zellij_send_line_to_session() {
   local session="$1"
   local text="$2"
 
-  # 一部環境では write(13/10) が効かないため、改行同梱を先に試す
-  if zellij -s "$session" action write-chars "${text}"$'\r' >/dev/null 2>&1; then
-    return 0
-  fi
-  if zellij -s "$session" action write-chars "${text}"$'\n' >/dev/null 2>&1; then
-    return 0
-  fi
-
   zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
+  # Enterキー送信（改行文字の注入ではなくキーイベント）
+  sleep 0.08
   if zellij -s "$session" action write 13 >/dev/null 2>&1; then
     return 0
   fi
   if zellij -s "$session" action write 10 >/dev/null 2>&1; then
     return 0
   fi
-  zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
+  zellij -s "$session" action write 13 >/dev/null 2>&1 || return 1
 }
 
 zellij_bootstrap_pure_goza_background() {
@@ -502,11 +496,14 @@ zellij_bootstrap_pure_goza_background() {
   local agents=("$@")
   (
     # CLI起動直後の入力取りこぼしを避ける
-    sleep 3
+    sleep 4
     local idx
     local agent
     local cli_type
     local startup_msg
+    local wait_sec
+    local sent
+    local attempt
     local count="${#agents[@]}"
     for idx in "${!agents[@]}"; do
       agent="${agents[$idx]}"
@@ -514,12 +511,28 @@ zellij_bootstrap_pure_goza_background() {
       if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
         cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
       fi
+      case "$cli_type" in
+        gemini) wait_sec=6 ;;
+        codex) wait_sec=2 ;;
+        *) wait_sec=3 ;;
+      esac
+      sleep "$wait_sec"
       startup_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type")"
-      zellij_send_line_to_session "$session" "$startup_msg" || true
+      sent=0
+      for attempt in 1 2 3; do
+        if zellij_send_line_to_session "$session" "$startup_msg"; then
+          sent=1
+          break
+        fi
+        sleep 0.8
+      done
+      if [[ "$sent" -ne 1 ]]; then
+        echo "[WARN] pure zellij bootstrap send failed: ${agent}" >&2
+      fi
       if [[ "$idx" -lt $((count - 1)) ]]; then
         zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
       fi
-      sleep 0.25
+      sleep 0.4
     done
     # 最後に将軍ペインへフォーカスを戻す
     for ((idx=0; idx<count-1; idx++)); do
@@ -599,7 +612,7 @@ EOF
       return
     fi
     if [[ "$count" -eq 2 ]]; then
-      echo "${indent}pane split_direction=\"horizontal\" {"
+      echo "${indent}pane split_direction=\"vertical\" {"
       zellij_emit_agent_leaf "${indent}    " "${local_agents[0]}"
       zellij_emit_agent_leaf "${indent}    " "${local_agents[1]}"
       echo "${indent}}"

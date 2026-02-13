@@ -748,3 +748,29 @@
   - `rg -n "write-chars .*\\$'\\\\r'|action write 13|action write 10|size=\"46%\"|size=\"32%\"|size=\"22%\"" scripts/goza_no_ma.sh` で実装存在を確認。
 - 判断メモ:
   - zellijバージョン差分で改行送信の受理方法が揺れるため、同梱送信→key送信の多段フォールバックを採用。
+
+## 2026-02-13 (Gemini 3 Preview化 + pure zellij 初動送信安定化)
+- 背景:
+  - ユーザー報告: Geminiは起動前に初動命令が送られることがある。
+  - ユーザー報告: Codexは文面注入されるが自動送信されないことがある。
+  - 追加要望: Geminiモデルを Gemini 3 Preview に統一したい。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `zellij_send_line_to_session` を修正し、改行文字注入ではなく Enterキー送信（`action write 13/10`）を優先。
+    - pure zellij 初動注入に CLI別待機時間を追加（`gemini=6s / codex=2s / others=3s`）。
+    - 初動送信を最大3回再試行するように変更。
+    - 足軽2名時の分割を縦割りへ戻し、正方形寄り表示に調整。
+  - `lib/cli_adapter.sh`
+    - Gemini既定モデルを `gemini-3-preview` へ変更。
+  - `scripts/configure_agents.sh`
+    - CUIでの gemini 既定モデルを `gemini-3-preview` へ変更。
+  - `config/settings.yaml`
+    - 現在設定の ashigaru1/2 のモデルを `gemini-3-preview` へ更新。
+  - `README.md` / `tests/unit/test_cli_adapter.bats` / `docs/REQS.md`
+    - `gemini-3-pro` 記載を `gemini-3-preview` へ更新。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh lib/cli_adapter.sh scripts/configure_agents.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats --timing` → 72 tests PASS（skip 1）
+- 判断メモ:
+  - 送信不発の主因は「改行文字注入」と「Enterキーイベント」がCLI側で等価でない点。
+  - 起動前送信は固定短時間待機が短すぎるため、CLI別待機 + 再試行に変更した。

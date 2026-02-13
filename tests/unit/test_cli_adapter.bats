@@ -131,7 +131,7 @@ cli:
   agents:
     ashigaru2:
       type: gemini
-      model: gemini-3-pro
+      model: gemini-3-preview
 YAML
 
     # localapi settings
@@ -346,10 +346,10 @@ SH
     [ "$result" = "kimi --yolo --model k2.5" ]
 }
 
-@test "build_cli_command: gemini + model → gemini --yolo --model gemini-3-pro" {
+@test "build_cli_command: gemini + model → gemini --yolo --model gemini-3-preview" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     result=$(build_cli_command "ashigaru2")
-    [ "$result" = "gemini --yolo --model gemini-3-pro" ]
+    [ "$result" = "gemini --yolo --model gemini-3-preview" ]
 }
 
 @test "build_cli_command: gemini-cliのみ存在時は gemini-cli を使用" {
@@ -361,7 +361,7 @@ exit 0
 SH
     chmod +x "${TEST_TMP}/bin/gemini-cli"
     PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
-    [ "$result" = "gemini-cli --yolo --model gemini-3-pro" ]
+    [ "$result" = "gemini-cli --yolo --model gemini-3-preview" ]
 }
 
 @test "build_cli_command: localapi → python3 scripts/localapi_repl.py" {
@@ -667,10 +667,10 @@ SH
     [ "$result" = "k2.5" ]
 }
 
-@test "get_agent_model: gemini CLI ashigaru2 → gemini-3-pro (YAML指定)" {
+@test "get_agent_model: gemini CLI ashigaru2 → gemini-3-preview (YAML指定)" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     result=$(get_agent_model "ashigaru2")
-    [ "$result" = "gemini-3-pro" ]
+    [ "$result" = "gemini-3-preview" ]
 }
 
 @test "get_agent_model: localapi CLI ashigaru6 → qwen2.5-coder (YAML指定)" {

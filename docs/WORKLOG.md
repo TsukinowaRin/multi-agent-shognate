@@ -726,3 +726,25 @@
 - 判断メモ:
   - zellij 0.41系の分割方向仕様差分に合わせ、既存実機表示（上下分割化していた現象）を逆算して方向を再設定した。
   - 実機描画の最終確認はユーザー環境（WSL+zellij）での目視確認が必要。
+
+## 2026-02-13 (pure zellij微調整: 自動注入の送信確定 + 足軽の正方形寄せ)
+- 背景:
+  - ユーザー報告: 初動命令は自動注入されるが、送信確定されず入力欄に残る。
+  - ユーザー要望: 足軽ペインは縦長よりも正方形寄りでコンパクトにしたい。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `zellij_send_line_to_session` を強化。
+      - 先に `write-chars + \r/\n` 同梱送信を試行。
+      - 失敗時に既存の `write 13/10` フォールバックを継続。
+    - pure zellij `goza_room` を3列構成へ再調整。
+      - 将軍列 46%（全高、最大）
+      - 家老列 32%（全高、次点）
+      - 足軽列 22%（余白側コンパクト）
+    - 足軽2体時は上下2分割を優先するよう、`zellij_emit_ashigaru_grid` を調整。
+- Docs:
+  - `docs/REQS.md` の「pure zellij 初動命令の自動注入」に「送信確定まで自動実行」を追記。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `rg -n "write-chars .*\\$'\\\\r'|action write 13|action write 10|size=\"46%\"|size=\"32%\"|size=\"22%\"" scripts/goza_no_ma.sh` で実装存在を確認。
+- 判断メモ:
+  - zellijバージョン差分で改行送信の受理方法が揺れるため、同梱送信→key送信の多段フォールバックを採用。

@@ -432,11 +432,14 @@
 ### 要求
 1. pure zellij の `goza_room` 起動直後に、将軍/家老/足軽へ初動命令を自動注入する。
 2. 人間は起動後すぐに将軍へ入力できる状態にする（手動で最初のEnterを押さない）。
+3. 初動命令は「入力欄への挿入」だけで止まらず、送信（Enter確定）まで自動実行する。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `rg -n "zellij_bootstrap_pure_goza_background|goza_startup_bootstrap_message|ready:" scripts/goza_no_ma.sh`
    - 期待結果: pure zellij 向けの初動命令生成と自動注入処理が存在する。
 2. コマンド: `rg -n "focus-next-pane|focus=true" scripts/goza_no_ma.sh`
    - 期待結果: 起動時フォーカスを将軍に置きつつ、各paneへ順次初動命令を投入する実装がある。
-3. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
+3. コマンド: `rg -n "write-chars .*\\$'\\\\r'|action write 13|action write 10" scripts/goza_no_ma.sh`
+   - 期待結果: 改行同梱送信と改行キー送信のフォールバックが実装されている。
+4. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
    - 期待結果: 起動後、将軍/家老/足軽の各paneに初動命令が自動投入され、将軍paneがアクティブになる。

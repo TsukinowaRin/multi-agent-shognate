@@ -477,6 +477,15 @@ goza_startup_bootstrap_message() {
 zellij_send_line_to_session() {
   local session="$1"
   local text="$2"
+
+  # 一部環境では write(13/10) が効かないため、改行同梱を先に試す
+  if zellij -s "$session" action write-chars "${text}"$'\r' >/dev/null 2>&1; then
+    return 0
+  fi
+  if zellij -s "$session" action write-chars "${text}"$'\n' >/dev/null 2>&1; then
+    return 0
+  fi
+
   zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
   if zellij -s "$session" action write 13 >/dev/null 2>&1; then
     return 0
@@ -585,8 +594,15 @@ EOF
     if [[ "$count" -le 0 ]]; then
       return
     fi
-    if [[ "$count" -le 2 ]]; then
-      zellij_emit_ashigaru_row "$indent" "${local_agents[0]}" "${local_agents[1]:-}"
+    if [[ "$count" -eq 1 ]]; then
+      zellij_emit_agent_leaf "$indent" "${local_agents[0]}"
+      return
+    fi
+    if [[ "$count" -eq 2 ]]; then
+      echo "${indent}pane split_direction=\"horizontal\" {"
+      zellij_emit_agent_leaf "${indent}    " "${local_agents[0]}"
+      zellij_emit_agent_leaf "${indent}    " "${local_agents[1]}"
+      echo "${indent}}"
       return
     fi
     if [[ "$count" -le 4 ]]; then
@@ -615,16 +631,14 @@ EOF
     echo "    }"
     echo "    tab name=\"${tab_title_escaped}\" {"
     echo "        pane split_direction=\"vertical\" {"
-    echo "            pane split_direction=\"horizontal\" size=\"48%\" {"
+    echo "            pane split_direction=\"horizontal\" size=\"46%\" {"
     zellij_emit_agent_leaf "                " "$shogun_agent" "focus"
     echo "            }"
-    echo "            pane split_direction=\"vertical\" size=\"52%\" {"
-    echo "                pane split_direction=\"horizontal\" size=\"58%\" {"
-    zellij_emit_agent_leaf "                    " "$karo_agent"
-    echo "                }"
-    echo "                pane split_direction=\"horizontal\" size=\"42%\" {"
-    zellij_emit_ashigaru_grid "                    " "${ashigaru_agents[@]}"
-    echo "                }"
+    echo "            pane split_direction=\"horizontal\" size=\"32%\" {"
+    zellij_emit_agent_leaf "                " "$karo_agent"
+    echo "            }"
+    echo "            pane split_direction=\"horizontal\" size=\"22%\" {"
+    zellij_emit_ashigaru_grid "                " "${ashigaru_agents[@]}"
     echo "            }"
     echo "        }"
     echo "    }"

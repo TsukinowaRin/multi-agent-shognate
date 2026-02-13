@@ -703,3 +703,26 @@
 - 判断メモ:
   - 実機の zellij レンダリング確認は、この実行環境では `zellij` 実行権限制約（snap confine）により未実施。
   - そのため、KDL構文互換を壊さない範囲で既存スタイルを維持しつつ、分割構造のみを明示化した。
+
+## 2026-02-13 (pure zellij: 将軍/家老の縦長化 + 初動命令自動注入)
+- 背景:
+  - ユーザー報告: pure zellij `goza_room` が横長で履歴が追いづらい。
+  - 要望: 将軍は上から下までの縦長最大、家老はその隣で縦長次点、足軽は余白側でコンパクトな正方形寄せ。
+  - 追加要望: 起動直後に初動命令を自動注入し、すぐ実働可能にする。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - pure zellij レイアウトの分割方向を調整し、3列構成へ再設計。
+      - 左列: 将軍（最大、`focus=true` で初期アクティブ）
+      - 中列: 家老（次点サイズ、縦長）
+      - 右列: 足軽グリッド（2列ベースで段組み）
+    - `goza_*_directive` / `goza_startup_bootstrap_message` を追加し、純zellij経路でもtmux系と同じ初動命令文面を生成。
+    - `zellij_bootstrap_pure_goza_background` を追加し、session起動後に `write-chars` + `focus-next-pane` で各paneへ初動命令を順次注入。
+    - 最後に将軍ペインへフォーカスを戻す処理を追加。
+- Docs:
+  - `docs/REQS.md` に「pure zellij 初動命令の自動注入」追補を追加。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `rg -n "zellij_bootstrap_pure_goza_background|goza_startup_bootstrap_message|focus-next-pane|focus=true" scripts/goza_no_ma.sh` で実装存在を確認。
+- 判断メモ:
+  - zellij 0.41系の分割方向仕様差分に合わせ、既存実機表示（上下分割化していた現象）を逆算して方向を再設定した。
+  - 実機描画の最終確認はユーザー環境（WSL+zellij）での目視確認が必要。

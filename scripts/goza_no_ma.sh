@@ -354,6 +354,171 @@ for a in agents:
 PY
 }
 
+GOZA_LANG_SETTING="$(
+python3 - << 'PY'
+from pathlib import Path
+try:
+    import yaml
+except Exception:
+    print("ja")
+    raise SystemExit(0)
+p = Path("config/settings.yaml")
+if not p.exists():
+    print("ja")
+    raise SystemExit(0)
+cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+lang = str(cfg.get("language") or "ja").strip() or "ja"
+print(lang)
+PY
+)"
+
+goza_role_linkage_directive() {
+  local agent_id="$1"
+  case "$agent_id" in
+    shogun)
+      echo "連携順序: 殿の指示を受けたら、必ず『将軍→家老→足軽』で委譲せよ。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
+      ;;
+    karo)
+      echo "連携順序: 将軍命令を受けたら、家老がサブタスク分解し queue/tasks/ashigaruN.yaml へ割当、inboxで該当足軽を起動せよ。人間へ直接報告せず、dashboardと既定フローを守れ。"
+      ;;
+    ashigaru*)
+      echo "連携順序: 足軽は自分の task YAML のみ処理し、完了後は queue/reports/${agent_id}_report.yaml + inbox通知で家老へ報告せよ。将軍・人間への直接連絡は禁止。"
+      ;;
+    *)
+      echo "連携順序: 将軍→家老→足軽の指揮系統を順守せよ。"
+      ;;
+  esac
+}
+
+goza_language_directive() {
+  if [[ "${GOZA_LANG_SETTING:-ja}" == "ja" ]]; then
+    echo "言語規則: 以後の応答は日本語（戦国口調）で統一せよ。"
+  else
+    echo "Language rule: Follow system language '${GOZA_LANG_SETTING}' for all outputs (include all agent communication)."
+  fi
+}
+
+goza_event_driven_directive() {
+  local agent_id="$1"
+  case "$agent_id" in
+    shogun)
+      echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、殿の次入力を待て。自分で実装作業に入るな。"
+      ;;
+    karo|ashigaru*)
+      echo "イベント駆動規則: ポーリング禁止。inboxイベント起点でタスク処理し、未読処理後は待機へ戻れ。"
+      ;;
+    *)
+      echo "イベント駆動規則: inboxイベント起点で処理し、完了後は待機へ戻れ。"
+      ;;
+  esac
+}
+
+goza_reporting_chain_directive() {
+  local agent_id="$1"
+  case "$agent_id" in
+    shogun)
+      echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
+      ;;
+    karo)
+      echo "報告規則: タスク完了時は将軍へ要約を返し、人間へ直接報告しない。"
+      ;;
+    ashigaru*)
+      echo "報告規則: 完了報告は必ず家老へ返す。将軍・人間へ直接報告しない。"
+      ;;
+    *)
+      echo "報告規則: 指揮系統（将軍→家老→足軽）を守って報告せよ。"
+      ;;
+  esac
+}
+
+goza_startup_bootstrap_message() {
+  local agent_id="$1"
+  local cli_type="$2"
+  local role_instruction_file=""
+  local optimized_instruction_file=""
+  local linkage_rule=""
+  local lang_rule=""
+  local event_rule=""
+  local report_rule=""
+
+  if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
+    role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
+    optimized_instruction_file="$(get_instruction_file "$agent_id" "$cli_type" 2>/dev/null || true)"
+  fi
+
+  if [[ -z "$role_instruction_file" ]]; then
+    case "$agent_id" in
+      shogun) role_instruction_file="instructions/shogun.md" ;;
+      karo) role_instruction_file="instructions/karo.md" ;;
+      ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
+      *) role_instruction_file="AGENTS.md" ;;
+    esac
+  fi
+  if [[ -z "$optimized_instruction_file" || ! -f "$ROOT_DIR/$optimized_instruction_file" ]]; then
+    optimized_instruction_file="$role_instruction_file"
+  fi
+
+  linkage_rule="$(goza_role_linkage_directive "$agent_id")"
+  lang_rule="$(goza_language_directive)"
+  event_rule="$(goza_event_driven_directive "$agent_id")"
+  report_rule="$(goza_reporting_chain_directive "$agent_id")"
+
+  if [[ "$optimized_instruction_file" != "$role_instruction_file" ]]; then
+    printf "【初動命令】あなたは%s。まず 'ready:%s' を1行で即時送信し、次に AGENTS.md と %s を読み、続けて %s を読んで %s 向け差分を適用せよ。%s %s %s %s 準備が整ったら未読inbox監視へ戻れ。" \
+      "$agent_id" "$agent_id" "$role_instruction_file" "$optimized_instruction_file" "$cli_type" \
+      "$lang_rule" "$event_rule" "$linkage_rule" "$report_rule"
+  else
+    printf "【初動命令】あなたは%s。まず 'ready:%s' を1行で即時送信し、次に AGENTS.md と %s を読み、役割・口調・禁止事項を適用せよ。%s %s %s %s 準備が整ったら未読inbox監視へ戻れ。" \
+      "$agent_id" "$agent_id" "$role_instruction_file" \
+      "$lang_rule" "$event_rule" "$linkage_rule" "$report_rule"
+  fi
+}
+
+zellij_send_line_to_session() {
+  local session="$1"
+  local text="$2"
+  zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
+  if zellij -s "$session" action write 13 >/dev/null 2>&1; then
+    return 0
+  fi
+  if zellij -s "$session" action write 10 >/dev/null 2>&1; then
+    return 0
+  fi
+  zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
+}
+
+zellij_bootstrap_pure_goza_background() {
+  local session="$1"
+  shift
+  local agents=("$@")
+  (
+    # CLI起動直後の入力取りこぼしを避ける
+    sleep 3
+    local idx
+    local agent
+    local cli_type
+    local startup_msg
+    local count="${#agents[@]}"
+    for idx in "${!agents[@]}"; do
+      agent="${agents[$idx]}"
+      cli_type="codex"
+      if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
+        cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
+      fi
+      startup_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type")"
+      zellij_send_line_to_session "$session" "$startup_msg" || true
+      if [[ "$idx" -lt $((count - 1)) ]]; then
+        zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
+      fi
+      sleep 0.25
+    done
+    # 最後に将軍ペインへフォーカスを戻す
+    for ((idx=0; idx<count-1; idx++)); do
+      zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
+    done
+  ) >/dev/null 2>&1 &
+}
+
 zellij_pure_goza_layout_file() {
   local tab_title="$1"
   shift
@@ -380,14 +545,18 @@ zellij_pure_goza_layout_file() {
   zellij_emit_agent_leaf() {
     local indent="$1"
     local target_agent="$2"
+    local focus_attr="${3:-}"
     local pane_name_escaped
     local startup_cmd
     local startup_cmd_escaped
     pane_name_escaped="$(kdl_escape "$target_agent")"
     startup_cmd="$(zellij_agent_pane_cmd "$target_agent")"
     startup_cmd_escaped="$(kdl_escape "$startup_cmd")"
+    if [[ -n "$focus_attr" ]]; then
+      focus_attr=" focus=true"
+    fi
     cat <<EOF
-${indent}pane name="${pane_name_escaped}" {
+${indent}pane name="${pane_name_escaped}"${focus_attr} {
 ${indent}    command "bash";
 ${indent}    args "-lc" "${startup_cmd_escaped}";
 ${indent}}
@@ -399,7 +568,7 @@ EOF
     local left="$2"
     local right="${3:-}"
     if [[ -n "$right" ]]; then
-      echo "${indent}pane split_direction=\"horizontal\" {"
+      echo "${indent}pane split_direction=\"vertical\" {"
       zellij_emit_agent_leaf "${indent}    " "$left"
       zellij_emit_agent_leaf "${indent}    " "$right"
       echo "${indent}}"
@@ -421,13 +590,13 @@ EOF
       return
     fi
     if [[ "$count" -le 4 ]]; then
-      echo "${indent}pane split_direction=\"vertical\" {"
+      echo "${indent}pane split_direction=\"horizontal\" {"
       zellij_emit_ashigaru_row "${indent}    " "${local_agents[0]}" "${local_agents[1]:-}"
       zellij_emit_ashigaru_row "${indent}    " "${local_agents[2]}" "${local_agents[3]:-}"
       echo "${indent}}"
       return
     fi
-    echo "${indent}pane split_direction=\"vertical\" {"
+    echo "${indent}pane split_direction=\"horizontal\" {"
     zellij_emit_ashigaru_grid "${indent}    " "${local_agents[@]:0:4}"
     zellij_emit_ashigaru_grid "${indent}    " "${local_agents[@]:4}"
     echo "${indent}}"
@@ -445,15 +614,15 @@ EOF
     echo "        }"
     echo "    }"
     echo "    tab name=\"${tab_title_escaped}\" {"
-    echo "        pane split_direction=\"horizontal\" {"
-    echo "            pane split_direction=\"vertical\" size=\"66%\" {"
-    zellij_emit_agent_leaf "                " "$shogun_agent"
+    echo "        pane split_direction=\"vertical\" {"
+    echo "            pane split_direction=\"horizontal\" size=\"48%\" {"
+    zellij_emit_agent_leaf "                " "$shogun_agent" "focus"
     echo "            }"
-    echo "            pane split_direction=\"vertical\" size=\"34%\" {"
-    echo "                pane split_direction=\"vertical\" size=\"58%\" {"
+    echo "            pane split_direction=\"vertical\" size=\"52%\" {"
+    echo "                pane split_direction=\"horizontal\" size=\"58%\" {"
     zellij_emit_agent_leaf "                    " "$karo_agent"
     echo "                }"
-    echo "                pane split_direction=\"vertical\" size=\"42%\" {"
+    echo "                pane split_direction=\"horizontal\" size=\"42%\" {"
     zellij_emit_ashigaru_grid "                    " "${ashigaru_agents[@]}"
     echo "                }"
     echo "            }"
@@ -482,6 +651,9 @@ zellij_pure_attach_goza_room() {
     fi
     echo "[ERROR] pure zellij goza session の背景起動に失敗しました: $ZELLIJ_UI_SESSION" >&2
     return 1
+  fi
+  if [[ "$SETUP_ONLY" != "true" ]]; then
+    zellij_bootstrap_pure_goza_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
   fi
 
   if zellij --new-session-with-layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then

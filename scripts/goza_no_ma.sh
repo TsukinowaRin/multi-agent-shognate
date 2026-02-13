@@ -360,7 +360,78 @@ zellij_pure_goza_layout_file() {
   local agents=("$@")
   local layout_file="${TMPDIR:-/tmp}/zellij_pure_goza_${ZELLIJ_UI_SESSION}.kdl"
   local tab_title_escaped
+  local shogun_agent="shogun"
+  local karo_agent="karo"
+  local ashigaru_agents=()
+  local agent
   tab_title_escaped="$(kdl_escape "$tab_title")"
+
+  for agent in "${agents[@]}"; do
+    case "$agent" in
+      shogun) shogun_agent="$agent" ;;
+      karo) karo_agent="$agent" ;;
+      ashigaru*) ashigaru_agents+=("$agent") ;;
+    esac
+  done
+  if [[ ${#ashigaru_agents[@]} -eq 0 ]]; then
+    ashigaru_agents=("ashigaru1")
+  fi
+
+  zellij_emit_agent_leaf() {
+    local indent="$1"
+    local target_agent="$2"
+    local pane_name_escaped
+    local startup_cmd
+    local startup_cmd_escaped
+    pane_name_escaped="$(kdl_escape "$target_agent")"
+    startup_cmd="$(zellij_agent_pane_cmd "$target_agent")"
+    startup_cmd_escaped="$(kdl_escape "$startup_cmd")"
+    cat <<EOF
+${indent}pane name="${pane_name_escaped}" {
+${indent}    command "bash";
+${indent}    args "-lc" "${startup_cmd_escaped}";
+${indent}}
+EOF
+  }
+
+  zellij_emit_ashigaru_row() {
+    local indent="$1"
+    local left="$2"
+    local right="${3:-}"
+    if [[ -n "$right" ]]; then
+      echo "${indent}pane split_direction=\"horizontal\" {"
+      zellij_emit_agent_leaf "${indent}    " "$left"
+      zellij_emit_agent_leaf "${indent}    " "$right"
+      echo "${indent}}"
+    else
+      zellij_emit_agent_leaf "$indent" "$left"
+    fi
+  }
+
+  zellij_emit_ashigaru_grid() {
+    local indent="$1"
+    shift
+    local local_agents=("$@")
+    local count="${#local_agents[@]}"
+    if [[ "$count" -le 0 ]]; then
+      return
+    fi
+    if [[ "$count" -le 2 ]]; then
+      zellij_emit_ashigaru_row "$indent" "${local_agents[0]}" "${local_agents[1]:-}"
+      return
+    fi
+    if [[ "$count" -le 4 ]]; then
+      echo "${indent}pane split_direction=\"vertical\" {"
+      zellij_emit_ashigaru_row "${indent}    " "${local_agents[0]}" "${local_agents[1]:-}"
+      zellij_emit_ashigaru_row "${indent}    " "${local_agents[2]}" "${local_agents[3]:-}"
+      echo "${indent}}"
+      return
+    fi
+    echo "${indent}pane split_direction=\"vertical\" {"
+    zellij_emit_ashigaru_grid "${indent}    " "${local_agents[@]:0:4}"
+    zellij_emit_ashigaru_grid "${indent}    " "${local_agents[@]:4}"
+    echo "${indent}}"
+  }
 
   {
     echo "layout {"
@@ -374,21 +445,19 @@ zellij_pure_goza_layout_file() {
     echo "        }"
     echo "    }"
     echo "    tab name=\"${tab_title_escaped}\" {"
-    local agent
-    for agent in "${agents[@]}"; do
-      local pane_name_escaped
-      local startup_cmd
-      local startup_cmd_escaped
-      pane_name_escaped="$(kdl_escape "$agent")"
-      startup_cmd="$(zellij_agent_pane_cmd "$agent")"
-      startup_cmd_escaped="$(kdl_escape "$startup_cmd")"
-      cat <<EOF
-        pane name="${pane_name_escaped}" {
-            command "bash";
-            args "-lc" "${startup_cmd_escaped}";
-        }
-EOF
-    done
+    echo "        pane split_direction=\"horizontal\" {"
+    echo "            pane split_direction=\"vertical\" size=\"66%\" {"
+    zellij_emit_agent_leaf "                " "$shogun_agent"
+    echo "            }"
+    echo "            pane split_direction=\"vertical\" size=\"34%\" {"
+    echo "                pane split_direction=\"vertical\" size=\"58%\" {"
+    zellij_emit_agent_leaf "                    " "$karo_agent"
+    echo "                }"
+    echo "                pane split_direction=\"vertical\" size=\"42%\" {"
+    zellij_emit_ashigaru_grid "                    " "${ashigaru_agents[@]}"
+    echo "                }"
+    echo "            }"
+    echo "        }"
     echo "    }"
     echo "}"
   } > "$layout_file"

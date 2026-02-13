@@ -678,3 +678,28 @@
   - `rg -n "zellij_agent_pane_cmd|PURE_ZELLIJ_GOZA|build_cli_command_with_type" scripts/goza_no_ma.sh` で実装確認。
 - 判断メモ:
   - まず「見やすさと操作性（ネスト排除）」を優先し、pure zellij表示の違和感を解消。
+
+## 2026-02-13 (pure zellij goza_room レイアウト再設計: 将軍>家老>足軽)
+- 背景:
+  - ユーザー報告: pure zellij の御座の間が縦4段で横長・情報密度が低く、役職優先が伝わりづらい。
+  - 要望: 将軍を最も大きく縦長、家老を次点、足軽は小さな正方形でコンパクト表示。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `zellij_pure_goza_layout_file` を再設計。
+    - 将軍/家老/足軽を分離して解決し、以下の pure zellij レイアウトへ変更。
+      - 外枠: 左右分割（左=将軍 66%、右=家老+足軽 34%）
+      - 右枠: 上下分割（上=家老 58%、下=足軽 42%）
+      - 足軽: `zellij_emit_ashigaru_grid` で 1〜8 体を2列ベースで段組み（コンパクト表示）
+    - 補助関数を追加。
+      - `zellij_emit_agent_leaf`
+      - `zellij_emit_ashigaru_row`
+      - `zellij_emit_ashigaru_grid`
+- Docs:
+  - `docs/REQS.md` に本件追補（縦長優先レイアウト）を追加。
+  - `docs/INDEX.md` の最終更新日を更新。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `rg -n "zellij_emit_ashigaru_grid|zellij_emit_ashigaru_row|size=\"66%\"|size=\"58%\"" scripts/goza_no_ma.sh` で実装存在を確認。
+- 判断メモ:
+  - 実機の zellij レンダリング確認は、この実行環境では `zellij` 実行権限制約（snap confine）により未実施。
+  - そのため、KDL構文互換を壊さない範囲で既存スタイルを維持しつつ、分割構造のみを明示化した。

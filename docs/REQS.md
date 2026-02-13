@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-02-12
+最終更新: 2026-02-13
 出典: 直近ユーザープロンプト
 
 ## 要求
@@ -413,3 +413,17 @@
    - 期待結果: ネストattachではなく、pane内でエージェントCLIを直接起動する実装がある。
 3. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
    - 期待結果: zellijで分割ペイン表示が開き、`shogun` ペインが表示される。
+
+## 追補（2026-02-13: pure zellij goza_room の縦長優先レイアウト）
+### 要求
+1. `goza_zellij.sh --template goza_room` の表示が横長すぎる問題を解消する。
+2. 将軍ペインを最も大きい縦長領域にし、家老は次点サイズ、足軽は小さな正方形に近いグリッドで右下へまとめる。
+3. active 足軽数（`topology.active_ashigaru`）が増減しても、足軽領域でコンパクト配置を維持する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "zellij_emit_ashigaru_grid|zellij_emit_ashigaru_row|pane split_direction=\\\"horizontal\\\"|size=\\\"66%\\\"|size=\\\"58%\\\"" scripts/goza_no_ma.sh`
+   - 期待結果: pure zellij layout 生成に、将軍優先の左右分割・家老優先の右上配置・足軽グリッド生成が実装されている。
+2. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
+   - 期待結果: 起動後、左に将軍の大ペイン、右上に家老、右下に足軽の小型グリッドが表示される。
+3. コマンド: `bash -n scripts/goza_no_ma.sh`
+   - 期待結果: 構文エラーなし。

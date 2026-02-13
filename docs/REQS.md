@@ -487,3 +487,17 @@
    - 期待結果: 将軍アンカーへ寄せてから役職順に注入する処理がある。
 3. コマンド: `rg -n "count -ge 4|focus_direction.*down|for attempt in 1 2 3" scripts/goza_no_ma.sh`
    - 期待結果: 4ペイン構成（将軍/家老/足軽1/足軽2）の順次注入と再試行が実装されている。
+
+## 追補（2026-02-13: 足軽2沈黙/足軽1読込失敗の改善）
+### 要求
+1. pure zellij `goza_room` で `ashigaru2` が沈黙しないよう、4ペイン注入順（将軍→家老→足軽1→足軽2）をレイアウトに対して安定化する。
+2. `ashigaru1`（Gemini）が起動直後にファイル読込を失敗しにくいよう、初期ゲート（trust/high-demand）を跨いだ初動投入へ改善する。
+3. Gemini向け初動文面は `@AGENTS.md` / `@instructions/...` を明示し、読込対象を機械的に解釈しやすい形式にする。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "zellij_focus_agent_index|zellij_prepare_gemini_gate_current_pane|for idx in \"\\$\\{!agents\\[@\\]\\}\"" scripts/goza_no_ma.sh`
+   - 期待結果: 注入対象ペインをインデックスで再フォーカスして送る実装と、Gemini向け初期ゲート対策が存在する。
+2. コマンド: `rg -n "この順で読む: @AGENTS.md" scripts/goza_no_ma.sh`
+   - 期待結果: Gemini向け初動命令に `@` 形式の明示的読込指示が含まれる。
+3. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
+   - 期待結果: 将軍/家老/足軽1/足軽2の各ペインで初動命令が自動送信され、`ashigaru2` が沈黙しない。

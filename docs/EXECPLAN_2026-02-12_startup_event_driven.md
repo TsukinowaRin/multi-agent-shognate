@@ -65,6 +65,9 @@
 - 2026-02-12 23:24 JST: `bash -n` と `bats`（108件）で検証PASS。
 - 2026-02-12 23:52 JST: `goza_zellij` を pure zellij化し、旧動作は `goza_hybrid.sh` へ分離。
 - 2026-02-12 23:52 JST: tmux/hybrid起動で Gemini高負荷画面に対する自動 `Keep trying` 再試行を追加。
+- 2026-02-13 22:20 JST: pure zellij の初動注入を「インデックス再フォーカス方式」へ変更し、`ashigaru2` 未注入（沈黙）を再発しにくい実装へ更新。
+- 2026-02-13 22:20 JST: Gemini向け初動文面を `@AGENTS.md @instructions/...` の明示形式へ調整し、起動直後の読込失敗を低減。
+- 2026-02-13 22:20 JST: Gemini初期ゲート（trust/high-demand）に対し、軽い先行入力を追加して初動投入成功率を改善。
 
 ## Surprises & Discoveries
 - `inbox_watcher` で Codex向け `/clear -> /new` 変換がPhase3エスカレーションからも発火し、作業中割り込みを誘発していた。
@@ -77,8 +80,11 @@
 - D3: 歴史書は新規daemonを増やさず、`inbox_write` 完了時に生成して運用コストを抑える。
 - D4: 初動命令はCLI起動確認後に送信し、入力欄残留（手動Enter要求）を回避する。
 - D5: 「zellij操作を優先したい」要求に合わせ、`goza_zellij` を pure zellij にし、俯瞰用途は `goza_hybrid` へ分離。
+- D6: pure zellij の注入順は「現在フォーカス依存」ではなく「将軍アンカーからの再フォーカス」に固定し、レイアウト差で先ずれしない方針を採用。
+- D7: GeminiはCLI起動直後の対話ゲートが不安定なため、初動命令の前に軽いゲート通過入力を入れる。
 
 ## Outcomes & Retrospective
 - 主要要求（自動初動送信、イベント駆動抑制、言語統一、Gemini既定更新、歴史書生成、zellij操作バー追加）を実装完了。
 - watcher割り込みの根本（Phase3 `/clear`）を既定で抑制したため、`/new is disabled while a task is in progress` 再発リスクを低減。
 - 残リスク: Gemini API側の高負荷自体は解消不能であり、自動再試行は対症療法。
+- 追加残リスク: pure zellij の初動注入は `zellij action` とCLI起動タイミングの組み合わせに依存するため、環境差（端末速度・CLI更新直後）で再調整が必要な場合がある。

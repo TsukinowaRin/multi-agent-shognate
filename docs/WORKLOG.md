@@ -842,3 +842,27 @@
   - `rg -n "zellij_focus_shogun_anchor|zellij_focus_direction|zellij_send_bootstrap_current_pane|count -ge 4" scripts/goza_no_ma.sh` で実装確認。
 - 判断メモ:
   - 先ずれの主因は `focus-next-pane` の開始位置依存だったため、方向移動で将軍アンカーへ寄せてから役職順送信へ変更。
+
+## 2026-02-13 (pure zellij: 足軽2沈黙 / 足軽1読込失敗の改善)
+- 背景:
+  - ユーザー報告: `ashigaru2` が沈黙し、`ashigaru1`（Gemini）が初動でファイルを読めないケースが発生。
+  - 観測: pure zellij の注入ロジックが「現在フォーカス起点」で、4ペイン時に送信先がずれる可能性があった。
+  - 観測: Geminiは起動直後に trust/high-demand 画面へ入ることがあり、初動命令が実タスク入力として受理されにくい。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `zellij_focus_agent_index` を追加し、毎回「将軍アンカー→対象インデックス」へ再フォーカスして注入する方式へ変更。
+    - `zellij_prepare_gemini_gate_current_pane` を追加し、Gemini足軽へは初動命令前に軽い先行入力（`1`）を実施。
+    - Gemini向け `goza_startup_bootstrap_message` を `@AGENTS.md @instructions/...` 明示形式へ変更。
+    - 足軽2名グリッドを `split_direction="vertical"` にして、4ペイン時の `ashigaru1 -> ashigaru2` 注入導線（down優先）を安定化。
+  - `docs/REQS.md`
+    - 「足軽2沈黙/足軽1読込失敗の改善」追補を追加（観測可能な受け入れ条件つき）。
+  - `docs/EXECPLAN_2026-02-12_startup_event_driven.md`
+    - Progress / Decision Log / Outcomes を今回対応に合わせて更新。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bash -n shutsujin_departure.sh scripts/shutsujin_zellij.sh` → PASS
+  - `bash scripts/goza_no_ma.sh --help` → PASS
+  - `rg -n "zellij_focus_agent_index|zellij_prepare_gemini_gate_current_pane|この順で読む: @AGENTS.md" scripts/goza_no_ma.sh` → 実装確認
+- 判断メモ:
+  - 送信先ずれ対策としては、相対移動を積み重ねるより「毎回アンカー復帰」が安全。
+  - Geminiの初回画面はCLI依存で完全判定が難しいため、軽い先行入力で失敗率を下げる現実解を採用。

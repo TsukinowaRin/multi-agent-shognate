@@ -463,6 +463,19 @@ goza_startup_bootstrap_message() {
   event_rule="$(goza_event_driven_directive "$agent_id")"
   report_rule="$(goza_reporting_chain_directive "$agent_id")"
 
+  if [[ "$cli_type" == "gemini" ]]; then
+    if [[ "$optimized_instruction_file" != "$role_instruction_file" ]]; then
+      printf "【初動命令】あなたは%s。まず ready:%s を1行で即時送信せよ。次にこの順で読む: @AGENTS.md @%s @%s。3ファイルの要点を3行で要約し、その後は未読inbox監視へ戻れ。%s %s %s %s" \
+        "$agent_id" "$agent_id" "$role_instruction_file" "$optimized_instruction_file" \
+        "$lang_rule" "$event_rule" "$linkage_rule" "$report_rule"
+    else
+      printf "【初動命令】あなたは%s。まず ready:%s を1行で即時送信せよ。次にこの順で読む: @AGENTS.md @%s。2ファイルの要点を3行で要約し、その後は未読inbox監視へ戻れ。%s %s %s %s" \
+        "$agent_id" "$agent_id" "$role_instruction_file" \
+        "$lang_rule" "$event_rule" "$linkage_rule" "$report_rule"
+    fi
+    return 0
+  fi
+
   if [[ "$optimized_instruction_file" != "$role_instruction_file" ]]; then
     printf "【初動命令】あなたは%s。まず 'ready:%s' を1行で即時送信し、次に AGENTS.md と %s を読み、続けて %s を読んで %s 向け差分を適用せよ。%s %s %s %s 準備が整ったら未読inbox監視へ戻れ。" \
       "$agent_id" "$agent_id" "$role_instruction_file" "$optimized_instruction_file" "$cli_type" \
@@ -535,6 +548,59 @@ zellij_bootstrap_pure_goza_background() {
     fi
   }
 
+  zellij_prepare_gemini_gate_current_pane() {
+    local _session="$1"
+    local _agent="$2"
+    local _cli_type="$3"
+    if [[ "$_cli_type" != "gemini" || "$_agent" != ashigaru* ]]; then
+      return 0
+    fi
+    # 初回 trust / high-demand メニューに引っ掛かるケース向けに軽い先行入力を行う
+    zellij_send_line_to_session "$_session" "1" >/dev/null 2>&1 || true
+    sleep 0.8
+  }
+
+  zellij_focus_agent_index() {
+    local _session="$1"
+    local _idx="$2"
+    local _count="$3"
+    local _step
+
+    zellij_focus_shogun_anchor "$_session"
+
+    case "$_idx" in
+      0)
+        return 0
+        ;;
+      1)
+        zellij_focus_direction "$_session" "right" || zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        return 0
+        ;;
+      2)
+        zellij_focus_direction "$_session" "right" || zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        zellij_focus_direction "$_session" "right" || zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        return 0
+        ;;
+      3)
+        zellij_focus_direction "$_session" "right" || zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        zellij_focus_direction "$_session" "right" || zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        if [[ "$_count" -ge 4 ]]; then
+          zellij_focus_direction "$_session" "down" || zellij_focus_direction "$_session" "right" || zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        fi
+        return 0
+        ;;
+      *)
+        zellij_focus_direction "$_session" "right" || zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        zellij_focus_direction "$_session" "right" || zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        zellij_focus_direction "$_session" "down" || zellij_focus_direction "$_session" "right" || zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        for ((_step=4; _step<=_idx; _step++)); do
+          zellij -s "$_session" action focus-next-pane >/dev/null 2>&1 || true
+        done
+        return 0
+        ;;
+    esac
+  }
+
   (
     # CLI起動直後の入力取りこぼしを避ける
     sleep 8
@@ -554,64 +620,16 @@ zellij_bootstrap_pure_goza_background() {
       role_cli[$idx]="$cli_type"
     done
 
-    # まず将軍アンカー（左上）へ寄せて、役職順に送る
-    zellij_focus_shogun_anchor "$session"
-
-    if [[ "$count" -ge 1 ]]; then
-      case "${role_cli[0]}" in
-        gemini) wait_sec=4 ;;
-        codex) wait_sec=1 ;;
-        *) wait_sec=2 ;;
+    for idx in "${!agents[@]}"; do
+      zellij_focus_agent_index "$session" "$idx" "$count"
+      case "${role_cli[$idx]}" in
+        gemini) wait_sec=7 ;;
+        codex) wait_sec=2 ;;
+        *) wait_sec=3 ;;
       esac
-      zellij_send_bootstrap_current_pane "$session" "${agents[0]}" "${role_cli[0]}" "$wait_sec"
-    fi
-
-    if [[ "$count" -ge 2 ]]; then
-      zellij_focus_direction "$session" "right" || zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
-      case "${role_cli[1]}" in
-        gemini) wait_sec=4 ;;
-        codex) wait_sec=1 ;;
-        *) wait_sec=2 ;;
-      esac
-      zellij_send_bootstrap_current_pane "$session" "${agents[1]}" "${role_cli[1]}" "$wait_sec"
-    fi
-
-    if [[ "$count" -ge 3 ]]; then
-      zellij_focus_direction "$session" "right" || zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
-      case "${role_cli[2]}" in
-        gemini) wait_sec=4 ;;
-        codex) wait_sec=1 ;;
-        *) wait_sec=2 ;;
-      esac
-      zellij_send_bootstrap_current_pane "$session" "${agents[2]}" "${role_cli[2]}" "$wait_sec"
-    fi
-
-    if [[ "$count" -ge 4 ]]; then
-      # 足軽2体目は同列下方向（count=2時の上下配置）を優先
-      zellij_focus_direction "$session" "down" || zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
-      case "${role_cli[3]}" in
-        gemini) wait_sec=4 ;;
-        codex) wait_sec=1 ;;
-        *) wait_sec=2 ;;
-      esac
-      zellij_send_bootstrap_current_pane "$session" "${agents[3]}" "${role_cli[3]}" "$wait_sec"
-    fi
-
-    # 5体目以降は循環フォーカスで処理
-    if [[ "$count" -gt 4 ]]; then
-      for idx in "${!agents[@]}"; do
-        if [[ "$idx" -lt 4 ]]; then
-          continue
-        fi
-        zellij -s "$session" action focus-next-pane >/dev/null 2>&1 || true
-        case "${role_cli[$idx]}" in
-          gemini) wait_sec=4 ;;
-          codex) wait_sec=1 ;;
-          *) wait_sec=2 ;;
-        esac
-        zellij_send_bootstrap_current_pane "$session" "${agents[$idx]}" "${role_cli[$idx]}" "$wait_sec"
-      done
-    fi
+      zellij_prepare_gemini_gate_current_pane "$session" "${agents[$idx]}" "${role_cli[$idx]}"
+      zellij_send_bootstrap_current_pane "$session" "${agents[$idx]}" "${role_cli[$idx]}" "$wait_sec"
+    done
 
     # 最後に将軍ペインへフォーカスを戻す
     zellij_focus_shogun_anchor "$session"

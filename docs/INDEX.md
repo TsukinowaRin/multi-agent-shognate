@@ -11,6 +11,7 @@
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 - `docs/ZELLIJ_AND_MULTI_CLI.md` - zellij運用とgemini/localapi拡張の実装メモ。
 - `docs/UPSTREAM_SYNC_2026-02-14.md` - 上流multi-agent-shogunとの差分分析と採用/非採用判断。
+- `docs/HANDOVER_2026-02-14_codex_limit.md` - Codex利用制限前の引き継ぎ（現状/即対応/次アクション）。
 
 ## Plans
 - `docs/EXECPLAN_2026-02-10_zellij_multi_cli.md` - zellij移植とCLI拡張の実行計画。

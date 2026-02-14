@@ -960,3 +960,23 @@
   - `bats tests/unit/test_topology_adapter.bats tests/test_inbox_write.bats` → PASS
 - 判断メモ:
   - inboxはランタイムデータのため、VCS管理対象にしない方が環境差分の事故を減らせる。
+
+## 2026-02-14 (tmux/zellij 挙動同一化: inbox 正規化)
+- 背景:
+  - ユーザー要求: tmux と zellij で同じ動作にしてテストしたい。
+  - 差分要因: inbox初期化がモードごとに異なり、`queue/inbox` がファイル化すると起動・書き込みが不安定になる。
+- 実装:
+  - 新規 `lib/inbox_path.sh` を追加し、`ensure_local_inbox_dir` で `queue/inbox` を常にローカルディレクトリへ正規化。
+  - `shutsujin_departure.sh` / `scripts/shutsujin_zellij.sh` / `scripts/goza_no_ma.sh` / `scripts/watcher_supervisor.sh` が同ヘルパーを利用するよう更新。
+  - `scripts/inbox_write.sh` に `queue/inbox` がファイルでも自動復旧する処理を追加。
+  - `tests/unit/test_mux_parity.bats` を追加（起動系で共通ヘルパー利用を静的確認）。
+  - `tests/test_inbox_write.bats` に T-016（file→directory 自動復旧）を追加。
+  - `docs/REQS.md` / `docs/EXECPLAN_2026-02-14_mux_behavior_parity.md` / `docs/INDEX.md` を更新。
+- 検証:
+  - `bash -n lib/inbox_path.sh scripts/inbox_write.sh scripts/watcher_supervisor.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/test_inbox_write.bats tests/unit/test_send_wakeup.bats` → 55/55 PASS
+  - `MAS_MULTIPLEXER=tmux bash shutsujin_departure.sh -s` → この実行環境では tmux socket 権限エラーで失敗（`Operation not permitted`）
+  - `MAS_MULTIPLEXER=zellij bash shutsujin_departure.sh -s` → この実行環境では zellij セッション作成失敗
+  - 失敗後も `queue/inbox` はディレクトリ維持を確認（`test -d queue/inbox` 成功）。
+- 判断メモ:
+  - inboxをsymlink運用せずディレクトリ正規化に寄せる方が、tmux/zellij双方で同じ復旧ロジックを適用しやすい。

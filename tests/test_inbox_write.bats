@@ -14,6 +14,7 @@
 #   T-013: 足軽→非担当家老の拒否
 #   T-014: 足軽→担当家老の許可
 #   T-015: 家老同士直接通信の拒否
+#   T-016: queue/inboxがファイルでも自動復旧
 
 # --- セットアップ ---
 
@@ -473,4 +474,19 @@ EOF
     run bash "$TEST_INBOX_WRITE" "karo2" "家老間連携テスト" "cmd_new" "karo1"
     [ "$status" -eq 1 ]
     [[ "$output" =~ "karo-to-karo direct communication is forbidden" ]]
+}
+
+# =============================================================================
+# T-016: queue/inbox がファイルでも自動復旧
+# =============================================================================
+
+@test "T-016: queue/inbox file is auto-repaired to directory" {
+    rm -rf "$TEST_INBOX_DIR"
+    printf '/tmp/fake-inbox-path\n' > "$TEST_TMPDIR/queue/inbox"
+    [ -f "$TEST_TMPDIR/queue/inbox" ]
+
+    run bash "$TEST_INBOX_WRITE" "shogun" "復旧テスト"
+    [ "$status" -eq 0 ]
+    [ -d "$TEST_TMPDIR/queue/inbox" ]
+    [ -f "$TEST_TMPDIR/queue/inbox/shogun.yaml" ]
 }

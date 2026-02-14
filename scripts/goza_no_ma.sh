@@ -19,6 +19,7 @@ UI_MODE="${UI_MODE:-}"
 VIEW_TEMPLATE="${VIEW_TEMPLATE:-}"
 PASS_THROUGH=()
 CLI_ADAPTER_LOADED=false
+INBOX_PATH_HELPER_LOADED=false
 
 usage() {
   cat << 'USAGE'
@@ -119,6 +120,11 @@ if [ -f "$ROOT_DIR/lib/cli_adapter.sh" ]; then
   source "$ROOT_DIR/lib/cli_adapter.sh" || true
   CLI_ADAPTER_LOADED=true
 fi
+if [ -f "$ROOT_DIR/lib/inbox_path.sh" ]; then
+  # shellcheck source=/dev/null
+  source "$ROOT_DIR/lib/inbox_path.sh" || true
+  INBOX_PATH_HELPER_LOADED=true
+fi
 
 if [[ "$MUX_MODE" != "zellij" && "$MUX_MODE" != "tmux" ]]; then
   echo "[ERROR] --mux は zellij または tmux を指定してください（指定値: $MUX_MODE）" >&2
@@ -187,7 +193,12 @@ fi
 
 if [[ "$VIEW_ONLY" != true ]]; then
   if [[ "$PURE_ZELLIJ_GOZA" -eq 1 ]]; then
-    mkdir -p "$ROOT_DIR/queue/reports" "$ROOT_DIR/queue/tasks" "$ROOT_DIR/queue/inbox" "$ROOT_DIR/logs" "$ROOT_DIR/queue/runtime"
+    mkdir -p "$ROOT_DIR/queue/reports" "$ROOT_DIR/queue/tasks" "$ROOT_DIR/logs" "$ROOT_DIR/queue/runtime"
+    if [[ "$INBOX_PATH_HELPER_LOADED" == "true" ]] && declare -F ensure_local_inbox_dir >/dev/null 2>&1; then
+      ensure_local_inbox_dir "$ROOT_DIR/queue/inbox"
+    else
+      mkdir -p "$ROOT_DIR/queue/inbox"
+    fi
   else
     START_ARGS=("${PASS_THROUGH[@]}")
     if [[ "$SETUP_ONLY" = true ]]; then

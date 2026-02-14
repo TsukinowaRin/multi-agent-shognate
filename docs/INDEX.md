@@ -16,6 +16,7 @@
 - `docs/EXECPLAN_2026-02-12_role_instruction_sync.md` - 役職別正本MDの必読化と最適化MD自動同期の実行計画。
 - `docs/EXECPLAN_2026-02-12_startup_event_driven.md` - 初動自動送信/イベント駆動安定化/履歴要約（歴史書）導入の実行計画。
 - `docs/EXECPLAN_2026-02-14_multi_karo_round_robin.md` - 複数家老時の足軽均等割り振りと経路制約の実行計画。
+- `docs/EXECPLAN_2026-02-14_mux_behavior_parity.md` - tmux/zellijのinbox初期化差異を解消し挙動同一化する実行計画。
 - `docs/EXECPLAN_TEMPLATE.md` - ExecPlanテンプレート。
 
 ## Logs

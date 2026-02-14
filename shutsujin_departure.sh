@@ -75,6 +75,11 @@ if [ -f "$SCRIPT_DIR/lib/topology_adapter.sh" ]; then
     TOPOLOGY_ADAPTER_LOADED=true
 fi
 
+if [ -f "$SCRIPT_DIR/lib/inbox_path.sh" ]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/lib/inbox_path.sh"
+fi
+
 # 色付きログ関数（戦国風）
 log_info() {
     echo -e "\033[1;33m【報】\033[0m $1"
@@ -646,13 +651,10 @@ fi
 # queue ディレクトリが存在しない場合は作成（初回起動時に必要）
 [ -d ./queue/reports ] || mkdir -p ./queue/reports
 [ -d ./queue/tasks ] || mkdir -p ./queue/tasks
-# inbox はLinux FSにシンボリックリンク（WSL2の/mnt/c/ではinotifywaitが動かないため）
-INBOX_LINUX_DIR="$HOME/.local/share/multi-agent-shogun/inbox"
-if [ ! -L ./queue/inbox ]; then
-    mkdir -p "$INBOX_LINUX_DIR"
-    [ -d ./queue/inbox ] && cp ./queue/inbox/*.yaml "$INBOX_LINUX_DIR/" 2>/dev/null && rm -rf ./queue/inbox
-    ln -sf "$INBOX_LINUX_DIR" ./queue/inbox
-    log_info "  └─ inbox → Linux FS ($INBOX_LINUX_DIR) にシンボリックリンク作成"
+if declare -F ensure_local_inbox_dir >/dev/null 2>&1; then
+    ensure_local_inbox_dir "./queue/inbox"
+else
+    [ -d ./queue/inbox ] || mkdir -p ./queue/inbox
 fi
 
 if [ "$CLEAN_MODE" = true ]; then

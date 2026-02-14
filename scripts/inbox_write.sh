@@ -14,6 +14,7 @@ OWNER_MAP="$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
 
 INBOX="$SCRIPT_DIR/queue/inbox/${TARGET}.yaml"
 LOCKFILE="${INBOX}.lock"
+INBOX_DIR="$(dirname "$INBOX")"
 
 # Validate arguments
 if [ -z "$TARGET" ] || [ -z "$CONTENT" ]; then
@@ -67,7 +68,10 @@ validate_route_policy
 
 # Initialize inbox if not exists
 if [ ! -f "$INBOX" ]; then
-    mkdir -p "$(dirname "$INBOX")"
+    if [ -f "$INBOX_DIR" ] && [ ! -d "$INBOX_DIR" ]; then
+        rm -f "$INBOX_DIR"
+    fi
+    mkdir -p "$INBOX_DIR"
     echo "messages: []" > "$INBOX"
 fi
 

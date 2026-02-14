@@ -283,6 +283,20 @@
 1. 家老複数化の命名規則は `karo1..karoN` を採用し、起動中の動的再配分は行わない。
 2. 既存の `queue/tasks/ashigaruN.yaml` と `queue/reports/ashigaruN_report.yaml` の命名は変更しない。
 
+## 追補（2026-02-14: tmux/zellij 起動挙動の同一化）
+### 要求
+1. `tmux` と `zellij` の起動で、`queue/inbox` の準備挙動を同一化する（常にローカルディレクトリとして扱う）。
+2. `queue/inbox` が壊れた状態（ファイル化・擬似symlink化）でも、起動時に自動復旧する。
+3. 起動モード差によらず、inbox watcher が同じ inbox パス前提で動作できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash shutsujin_departure.sh -s` と `bash scripts/shutsujin_zellij.sh -s`
+   - 期待結果: どちらの起動後も `test -d queue/inbox` が成功する。
+2. コマンド: `printf '/tmp/fake\n' > queue/inbox && bash scripts/inbox_write.sh shogun "x"`
+   - 期待結果: `queue/inbox` がディレクトリへ復旧し、`queue/inbox/shogun.yaml` が作成される。
+3. コマンド: `bats tests/unit/test_mux_parity.bats tests/test_inbox_write.bats`
+   - 期待結果: PASS。
+
 ### 受け入れ条件（観測可能）
 1. コマンド: `rg -n "pane-border-format|m:\\*shogun\\*|m:\\*karo\\*|m:\\*ashigaru\\*" scripts/goza_no_ma.sh`
    - 期待結果: 役職別のタブ色分岐が `pane-border-format` に実装されている。

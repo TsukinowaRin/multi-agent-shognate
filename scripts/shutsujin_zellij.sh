@@ -75,6 +75,11 @@ if [ -f "$SCRIPT_DIR/lib/topology_adapter.sh" ]; then
   TOPOLOGY_ADAPTER_LOADED=true
 fi
 
+if [ -f "$SCRIPT_DIR/lib/inbox_path.sh" ]; then
+  # shellcheck source=/dev/null
+  source "$SCRIPT_DIR/lib/inbox_path.sh"
+fi
+
 ensure_generated_instructions() {
   local ensure_script="$SCRIPT_DIR/scripts/ensure_generated_instructions.sh"
   if [ ! -x "$ensure_script" ]; then
@@ -280,7 +285,12 @@ echo ""
 
 AGENTS=("shogun" "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}")
 
-mkdir -p queue/reports queue/tasks queue/inbox logs queue/runtime
+mkdir -p queue/reports queue/tasks logs queue/runtime
+if declare -F ensure_local_inbox_dir >/dev/null 2>&1; then
+  ensure_local_inbox_dir "queue/inbox"
+else
+  mkdir -p queue/inbox
+fi
 if [ "$TOPOLOGY_ADAPTER_LOADED" = true ]; then
   build_even_ownership_map "$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv" "${ACTIVE_ASHIGARU[@]}"
 else

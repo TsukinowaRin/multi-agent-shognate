@@ -7,8 +7,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
-mkdir -p logs queue/inbox
+mkdir -p logs
 MUX_TYPE="tmux"
+
+if [ -f "$SCRIPT_DIR/lib/inbox_path.sh" ]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/lib/inbox_path.sh"
+fi
+if declare -F ensure_local_inbox_dir >/dev/null 2>&1; then
+    ensure_local_inbox_dir "queue/inbox"
+else
+    mkdir -p queue/inbox
+fi
 
 if [ -f "$SCRIPT_DIR/config/settings.yaml" ]; then
     _mux_from_yaml=$(python3 - << 'PY' 2>/dev/null || echo "tmux"

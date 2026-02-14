@@ -139,12 +139,10 @@
 !.github/workflows/
 !.github/workflows/*.yml
 
-# Added by ashigaru2 to resolve deadlock
-# The queue directory is essential for agent communication
+# queue は実行時データを基本的に追跡しない
 !queue/
-!queue/**
-queue/inbox
-queue/inbox/**
+queue/**
+!queue/shogun_to_karo.yaml
 
 # Upstream参照用のローカルcloneは追跡しない
 _upstream_reference/

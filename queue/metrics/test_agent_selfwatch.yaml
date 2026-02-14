@@ -1,6 +1,0 @@
-agent_id: "test_agent"
-timestamp: "2026-02-13T23:00:50+09:00"
-unread_latency_sec: 0
-read_count: 1
-bytes_read: 131
-estimated_tokens: 33

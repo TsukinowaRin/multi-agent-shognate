@@ -1021,3 +1021,30 @@
 - 検証:
   - `bash -n shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/mux_parity_smoke.sh` → PASS
   - `bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_mux_parity.bats tests/test_inbox_write.bats tests/unit/test_send_wakeup.bats` → PASS
+
+## 2026-02-14 (上流同期: Codex model / watcher self-watch 判定)
+- 背景:
+  - ユーザー要求: 上流 `yohey-w/multi-agent-shogun` の更新内容を確認し、本リポジトリで必要な更新を取り込む。
+  - 直近上流差分のうち、実運用影響が大きいのは `9d4ca4d`（Codex `--model`）と `f10ee4b`（self-watch判定改善）。
+- 実装:
+  - `lib/cli_adapter.sh`
+    - `_cli_adapter_get_configured_model` を追加。
+    - Codex起動コマンドで、`cli.agents.<id>.model` / `models.<id>` の明示値のみ `--model` 付与。
+    - `auto/default/空` は `--model` を付与しない（Auto運用維持）。
+  - `scripts/inbox_watcher.sh`
+    - `agent_has_self_watch` を claude限定 + PGID除外に変更し、watcher自身の inotifywait を誤検知しないよう改善。
+    - busy時ログを CLI種別別に出力。
+    - claude の Phase2 Escape エスカレーションを抑止し、通常 nudge へフォールバック。
+  - テスト更新:
+    - `tests/unit/test_cli_adapter.bats` に Codex model指定/auto のケースを追加。
+    - `tests/unit/test_send_wakeup.bats` に non-claude self-watch無効化、claude Escape抑止ケースを追加。
+  - ドキュメント:
+    - `docs/UPSTREAM_SYNC_2026-02-14.md`（差分分析と採用/非採用）を新規追加。
+    - `docs/EXECPLAN_2026-02-14_upstream_sync.md` を新規追加。
+    - `docs/INDEX.md` / `docs/REQS.md` を更新。
+- 検証:
+  - `bash -n lib/cli_adapter.sh scripts/inbox_watcher.sh tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats` → 112/112 PASS
+- 判断メモ:
+  - 上流 `Codex --model` は有効だが、本リポジトリは既定モデルがClaude系のため、"明示設定のみ付与" に調整しないと誤モデル注入リスクがある。
+  - 上流 `gunshi` 追加は本リポジトリの可変トポロジと影響範囲が広いため、今回は非採用。

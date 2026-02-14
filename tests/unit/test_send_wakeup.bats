@@ -208,6 +208,21 @@ MOCK
     [ "$status" -eq 1 ]
 }
 
+# --- T-SW-007b: non-claudeはself-watch判定を使わない ---
+
+@test "T-SW-007b: non-claude CLI ignores self-watch process and still nudges" {
+    cat > "$MOCK_PGREP" << 'MOCK'
+#!/bin/bash
+echo "88888 inotifywait -q -t 120 -e modify inbox/test_agent.yaml"
+exit 0
+MOCK
+    chmod +x "$MOCK_PGREP"
+
+    run bash -c "MOCK_PANE_CLI=codex; source '$TEST_HARNESS' && send_wakeup 4"
+    [ "$status" -eq 0 ]
+    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
 # --- T-SW-008: /clear uses send-keys ---
 
 @test "T-SW-008: send_cli_command /clear uses tmux send-keys" {
@@ -302,6 +317,7 @@ MOCK
 
 @test "T-ESC-003: escalation Phase 2 — unread 2-4min uses Escape+nudge" {
     run bash -c '
+        MOCK_PANE_CLI=codex
         source "'"$TEST_HARNESS"'"
         now=$(date +%s)
         FIRST_UNREAD_SEEN=$((now - 180))  # 3 minutes ago
@@ -317,6 +333,17 @@ MOCK
     grep -q "send-keys.*Escape" "$MOCK_LOG"
     # Nudge was also sent
     grep -q "send-keys.*inbox3" "$MOCK_LOG"
+}
+
+@test "T-ESC-003b: claudeはPhase2でEscapeを送らず通常nudgeにフォールバック" {
+    run bash -c '
+        MOCK_PANE_CLI=claude
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 6
+    '
+    [ "$status" -eq 0 ]
+    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "send-keys.*inbox6" "$MOCK_LOG"
 }
 
 # --- T-ESC-004: unread > 4min → /clear sent ---
@@ -342,6 +369,7 @@ MOCK
 
 @test "T-ESC-005: escalation /clear cooldown — falls back to Escape+nudge" {
     run bash -c '
+        MOCK_PANE_CLI=codex
         source "'"$TEST_HARNESS"'"
         now=$(date +%s)
         FIRST_UNREAD_SEEN=$((now - 300))  # 5 minutes ago

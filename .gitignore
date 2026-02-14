@@ -145,3 +145,6 @@
 !queue/**
 queue/inbox
 queue/inbox/**
+
+# Upstream参照用のローカルcloneは追跡しない
+_upstream_reference/

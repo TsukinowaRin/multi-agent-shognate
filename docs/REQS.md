@@ -575,3 +575,23 @@
    - 期待結果: supervisor 起動 watcher に安全フラグが付き、pane不一致時に再同期する実装がある。
 3. コマンド: `bash -n shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/configure_agents.sh scripts/watcher_supervisor.sh`
    - 期待結果: 構文エラーなし。
+
+## 追補（2026-02-14: 上流リポジトリ更新の同期）
+### 要求
+1. 上流 `yohey-w/multi-agent-shogun` の直近更新を確認し、本リポジトリに必要な更新を判断してDocsへ記録する。
+2. 上流更新のうち、実運用に直結する改善を本リポジトリへ反映する。
+   - Codex CLI の `--model` 対応
+   - inbox watcher の self-watch 誤検知抑止
+3. 上流との差分適用結果（採用/非採用）を追跡可能にする。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `sed -n '1,220p' docs/UPSTREAM_SYNC_2026-02-14.md`
+   - 期待結果: 上流主要更新、採用/非採用、反映理由が記録されている。
+2. コマンド: `source lib/cli_adapter.sh && CLI_ADAPTER_SETTINGS=/tmp/nonexistent true`
+   - 期待結果: 構文エラーなく読み込める。
+3. コマンド: `rg -n "codex --model|_cli_adapter_get_configured_model" lib/cli_adapter.sh`
+   - 期待結果: Codex model指定の実装が存在する。
+4. コマンド: `rg -n "agent_has_self_watch\(|PGID|non-Claude|claude" scripts/inbox_watcher.sh`
+   - 期待結果: self-watch判定がclaude限定 + PGID除外で実装されている。
+5. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: 全テストPASS。

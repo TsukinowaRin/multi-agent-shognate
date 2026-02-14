@@ -482,7 +482,25 @@ send_cli_command() {
 # Check if the agent has an active inotifywait on its inbox.
 # If yes, the agent will self-wake — no nudge needed.
 agent_has_self_watch() {
-    pgrep -f "inotifywait.*inbox/${AGENT_ID}.yaml" >/dev/null 2>&1
+    # Codex/Gemini/LocalAPI/Copilot/Kimiは自己watchを持たない想定。
+    # 自己watch判定はClaudeのみ有効化し、watcher自身のPGIDは除外する。
+    local effective_cli
+    effective_cli=$(get_effective_cli_type)
+    if [[ "$effective_cli" != "claude" ]]; then
+        return 1
+    fi
+
+    local my_pgid pid pid_pgid
+    my_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
+    while IFS= read -r pid; do
+        pid="${pid%% *}"
+        [ -n "$pid" ] || continue
+        pid_pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')
+        if [[ -z "$my_pgid" || -z "$pid_pgid" || "$pid_pgid" != "$my_pgid" ]]; then
+            return 0
+        fi
+    done < <(pgrep -f "inotifywait.*inbox/${AGENT_ID}.yaml" 2>/dev/null || true)
+    return 1
 }
 
 # ─── Agent busy detection ───
@@ -526,7 +544,13 @@ send_wakeup() {
 
     # 優先度2: Agent busy — nudge送信するとEnterが消失するためスキップ
     if agent_is_busy; then
-        echo "[$(date)] [SKIP] Agent $AGENT_ID is busy (Working), deferring nudge" >&2
+        local busy_cli_wakeup
+        busy_cli_wakeup=$(get_effective_cli_type)
+        if [[ "$busy_cli_wakeup" == "claude" ]]; then
+            echo "[$(date)] [SKIP] Agent $AGENT_ID is busy (claude) — Stop hook で配送されるため nudge を抑止" >&2
+        else
+            echo "[$(date)] [SKIP] Agent $AGENT_ID is busy ($busy_cli_wakeup), deferring nudge" >&2
+        fi
         return 0
     fi
 
@@ -562,9 +586,16 @@ send_wakeup_with_escape() {
         return 0
     fi
 
+    # ClaudeはStop hookで未読配送されるため、Escape強制送信は抑止する。
+    if [[ "$effective_cli" == "claude" ]]; then
+        echo "[$(date)] [SKIP] claude: suppressing Escape escalation for $AGENT_ID; using plain nudge" >&2
+        send_wakeup "$unread_count"
+        return 0
+    fi
+
     # Phase 2 still skips if agent is busy — Escape during Working would interrupt
     if agent_is_busy; then
-        echo "[$(date)] [SKIP] Agent $AGENT_ID is busy (Working), deferring Phase 2 nudge" >&2
+        echo "[$(date)] [SKIP] Agent $AGENT_ID is busy ($effective_cli), deferring Phase 2 nudge" >&2
         return 0
     fi
 

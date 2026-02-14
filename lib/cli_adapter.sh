@@ -81,6 +81,22 @@ _cli_adapter_pick_executable() {
     echo "$primary"
 }
 
+# _cli_adapter_get_configured_model agent_id
+# settings.yamlで明示設定されたモデル名のみ返す（既定値は返さない）
+_cli_adapter_get_configured_model() {
+    local agent_id="$1"
+    local model
+
+    model=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.model" "")
+    if [[ -n "$model" ]]; then
+        echo "$model"
+        return 0
+    fi
+
+    model=$(_cli_adapter_read_yaml "models.${agent_id}" "")
+    echo "$model"
+}
+
 # --- 公開API ---
 
 # get_cli_type(agent_id)
@@ -152,7 +168,9 @@ build_cli_command_with_type() {
     local agent_id="$1"
     local cli_type="$2"
     local model
+    local configured_model
     model=$(get_agent_model "$agent_id")
+    configured_model=$(_cli_adapter_get_configured_model "$agent_id")
 
     case "$cli_type" in
         claude)
@@ -164,7 +182,12 @@ build_cli_command_with_type() {
             echo "$cmd"
             ;;
         codex)
-            echo "codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
+            local cmd="codex"
+            if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
+                cmd="$cmd --model $configured_model"
+            fi
+            cmd="$cmd --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
+            echo "$cmd"
             ;;
         copilot)
             echo "copilot --yolo"

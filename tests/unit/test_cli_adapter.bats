@@ -106,6 +106,26 @@ models:
   karo: sonnet
 YAML
 
+    # codex model指定
+    cat > "${TEST_TMP}/settings_codex_model.yaml" << 'YAML'
+cli:
+  default: codex
+  agents:
+    shogun:
+      type: codex
+      model: gpt-5.3-codex
+YAML
+
+    # codex model auto指定（--modelは付与しない）
+    cat > "${TEST_TMP}/settings_codex_auto.yaml" << 'YAML'
+cli:
+  default: codex
+  agents:
+    shogun:
+      type: codex
+      model: auto
+YAML
+
     # kimi CLI settings
     cat > "${TEST_TMP}/settings_kimi.yaml" << 'YAML'
 cli:
@@ -313,6 +333,18 @@ load_adapter_with() {
 @test "build_cli_command: codex → codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru5")
+    [ "$result" = "codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+}
+
+@test "build_cli_command: codex + explicit model → codex --model ... --dangerously-bypass-approvals-and-sandbox --no-alt-screen" {
+    load_adapter_with "${TEST_TMP}/settings_codex_model.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "codex --model gpt-5.3-codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+}
+
+@test "build_cli_command: codex + model auto → --model を付けない" {
+    load_adapter_with "${TEST_TMP}/settings_codex_auto.yaml"
+    result=$(build_cli_command "shogun")
     [ "$result" = "codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 

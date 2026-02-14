@@ -141,3 +141,5 @@
 # The queue directory is essential for agent communication
 !queue/
 !queue/**
+queue/inbox
+queue/inbox/**

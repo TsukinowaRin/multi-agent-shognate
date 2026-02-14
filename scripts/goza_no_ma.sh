@@ -210,7 +210,8 @@ if [[ "$VIEW_ONLY" != true ]]; then
     if [[ "$SETUP_ONLY" = true ]]; then
       START_ARGS=("-s" "${START_ARGS[@]}")
     fi
-    MAS_MULTIPLEXER="$MUX_MODE" bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
+    MAS_MULTIPLEXER="$MUX_MODE" MAS_CLI_READY_TIMEOUT="${MAS_CLI_READY_TIMEOUT:-12}" \
+      bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
   fi
 fi
 
@@ -312,10 +313,6 @@ zellij_agent_pane_cmd() {
   local agent="$1"
   local cli_type="codex"
   local cli_cmd="codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
-  local startup_msg=""
-  local startup_wait="3"
-  local gemini_preflight_gate="0"
-  local startup_msg_q=""
 
   if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
     cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
@@ -328,20 +325,8 @@ zellij_agent_pane_cmd() {
     return 0
   fi
 
-  startup_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type")"
-  printf -v startup_msg_q '%q' "$startup_msg"
-  case "$cli_type" in
-    gemini) startup_wait="8" ;;
-    codex) startup_wait="3" ;;
-    claude) startup_wait="4" ;;
-    *) startup_wait="4" ;;
-  esac
-  if [[ "$cli_type" == "gemini" && "$agent" == ashigaru* ]]; then
-    gemini_preflight_gate="1"
-  fi
-
-  printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && clear && bootstrap_line=%s && bootstrap_wait=%q && gemini_gate=%q && tty_path=\"$(tty)\" && (sleep \"$bootstrap_wait\"; if [[ \"$gemini_gate\" -eq 1 ]]; then printf \"1\\r\" > \"$tty_path\"; sleep 1; fi; printf \"%%s\\r\" \"$bootstrap_line\" > \"$tty_path\") >/dev/null 2>&1 & %s; echo %q; exec bash' \
-    "$ROOT_DIR" "$agent" "shout" "$startup_msg_q" "$startup_wait" "$gemini_preflight_gate" "$cli_cmd" "[INFO] ${agent} pane ended. Waiting at shell."
+  printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && clear && %s; echo %q; exec bash' \
+    "$ROOT_DIR" "$agent" "shout" "$cli_cmd" "[INFO] ${agent} pane ended. Waiting at shell."
 }
 
 zellij_collect_active_agents() {
@@ -828,6 +813,9 @@ zellij_pure_attach_goza_room() {
   if [[ "$NO_ATTACH" = true ]]; then
     if zellij attach --create-background "$ZELLIJ_UI_SESSION" >/dev/null 2>&1 || \
        zellij attach --create-background --session "$ZELLIJ_UI_SESSION" >/dev/null 2>&1; then
+      if [[ "$SETUP_ONLY" != "true" ]]; then
+        zellij_bootstrap_pure_goza_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
+      fi
       echo "[INFO] pure zellij goza session created: $ZELLIJ_UI_SESSION"
       echo "       attach: zellij attach $ZELLIJ_UI_SESSION"
       return 0
@@ -835,7 +823,10 @@ zellij_pure_attach_goza_room() {
     echo "[ERROR] pure zellij goza session の背景起動に失敗しました: $ZELLIJ_UI_SESSION" >&2
     return 1
   fi
-  # pure zellij では各pane内で自動初動送信する（足軽増員時の注入先ずれを回避）
+  # pure zellij の初動注入はセッション作成後に一括送信する（ペイン増減時のズレ防止）。
+  if [[ "$SETUP_ONLY" != "true" ]]; then
+    zellij_bootstrap_pure_goza_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
+  fi
 
   if zellij --new-session-with-layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
     return 0
@@ -963,9 +954,9 @@ if [[ "$MUX_MODE" == "tmux" ]]; then
     exit 0
   fi
   if [[ "$VIEW_TEMPLATE" == "goza_room" ]]; then
-    tmux attach -t "$tmux_target"
+    TMUX= tmux attach -t "$tmux_target"
   else
-    tmux attach-session -t shogun
+    TMUX= tmux attach-session -t shogun
   fi
   exit 0
 fi
@@ -1054,7 +1045,7 @@ if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
     echo "       attach: tmux attach -t $VIEW_SESSION"
     exit 0
   fi
-  tmux attach -t "$VIEW_SESSION"
+  TMUX= tmux attach -t "$VIEW_SESSION"
   exit 0
 fi
 
@@ -1096,4 +1087,4 @@ if [[ "$NO_ATTACH" = true ]]; then
   echo "       attach: tmux attach -t $VIEW_SESSION"
   exit 0
 fi
-tmux attach -t "$VIEW_SESSION"
+TMUX= tmux attach -t "$VIEW_SESSION"

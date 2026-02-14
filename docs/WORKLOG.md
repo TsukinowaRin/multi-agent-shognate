@@ -1048,3 +1048,24 @@
 - 判断メモ:
   - 上流 `Codex --model` は有効だが、本リポジトリは既定モデルがClaude系のため、"明示設定のみ付与" に調整しないと誤モデル注入リスクがある。
   - 上流 `gunshi` 追加は本リポジトリの可変トポロジと影響範囲が広いため、今回は非採用。
+
+## 2026-02-14 (実機テスト不具合: pure zellij 初動未注入 / tmux未アタッチ)
+- 背景:
+  - ユーザー実機で `goza_zellij --template goza_room` 実行時に、初動プロンプトが自動送信されないケースを確認。
+  - `goza_tmux` 実行後にtmux画面へ遷移せず、シェルへ戻るケースを確認。
+  - `shutsujin_departure.sh` のCLI起動確認30秒待ちで、体感遅延が大きい。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - pure zellij の初動注入を「pane内埋め込み」依存から、`zellij_bootstrap_pure_goza_background` によるセッション作成後一括送信へ統一。
+    - `zellij_agent_pane_cmd` はCLI起動専用に簡素化（注入処理を分離）。
+    - tmux attach を `TMUX= tmux attach...` に変更（ネスト環境でのattach失敗を回避）。
+    - `shutsujin_departure.sh` 呼出時に `MAS_CLI_READY_TIMEOUT`（既定12秒）を渡すように変更。
+  - `shutsujin_departure.sh`
+    - CLI起動確認の待機上限を固定30秒から `MAS_CLI_READY_TIMEOUT` 可変に変更。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_send_wakeup.bats` → 46/46 PASS
+  - `rg -n "MAS_CLI_READY_TIMEOUT|zellij_bootstrap_pure_goza_background|TMUX= tmux attach" scripts/goza_no_ma.sh shutsujin_departure.sh` → 実装行を確認。
+- 判断メモ:
+  - 初動注入は「セッション単位で後段注入」へ寄せる方が、ペイン数可変時に安定する。
+  - tmux attachは `TMUX=` 明示で環境依存の失敗を減らせる。

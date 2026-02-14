@@ -1132,11 +1132,15 @@ NINJA_EOF
     echo -e "                               \033[0;36m[ASCII Art: syntax-samurai/ryu - CC0 1.0 Public Domain]\033[0m"
     echo ""
 
-    echo "  エージェントCLIの起動を確認中（最大30秒）..."
+    CLI_READY_TIMEOUT="${MAS_CLI_READY_TIMEOUT:-30}"
+    if ! [[ "$CLI_READY_TIMEOUT" =~ ^[0-9]+$ ]]; then
+        CLI_READY_TIMEOUT=30
+    fi
+    echo "  エージェントCLIの起動を確認中（最大${CLI_READY_TIMEOUT}秒）..."
 
     # 各ペインの current_command が期待CLIに遷移したかを確認
     _all_cli_ready=false
-    for i in {1..30}; do
+    for ((i=1; i<=CLI_READY_TIMEOUT; i++)); do
         _ready_count=0
         _total_count=0
 

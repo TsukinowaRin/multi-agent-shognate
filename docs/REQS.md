@@ -595,3 +595,17 @@
    - 期待結果: self-watch判定がclaude限定 + PGID除外で実装されている。
 5. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats`
    - 期待結果: 全テストPASS。
+
+## 追補（2026-02-14: 実機テストで判明した起動不具合の修正）
+### 要求
+1. pure zellij (`goza_zellij.sh --template goza_room`) 起動時に、将軍/家老/足軽へ初動プロンプトが自動送信されること。
+2. tmux UI (`goza_tmux.sh`) 起動時に、実行後そのままtmuxへアタッチされること（ネスト環境でも接続失敗しにくいこと）。
+3. 起動待機の体感遅延を抑えるため、`goza_no_ma.sh` 経由時のCLI起動確認タイムアウトを短縮可能にすること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/goza_zellij.sh --template goza_room`
+   - 期待結果: 起動直後に各役職へ初動命令が自動送信される（ready送信指示を含む）。
+2. コマンド: `bash scripts/goza_tmux.sh --template goza_room`
+   - 期待結果: 実行後に tmux 画面へ遷移する（失敗時は明示エラー）。
+3. コマンド: `rg -n "zellij_bootstrap_pure_goza_background|TMUX= tmux attach|MAS_CLI_READY_TIMEOUT" scripts/goza_no_ma.sh shutsujin_departure.sh`
+   - 期待結果: 初動注入の背景送信、tmux attachの`TMUX=`明示、タイムアウト設定が実装されている。

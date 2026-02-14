@@ -56,16 +56,17 @@ run_setup_mode() {
   local mode="$1"
   local log_file="logs/mux_parity_${mode}.log"
 
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[DRY-RUN] MAS_MULTIPLEXER=${mode} bash shutsujin_departure.sh ${SETUP_ARGS[*]} > ${log_file}"
+    return 0
+  fi
+
   if ! command -v "$mode" >/dev/null 2>&1; then
     echo "[WARN] ${mode} command not found. skip."
     return 2
   fi
 
   echo "[INFO] setup-only start: ${mode}"
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[DRY-RUN] MAS_MULTIPLEXER=${mode} bash shutsujin_departure.sh ${SETUP_ARGS[*]} > ${log_file}"
-    return 0
-  fi
 
   if MAS_MULTIPLEXER="$mode" bash shutsujin_departure.sh "${SETUP_ARGS[@]}" >"$log_file" 2>&1; then
     :

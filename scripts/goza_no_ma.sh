@@ -210,8 +210,16 @@ if [[ "$VIEW_ONLY" != true ]]; then
     if [[ "$SETUP_ONLY" = true ]]; then
       START_ARGS=("-s" "${START_ARGS[@]}")
     fi
+    # shutsujin_departure.sh は set -e で途中終了する場合があるが、
+    # tmuxセッション自体は作成済みのため、ビュー作成・attachは続行する。
+    set +e
     MAS_MULTIPLEXER="$MUX_MODE" MAS_CLI_READY_TIMEOUT="${MAS_CLI_READY_TIMEOUT:-12}" \
       bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
+    _shutsujin_rc=$?
+    set -e
+    if [[ "$_shutsujin_rc" -ne 0 ]]; then
+      echo "[WARN] shutsujin_departure.sh exited with code $_shutsujin_rc (continuing to view setup)" >&2
+    fi
   fi
 fi
 

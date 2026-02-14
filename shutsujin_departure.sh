@@ -9,6 +9,7 @@
 #   ./shutsujin_departure.sh -h        # ヘルプ表示
 
 set -e
+trap 'echo "[DEBUG] shutsujin_departure.sh: ERR at line $LINENO (exit code $?)" >&2' ERR
 
 # スクリプトのディレクトリを取得
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -1036,23 +1037,26 @@ if [ "$SETUP_ONLY" = false ]; then
         log_info "  └─ 足軽（平時の陣: ${_ashigaru_launched}名）"
     fi
 
-    # Gemini初回 trust prompt 自動承認
-    auto_accept_gemini_trust_prompt_tmux "shogun:main" "shogun" "$_shogun_cli_type"
+    # Gemini初回 trust prompt 自動承認 + 高負荷応答自動再試行（並列実行）
+    _gemini_pids=()
+    _gemini_gate_handler() {
+        local _pane="$1" _agent="$2" _cli="$3"
+        auto_accept_gemini_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
+        auto_retry_gemini_busy_tmux "$_pane" "$_agent" "$_cli"
+    }
+    _gemini_gate_handler "shogun:main" "shogun" "$_shogun_cli_type" &
+    _gemini_pids+=($!)
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
         p=$((PANE_BASE + _idx))
         _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        auto_accept_gemini_trust_prompt_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
+        _gemini_gate_handler "multiagent:agents.${p}" "$_agent" "$_pane_cli" &
+        _gemini_pids+=($!)
     done
-
-    # Gemini高負荷応答（Keep trying/Stop）を自動再試行
-    auto_retry_gemini_busy_tmux "shogun:main" "shogun" "$_shogun_cli_type"
-    for _idx in "${!MULTIAGENT_IDS[@]}"; do
-        _agent="${MULTIAGENT_IDS[$_idx]}"
-        p=$((PANE_BASE + _idx))
-        _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        auto_retry_gemini_busy_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
+    for _pid in "${_gemini_pids[@]}"; do
+        wait "$_pid" 2>/dev/null || true
     done
+    unset _gemini_pids
 
     if [ "$KESSEN_MODE" = true ]; then
         log_success "✅ 決戦の陣で出陣！全軍Opus！"
@@ -1251,7 +1255,7 @@ fi
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 6.8: ntfy入力リスナー起動
 # ═══════════════════════════════════════════════════════════════════════════════
-NTFY_TOPIC=$(grep 'ntfy_topic:' ./config/settings.yaml 2>/dev/null | awk '{print $2}' | tr -d '"')
+NTFY_TOPIC=$(grep 'ntfy_topic:' ./config/settings.yaml 2>/dev/null | awk '{print $2}' | tr -d '"' || true)
 if [ -n "$NTFY_TOPIC" ]; then
     pkill -f "ntfy_listener.sh" 2>/dev/null || true
     [ ! -f ./queue/ntfy_inbox.yaml ] && echo "inbox:" > ./queue/ntfy_inbox.yaml

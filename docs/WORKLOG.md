@@ -980,3 +980,18 @@
   - 失敗後も `queue/inbox` はディレクトリ維持を確認（`test -d queue/inbox` 成功）。
 - 判断メモ:
   - inboxをsymlink運用せずディレクトリ正規化に寄せる方が、tmux/zellij双方で同じ復旧ロジックを適用しやすい。
+
+## 2026-02-14 (goza zellij の複数家老対応)
+- 背景:
+  - tmux側は `topology_resolve_karo_agents` で `karo1..karoN` を扱えるが、`goza_no_ma.sh` の pure zellij 経路は `karo` 固定寄りだった。
+- 実装:
+  - `scripts/goza_no_ma.sh` が `lib/topology_adapter.sh` を読込むよう変更。
+  - `zellij_collect_active_agents` で `topology_load_active_ashigaru` + `topology_resolve_karo_agents` を優先使用。
+  - 役職判定を `karo|karo[1-9]*|karo_gashira` へ拡張（連携規則・報告規則・指示書解決）。
+  - pure zellij レイアウトの家老エリアを単数 `karo` 固定から、家老配列のグリッド表示へ変更。
+  - `tests/unit/test_mux_parity.bats` に topology利用・複数家老判定の静的検証を追加。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/test_inbox_write.bats tests/unit/test_send_wakeup.bats` → 57/57 PASS
+- 判断メモ:
+  - multiplexer実行権限が無い環境ではE2Eを完了できないため、CIでは静的検証＋ユニット回帰で担保し、実機はユーザーWSLで最終確認とする。

@@ -20,6 +20,7 @@ VIEW_TEMPLATE="${VIEW_TEMPLATE:-}"
 PASS_THROUGH=()
 CLI_ADAPTER_LOADED=false
 INBOX_PATH_HELPER_LOADED=false
+TOPOLOGY_ADAPTER_LOADED=false
 
 usage() {
   cat << 'USAGE'
@@ -124,6 +125,11 @@ if [ -f "$ROOT_DIR/lib/inbox_path.sh" ]; then
   # shellcheck source=/dev/null
   source "$ROOT_DIR/lib/inbox_path.sh" || true
   INBOX_PATH_HELPER_LOADED=true
+fi
+if [ -f "$ROOT_DIR/lib/topology_adapter.sh" ]; then
+  # shellcheck source=/dev/null
+  source "$ROOT_DIR/lib/topology_adapter.sh" || true
+  TOPOLOGY_ADAPTER_LOADED=true
 fi
 
 if [[ "$MUX_MODE" != "zellij" && "$MUX_MODE" != "tmux" ]]; then
@@ -339,6 +345,24 @@ zellij_agent_pane_cmd() {
 }
 
 zellij_collect_active_agents() {
+  if [[ "$TOPOLOGY_ADAPTER_LOADED" == "true" ]] && declare -F topology_load_active_ashigaru >/dev/null 2>&1; then
+    local active_agents=()
+    local karo_agents=()
+    mapfile -t active_agents < <(topology_load_active_ashigaru 2>/dev/null || true)
+    if [[ ${#active_agents[@]} -eq 0 ]]; then
+      active_agents=("ashigaru1")
+    fi
+    mapfile -t karo_agents < <(topology_resolve_karo_agents "${active_agents[@]}" 2>/dev/null || true)
+    if [[ ${#karo_agents[@]} -eq 0 ]]; then
+      karo_agents=("karo")
+    fi
+
+    echo "shogun"
+    printf '%s\n' "${karo_agents[@]}"
+    printf '%s\n' "${active_agents[@]}"
+    return 0
+  fi
+
   python3 - << 'PY'
 from pathlib import Path
 
@@ -412,7 +436,7 @@ goza_role_linkage_directive() {
     shogun)
       echo "連携順序: 殿の指示を受けたら、必ず『将軍→家老→足軽』で委譲せよ。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
       ;;
-    karo)
+    karo|karo[1-9]*|karo_gashira)
       echo "連携順序: 将軍命令を受けたら、家老がサブタスク分解し queue/tasks/ashigaruN.yaml へ割当、inboxで該当足軽を起動せよ。人間へ直接報告せず、dashboardと既定フローを守れ。"
       ;;
     ashigaru*)
@@ -438,7 +462,7 @@ goza_event_driven_directive() {
     shogun)
       echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、殿の次入力を待て。自分で実装作業に入るな。"
       ;;
-    karo|ashigaru*)
+    karo|karo[1-9]*|karo_gashira|ashigaru*)
       echo "イベント駆動規則: ポーリング禁止。inboxイベント起点でタスク処理し、未読処理後は待機へ戻れ。"
       ;;
     *)
@@ -453,7 +477,7 @@ goza_reporting_chain_directive() {
     shogun)
       echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
       ;;
-    karo)
+    karo|karo[1-9]*|karo_gashira)
       echo "報告規則: タスク完了時は将軍へ要約を返し、人間へ直接報告しない。"
       ;;
     ashigaru*)
@@ -483,7 +507,7 @@ goza_startup_bootstrap_message() {
   if [[ -z "$role_instruction_file" ]]; then
     case "$agent_id" in
       shogun) role_instruction_file="instructions/shogun.md" ;;
-      karo) role_instruction_file="instructions/karo.md" ;;
+      karo|karo[1-9]*|karo_gashira) role_instruction_file="instructions/karo.md" ;;
       ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
       *) role_instruction_file="AGENTS.md" ;;
     esac
@@ -677,7 +701,7 @@ zellij_pure_goza_layout_file() {
   local layout_file="${TMPDIR:-/tmp}/zellij_pure_goza_${ZELLIJ_UI_SESSION}.kdl"
   local tab_title_escaped
   local shogun_agent="shogun"
-  local karo_agent="karo"
+  local karo_agents=()
   local ashigaru_agents=()
   local agent
   tab_title_escaped="$(kdl_escape "$tab_title")"
@@ -685,10 +709,13 @@ zellij_pure_goza_layout_file() {
   for agent in "${agents[@]}"; do
     case "$agent" in
       shogun) shogun_agent="$agent" ;;
-      karo) karo_agent="$agent" ;;
+      karo|karo[1-9]*|karo_gashira) karo_agents+=("$agent") ;;
       ashigaru*) ashigaru_agents+=("$agent") ;;
     esac
   done
+  if [[ ${#karo_agents[@]} -eq 0 ]]; then
+    karo_agents=("karo")
+  fi
   if [[ ${#ashigaru_agents[@]} -eq 0 ]]; then
     ashigaru_agents=("ashigaru1")
   fi
@@ -728,7 +755,7 @@ EOF
     fi
   }
 
-  zellij_emit_ashigaru_grid() {
+  zellij_emit_agent_grid() {
     local indent="$1"
     shift
     local local_agents=("$@")
@@ -755,8 +782,8 @@ EOF
       return
     fi
     echo "${indent}pane split_direction=\"horizontal\" {"
-    zellij_emit_ashigaru_grid "${indent}    " "${local_agents[@]:0:4}"
-    zellij_emit_ashigaru_grid "${indent}    " "${local_agents[@]:4}"
+    zellij_emit_agent_grid "${indent}    " "${local_agents[@]:0:4}"
+    zellij_emit_agent_grid "${indent}    " "${local_agents[@]:4}"
     echo "${indent}}"
   }
 
@@ -777,10 +804,10 @@ EOF
     zellij_emit_agent_leaf "                " "$shogun_agent" "focus"
     echo "            }"
     echo "            pane split_direction=\"horizontal\" size=\"32%\" {"
-    zellij_emit_agent_leaf "                " "$karo_agent"
+    zellij_emit_agent_grid "                " "${karo_agents[@]}"
     echo "            }"
     echo "            pane split_direction=\"horizontal\" size=\"22%\" {"
-    zellij_emit_ashigaru_grid "                " "${ashigaru_agents[@]}"
+    zellij_emit_agent_grid "                " "${ashigaru_agents[@]}"
     echo "            }"
     echo "        }"
     echo "    }"

@@ -296,6 +296,8 @@
    - 期待結果: `queue/inbox` がディレクトリへ復旧し、`queue/inbox/shogun.yaml` が作成される。
 3. コマンド: `bats tests/unit/test_mux_parity.bats tests/test_inbox_write.bats`
    - 期待結果: PASS。
+4. コマンド: `bash scripts/goza_no_ma.sh --mux zellij --ui zellij --template goza_room -s --no-attach`
+   - 期待結果: `topology.karo` が複数家老を返す設定時、`goza_no_ma` が `karo1..karoN` を編成対象として扱う（単一家老固定にならない）。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `rg -n "pane-border-format|m:\\*shogun\\*|m:\\*karo\\*|m:\\*ashigaru\\*" scripts/goza_no_ma.sh`

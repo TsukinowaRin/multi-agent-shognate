@@ -71,6 +71,12 @@ EOFYAML
         kimi)
             cat "$PARTS_DIR/cli_specific/kimi_tools.md" >> "$output_path"
             ;;
+        gemini)
+            cat "$PARTS_DIR/cli_specific/gemini_tools.md" >> "$output_path"
+            ;;
+        localapi)
+            cat "$PARTS_DIR/cli_specific/localapi_tools.md" >> "$output_path"
+            ;;
     esac
 
     echo "  ✅ Created: $output_filename"
@@ -95,6 +101,16 @@ build_instruction_file "copilot" "ashigaru" "copilot-ashigaru.md"
 build_instruction_file "kimi" "shogun" "kimi-shogun.md"
 build_instruction_file "kimi" "karo" "kimi-karo.md"
 build_instruction_file "kimi" "ashigaru" "kimi-ashigaru.md"
+
+# Build Gemini instruction files
+build_instruction_file "gemini" "shogun" "gemini-shogun.md"
+build_instruction_file "gemini" "karo" "gemini-karo.md"
+build_instruction_file "gemini" "ashigaru" "gemini-ashigaru.md"
+
+# Build Local API instruction files
+build_instruction_file "localapi" "shogun" "localapi-shogun.md"
+build_instruction_file "localapi" "karo" "localapi-karo.md"
+build_instruction_file "localapi" "ashigaru" "localapi-ashigaru.md"
 
 # ============================================================
 # AGENTS.md generation (Codex auto-load file)

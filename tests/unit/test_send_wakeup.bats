@@ -708,3 +708,31 @@ PY
     ! grep -q "send-keys.*/model" "$MOCK_LOG"
     echo "$output" | grep -q "not supported on copilot"
 }
+
+# --- T-GEMINI-001: gemini /clear → Ctrl-C + restart ---
+
+@test "T-GEMINI-001: send_cli_command sends Ctrl-C + gemini restart for gemini /clear" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="gemini"
+        send_cli_command "/clear"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys.*C-c" "$MOCK_LOG"
+    grep -q "send-keys.*gemini --yolo" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+}
+
+# --- T-LOCALAPI-001: localapi /model → :model translation ---
+
+@test "T-LOCALAPI-001: send_cli_command translates /model for localapi" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="localapi"
+        send_cli_command "/model qwen2.5-coder"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys.*:model qwen2.5-coder" "$MOCK_LOG"
+}

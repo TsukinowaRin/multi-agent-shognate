@@ -17,7 +17,6 @@ files:
   context: "context/{project}.md"       # Project-specific notes for ashigaru
   cmd_queue: queue/shogun_to_karo.yaml  # Shogun → Karo commands
   tasks: "queue/tasks/ashigaru{N}.yaml" # Karo → Ashigaru assignments (per-ashigaru)
-  pending_tasks: queue/tasks/pending.yaml # Karo管理の保留タスク（blocked未割当）
   reports: "queue/reports/ashigaru{N}_report.yaml" # Ashigaru → Karo reports
   dashboard: dashboard.md              # Human-readable summary (secondary data)
   ntfy_inbox: queue/ntfy_inbox.yaml    # Incoming ntfy messages from Lord's phone
@@ -32,16 +31,10 @@ task_status_transitions:
   - "idle → assigned (karo assigns)"
   - "assigned → done (ashigaru completes)"
   - "assigned → failed (ashigaru fails)"
-  - "pending_blocked（家老キュー保留）→ assigned（依存完了後に割当）"
   - "RULE: Ashigaru updates OWN yaml only. Never touch other ashigaru's yaml."
-  - "RULE: blocked状態タスクを足軽へ事前割当しない。前提完了までpending_tasksで保留。"
 
 mcp_tools: [Notion, Playwright, GitHub, Sequential Thinking, Memory]
 mcp_usage: "Lazy-loaded. Always ToolSearch before first use."
-
-parallel_principle: "足軽は可能な限り並列投入。家老は統括専念。1人抱え込み禁止。"
-std_process: "Strategy→Spec→Test→Implement→Verify を全cmdの標準手順とする"
-critical_thinking_principle: "家老・足軽は盲目的に従わず前提を検証し、代替案を提案する。ただし過剰批判で停止せず、実行可能性とのバランスを保つ。"
 
 language:
   ja: "戦国風日本語のみ。「はっ！」「承知つかまつった」「任務完了でござる」"
@@ -201,14 +194,6 @@ System manages ALL white-collar work, not just self-improvement. Project folders
 2. **Preflight check**: テスト実行前に前提条件（依存ツール、エージェント稼働状態等）を確認。満たせないなら実行せず報告。
 3. **E2Eテストは家老が担当**: 全エージェント操作権限を持つ家老がE2Eを実行。足軽はユニットテストのみ。
 4. **テスト計画レビュー**: 家老はテスト計画を事前レビューし、前提条件の実現可能性を確認してから実行に移す。
-
-# Critical Thinking Rule (all agents)
-
-1. **適度な懐疑**: 指示・前提・制約をそのまま鵜呑みにせず、矛盾や欠落がないか検証する。
-2. **代替案提示**: より安全・高速・高品質な方法を見つけた場合、根拠つきで代替案を提案する。
-3. **問題の早期報告**: 実行中に前提崩れや設計欠陥を検知したら、即座に inbox で共有する。
-4. **過剰批判の禁止**: 批判だけで停止しない。判断不能でない限り、最善案を選んで前進する。
-5. **実行バランス**: 「批判的検討」と「実行速度」の両立を常に優先する。
 
 # Destructive Operation Safety (all agents)
 

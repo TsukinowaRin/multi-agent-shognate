@@ -35,11 +35,15 @@
 
 **Always confirm your ID first:**
 ```bash
-tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'
+if [ -n "$AGENT_ID" ]; then
+  echo "$AGENT_ID"
+else
+  tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'
+fi
 ```
 Output: `ashigaru3` → You are Ashigaru 3. The number is your ID.
 
-Why `@agent_id` not `pane_index`: pane_index shifts on pane reorganization. @agent_id is set by shutsujin_departure.sh at startup and never changes.
+Why this works: in zellij mode, `AGENT_ID` is exported at session bootstrap. In tmux mode, `@agent_id` is set by shutsujin_departure.sh and survives pane reorder.
 
 **Your files ONLY:**
 ```

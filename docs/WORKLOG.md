@@ -995,3 +995,17 @@
   - `bats tests/unit/test_mux_parity.bats tests/test_inbox_write.bats tests/unit/test_send_wakeup.bats` → 57/57 PASS
 - 判断メモ:
   - multiplexer実行権限が無い環境ではE2Eを完了できないため、CIでは静的検証＋ユニット回帰で担保し、実機はユーザーWSLで最終確認とする。
+
+## 2026-02-14 (tmux/zellij parity スモークスクリプト追加)
+- 背景:
+  - ユーザーが実機で tmux/zellij の同一挙動を短手順で確認できる導線が必要。
+- 実装:
+  - `scripts/mux_parity_smoke.sh` を追加。
+    - `--dry-run` / `--tmux-only` / `--zellij-only` / `--clean` を提供。
+    - `shutsujin_departure.sh -s` を tmux/zellij で実行し、`queue/inbox` ディレクトリ化と owner map 生成を検証。
+    - 両モード実行時は `queue/runtime/ashigaru_owner.tmux.tsv` と `.zellij.tsv` を比較。
+  - `tests/unit/test_mux_parity_smoke.bats` を追加し、dry-run出力を検証。
+  - `docs/REQS.md` に受け入れ条件を追記。
+- 検証:
+  - `bash -n scripts/mux_parity_smoke.sh` → PASS
+  - `bats tests/unit/test_mux_parity_smoke.bats` → PASS

@@ -298,6 +298,10 @@
    - 期待結果: PASS。
 4. コマンド: `bash scripts/goza_no_ma.sh --mux zellij --ui zellij --template goza_room -s --no-attach`
    - 期待結果: `topology.karo` が複数家老を返す設定時、`goza_no_ma` が `karo1..karoN` を編成対象として扱う（単一家老固定にならない）。
+5. コマンド: `bash scripts/mux_parity_smoke.sh --dry-run`
+   - 期待結果: `MAS_MULTIPLEXER=tmux` と `MAS_MULTIPLEXER=zellij` の setup-only コマンドが両方表示される。
+6. コマンド: `bash scripts/mux_parity_smoke.sh`
+   - 期待結果: 両モード setup-only が成功した環境では `owner map parity: tmux == zellij` が表示される。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `rg -n "pane-border-format|m:\\*shogun\\*|m:\\*karo\\*|m:\\*ashigaru\\*" scripts/goza_no_ma.sh`

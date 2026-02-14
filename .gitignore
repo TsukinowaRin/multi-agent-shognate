@@ -95,6 +95,7 @@
 !scripts/goza_tmux.sh
 !scripts/configure_agents.sh
 !scripts/history_book.sh
+!scripts/mux_parity_smoke.sh
 
 
 # SayTask (sample template only, not actual data)

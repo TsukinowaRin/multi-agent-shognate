@@ -1,0 +1,12 @@
+worker_id: ashigaru1
+task_id: subtask_109a
+parent_cmd: cmd_109
+timestamp: "2026-02-12T22:47:30"
+status: done
+result:
+  summary: "受信確認完了"
+  files_modified:
+    - "queue/reports/ashigaru1_report.yaml"
+  notes: "試験点呼への応答"
+skill_candidate:
+  found: false

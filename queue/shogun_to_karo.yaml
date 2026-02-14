@@ -1,0 +1,43 @@
+- id: cmd_108
+  timestamp: "2026-02-12T20:53:03+09:00"
+  purpose: "家老が全足軽の稼働可否を点呼し、現在の稼働状態を報告できる状態にする。"
+  acceptance_criteria:
+    - "ashigaru1〜ashigaru8それぞれについて、応答有無と状態（active/idle/offline等）がdashboard.mdに記録されている。"
+    - "config/settings.yaml の active_ashigaru に含まれる足軽は、点呼時刻付きで応答確認結果が記録されている。"
+    - "未応答者がいる場合、再確認方針（再送・待機時間・次アクション）がdashboard.mdに記載されている。"
+  command: |
+    足軽ひとりひとりに点呼を取れ。全員分（ashigaru1〜ashigaru8）を対象に、現在稼働している者と待機中の者を判別し、結果をdashboard.mdへまとめよ。
+    本件は現況把握が目的であり、必要なら点呼依頼タスクを配分してよい。
+  project: multi-agent-shogun
+  priority: high
+  status: done
+
+- id: cmd_109
+  timestamp: "2026-02-12T22:44:32+09:00"
+  purpose: "家老が試験用の点呼任務を実施し、現在稼働中の足軽と家老自身の応答性を検証できる状態にする。"
+  acceptance_criteria:
+    - "config/settings.yaml の active_ashigaru 全員について、点呼結果（応答有無・時刻・状態）がdashboard.mdに記録されている。"
+    - "点呼に使った試験任務のtask_idと結果要約がdashboard.mdに記録されている。"
+    - "未応答者がいた場合、再確認手順と次回確認予定時刻がdashboard.mdに記載されている。"
+  command: |
+    足軽の稼働確認を目的とした短時間の試験任務を実施し、点呼結果を取りまとめよ。
+    家老自身の稼働確認として、実施時刻と処理結果も併せて記録せよ。
+    進捗および最終結果は dashboard.md に反映すること。
+  project: multi-agent-shogun
+  priority: high
+  status: done
+
+- id: cmd_110
+  timestamp: "2026-02-12T22:56:12+09:00"
+  purpose: "家老がashigaru2のblocked状態を解消し、任務実行可否を確定して報告できる状態にする。"
+  acceptance_criteria:
+    - "ashigaru2に対して新規task_idで再割当が実施され、queue/tasks/ashigaru2.yaml が更新されている。"
+    - "ashigaru2の最新報告が queue/reports/ashigaru2_report.yaml に記録され、statusがdoneまたはblocked理由明記で更新されている。"
+    - "原因、実施した対処、次アクションがdashboard.mdに時刻付きで追記されている。"
+  command: |
+    ashigaru2 の blocked 状態を調査し、必要な再割当または設定修正を行って解消せよ。
+    ただし将軍への報告は dashboard.md に統合し、原因と対処を明文化すること。
+    解消不能の場合は、blocked理由を具体化し、再試行条件と予定時刻を明記せよ。
+  project: multi-agent-shogun
+  priority: high
+  status: done

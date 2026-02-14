@@ -1,0 +1,6 @@
+agent_id: "karo"
+timestamp: "2026-02-13T00:57:39+09:00"
+unread_latency_sec: 0
+read_count: 1
+bytes_read: 2484
+estimated_tokens: 621

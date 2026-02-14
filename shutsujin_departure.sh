@@ -692,7 +692,7 @@ EOF
 
     # agent inbox リセット
     for agent in shogun "${KARO_AGENTS[@]}" "${KNOWN_ASHIGARU[@]}"; do
-        echo "messages:" > "./queue/inbox/${agent}.yaml"
+        echo "messages: []" > "./queue/inbox/${agent}.yaml"
     done
 
     log_success "✅ 陣払い完了"
@@ -1201,7 +1201,7 @@ NINJA_EOF
     # inbox ディレクトリ初期化（シンボリックリンク先のLinux FSに作成）
     mkdir -p "$SCRIPT_DIR/logs"
     for agent in shogun "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}"; do
-        [ -f "$SCRIPT_DIR/queue/inbox/${agent}.yaml" ] || echo "messages:" > "$SCRIPT_DIR/queue/inbox/${agent}.yaml"
+        [ -f "$SCRIPT_DIR/queue/inbox/${agent}.yaml" ] || echo "messages: []" > "$SCRIPT_DIR/queue/inbox/${agent}.yaml"
     done
 
     # 既存のwatcherと孤児inotifywaitをkill

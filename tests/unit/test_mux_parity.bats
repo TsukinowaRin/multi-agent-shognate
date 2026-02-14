@@ -35,3 +35,10 @@ setup_file() {
     run rg -n "karo\\|karo\\[1-9\\]\\*\\|karo_gashira" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "tmux/zellij ともに ntfy_inbox.yaml を確保する" {
+    run rg -n "ntfy_inbox\\.yaml" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+    run rg -n "ntfy_inbox\\.yaml" "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+    [ "$status" -eq 0 ]
+}

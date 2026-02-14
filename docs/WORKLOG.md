@@ -1009,3 +1009,15 @@
 - 検証:
   - `bash -n scripts/mux_parity_smoke.sh` → PASS
   - `bats tests/unit/test_mux_parity_smoke.bats` → PASS
+
+## 2026-02-14 (ランタイム初期化の parity 追加調整)
+- 背景:
+  - tmux/zellij の setup-only 後で、`queue/ntfy_inbox.yaml` 初期化有無と inbox YAML の初期値表記に差が残っていた。
+- 実装:
+  - `shutsujin_departure.sh` の inbox初期化を `messages: []` へ統一。
+  - `scripts/shutsujin_zellij.sh` に `queue/ntfy_inbox.yaml` の常時確保（clean時初期化）を追加。
+  - `scripts/mux_parity_smoke.sh` で `queue/ntfy_inbox.yaml` の存在チェックを追加。
+  - `tests/unit/test_mux_parity.bats` に `ntfy_inbox.yaml` 生成確認を追加。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/mux_parity_smoke.sh` → PASS
+  - `bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_mux_parity.bats tests/test_inbox_write.bats tests/unit/test_send_wakeup.bats` → PASS

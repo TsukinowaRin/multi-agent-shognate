@@ -80,6 +80,11 @@ run_setup_mode() {
     return 1
   fi
 
+  if [[ ! -f "queue/ntfy_inbox.yaml" ]]; then
+    echo "[ERROR] queue/ntfy_inbox.yaml missing after ${mode} setup" >&2
+    return 1
+  fi
+
   if [[ -f "queue/runtime/ashigaru_owner.tsv" ]]; then
     cp -f "queue/runtime/ashigaru_owner.tsv" "queue/runtime/ashigaru_owner.${mode}.tsv"
   else

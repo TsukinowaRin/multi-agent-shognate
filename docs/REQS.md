@@ -302,6 +302,8 @@
    - 期待結果: `MAS_MULTIPLEXER=tmux` と `MAS_MULTIPLEXER=zellij` の setup-only コマンドが両方表示される。
 6. コマンド: `bash scripts/mux_parity_smoke.sh`
    - 期待結果: 両モード setup-only が成功した環境では `owner map parity: tmux == zellij` が表示される。
+7. コマンド: `bash scripts/mux_parity_smoke.sh`
+   - 期待結果: 両モード setup-only 後に `queue/ntfy_inbox.yaml` が存在し、通知inboxの初期化挙動が一致する。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `rg -n "pane-border-format|m:\\*shogun\\*|m:\\*karo\\*|m:\\*ashigaru\\*" scripts/goza_no_ma.sh`

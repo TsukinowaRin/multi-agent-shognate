@@ -342,6 +342,13 @@ for agent in "${AGENTS[@]}"; do
   [ -f "queue/inbox/${agent}.yaml" ] || echo "messages: []" > "queue/inbox/${agent}.yaml"
 done
 
+# tmuxモードと同じく ntfy inbox を常に確保（clean時は初期化）
+if [ "$CLEAN_MODE" = true ]; then
+  echo "inbox:" > queue/ntfy_inbox.yaml
+else
+  [ -f queue/ntfy_inbox.yaml ] || echo "inbox:" > queue/ntfy_inbox.yaml
+fi
+
 session_exists() {
   local session="$1"
   zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -qx "$session"

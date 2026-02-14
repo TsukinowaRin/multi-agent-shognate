@@ -11,6 +11,14 @@ cd "$ROOT_DIR"
 
 SETTINGS_PATH="$ROOT_DIR/config/settings.yaml"
 TMP_PATH="$ROOT_DIR/config/settings.yaml.tmp"
+OWNER_MAP_PATH="$ROOT_DIR/queue/runtime/ashigaru_owner.tsv"
+
+TOPOLOGY_ADAPTER_LOADED=false
+if [[ -f "$ROOT_DIR/lib/topology_adapter.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$ROOT_DIR/lib/topology_adapter.sh"
+  TOPOLOGY_ADAPTER_LOADED=true
+fi
 
 read_current_value() {
   local key="$1"
@@ -212,6 +220,23 @@ done
 mv "$TMP_PATH" "$SETTINGS_PATH"
 echo ""
 echo "設定を更新しました: $SETTINGS_PATH"
+
+if [[ "$TOPOLOGY_ADAPTER_LOADED" == true ]]; then
+  mkdir -p "$ROOT_DIR/queue/runtime"
+  declare -a PREVIEW_ASHIGARU=()
+  for ((i=1; i<=ashigaru_count; i++)); do
+    PREVIEW_ASHIGARU+=("ashigaru${i}")
+  done
+  build_even_ownership_map "$OWNER_MAP_PATH" "${PREVIEW_ASHIGARU[@]}"
+  echo ""
+  echo "割り振り確認（起動時固定 / round-robin）:"
+  while IFS=$'\t' read -r karo_id karo_count; do
+    if [[ -n "$karo_id" && -n "$karo_count" ]]; then
+      echo "  - ${karo_id}: ${karo_count} 名"
+    fi
+  done < <(topology_print_owner_summary "$OWNER_MAP_PATH")
+fi
+
 echo "次の確認:"
 echo "  cat config/settings.yaml"
 echo "  bash scripts/goza_zellij.sh -s --no-attach"

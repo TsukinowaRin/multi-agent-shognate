@@ -152,14 +152,18 @@ date "+%Y-%m-%dT%H:%M:%S"
 
 ## Report Notification Protocol
 
-After writing report YAML, notify Karo:
+After writing report YAML, notify your **owner karo** from `queue/runtime/ashigaru_owner.tsv`:
 
 ```bash
-bash scripts/inbox_write.sh karo "足軽{N}号、任務完了でござる。報告書を確認されよ。" report_received ashigaru{N}
+SELF_ID="$(tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}')"
+OWNER_KARO="$(awk -F '\t' -v a="$SELF_ID" '$1==a{print $2; exit}' queue/runtime/ashigaru_owner.tsv)"
+[ -n "$OWNER_KARO" ] || OWNER_KARO="karo"
+bash scripts/inbox_write.sh "$OWNER_KARO" "足軽{N}号、任務完了でござる。報告書を確認されよ。" report_received "$SELF_ID"
 ```
 
 That's it. No state checking, no retry, no delivery verification.
 The inbox_write guarantees persistence. inbox_watcher handles delivery.
+非担当家老への報告は `inbox_write` 側で拒否されるため、必ず owner を解決してから送信すること。
 
 ## Report Format
 

@@ -35,6 +35,13 @@ if [ -f "$SCRIPT_DIR/lib/cli_adapter.sh" ]; then
     source "$SCRIPT_DIR/lib/cli_adapter.sh"
 fi
 
+TOPOLOGY_ADAPTER_LOADED=false
+if [ -f "$SCRIPT_DIR/lib/topology_adapter.sh" ]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/lib/topology_adapter.sh"
+    TOPOLOGY_ADAPTER_LOADED=true
+fi
+
 ensure_inbox_file() {
     local agent="$1"
     if [ ! -f "queue/inbox/${agent}.yaml" ]; then
@@ -88,10 +95,40 @@ PY
     fi
 }
 
+refresh_karo_agents() {
+    KARO_AGENTS=("karo")
+
+    if [ "$TOPOLOGY_ADAPTER_LOADED" = true ]; then
+        mapfile -t _karos_from_topology < <(topology_resolve_karo_agents "${ACTIVE_ASHIGARU[@]}" 2>/dev/null || true)
+        if [ "${#_karos_from_topology[@]}" -gt 0 ]; then
+            KARO_AGENTS=("${_karos_from_topology[@]}")
+            return 0
+        fi
+    fi
+
+    if [ -f "queue/runtime/ashigaru_owner.tsv" ]; then
+        mapfile -t _karos_from_owner < <(awk -F '\t' 'NF>=2{print $2}' queue/runtime/ashigaru_owner.tsv | sort -Vu)
+        if [ "${#_karos_from_owner[@]}" -gt 0 ]; then
+            KARO_AGENTS=("${_karos_from_owner[@]}")
+        fi
+    fi
+}
+
 agent_in_active_list() {
     local target="$1"
     local a
     for a in "${ACTIVE_ASHIGARU[@]}"; do
+        if [ "$a" = "$target" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+agent_in_karo_list() {
+    local target="$1"
+    local a
+    for a in "${KARO_AGENTS[@]}"; do
         if [ "$a" = "$target" ]; then
             return 0
         fi
@@ -172,11 +209,18 @@ cleanup_stale_watchers() {
     while IFS= read -r line; do
         pid="${line%% *}"
         cmd="${line#* }"
-        if [[ "$cmd" =~ scripts/inbox_watcher\.sh[[:space:]]+(ashigaru[1-9][0-9]*)[[:space:]] ]]; then
+        if [[ "$cmd" =~ scripts/inbox_watcher\.sh[[:space:]]+([a-zA-Z0-9_]+)[[:space:]] ]]; then
             agent="${BASH_REMATCH[1]}"
-            if ! agent_in_active_list "$agent"; then
-                kill "$pid" >/dev/null 2>&1 || true
+            if [ "$agent" = "shogun" ]; then
+                continue
             fi
+            if agent_in_active_list "$agent"; then
+                continue
+            fi
+            if agent_in_karo_list "$agent"; then
+                continue
+            fi
+            kill "$pid" >/dev/null 2>&1 || true
         fi
     done < <(pgrep -af "scripts/inbox_watcher.sh" || true)
 }
@@ -188,21 +232,29 @@ while true; do
     fi
 
     refresh_active_ashigaru
+    refresh_karo_agents
     cleanup_stale_watchers
 
     if [ "$MUX_TYPE" = "zellij" ]; then
         start_watcher_if_missing "shogun" "shogun" "logs/inbox_watcher_shogun.log"
-        start_watcher_if_missing "karo" "karo" "logs/inbox_watcher_karo.log"
+        for karo_agent in "${KARO_AGENTS[@]}"; do
+            start_watcher_if_missing "$karo_agent" "$karo_agent" "logs/inbox_watcher_${karo_agent}.log"
+        done
         for agent in "${ACTIVE_ASHIGARU[@]}"; do
             start_watcher_if_missing "$agent" "$agent" "logs/inbox_watcher_${agent}.log"
         done
     else
         PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
         start_watcher_if_missing "shogun" "shogun:main.${PANE_BASE}" "logs/inbox_watcher_shogun.log"
-        start_watcher_if_missing "karo" "multiagent:agents.${PANE_BASE}" "logs/inbox_watcher_karo.log"
+        for i in "${!KARO_AGENTS[@]}"; do
+            karo_agent="${KARO_AGENTS[$i]}"
+            pane=$((PANE_BASE + i))
+            start_watcher_if_missing "$karo_agent" "multiagent:agents.${pane}" "logs/inbox_watcher_${karo_agent}.log"
+        done
+        karo_count=${#KARO_AGENTS[@]}
         for i in "${!ACTIVE_ASHIGARU[@]}"; do
             agent="${ACTIVE_ASHIGARU[$i]}"
-            pane=$((PANE_BASE + i + 1))
+            pane=$((PANE_BASE + karo_count + i))
             start_watcher_if_missing "$agent" "multiagent:agents.${pane}" "logs/inbox_watcher_${agent}.log"
         done
     fi

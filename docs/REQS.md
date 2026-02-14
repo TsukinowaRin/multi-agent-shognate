@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-02-13
+最終更新: 2026-02-14
 出典: 直近ユーザープロンプト
 
 ## 要求
@@ -258,6 +258,30 @@
 ### 要求
 1. 御座の間（tmuxビュー）で、役職別タブ色が確実に反映されること。
 2. zellijセッションへのコマンド投入で Enter が効かない環境差分を吸収し、CLI自動起動を安定化すること。
+
+## 追補（2026-02-14: 複数家老時の足軽均等割り振り）
+### 要求
+1. 家老が複数人（`karo1..karoN`）のとき、足軽を起動時にラウンドロビンで均等割り振りする。
+2. 割り振り結果を `queue/runtime/ashigaru_owner.tsv` に保存する（`ashigaru<TAB>karo`）。
+3. 足軽は担当家老にのみ報告可能とし、非担当家老宛は拒否する。
+4. 家老同士の直接通信を禁止する。
+5. 単一家老（`karo`）時は既存挙動を維持する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash shutsujin_departure.sh -s`（`karo_count>=2` となる設定）
+   - 期待結果: `queue/runtime/ashigaru_owner.tsv` が再生成され、全足軽に担当家老が1件ずつ割り当たる。
+2. コマンド: `awk -F '\t' 'NF>=2{c[$2]++} END{min=-1; max=0; for(k in c){if(min<0||c[k]<min)min=c[k]; if(c[k]>max)max=c[k]} print max-min}' queue/runtime/ashigaru_owner.tsv`
+   - 期待結果: 出力が `0` または `1`（家老間の人数差が最大1）。
+3. コマンド: `bash scripts/inbox_write.sh karo1 "x" report_received ashigaru9`（owner が `karo2` の場合）
+   - 期待結果: エラー終了し、非担当宛送信拒否メッセージが出る。
+4. コマンド: `bash scripts/inbox_write.sh karo2 "x" report_received ashigaru9`（owner が `karo2` の場合）
+   - 期待結果: 正常終了し、`queue/inbox/karo2.yaml` に追記される。
+5. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_topology_adapter.bats tests/test_inbox_write.bats`
+   - 期待結果: 全テストPASS（SKIPなし）。
+
+### 仮定
+1. 家老複数化の命名規則は `karo1..karoN` を採用し、起動中の動的再配分は行わない。
+2. 既存の `queue/tasks/ashigaruN.yaml` と `queue/reports/ashigaruN_report.yaml` の命名は変更しない。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `rg -n "pane-border-format|m:\\*shogun\\*|m:\\*karo\\*|m:\\*ashigaru\\*" scripts/goza_no_ma.sh`

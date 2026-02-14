@@ -68,6 +68,13 @@ else
     CLI_ADAPTER_LOADED=false
 fi
 
+TOPOLOGY_ADAPTER_LOADED=false
+if [ -f "$SCRIPT_DIR/lib/topology_adapter.sh" ]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/lib/topology_adapter.sh"
+    TOPOLOGY_ADAPTER_LOADED=true
+fi
+
 # 色付きログ関数（戦国風）
 log_info() {
     echo -e "\033[1;33m【報】\033[0m $1"
@@ -149,7 +156,7 @@ send_startup_bootstrap_tmux() {
     if [ -z "$role_instruction_file" ]; then
         case "$agent_id" in
             shogun) role_instruction_file="instructions/shogun.md" ;;
-            karo) role_instruction_file="instructions/karo.md" ;;
+            karo|karo[1-9]*|karo_gashira) role_instruction_file="instructions/karo.md" ;;
             ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
             *) role_instruction_file="AGENTS.md" ;;
         esac
@@ -193,11 +200,11 @@ role_linkage_directive() {
         shogun)
             echo "連携順序: 殿の指示を受けたら、必ず『将軍→家老→足軽』で委譲せよ。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
             ;;
-        karo)
-            echo "連携順序: 将軍命令を受けたら、家老がサブタスク分解し queue/tasks/ashigaruN.yaml へ割当、inboxで該当足軽を起動せよ。人間へ直接報告せず、dashboardと既定フローを守れ。"
+        karo|karo[1-9]*|karo_gashira)
+            echo "連携順序: 家老は担当足軽のみを管理せよ。家老同士の直接連携は禁止。割当は queue/runtime/ashigaru_owner.tsv を正本として従うこと。"
             ;;
         ashigaru*)
-            echo "連携順序: 足軽は自分の task YAML のみ処理し、完了後は queue/reports/${agent_id}_report.yaml + inbox通知で家老へ報告せよ。将軍・人間への直接連絡は禁止。"
+            echo "連携順序: 足軽は自分の task YAML のみ処理し、完了後は queue/runtime/ashigaru_owner.tsv で定義された担当家老へ報告せよ。非担当家老への報告は禁止。"
             ;;
         *)
             echo "連携順序: 将軍→家老→足軽の指揮系統を順守せよ。"
@@ -219,7 +226,7 @@ event_driven_directive() {
         shogun)
             echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、殿の次入力を待て。自分で実装作業に入るな。"
             ;;
-        karo|ashigaru*)
+        karo|karo[1-9]*|karo_gashira|ashigaru*)
             echo "イベント駆動規則: ポーリング禁止。inboxイベント起点でタスク処理し、未読処理後は待機へ戻れ。"
             ;;
         *)
@@ -234,7 +241,7 @@ reporting_chain_directive() {
         shogun)
             echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
             ;;
-        karo)
+        karo|karo[1-9]*|karo_gashira)
             echo "報告規則: タスク完了時は将軍へ要約を返し、人間へ直接報告しない。"
             ;;
         ashigaru*)
@@ -450,6 +457,13 @@ PY
     fi
 fi
 ACTIVE_ASHIGARU_COUNT=${#ACTIVE_ASHIGARU[@]}
+KARO_AGENTS=("karo")
+if [ "$TOPOLOGY_ADAPTER_LOADED" = true ]; then
+    mapfile -t _karo_from_topology < <(topology_resolve_karo_agents "${ACTIVE_ASHIGARU[@]}" 2>/dev/null || true)
+    if [ "${#_karo_from_topology[@]}" -gt 0 ]; then
+        KARO_AGENTS=("${_karo_from_topology[@]}")
+    fi
+fi
 
 # shell配列をpythonへ安全に渡せないため、ACTIVEを個別に合流
 KNOWN_ASHIGARU=("${ACTIVE_ASHIGARU[@]}")
@@ -675,7 +689,7 @@ EOF
     echo "inbox:" > ./queue/ntfy_inbox.yaml
 
     # agent inbox リセット
-    for agent in shogun karo "${KNOWN_ASHIGARU[@]}"; do
+    for agent in shogun "${KARO_AGENTS[@]}" "${KNOWN_ASHIGARU[@]}"; do
         echo "messages:" > "./queue/inbox/${agent}.yaml"
     done
 
@@ -683,6 +697,16 @@ EOF
 else
     log_info "📜 前回の陣容を維持して出陣..."
     log_success "✅ キュー・報告ファイルはそのまま継続"
+fi
+
+mkdir -p "$SCRIPT_DIR/queue/runtime"
+if [ "$TOPOLOGY_ADAPTER_LOADED" = true ]; then
+    build_even_ownership_map "$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv" "${ACTIVE_ASHIGARU[@]}"
+else
+    : > "$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
+    for _agent in "${ACTIVE_ASHIGARU[@]}"; do
+        printf "%s\tkaro\n" "$_agent" >> "$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
+    done
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -796,7 +820,7 @@ echo ""
 # pane-base-index を取得（1 の環境ではペインは 1,2,... になる）
 PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
 
-MULTIAGENT_IDS=("karo" "${ACTIVE_ASHIGARU[@]}")
+MULTIAGENT_IDS=("${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}")
 MULTIAGENT_COUNT=${#MULTIAGENT_IDS[@]}
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -840,7 +864,7 @@ PANE_LABELS=("${MULTIAGENT_IDS[@]}")
 PANE_TITLES=("${MULTIAGENT_IDS[@]}")
 PANE_COLORS=()
 for _agent in "${MULTIAGENT_IDS[@]}"; do
-    if [ "$_agent" = "karo" ]; then
+    if [[ "$_agent" == karo* ]]; then
         PANE_COLORS+=("red")
     else
         PANE_COLORS+=("blue")
@@ -852,7 +876,7 @@ AGENT_IDS=("${MULTIAGENT_IDS[@]}")
 # モデル名設定（pane-border-format で常時表示するための既定値）
 MODEL_NAMES=()
 for _agent in "${AGENT_IDS[@]}"; do
-    if [ "$_agent" = "karo" ]; then
+    if [[ "$_agent" == karo* ]]; then
         MODEL_NAMES+=("Opus")
     elif [ "$KESSEN_MODE" = true ]; then
         MODEL_NAMES+=("Opus")
@@ -960,84 +984,70 @@ if [ "$SETUP_ONLY" = false ]; then
     # 少し待機（安定のため）
     sleep 1
 
-    # 家老（pane 0）: CLI Adapter経由でコマンド構築
-    p=$((PANE_BASE + 0))
-    _karo_cli_type="claude"
-    _karo_cmd="claude --model opus --dangerously-skip-permissions"
-    if [ "$CLI_ADAPTER_LOADED" = true ]; then
-        _karo_cli_type=$(resolve_cli_type_for_agent "karo")
-        _karo_cmd=$(build_cli_command_with_type "karo" "$_karo_cli_type")
-    fi
-    tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_karo_cli_type"
-    tmux send-keys -t "multiagent:agents.${p}" "$_karo_cmd"
-    tmux send-keys -t "multiagent:agents.${p}" Enter
-    log_info "  └─ 家老（${_karo_cli_type}）、召喚完了"
-    printf "karo\t%s\n" "$_karo_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
+    declare -A MULTIAGENT_CLI=()
+    _karo_launched=0
+    _ashigaru_launched=0
+    for _idx in "${!MULTIAGENT_IDS[@]}"; do
+        _agent="${MULTIAGENT_IDS[$_idx]}"
+        p=$((PANE_BASE + _idx))
 
-    if [ "$KESSEN_MODE" = true ]; then
-        # 決戦の陣: CLI Adapter経由（claudeはOpus強制）
-        for i in "${!ACTIVE_ASHIGARU[@]}"; do
-            _agent="${ACTIVE_ASHIGARU[$i]}"
-            p=$((PANE_BASE + i + 1))
-            _ashi_cli_type="claude"
-            _ashi_cmd="claude --model opus --dangerously-skip-permissions"
+        if [[ "$_agent" == karo* ]]; then
+            _agent_cli_type="claude"
+            _agent_cmd="claude --model opus --dangerously-skip-permissions"
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
-                _ashi_cli_type=$(resolve_cli_type_for_agent "$_agent")
-                if [ "$_ashi_cli_type" = "claude" ]; then
-                    # 決戦モード: claudeは全員Opus強制
-                    _ashi_cmd="claude --model opus --dangerously-skip-permissions"
+                _agent_cli_type=$(resolve_cli_type_for_agent "$_agent")
+                _agent_cmd=$(build_cli_command_with_type "$_agent" "$_agent_cli_type")
+            fi
+            _karo_launched=$((_karo_launched + 1))
+        else
+            _ashi_num="${_agent#ashigaru}"
+            _agent_cli_type="claude"
+            if [ "$KESSEN_MODE" = true ]; then
+                _agent_cmd="claude --model opus --dangerously-skip-permissions"
+            elif [ "${_ashi_num:-0}" -le 4 ]; then
+                _agent_cmd="claude --model sonnet --dangerously-skip-permissions"
+            else
+                _agent_cmd="claude --model opus --dangerously-skip-permissions"
+            fi
+            if [ "$CLI_ADAPTER_LOADED" = true ]; then
+                _agent_cli_type=$(resolve_cli_type_for_agent "$_agent")
+                if [ "$KESSEN_MODE" = true ] && [ "$_agent_cli_type" = "claude" ]; then
+                    _agent_cmd="claude --model opus --dangerously-skip-permissions"
                 else
-                    _ashi_cmd=$(build_cli_command_with_type "$_agent" "$_ashi_cli_type")
+                    _agent_cmd=$(build_cli_command_with_type "$_agent" "$_agent_cli_type")
                 fi
             fi
-            tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_ashi_cli_type"
-            tmux send-keys -t "multiagent:agents.${p}" "$_ashi_cmd"
-            tmux send-keys -t "multiagent:agents.${p}" Enter
-            printf "%s\t%s\n" "$_agent" "$_ashi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
-            log_info "  └─ ${_agent}（${_ashi_cli_type}）、召喚完了"
-        done
-        log_info "  └─ 足軽（決戦の陣: ${#ACTIVE_ASHIGARU[@]}名）"
+            _ashigaru_launched=$((_ashigaru_launched + 1))
+        fi
+
+        tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_agent_cli_type"
+        tmux send-keys -t "multiagent:agents.${p}" "$_agent_cmd"
+        tmux send-keys -t "multiagent:agents.${p}" Enter
+        printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
+        MULTIAGENT_CLI["$_agent"]="$_agent_cli_type"
+        log_info "  └─ ${_agent}（${_agent_cli_type}）、召喚完了"
+    done
+    log_info "  └─ 家老（${_karo_launched}名）、召喚完了"
+    if [ "$KESSEN_MODE" = true ]; then
+        log_info "  └─ 足軽（決戦の陣: ${_ashigaru_launched}名）"
     else
-        # 平時の陣: CLI Adapter経由（デフォルト: 1-4=Sonnet, 5-8=Opus）
-        for i in "${!ACTIVE_ASHIGARU[@]}"; do
-            _agent="${ACTIVE_ASHIGARU[$i]}"
-            _ashi_num="${_agent#ashigaru}"
-            p=$((PANE_BASE + i + 1))
-            _ashi_cli_type="claude"
-            if [ "${_ashi_num:-0}" -le 4 ]; then
-                _ashi_cmd="claude --model sonnet --dangerously-skip-permissions"
-            else
-                _ashi_cmd="claude --model opus --dangerously-skip-permissions"
-            fi
-            if [ "$CLI_ADAPTER_LOADED" = true ]; then
-                _ashi_cli_type=$(resolve_cli_type_for_agent "$_agent")
-                _ashi_cmd=$(build_cli_command_with_type "$_agent" "$_ashi_cli_type")
-            fi
-            tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_ashi_cli_type"
-            tmux send-keys -t "multiagent:agents.${p}" "$_ashi_cmd"
-            tmux send-keys -t "multiagent:agents.${p}" Enter
-            printf "%s\t%s\n" "$_agent" "$_ashi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
-            log_info "  └─ ${_agent}（${_ashi_cli_type}）、召喚完了"
-        done
-        log_info "  └─ 足軽（平時の陣: ${#ACTIVE_ASHIGARU[@]}名）"
+        log_info "  └─ 足軽（平時の陣: ${_ashigaru_launched}名）"
     fi
 
     # Gemini初回 trust prompt 自動承認
     auto_accept_gemini_trust_prompt_tmux "shogun:main" "shogun" "$_shogun_cli_type"
-    auto_accept_gemini_trust_prompt_tmux "multiagent:agents.${PANE_BASE}" "karo" "$_karo_cli_type"
-    for i in "${!ACTIVE_ASHIGARU[@]}"; do
-        _agent="${ACTIVE_ASHIGARU[$i]}"
-        p=$((PANE_BASE + i + 1))
+    for _idx in "${!MULTIAGENT_IDS[@]}"; do
+        _agent="${MULTIAGENT_IDS[$_idx]}"
+        p=$((PANE_BASE + _idx))
         _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
         auto_accept_gemini_trust_prompt_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
     done
 
     # Gemini高負荷応答（Keep trying/Stop）を自動再試行
     auto_retry_gemini_busy_tmux "shogun:main" "shogun" "$_shogun_cli_type"
-    auto_retry_gemini_busy_tmux "multiagent:agents.${PANE_BASE}" "karo" "$_karo_cli_type"
-    for i in "${!ACTIVE_ASHIGARU[@]}"; do
-        _agent="${ACTIVE_ASHIGARU[$i]}"
-        p=$((PANE_BASE + i + 1))
+    for _idx in "${!MULTIAGENT_IDS[@]}"; do
+        _agent="${MULTIAGENT_IDS[$_idx]}"
+        p=$((PANE_BASE + _idx))
         _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
         auto_retry_gemini_busy_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
     done
@@ -1173,10 +1183,9 @@ NINJA_EOF
     # 各エージェントへ初動命令を投入（CLI起動確認後）
     # 先に投入すると入力欄に残りやすいため、ready確認フェーズ後に送る。
     send_startup_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
-    send_startup_bootstrap_tmux "multiagent:agents.${PANE_BASE}" "karo" "$_karo_cli_type"
-    for i in "${!ACTIVE_ASHIGARU[@]}"; do
-        _agent="${ACTIVE_ASHIGARU[$i]}"
-        p=$((PANE_BASE + i + 1))
+    for _idx in "${!MULTIAGENT_IDS[@]}"; do
+        _agent="${MULTIAGENT_IDS[$_idx]}"
+        p=$((PANE_BASE + _idx))
         _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
         send_startup_bootstrap_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
     done
@@ -1189,7 +1198,7 @@ NINJA_EOF
 
     # inbox ディレクトリ初期化（シンボリックリンク先のLinux FSに作成）
     mkdir -p "$SCRIPT_DIR/logs"
-    for agent in shogun karo "${ACTIVE_ASHIGARU[@]}"; do
+    for agent in shogun "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}"; do
         [ -f "$SCRIPT_DIR/queue/inbox/${agent}.yaml" ] || echo "messages:" > "$SCRIPT_DIR/queue/inbox/${agent}.yaml"
     done
 
@@ -1207,25 +1216,18 @@ NINJA_EOF
             >> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" 2>&1 &
         disown
 
-        # 家老のwatcher
-        _karo_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${PANE_BASE}" -v @agent_cli 2>/dev/null || echo "claude")
-        nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" karo "multiagent:agents.${PANE_BASE}" "$_karo_watcher_cli" "tmux" \
-            >> "$SCRIPT_DIR/logs/inbox_watcher_karo.log" 2>&1 &
-        disown
-
-        # 足軽のwatcher（active_ashigaruのみ）
-        for i in "${!ACTIVE_ASHIGARU[@]}"; do
-            _agent="${ACTIVE_ASHIGARU[$i]}"
-            p=$((PANE_BASE + i + 1))
-            _ashi_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
+        # 家老 + 足軽 watcher
+        for _idx in "${!MULTIAGENT_IDS[@]}"; do
+            _agent="${MULTIAGENT_IDS[$_idx]}"
+            p=$((PANE_BASE + _idx))
+            _agent_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
             nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-                MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$_agent" "multiagent:agents.${p}" "$_ashi_watcher_cli" "tmux" \
+                MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$_agent" "multiagent:agents.${p}" "$_agent_watcher_cli" "tmux" \
                 >> "$SCRIPT_DIR/logs/inbox_watcher_${_agent}.log" 2>&1 &
             disown
         done
 
-        _watcher_total=$((2 + ${#ACTIVE_ASHIGARU[@]}))
+        _watcher_total=$((1 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
     else
         log_info "⚠️  inotifywait 未導入のため inbox_watcher はスキップ（sudo apt install -y inotify-tools）"
@@ -1276,11 +1278,14 @@ echo "     └──────────────────────
 echo ""
 echo "     【multiagentセッション】家老・足軽の陣（${MULTIAGENT_COUNT}ペイン）"
 echo "     ┌─────────────────────────────────────────────┐"
-echo "     │  Pane ${PANE_BASE}: karo (家老)             │"
-for i in "${!ACTIVE_ASHIGARU[@]}"; do
-    _pane=$((PANE_BASE + i + 1))
-    _ashi="${ACTIVE_ASHIGARU[$i]}"
-    echo "     │  Pane ${_pane}: ${_ashi} (足軽)             │"
+for i in "${!MULTIAGENT_IDS[@]}"; do
+    _pane=$((PANE_BASE + i))
+    _agent="${MULTIAGENT_IDS[$i]}"
+    if [[ "$_agent" == karo* ]]; then
+        echo "     │  Pane ${_pane}: ${_agent} (家老)             │"
+    else
+        echo "     │  Pane ${_pane}: ${_agent} (足軽)             │"
+    fi
 done
 echo "     └─────────────────────────────────────────────┘"
 echo ""

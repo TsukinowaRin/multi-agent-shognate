@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-02-13
+最終更新: 2026-02-14
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -15,6 +15,7 @@
 - `docs/EXECPLAN_2026-02-10_zellij_multi_cli.md` - zellij移植とCLI拡張の実行計画。
 - `docs/EXECPLAN_2026-02-12_role_instruction_sync.md` - 役職別正本MDの必読化と最適化MD自動同期の実行計画。
 - `docs/EXECPLAN_2026-02-12_startup_event_driven.md` - 初動自動送信/イベント駆動安定化/履歴要約（歴史書）導入の実行計画。
+- `docs/EXECPLAN_2026-02-14_multi_karo_round_robin.md` - 複数家老時の足軽均等割り振りと経路制約の実行計画。
 - `docs/EXECPLAN_TEMPLATE.md` - ExecPlanテンプレート。
 
 ## Logs

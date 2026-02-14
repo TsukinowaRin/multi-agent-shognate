@@ -10,6 +10,7 @@ TARGET="$1"
 CONTENT="$2"
 TYPE="${3:-wake_up}"
 FROM="${4:-unknown}"
+OWNER_MAP="$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
 
 INBOX="$SCRIPT_DIR/queue/inbox/${TARGET}.yaml"
 LOCKFILE="${INBOX}.lock"
@@ -19,6 +20,50 @@ if [ -z "$TARGET" ] || [ -z "$CONTENT" ]; then
     echo "Usage: inbox_write.sh <target_agent> <content> [type] [from]" >&2
     exit 1
 fi
+
+is_karo_agent() {
+    local agent="$1"
+    [[ "$agent" == "karo" || "$agent" == "karo_gashira" || "$agent" =~ ^karo[1-9][0-9]*$ ]]
+}
+
+is_ashigaru_agent() {
+    local agent="$1"
+    [[ "$agent" =~ ^ashigaru[1-9][0-9]*$ ]]
+}
+
+lookup_owner_karo() {
+    local ashigaru="$1"
+    [ -f "$OWNER_MAP" ] || return 1
+    awk -F '\t' -v id="$ashigaru" '$1==id {print $2; found=1; exit} END{if(!found) exit 1}' "$OWNER_MAP"
+}
+
+validate_route_policy() {
+    local owner=""
+    # 家老同士の直接通信は禁止（自己宛は許可）
+    if is_karo_agent "$FROM" && is_karo_agent "$TARGET" && [ "$FROM" != "$TARGET" ]; then
+        echo "[inbox_write] route rejected: karo-to-karo direct communication is forbidden ($FROM -> $TARGET)" >&2
+        return 1
+    fi
+
+    # 足軽→家老は担当固定（owner map がある場合）
+    if is_ashigaru_agent "$FROM" && is_karo_agent "$TARGET"; then
+        owner="$(lookup_owner_karo "$FROM" 2>/dev/null || true)"
+        if [ -n "$owner" ]; then
+            if [ "$TARGET" != "$owner" ]; then
+                echo "[inbox_write] route rejected: $FROM is owned by $owner, cannot send to $TARGET" >&2
+                return 1
+            fi
+        elif [ -f "$OWNER_MAP" ] && [ "$TARGET" != "karo" ]; then
+            # 互換性維持: owner不明時は単一家老(karo)のみ許容
+            echo "[inbox_write] route rejected: owner missing for $FROM in $OWNER_MAP" >&2
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+validate_route_policy
 
 # Initialize inbox if not exists
 if [ ! -f "$INBOX" ]; then

@@ -68,6 +68,13 @@ else
   exit 1
 fi
 
+TOPOLOGY_ADAPTER_LOADED=false
+if [ -f "$SCRIPT_DIR/lib/topology_adapter.sh" ]; then
+  # shellcheck source=/dev/null
+  source "$SCRIPT_DIR/lib/topology_adapter.sh"
+  TOPOLOGY_ADAPTER_LOADED=true
+fi
+
 ensure_generated_instructions() {
   local ensure_script="$SCRIPT_DIR/scripts/ensure_generated_instructions.sh"
   if [ ! -x "$ensure_script" ]; then
@@ -135,6 +142,13 @@ PY
   fi
 fi
 ACTIVE_ASHIGARU_COUNT=${#ACTIVE_ASHIGARU[@]}
+KARO_AGENTS=("karo")
+if [ "$TOPOLOGY_ADAPTER_LOADED" = true ]; then
+  mapfile -t _karo_from_topology < <(topology_resolve_karo_agents "${ACTIVE_ASHIGARU[@]}" 2>/dev/null || true)
+  if [ "${#_karo_from_topology[@]}" -gt 0 ]; then
+    KARO_AGENTS=("${_karo_from_topology[@]}")
+  fi
+fi
 
 KNOWN_ASHIGARU=("${ACTIVE_ASHIGARU[@]}")
 mapfile -t _known_from_files < <(python3 - << 'PY' 2>/dev/null || true
@@ -254,7 +268,7 @@ role_tab_label() {
   local agent="$1"
   case "$agent" in
     shogun) echo "🟣 shogun" ;;
-    karo) echo "🔵 karo" ;;
+    karo|karo[1-9]*|karo_gashira) echo "🔵 ${agent}" ;;
     ashigaru*) echo "🟤 ${agent}" ;;
     *) echo "$agent" ;;
   esac
@@ -264,9 +278,17 @@ show_battle_cry
 echo -e "  \033[1;33m天下布武！陣立てを開始いたす\033[0m (Setting up the battlefield)"
 echo ""
 
-AGENTS=("shogun" "karo" "${ACTIVE_ASHIGARU[@]}")
+AGENTS=("shogun" "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}")
 
 mkdir -p queue/reports queue/tasks queue/inbox logs queue/runtime
+if [ "$TOPOLOGY_ADAPTER_LOADED" = true ]; then
+  build_even_ownership_map "$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv" "${ACTIVE_ASHIGARU[@]}"
+else
+  : > "$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
+  for _agent in "${ACTIVE_ASHIGARU[@]}"; do
+    printf "%s\tkaro\n" "$_agent" >> "$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
+  done
+fi
 
 if [ "$CLEAN_MODE" = true ]; then
   log_info "📜 クリーン初期化を実施"
@@ -372,7 +394,7 @@ send_startup_bootstrap_zellij() {
   if [ -z "$role_instruction_file" ]; then
     case "$agent_id" in
       shogun) role_instruction_file="instructions/shogun.md" ;;
-      karo) role_instruction_file="instructions/karo.md" ;;
+      karo|karo[1-9]*|karo_gashira) role_instruction_file="instructions/karo.md" ;;
       ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
       *) role_instruction_file="AGENTS.md" ;;
     esac
@@ -405,11 +427,11 @@ role_linkage_directive() {
     shogun)
       echo "連携順序: 殿の指示を受けたら、必ず『将軍→家老→足軽』で委譲せよ。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
       ;;
-    karo)
-      echo "連携順序: 将軍命令を受けたら、家老がサブタスク分解し queue/tasks/ashigaruN.yaml へ割当、inboxで該当足軽を起動せよ。人間へ直接報告せず、dashboardと既定フローを守れ。"
+    karo|karo[1-9]*|karo_gashira)
+      echo "連携順序: 家老は担当足軽のみを管理せよ。家老同士の直接連携は禁止。割当は queue/runtime/ashigaru_owner.tsv を正本として従うこと。"
       ;;
     ashigaru*)
-      echo "連携順序: 足軽は自分の task YAML のみ処理し、完了後は queue/reports/${agent_id}_report.yaml + inbox通知で家老へ報告せよ。将軍・人間への直接連絡は禁止。"
+      echo "連携順序: 足軽は自分の task YAML のみ処理し、完了後は queue/runtime/ashigaru_owner.tsv で定義された担当家老へ報告せよ。非担当家老への報告は禁止。"
       ;;
     *)
       echo "連携順序: 将軍→家老→足軽の指揮系統を順守せよ。"
@@ -431,7 +453,7 @@ event_driven_directive() {
     shogun)
       echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、殿の次入力を待て。自分で実装作業に入るな。"
       ;;
-    karo|ashigaru*)
+    karo|karo[1-9]*|karo_gashira|ashigaru*)
       echo "イベント駆動規則: ポーリング禁止。inboxイベント起点でタスク処理し、未読処理後は待機へ戻れ。"
       ;;
     *)
@@ -446,7 +468,7 @@ reporting_chain_directive() {
     shogun)
       echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
       ;;
-    karo)
+    karo|karo[1-9]*|karo_gashira)
       echo "報告規則: タスク完了時は将軍へ要約を返し、人間へ直接報告しない。"
       ;;
     ashigaru*)
@@ -462,7 +484,7 @@ ensure_generated_instructions
 
 log_war "⚔️ zellij セッションを構築中（1エージェント=1セッション）"
 # 非アクティブ化された管理セッションは削除して配備一覧を一致させる
-mapfile -t _managed_sessions < <(zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -E '^(shogun|karo|ashigaru[1-9][0-9]*)$' || true)
+mapfile -t _managed_sessions < <(zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -E '^(shogun|karo([1-9][0-9]*)?|karo_gashira|ashigaru[1-9][0-9]*)$' || true)
 for stale in "${_managed_sessions[@]}"; do
   if ! is_selected_agent "$stale"; then
     zellij delete-session "$stale" --force >/dev/null 2>&1 || zellij kill-session "$stale" >/dev/null 2>&1 || true
@@ -536,7 +558,9 @@ fi
 echo ""
 echo "接続方法（zellij）:"
 echo "  zellij attach shogun"
-echo "  zellij attach karo"
+for k in "${KARO_AGENTS[@]}"; do
+  echo "  zellij attach $k"
+done
 for a in "${ACTIVE_ASHIGARU[@]}"; do
   echo "  zellij attach $a"
 done

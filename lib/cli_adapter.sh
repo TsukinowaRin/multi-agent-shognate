@@ -259,7 +259,7 @@ get_role_instruction_file() {
 
     case "$agent_id" in
         shogun)    role="shogun" ;;
-        karo)      role="karo" ;;
+        karo|karo[1-9]*|karo_gashira) role="karo" ;;
         ashigaru*) role="ashigaru" ;;
         *)
             echo "" >&2
@@ -279,7 +279,7 @@ get_instruction_file() {
 
     case "$agent_id" in
         shogun)    role="shogun" ;;
-        karo)      role="karo" ;;
+        karo|karo[1-9]*|karo_gashira) role="karo" ;;
         ashigaru*) role="ashigaru" ;;
         *)
             echo "" >&2
@@ -379,21 +379,21 @@ get_agent_model() {
         kimi)
             # Kimi CLI用デフォルトモデル
             case "$agent_id" in
-                shogun|karo)    echo "k2.5" ;;
+                shogun|karo|karo[1-9]*|karo_gashira) echo "k2.5" ;;
                 ashigaru*)      echo "k2.5" ;;
                 *)              echo "k2.5" ;;
             esac
             ;;
         gemini)
             case "$agent_id" in
-                shogun|karo)    echo "auto" ;;
+                shogun|karo|karo[1-9]*|karo_gashira) echo "auto" ;;
                 ashigaru*)      echo "auto" ;;
                 *)              echo "auto" ;;
             esac
             ;;
         localapi)
             case "$agent_id" in
-                shogun|karo)    echo "local-model" ;;
+                shogun|karo|karo[1-9]*|karo_gashira) echo "local-model" ;;
                 ashigaru*)      echo "local-model" ;;
                 *)              echo "local-model" ;;
             esac
@@ -401,7 +401,7 @@ get_agent_model() {
         *)
             # Claude Code/Codex/Copilot用デフォルトモデル（kessen/heiji互換）
             case "$agent_id" in
-                shogun|karo)    echo "opus" ;;
+                shogun|karo|karo[1-9]*|karo_gashira) echo "opus" ;;
                 ashigaru[1-4])  echo "sonnet" ;;
                 ashigaru[5-8])  echo "opus" ;;
                 *)              echo "sonnet" ;;

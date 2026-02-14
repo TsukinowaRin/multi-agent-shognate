@@ -11,6 +11,9 @@
 #   T-010: flock競合時のリトライ
 #   T-011: 特殊文字のエスケープ処理
 #   T-012: inbox初期化（ディレクトリ自動作成）
+#   T-013: 足軽→非担当家老の拒否
+#   T-014: 足軽→担当家老の許可
+#   T-015: 家老同士直接通信の拒否
 
 # --- セットアップ ---
 
@@ -430,4 +433,44 @@ assert len(data['messages']) == 1, 'Expected 1 message after auto-create'
 
 print('T-012: PASS')
 EOF
+}
+
+# =============================================================================
+# T-013: 足軽→非担当家老は拒否
+# =============================================================================
+
+@test "T-013: ashigaru to non-owner karo is rejected" {
+    mkdir -p "$TEST_TMPDIR/queue/runtime"
+    cat > "$TEST_TMPDIR/queue/runtime/ashigaru_owner.tsv" <<'EOF'
+ashigaru9	karo2
+EOF
+
+    run bash "$TEST_INBOX_WRITE" "karo1" "誤配送テスト" "report_received" "ashigaru9"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "route rejected" ]]
+}
+
+# =============================================================================
+# T-014: 足軽→担当家老は許可
+# =============================================================================
+
+@test "T-014: ashigaru to owner karo succeeds" {
+    mkdir -p "$TEST_TMPDIR/queue/runtime"
+    cat > "$TEST_TMPDIR/queue/runtime/ashigaru_owner.tsv" <<'EOF'
+ashigaru9	karo2
+EOF
+
+    run bash "$TEST_INBOX_WRITE" "karo2" "担当配送テスト" "report_received" "ashigaru9"
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_INBOX_DIR/karo2.yaml" ]
+}
+
+# =============================================================================
+# T-015: 家老同士直接通信は拒否
+# =============================================================================
+
+@test "T-015: karo-to-karo direct message is rejected" {
+    run bash "$TEST_INBOX_WRITE" "karo2" "家老間連携テスト" "cmd_new" "karo1"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "karo-to-karo direct communication is forbidden" ]]
 }

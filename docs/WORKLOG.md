@@ -916,3 +916,47 @@
 - 判断メモ:
   - 同期ずれは「ashigaru2の能力不足」ではなく、監視プロセスのpane追従不足と安全フラグ差分が主因。
   - まず watcher層を安定化し、その上で役職フローに戻す方が再現性が高い。
+
+## 2026-02-14 (複数家老の均等割り振り + 経路制約)
+- 背景:
+  - ユーザー要求: 家老が複数人のとき、足軽を均等配分し、担当外報告を防止したい。
+  - 既存状態: owner map は起動時生成済みだったが、`inbox_write` と `watcher_supervisor` が単一家老前提で制約不足。
+- 実装:
+  - `scripts/inbox_write.sh`
+    - `queue/runtime/ashigaru_owner.tsv` を参照する送信経路バリデーションを追加。
+    - `ashigaruN -> 非担当karoX` を拒否。
+    - `karoX -> karoY (X!=Y)` を拒否。
+  - `scripts/watcher_supervisor.sh`
+    - `lib/topology_adapter.sh` を読込、`topology_resolve_karo_agents` ベースで `KARO_AGENTS` を解決。
+    - zellij/tmux双方で `karo1..karoN` watcher 起動に対応。
+    - stale watcher 掃除を `ashigaru` 限定から「managed agent判定」へ拡張。
+  - `scripts/configure_agents.sh`
+    - 設定保存後に owner map を再計算し、家老別人数サマリを表示。
+  - `instructions/karo.md` / `instructions/ashigaru.md`
+    - 担当固定・非担当禁止・家老間直接通信禁止を追記。
+  - docs更新:
+    - `docs/REQS.md` に 2026-02-14 追補を追加。
+    - `docs/EXECPLAN_2026-02-14_multi_karo_round_robin.md` を新規作成。
+    - `docs/INDEX.md` を更新。
+  - tests更新:
+    - 新規 `tests/unit/test_topology_adapter.bats` を追加。
+    - `tests/test_inbox_write.bats` に T-013〜T-015 を追加。
+- 検証:
+  - `bash -n scripts/inbox_write.sh scripts/watcher_supervisor.sh scripts/configure_agents.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh` → PASS
+  - `bash -n lib/topology_adapter.sh lib/cli_adapter.sh` → PASS
+  - `bats tests/unit/test_topology_adapter.bats tests/test_inbox_write.bats tests/unit/test_send_wakeup.bats` → 55/55 PASS
+- 判断メモ:
+  - 経路制約は最終送信ポイント（`inbox_write`）で強制するのが最も再現性が高い。
+  - 運用中再配分は要件外のため、今回は起動時固定のみ実装してスコープを維持。
+
+## 2026-02-14 (queue/inbox のGit不整合整理)
+- 背景:
+  - `git add -A` 実行時に `queue/inbox` で `Function not implemented` が再発していた。
+  - `queue/inbox` は履歴上 symlink（mode 120000）で、WSL/DrvFS環境差分と衝突していた。
+- 対応:
+  - 作業ツリー上は `queue/inbox` をディレクトリへ戻し、実行時生成に統一。
+  - Git上は `queue/inbox` の追跡削除を維持（`.gitignore` の `queue/inbox` ルールで再追跡を防止）。
+- 検証:
+  - `bats tests/unit/test_topology_adapter.bats tests/test_inbox_write.bats` → PASS
+- 判断メモ:
+  - inboxはランタイムデータのため、VCS管理対象にしない方が環境差分の事故を減らせる。

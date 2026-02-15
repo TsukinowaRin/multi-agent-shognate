@@ -1192,13 +1192,15 @@ NINJA_EOF
 
     # 各エージェントへ初動命令を投入（CLI起動確認後）
     # 先に投入すると入力欄に残りやすいため、ready確認フェーズ後に送る。
-    send_startup_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
+    # 将軍への注入を最後にして、注入後にフォーカスを将軍ペインに固定
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
         p=$((PANE_BASE + _idx))
         _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
         send_startup_bootstrap_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
     done
+    send_startup_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
+    tmux select-pane -t shogun:main >/dev/null 2>&1 || true
     log_info "📜 初動命令を自動送信（ready後すぐに入力可能な状態へ移行）"
 
     # ═══════════════════════════════════════════════════════════════════

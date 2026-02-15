@@ -63,6 +63,8 @@
 !first_setup.sh
 !setup.sh
 !install.bat
+!start_zellij_goza.bat
+!start_tmux_goza.bat
 
 # Development tooling
 !Makefile

@@ -1,5 +1,25 @@
 # Worklog
 
+## 2026-02-15 13:35 (JST)
+- Goal: zellij E2E検証完了
+- Changes (files):
+  - なし（すべての変更は前回のコミットで完了）
+- Commands + Results:
+  - `zellij --version` → 0.41.2
+  - `MAS_MULTIPLEXER=zellij bash shutsujin_departure.sh -s` → セッション作成OK
+  - `MAS_MULTIPLEXER=zellij bash shutsujin_departure.sh` → 起動成功
+  - `grep "$(date '+%a %b %d')" logs/inbox_watcher_*.log` → 全エージェントのinbox_watcher起動記録を確認
+- Decisions / Assumptions:
+  - REQS.mdのR4（zellij フルE2E）が完了
+  - R1〜R4すべて判定済み
+- Next:
+  - WORKLOG.md更新済み
+  - 全要件完了
+- Blockers: なし
+- Links: docs/REQS.md
+
+---
+
 ## 2026-02-10
 - docs基盤ファイル（INDEX/DOCS_POLICY/PLANS/REQS/EXECPLAN）を新規作成。
 - 次工程として、CLI adapterへのgemini/localapi追加とzellij起動導線の実装に着手。

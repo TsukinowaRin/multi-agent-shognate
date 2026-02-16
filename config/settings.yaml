@@ -1,0 +1,27 @@
+language: ja
+shell: bash
+multiplexer:
+  default: zellij
+startup:
+  template: goza_room
+topology:
+  active_ashigaru:
+    - ashigaru1
+    - ashigaru2
+    - ashigaru3
+    - ashigaru4
+cli:
+  default: claude
+  agents:
+    shogun:
+      type: claude
+    karo:
+      type: claude
+    ashigaru1:
+      type: gemini
+    ashigaru2:
+      type: gemini
+    ashigaru3:
+      type: gemini
+    ashigaru4:
+      type: gemini

@@ -185,7 +185,7 @@ send_startup_bootstrap_tmux() {
     fi
 
     tmux send-keys -t "$pane_target" "$startup_msg"
-    tmux send-keys -t "$pane_target" Enter
+    tmux send-keys -t "$pane_target" C-m
 }
 
 ensure_generated_instructions() {
@@ -688,11 +688,30 @@ result: null
 EOF
     done
 
+    # 軍師タスク・レポートファイルリセット
+    cat > "./queue/tasks/gunshi.yaml" << EOF
+# 軍師専用タスクファイル
+task:
+  task_id: null
+  parent_cmd: null
+  description: null
+  target_path: null
+  status: idle
+  timestamp: ""
+EOF
+    cat > "./queue/reports/gunshi_report.yaml" << EOF
+worker_id: gunshi
+task_id: null
+timestamp: ""
+status: idle
+result: null
+EOF
+
     # ntfy inbox リセット
     echo "inbox:" > ./queue/ntfy_inbox.yaml
 
     # agent inbox リセット
-    for agent in shogun "${KARO_AGENTS[@]}" "${KNOWN_ASHIGARU[@]}"; do
+    for agent in shogun gunshi "${KARO_AGENTS[@]}" "${KNOWN_ASHIGARU[@]}"; do
         echo "messages: []" > "./queue/inbox/${agent}.yaml"
     done
 
@@ -818,6 +837,23 @@ tmux select-pane -t shogun:main -P 'bg=#002b36'  # 将軍の Solarized Dark
 tmux set-option -p -t shogun:main @agent_id "shogun"
 
 log_success "  └─ 将軍の本陣、構築完了"
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 5.0.5: gunshi（軍師）セッション構築
+# ═══════════════════════════════════════════════════════════════════════════════
+log_war "🧠 軍師の陣営を構築中..."
+
+if ! tmux has-session -t gunshi 2>/dev/null; then
+    tmux new-session -d -s gunshi -n main
+fi
+
+GUNSHI_PROMPT=$(generate_prompt "軍師" "cyan" "$SHELL_SETTING")
+tmux send-keys -t gunshi:main "cd \"$(pwd)\" && export PS1='${GUNSHI_PROMPT}' && clear" C-m
+tmux select-pane -t gunshi:main -P 'bg=#002b36'
+tmux set-option -p -t gunshi:main @agent_id "gunshi"
+
+log_success "  └─ 軍師の陣営、構築完了"
 echo ""
 
 # pane-base-index を取得（1 の環境ではペインは 1,2,... になる）
@@ -975,14 +1011,27 @@ if [ "$SETUP_ONLY" = false ]; then
     tmux set-option -p -t "shogun:main" @agent_cli "$_shogun_cli_type"
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
         tmux send-keys -t shogun:main "MAX_THINKING_TOKENS=0 $_shogun_cmd"
-        tmux send-keys -t shogun:main Enter
+        tmux send-keys -t shogun:main C-m
         log_info "  └─ 将軍（${_shogun_cli_type} / thinking無効）、召喚完了"
     else
         tmux send-keys -t shogun:main "$_shogun_cmd"
-        tmux send-keys -t shogun:main Enter
+        tmux send-keys -t shogun:main C-m
         log_info "  └─ 将軍（${_shogun_cli_type}）、召喚完了"
     fi
     printf "shogun\t%s\n" "$_shogun_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
+
+    # 軍師: CLI Adapter経由でコマンド構築
+    _gunshi_cli_type="claude"
+    _gunshi_cmd="claude --model opus --dangerously-skip-permissions"
+    if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        _gunshi_cli_type=$(resolve_cli_type_for_agent "gunshi")
+        _gunshi_cmd=$(build_cli_command_with_type "gunshi" "$_gunshi_cli_type")
+    fi
+    tmux set-option -p -t "gunshi:main" @agent_cli "$_gunshi_cli_type"
+    tmux send-keys -t gunshi:main "$_gunshi_cmd"
+    tmux send-keys -t gunshi:main C-m
+    log_info "  └─ 軍師（${_gunshi_cli_type}）、召喚完了"
+    printf "gunshi\t%s\n" "$_gunshi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
 
     # 少し待機（安定のため）
     sleep 1
@@ -1025,7 +1074,7 @@ if [ "$SETUP_ONLY" = false ]; then
 
         tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_agent_cli_type"
         tmux send-keys -t "multiagent:agents.${p}" "$_agent_cmd"
-        tmux send-keys -t "multiagent:agents.${p}" Enter
+        tmux send-keys -t "multiagent:agents.${p}" C-m
         printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
         MULTIAGENT_CLI["$_agent"]="$_agent_cli_type"
         log_info "  └─ ${_agent}（${_agent_cli_type}）、召喚完了"
@@ -1045,6 +1094,8 @@ if [ "$SETUP_ONLY" = false ]; then
         auto_retry_gemini_busy_tmux "$_pane" "$_agent" "$_cli"
     }
     _gemini_gate_handler "shogun:main" "shogun" "$_shogun_cli_type" &
+    _gemini_pids+=($!)
+    _gemini_gate_handler "gunshi:main" "gunshi" "$_gunshi_cli_type" &
     _gemini_pids+=($!)
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
@@ -1199,6 +1250,7 @@ NINJA_EOF
         _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
         send_startup_bootstrap_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
     done
+    send_startup_bootstrap_tmux "gunshi:main" "gunshi" "$_gunshi_cli_type"
     send_startup_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
     tmux select-pane -t shogun:main >/dev/null 2>&1 || true
     log_info "📜 初動命令を自動送信（ready後すぐに入力可能な状態へ移行）"
@@ -1210,7 +1262,7 @@ NINJA_EOF
 
     # inbox ディレクトリ初期化（シンボリックリンク先のLinux FSに作成）
     mkdir -p "$SCRIPT_DIR/logs"
-    for agent in shogun "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}"; do
+    for agent in shogun gunshi "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}"; do
         [ -f "$SCRIPT_DIR/queue/inbox/${agent}.yaml" ] || echo "messages: []" > "$SCRIPT_DIR/queue/inbox/${agent}.yaml"
     done
 
@@ -1228,6 +1280,13 @@ NINJA_EOF
             >> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" 2>&1 &
         disown
 
+        # 軍師 watcher
+        _gunshi_watcher_cli=$(tmux show-options -p -t "gunshi:main" -v @agent_cli 2>/dev/null || echo "claude")
+        nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
+            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" gunshi "gunshi:main" "$_gunshi_watcher_cli" "tmux" \
+            >> "$SCRIPT_DIR/logs/inbox_watcher_gunshi.log" 2>&1 &
+        disown
+
         # 家老 + 足軽 watcher
         for _idx in "${!MULTIAGENT_IDS[@]}"; do
             _agent="${MULTIAGENT_IDS[$_idx]}"
@@ -1239,7 +1298,7 @@ NINJA_EOF
             disown
         done
 
-        _watcher_total=$((1 + ${#MULTIAGENT_IDS[@]}))
+        _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
     else
         log_info "⚠️  inotifywait 未導入のため inbox_watcher はスキップ（sudo apt install -y inotify-tools）"

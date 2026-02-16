@@ -174,7 +174,7 @@ mux_send_escape_double() {
 
 mux_capture_pane_tail() {
     if is_tmux_mode; then
-        timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -15
+        timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -5
     else
         # zellij has no stable external capture API for a specific pane/session.
         echo ""
@@ -507,16 +507,31 @@ agent_has_self_watch() {
 # Check if the agent's CLI is currently processing (Working/thinking/etc).
 # Sending nudge during Working causes text to queue but Enter to be lost.
 # Returns 0 (true) if agent is busy, 1 if idle.
+# Only checks bottom 5 lines — old markers linger in scroll-back.
 agent_is_busy() {
-    local pane_content
-    pane_content=$(mux_capture_pane_tail)
+    local pane_tail
+    pane_tail=$(mux_capture_pane_tail)
     if ! is_tmux_mode; then
         # zellij mode: external per-pane capture is not available in stable CLI.
         return 1
     fi
-    # Codex CLI: "Working", "Thinking", "Planning", "Sending"
-    # Claude CLI: thinking spinner, tool execution
-    if echo "$pane_content" | grep -qiE '(Working|Thinking|Planning|Sending|esc to interrupt)'; then
+
+    # ── Idle check (takes priority) ──
+    if echo "$pane_tail" | grep -qE '(\? for shortcuts|context left)'; then
+        return 1  # idle — Codex idle prompt
+    fi
+    if echo "$pane_tail" | grep -qE '^(❯|›)\s*$'; then
+        return 1  # idle — Claude Code or Codex bare prompt
+    fi
+
+    # ── Busy markers (bottom 5 lines only) ──
+    if echo "$pane_tail" | grep -qiF 'esc to interrupt'; then
+        return 0  # busy
+    fi
+    if echo "$pane_tail" | grep -qiF 'background terminal running'; then
+        return 0  # busy
+    fi
+    if echo "$pane_tail" | grep -qiE '(Working|Thinking|Planning|Sending|task is in progress|Compacting conversation|thought for|思考中|考え中|計画中|送信中|処理中|実行中)'; then
         return 0  # busy
     fi
     return 1  # idle

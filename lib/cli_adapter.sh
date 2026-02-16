@@ -212,8 +212,22 @@ build_cli_command_with_type() {
             echo "$cmd"
             ;;
         localapi)
-            # OpenAI互換ローカルAPI向けの軽量REPLクライアント（設定で上書き可）
-            _cli_adapter_read_yaml "cli.commands.localapi" "python3 scripts/localapi_repl.py"
+            # OpenAI互換ローカルAPI向けの軽量REPLクライアント
+            # settings.yaml の endpoint/model を環境変数で渡す
+            local _lapi_cmd
+            _lapi_cmd=$(_cli_adapter_read_yaml "cli.commands.localapi" "python3 scripts/localapi_repl.py")
+            local _lapi_endpoint
+            _lapi_endpoint=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.endpoint" "")
+            if [[ -z "$_lapi_endpoint" ]]; then
+                _lapi_endpoint=$(_cli_adapter_read_yaml "cli.localapi_endpoint" "")
+            fi
+            if [[ -n "$_lapi_endpoint" ]]; then
+                _lapi_cmd="LOCALAI_API_BASE=${_lapi_endpoint} ${_lapi_cmd}"
+            fi
+            if [[ -n "$model" && "$model" != "auto" ]]; then
+                _lapi_cmd="LOCALAI_MODEL=${model} ${_lapi_cmd}"
+            fi
+            echo "$_lapi_cmd"
             ;;
         *)
             echo "claude --dangerously-skip-permissions"
@@ -282,6 +296,7 @@ get_role_instruction_file() {
 
     case "$agent_id" in
         shogun)    role="shogun" ;;
+        gunshi)    role="gunshi" ;;
         karo|karo[1-9]*|karo_gashira) role="karo" ;;
         ashigaru*) role="ashigaru" ;;
         *)
@@ -303,6 +318,7 @@ get_instruction_file() {
     case "$agent_id" in
         shogun)    role="shogun" ;;
         karo|karo[1-9]*|karo_gashira) role="karo" ;;
+        gunshi)    role="gunshi" ;;
         ashigaru*) role="ashigaru" ;;
         *)
             echo "" >&2
@@ -424,7 +440,7 @@ get_agent_model() {
         *)
             # Claude Code/Codex/Copilot用デフォルトモデル（kessen/heiji互換）
             case "$agent_id" in
-                shogun|karo|karo[1-9]*|karo_gashira) echo "opus" ;;
+                shogun|gunshi|karo|karo[1-9]*|karo_gashira) echo "opus" ;;
                 ashigaru[1-4])  echo "sonnet" ;;
                 ashigaru[5-8])  echo "opus" ;;
                 *)              echo "sonnet" ;;

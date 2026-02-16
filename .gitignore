@@ -19,6 +19,7 @@
 !README_ja.md
 !CONTRIBUTING.md
 !SECURITY.md
+!dashboard.md
 
 # Claude Code settings (spinner verbs only, no secrets)
 !.claude/
@@ -29,6 +30,7 @@
 !instructions/shogun.md
 !instructions/karo.md
 !instructions/ashigaru.md
+!instructions/gunshi.md
 
 # Multi-CLI: CLI-specific tool descriptions
 !instructions/cli_specific/
@@ -54,6 +56,7 @@
 !lib/cli_adapter.sh
 !lib/inbox_path.sh
 !lib/ntfy_auth.sh
+!lib/topology_adapter.sh
 
 # Multi-CLI: Codex auto-load file
 !AGENTS.md
@@ -72,10 +75,17 @@
 # Config (sample files only, no secrets)
 !config/
 !config/ntfy_auth.env.sample
+!config/settings.yaml
 
 # Templates
 !templates/
 !templates/**
+
+# Kimi K2 agent config
+!agents/
+!agents/default/
+!agents/default/system.md
+!agents/default/agent.yaml
 
 # Context README
 !context/
@@ -98,6 +108,11 @@
 !scripts/configure_agents.sh
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh
+!scripts/seo_qc.sh
+!scripts/seo_qc.py
+!scripts/slim_yaml.sh
+!scripts/slim_yaml.py
+!scripts/ensure_generated_instructions.sh
 
 
 # SayTask (sample template only, not actual data)
@@ -138,6 +153,7 @@
 
 # CI/CD
 !.github/
+!.github/copilot-instructions.md
 !.github/workflows/
 !.github/workflows/*.yml
 

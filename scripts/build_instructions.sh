@@ -86,31 +86,37 @@ EOFYAML
 build_instruction_file "claude" "shogun" "shogun.md"
 build_instruction_file "claude" "karo" "karo.md"
 build_instruction_file "claude" "ashigaru" "ashigaru.md"
+build_instruction_file "claude" "gunshi" "gunshi.md"
 
 # Build Codex instruction files
 build_instruction_file "codex" "shogun" "codex-shogun.md"
 build_instruction_file "codex" "karo" "codex-karo.md"
 build_instruction_file "codex" "ashigaru" "codex-ashigaru.md"
+build_instruction_file "codex" "gunshi" "codex-gunshi.md"
 
 # Build Copilot instruction files
 build_instruction_file "copilot" "shogun" "copilot-shogun.md"
 build_instruction_file "copilot" "karo" "copilot-karo.md"
 build_instruction_file "copilot" "ashigaru" "copilot-ashigaru.md"
+build_instruction_file "copilot" "gunshi" "copilot-gunshi.md"
 
 # Build Kimi K2 instruction files
 build_instruction_file "kimi" "shogun" "kimi-shogun.md"
 build_instruction_file "kimi" "karo" "kimi-karo.md"
 build_instruction_file "kimi" "ashigaru" "kimi-ashigaru.md"
+build_instruction_file "kimi" "gunshi" "kimi-gunshi.md"
 
 # Build Gemini instruction files
 build_instruction_file "gemini" "shogun" "gemini-shogun.md"
 build_instruction_file "gemini" "karo" "gemini-karo.md"
 build_instruction_file "gemini" "ashigaru" "gemini-ashigaru.md"
+build_instruction_file "gemini" "gunshi" "gemini-gunshi.md"
 
 # Build Local API instruction files
 build_instruction_file "localapi" "shogun" "localapi-shogun.md"
 build_instruction_file "localapi" "karo" "localapi-karo.md"
 build_instruction_file "localapi" "ashigaru" "localapi-ashigaru.md"
+build_instruction_file "localapi" "gunshi" "localapi-gunshi.md"
 
 # ============================================================
 # AGENTS.md generation (Codex auto-load file)

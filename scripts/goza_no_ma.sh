@@ -351,6 +351,7 @@ zellij_collect_active_agents() {
     fi
 
     echo "shogun"
+    echo "gunshi"
     printf '%s\n' "${karo_agents[@]}"
     printf '%s\n' "${active_agents[@]}"
     return 0
@@ -363,6 +364,7 @@ try:
     import yaml
 except Exception:
     print("shogun")
+    print("gunshi")
     print("karo")
     print("ashigaru1")
     raise SystemExit(0)
@@ -399,7 +401,7 @@ for x in active:
 if not normalized:
     normalized = ["ashigaru1"]
 
-agents = ["shogun", "karo"] + normalized
+agents = ["shogun", "gunshi", "karo"] + normalized
 for a in agents:
     print(a)
 PY

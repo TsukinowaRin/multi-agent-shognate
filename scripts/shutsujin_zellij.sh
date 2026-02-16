@@ -283,7 +283,7 @@ show_battle_cry
 echo -e "  \033[1;33m天下布武！陣立てを開始いたす\033[0m (Setting up the battlefield)"
 echo ""
 
-AGENTS=("shogun" "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}")
+AGENTS=("shogun" "gunshi" "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}")
 
 mkdir -p queue/reports queue/tasks logs queue/runtime
 if declare -F ensure_local_inbox_dir >/dev/null 2>&1; then
@@ -411,6 +411,7 @@ send_startup_bootstrap_zellij() {
   if [ -z "$role_instruction_file" ]; then
     case "$agent_id" in
       shogun) role_instruction_file="instructions/shogun.md" ;;
+      gunshi) role_instruction_file="instructions/gunshi.md" ;;
       karo|karo[1-9]*|karo_gashira) role_instruction_file="instructions/karo.md" ;;
       ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
       *) role_instruction_file="AGENTS.md" ;;
@@ -444,6 +445,9 @@ role_linkage_directive() {
     shogun)
       echo "連携順序: 殿の指示を受けたら、必ず『将軍→家老→足軽』で委譲せよ。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
       ;;
+    gunshi)
+      echo "連携順序: 軍師は家老から戦略分析・設計・評価の任務を受け、分析結果を queue/reports/gunshi_report.yaml に書いて家老へ返せ。実装は行わず、足軽が迷わぬための地図を描け。"
+      ;;
     karo|karo[1-9]*|karo_gashira)
       echo "連携順序: 家老は担当足軽のみを管理せよ。家老同士の直接連携は禁止。割当は queue/runtime/ashigaru_owner.tsv を正本として従うこと。"
       ;;
@@ -470,6 +474,9 @@ event_driven_directive() {
     shogun)
       echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、殿の次入力を待て。自分で実装作業に入るな。"
       ;;
+    gunshi)
+      echo "イベント駆動規則: 家老からの分析依頼を受けたら深く考察し、完了後は報告して待機へ戻れ。ポーリング禁止。"
+      ;;
     karo|karo[1-9]*|karo_gashira|ashigaru*)
       echo "イベント駆動規則: ポーリング禁止。inboxイベント起点でタスク処理し、未読処理後は待機へ戻れ。"
       ;;
@@ -484,6 +491,9 @@ reporting_chain_directive() {
   case "$agent_id" in
     shogun)
       echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
+      ;;
+    gunshi)
+      echo "報告規則: 分析・設計・評価の結果は queue/reports/gunshi_report.yaml に書き、依頼元の家老へ inbox 通知で返せ。将軍・人間へ直接報告しない。"
       ;;
     karo|karo[1-9]*|karo_gashira)
       echo "報告規則: タスク完了時は将軍へ要約を返し、人間へ直接報告しない。"
@@ -501,7 +511,7 @@ ensure_generated_instructions
 
 log_war "⚔️ zellij セッションを構築中（1エージェント=1セッション）"
 # 非アクティブ化された管理セッションは削除して配備一覧を一致させる
-mapfile -t _managed_sessions < <(zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -E '^(shogun|karo([1-9][0-9]*)?|karo_gashira|ashigaru[1-9][0-9]*)$' || true)
+mapfile -t _managed_sessions < <(zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -E '^(shogun|gunshi|karo([1-9][0-9]*)?|karo_gashira|ashigaru[1-9][0-9]*)$' || true)
 for stale in "${_managed_sessions[@]}"; do
   if ! is_selected_agent "$stale"; then
     zellij delete-session "$stale" --force >/dev/null 2>&1 || zellij kill-session "$stale" >/dev/null 2>&1 || true

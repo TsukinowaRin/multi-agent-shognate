@@ -142,17 +142,16 @@ auto_retry_gemini_busy_tmux() {
     return 0
 }
 
-# 役割指示書の初動読み込み命令を各CLIへ投入（Claude挙動に近づける）
-send_startup_bootstrap_tmux() {
-    local pane_target="$1"
-    local agent_id="$2"
-    local cli_type="$3"
+# ブートストラップメッセージを事前にファイルへ書き出す
+# 各エージェントが自分専用のファイルを読むことで誤送信を根本的に排除
+generate_bootstrap_file() {
+    local agent_id="$1"
+    local cli_type="$2"
+    local bootstrap_dir="$SCRIPT_DIR/queue/runtime"
+    local bootstrap_file="$bootstrap_dir/bootstrap_${agent_id}.md"
     local role_instruction_file=""
     local optimized_instruction_file=""
-    local startup_msg=""
-    local lang_rule=""
-    local event_rule=""
-    local report_rule=""
+    local lang_rule="" event_rule="" report_rule="" linkage_rule=""
 
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
@@ -162,6 +161,7 @@ send_startup_bootstrap_tmux() {
     if [ -z "$role_instruction_file" ]; then
         case "$agent_id" in
             shogun) role_instruction_file="instructions/shogun.md" ;;
+            gunshi) role_instruction_file="instructions/gunshi.md" ;;
             karo|karo[1-9]*|karo_gashira) role_instruction_file="instructions/karo.md" ;;
             ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
             *) role_instruction_file="AGENTS.md" ;;
@@ -172,19 +172,43 @@ send_startup_bootstrap_tmux() {
         optimized_instruction_file="$role_instruction_file"
     fi
 
-    local linkage_rule
     linkage_rule="$(role_linkage_directive "$agent_id")"
     lang_rule="$(language_directive)"
     event_rule="$(event_driven_directive "$agent_id")"
     report_rule="$(reporting_chain_directive "$agent_id")"
 
+    local startup_msg
     if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
         startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、続けて ${optimized_instruction_file} を読んで ${cli_type} 向け差分を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
     else
         startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
     fi
 
-    tmux send-keys -t "$pane_target" "$startup_msg"
+    mkdir -p "$bootstrap_dir"
+    echo "$startup_msg" > "$bootstrap_file"
+}
+
+# ファイルベースでブートストラップ配信（tmux版）
+# ペインターゲットの存在を確認してから送信
+deliver_bootstrap_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local bootstrap_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.md"
+
+    if [ ! -f "$bootstrap_file" ]; then
+        echo "[WARN] bootstrap file not found for $agent_id: $bootstrap_file" >&2
+        return 1
+    fi
+
+    # ペイン存在チェック
+    if ! tmux display-message -p -t "$pane_target" "#{pane_id}" >/dev/null 2>&1; then
+        echo "[WARN] pane '$pane_target' not found, skipping bootstrap for $agent_id" >&2
+        return 1
+    fi
+
+    local msg
+    msg="$(cat "$bootstrap_file")"
+    tmux send-keys -t "$pane_target" "$msg"
     tmux send-keys -t "$pane_target" C-m
 }
 
@@ -1001,6 +1025,10 @@ if [ "$SETUP_ONLY" = false ]; then
     mkdir -p "$SCRIPT_DIR/queue/runtime"
     : > "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
 
+    # Phase 0: 全エージェントのブートストラップファイルを事前生成
+    # CLI起動前にファイルを書き出すことで、レースコンディションを排除
+    log_info "📝 ブートストラップファイルを事前生成中"
+
     # 将軍: CLI Adapter経由でコマンド構築
     _shogun_cli_type="claude"
     _shogun_cmd="claude --model opus --dangerously-skip-permissions"
@@ -1009,6 +1037,8 @@ if [ "$SETUP_ONLY" = false ]; then
         _shogun_cmd=$(build_cli_command_with_type "shogun" "$_shogun_cli_type")
     fi
     tmux set-option -p -t "shogun:main" @agent_cli "$_shogun_cli_type"
+    generate_bootstrap_file "shogun" "$_shogun_cli_type"
+    printf "shogun\t%s\n" "$_shogun_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
         tmux send-keys -t shogun:main "MAX_THINKING_TOKENS=0 $_shogun_cmd"
         tmux send-keys -t shogun:main C-m
@@ -1018,7 +1048,6 @@ if [ "$SETUP_ONLY" = false ]; then
         tmux send-keys -t shogun:main C-m
         log_info "  └─ 将軍（${_shogun_cli_type}）、召喚完了"
     fi
-    printf "shogun\t%s\n" "$_shogun_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
 
     # 軍師: CLI Adapter経由でコマンド構築
     _gunshi_cli_type="claude"
@@ -1028,10 +1057,11 @@ if [ "$SETUP_ONLY" = false ]; then
         _gunshi_cmd=$(build_cli_command_with_type "gunshi" "$_gunshi_cli_type")
     fi
     tmux set-option -p -t "gunshi:main" @agent_cli "$_gunshi_cli_type"
+    generate_bootstrap_file "gunshi" "$_gunshi_cli_type"
+    printf "gunshi\t%s\n" "$_gunshi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
     tmux send-keys -t gunshi:main "$_gunshi_cmd"
     tmux send-keys -t gunshi:main C-m
     log_info "  └─ 軍師（${_gunshi_cli_type}）、召喚完了"
-    printf "gunshi\t%s\n" "$_gunshi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
 
     # 少し待機（安定のため）
     sleep 1
@@ -1073,6 +1103,7 @@ if [ "$SETUP_ONLY" = false ]; then
         fi
 
         tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_agent_cli_type"
+        generate_bootstrap_file "$_agent" "$_agent_cli_type"
         tmux send-keys -t "multiagent:agents.${p}" "$_agent_cmd"
         tmux send-keys -t "multiagent:agents.${p}" C-m
         printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
@@ -1242,18 +1273,18 @@ NINJA_EOF
     fi
 
     # 各エージェントへ初動命令を投入（CLI起動確認後）
-    # 先に投入すると入力欄に残りやすいため、ready確認フェーズ後に送る。
+    # ファイルベースでブートストラップ配信（事前生成済みファイルから読み出し）
     # 将軍への注入を最後にして、注入後にフォーカスを将軍ペインに固定
+    log_info "📜 初動命令をエージェント毎に個別配信中"
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
         p=$((PANE_BASE + _idx))
-        _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        send_startup_bootstrap_tmux "multiagent:agents.${p}" "$_agent" "$_pane_cli"
+        deliver_bootstrap_tmux "multiagent:agents.${p}" "$_agent"
     done
-    send_startup_bootstrap_tmux "gunshi:main" "gunshi" "$_gunshi_cli_type"
-    send_startup_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
+    deliver_bootstrap_tmux "gunshi:main" "gunshi"
+    deliver_bootstrap_tmux "shogun:main" "shogun"
     tmux select-pane -t shogun:main >/dev/null 2>&1 || true
-    log_info "📜 初動命令を自動送信（ready後すぐに入力可能な状態へ移行）"
+    log_info "📜 初動命令の配信完了"
 
     # ═══════════════════════════════════════════════════════════════════
     # STEP 6.6: inbox_watcher起動（全エージェント）

@@ -385,6 +385,11 @@ create_session() {
 send_line() {
   local session="$1"
   local text="$2"
+  # セッション存在チェック（存在しないセッションへの誤送信を防止）
+  if ! session_exists "$session"; then
+    echo "[WARN] send_line: session '$session' does not exist, skipping" >&2
+    return 1
+  fi
   zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
   if zellij -s "$session" action write 13 >/dev/null 2>&1; then
     return 0
@@ -395,15 +400,16 @@ send_line() {
   zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
 }
 
-send_startup_bootstrap_zellij() {
+# ブートストラップメッセージを事前にファイルへ書き出す
+# 各エージェントが自分専用のファイルを読むことで誤送信を根本的に排除
+generate_bootstrap_file() {
   local agent_id="$1"
   local cli_type="$2"
+  local bootstrap_dir="$SCRIPT_DIR/queue/runtime"
+  local bootstrap_file="$bootstrap_dir/bootstrap_${agent_id}.md"
   local role_instruction_file=""
   local optimized_instruction_file=""
-  local startup_msg=""
-  local lang_rule=""
-  local event_rule=""
-  local report_rule=""
+  local lang_rule="" event_rule="" report_rule="" linkage_rule=""
 
   role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
   optimized_instruction_file="$(get_instruction_file "$agent_id" "$cli_type" 2>/dev/null || true)"
@@ -422,20 +428,70 @@ send_startup_bootstrap_zellij() {
     optimized_instruction_file="$role_instruction_file"
   fi
 
-  local linkage_rule
   linkage_rule="$(role_linkage_directive "$agent_id")"
   lang_rule="$(language_directive)"
   event_rule="$(event_driven_directive "$agent_id")"
   report_rule="$(reporting_chain_directive "$agent_id")"
 
+  local startup_msg
   if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
     startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、続けて ${optimized_instruction_file} を読んで ${cli_type} 向け差分を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
   else
     startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
   fi
 
-  if ! send_line "$agent_id" "$startup_msg"; then
-    echo "[WARN] failed to send startup bootstrap to $agent_id" >&2
+  echo "$startup_msg" > "$bootstrap_file"
+}
+
+# エージェントのCLIが起動済みかをセッション画面ダンプで確認
+wait_for_cli_ready() {
+  local session="$1"
+  local max_wait="${2:-15}"
+  local i
+  local tmp_dump="/tmp/zellij_ready_${session}.txt"
+
+  for ((i=0; i<max_wait; i++)); do
+    if zellij -s "$session" action dump-screen "$tmp_dump" 2>/dev/null; then
+      # CLIのプロンプトやready表示を検出
+      if grep -qE '(>|❯|\$|claude|codex|copilot|kimi|gemini|localapi|ready)' "$tmp_dump" 2>/dev/null; then
+        rm -f "$tmp_dump"
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+  rm -f "$tmp_dump"
+  return 1
+}
+
+# 初動ブートストラップをファイルベースで配信（レースコンディション排除）
+# send_line ではなく、短い「ファイル読み込み」指示のみ送信
+deliver_bootstrap_zellij() {
+  local agent_id="$1"
+  local bootstrap_file="queue/runtime/bootstrap_${agent_id}.md"
+
+  if [ ! -f "$SCRIPT_DIR/$bootstrap_file" ]; then
+    echo "[WARN] bootstrap file not found for $agent_id: $bootstrap_file" >&2
+    return 1
+  fi
+
+  if ! session_exists "$agent_id"; then
+    echo "[WARN] session '$agent_id' not found, skipping bootstrap delivery" >&2
+    return 1
+  fi
+
+  # CLIが起動するまで待機（最大15秒）
+  if ! wait_for_cli_ready "$agent_id" 15; then
+    echo "[WARN] CLI not ready in session '$agent_id' after 15s, sending bootstrap anyway" >&2
+  fi
+
+  # ブートストラップファイルの内容を読み込んで送信
+  local msg
+  msg="$(cat "$SCRIPT_DIR/$bootstrap_file")"
+  if ! send_line "$agent_id" "$msg"; then
+    echo "[WARN] failed to deliver bootstrap to $agent_id, retrying..." >&2
+    sleep 2
+    send_line "$agent_id" "$msg" || echo "[ERROR] bootstrap delivery failed for $agent_id after retry" >&2
   fi
 }
 
@@ -536,8 +592,18 @@ if [ "$SETUP_ONLY" = false ]; then
   fi
 
   : > queue/runtime/agent_cli.tsv
+
+  # Phase 1: ブートストラップファイルを事前生成（CLIへの送信より前に全エージェント分書き出す）
+  log_info "📝 ブートストラップファイルを事前生成中"
   for agent in "${AGENTS[@]}"; do
     cli_type=$(resolve_cli_type_for_agent "$agent")
+    printf "%s\t%s\n" "$agent" "$cli_type" >> queue/runtime/agent_cli.tsv
+    generate_bootstrap_file "$agent" "$cli_type"
+  done
+
+  # Phase 2: CLI起動（ブートストラップ送信とは分離）
+  for agent in "${AGENTS[@]}"; do
+    cli_type="$(awk -F '\t' -v a="$agent" '$1==a{print $2}' queue/runtime/agent_cli.tsv | tail -n1)"
     cli_cmd=$(build_cli_command_with_type "$agent" "$cli_type")
 
     if [ "$agent" = "shogun" ] && [ "$SHOGUN_NO_THINKING" = true ] && [ "$cli_type" = "claude" ]; then
@@ -547,17 +613,18 @@ if [ "$SETUP_ONLY" = false ]; then
     if ! send_line "$agent" "$cli_cmd"; then
       echo "[WARN] failed to send CLI launch command to $agent ($cli_type)" >&2
     fi
-    printf "%s\t%s\n" "$agent" "$cli_type" >> queue/runtime/agent_cli.tsv
     log_info "  └─ $agent: $cli_type"
   done
 
-  # CLI起動直後の入力取りこぼしを避けるため、少し待ってから初動命令を送る。
-  sleep 2
+  # Phase 3: 初動命令をエージェント毎に個別配信（per-agent CLI readiness確認付き）
+  # 一括sleep + ループではなく、各エージェントのCLI起動を確認してから送信
+  log_info "📜 初動命令をエージェント毎に個別配信中（CLI readiness確認付き）"
   for agent in "${AGENTS[@]}"; do
-    cli_type="$(awk -F '\t' -v a="$agent" '$1==a{print $2}' queue/runtime/agent_cli.tsv | tail -n1)"
-    send_startup_bootstrap_zellij "$agent" "$cli_type"
+    deliver_bootstrap_zellij "$agent"
+    # 次のエージェントへの送信前にインターバルを置き、write-charsの競合を回避
+    sleep 1
   done
-  log_info "📜 初動命令を自動送信（ready後すぐに入力可能な状態へ移行）"
+  log_info "📜 初動命令の配信完了"
 
   if command -v inotifywait >/dev/null 2>&1; then
     log_info "📬 inbox_watcher を起動中 (MUX_TYPE=zellij)"

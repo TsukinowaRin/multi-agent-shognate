@@ -399,7 +399,9 @@ SH
 @test "build_cli_command: localapi → python3 scripts/localapi_repl.py" {
     load_adapter_with "${TEST_TMP}/settings_localapi.yaml"
     result=$(build_cli_command "ashigaru6")
-    [ "$result" = "python3 scripts/localapi_repl.py" ]
+    # model が指定されている場合は LOCALAI_MODEL= が前置される
+    [[ "$result" == *"python3 scripts/localapi_repl.py"* ]]
+    [[ "$result" == *"LOCALAI_MODEL=qwen2.5-coder"* ]]
 }
 
 @test "build_cli_command: cliセクションなし → claude フォールバック" {

@@ -1,5 +1,31 @@
 # Worklog
 
+## 2026-02-17 15:15 (JST)
+- Goal: Zellijプロンプト注入混線問題の修正（A案：順次起動方式の強化）
+- Changes (files):
+  - `scripts/shutsujin_zellij.sh` — BOOTSTRAP_AGENT_GAPを2秒から5秒に延長
+  - `scripts/shutsujin_zellij.sh` — send_line関数で送信完了を待機（sleep 0.5追加）
+  - `scripts/shutsujin_zellij.sh` — deliver_bootstrap_zellij関数で送信完了を待機（sleep 1追加）
+  - `docs/EXECPLAN_2026-02-17_zellij_bootstrap_stability.md` — 新規作成（実行計画）
+  - `docs/HANDOVER_2026-02-17_bootstrap_injection.md` — 新規作成（引き継ぎドキュメント）
+  - `tests/unit/test_zellij_bootstrap_delivery.bats` — 新規作成（ブートストラップ配信テスト）
+- Commands + Results:
+  - `bash -n scripts/shutsujin_zellij.sh` → syntax OK
+  - `bats tests/unit/` → 173 passed, 0 failures
+  - `git commit -m 'codex: Zellijプロンプト注入混線問題の修正（順次起動方式の強化）...'` → c5015ed
+- Decisions / Assumptions:
+  - Zellijの`action write-chars`は非同期で実行されるため、送信完了を待機する必要がある。
+  - エージェント間のインターバルを2秒から5秒に延長することで、混線リスクを低減。
+  - send_line関数とdeliver_bootstrap_zellij関数にsleepを追加することで、送信完了を待機。
+- Next:
+  1. ユーザーによるgit push実行
+  2. 実機E2E検証（Zellij Pure Mode）
+  3. WORKLOG更新
+- Blockers: git認証未設定（push待ち）
+- Links: docs/REQS.md, docs/HANDOVER_2026-02-17_bootstrap_injection.md
+
+---
+
 ## 2026-02-15 13:35 (JST)
 - Goal: zellij E2E検証完了
 - Changes (files):

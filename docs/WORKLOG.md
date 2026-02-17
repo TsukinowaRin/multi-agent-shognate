@@ -1115,3 +1115,24 @@
   - 既存追跡済みだった runtime ファイル（history/metrics/reports/runtime/tasks の11ファイル）を `git rm --cached` でインデックスから除外。
 - 判断メモ:
   - 実行時データを追跡し続けると、運用のたびに差分が増殖するため、コード変更と運用データを分離した。
+
+## 2026-02-17 (zellij初動注入の安定化: 逐次起動/厳密ready判定)
+- 背景:
+  - 継続開発要求に合わせ、`docs/HANDOVER_2026-02-17_bootstrap_injection.md` で未解決だった zellij 初動注入混線の主因を先に潰す。
+  - 既存 `wait_for_cli_ready` が `\$` を含むため、CLI未起動でも shell で ready 誤判定し得る状態だった。
+- 実装:
+  - `scripts/shutsujin_zellij.sh`
+    - `wait_for_cli_ready` を `wait_for_cli_ready(session, cli_type, max_wait)` へ変更。
+    - ready 判定を CLI種別パターン化し、shell prompt 依存を除去。
+    - 起動フローを「全CLI起動→全注入」から「agent単位: 起動→ready確認→注入」へ直列化。
+    - `MAS_ZELLIJ_BOOTSTRAP_GAP`（既定2秒）を追加し、エージェント間送信の競合回避余地を提供。
+  - `tests/unit/test_zellij_bootstrap_delivery.bats` を新規追加（静的回帰）。
+  - docs 更新:
+    - `docs/INDEX.md` に 2026-02-17 handover/execplan を登録。
+    - `docs/REQS.md` に本修正の受け入れ条件を追記。
+    - `docs/EXECPLAN_2026-02-17_zellij_bootstrap_stability.md` を作成・更新。
+- 検証:
+  - `bash -n scripts/shutsujin_zellij.sh` → PASS
+  - `bats tests/unit/test_zellij_bootstrap_delivery.bats tests/unit/test_mux_parity.bats` → 9/9 PASS
+- 判断メモ:
+  - この段階では「誤判定削減 + 逐次化」による安定化を優先し、pure zellij 実機E2Eは次チェックポイントで確認する。

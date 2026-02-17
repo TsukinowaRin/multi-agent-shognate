@@ -392,12 +392,18 @@ send_line() {
   fi
   zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
   if zellij -s "$session" action write 13 >/dev/null 2>&1; then
+    # 送信完了を待機（zellijのバッファ処理完了を待つ）
+    sleep 0.5
     return 0
   fi
   if zellij -s "$session" action write 10 >/dev/null 2>&1; then
+    # 送信完了を待機
+    sleep 0.5
     return 0
   fi
   zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
+  # 送信完了を待機
+  sleep 0.5
 }
 
 # ブートストラップメッセージを事前にファイルへ書き出す
@@ -446,14 +452,43 @@ generate_bootstrap_file() {
 # エージェントのCLIが起動済みかをセッション画面ダンプで確認
 wait_for_cli_ready() {
   local session="$1"
-  local max_wait="${2:-15}"
+  local cli_type="${2:-claude}"
+  local max_wait="${3:-15}"
   local i
   local tmp_dump="/tmp/zellij_ready_${session}.txt"
+  local ready_pattern=""
+
+  case "$cli_type" in
+    claude)
+      ready_pattern='(claude code|claude|for shortcuts|/model)'
+      ;;
+    codex)
+      ready_pattern='(openai codex|codex|for shortcuts|context left|/model)'
+      ;;
+    gemini)
+      ready_pattern='(gemini|trust this folder|keep trying|type your message|yolo mode)'
+      ;;
+    copilot)
+      ready_pattern='(copilot|github copilot|for shortcuts|/model)'
+      ;;
+    kimi)
+      ready_pattern='(kimi|moonshot|for shortcuts|/model)'
+      ;;
+    localapi)
+      ready_pattern='(localapi|ready:|api)'
+      ;;
+    *)
+      ready_pattern='(claude|codex|gemini|copilot|kimi|localapi|ready:)'
+      ;;
+  esac
 
   for ((i=0; i<max_wait; i++)); do
+    if ! session_exists "$session"; then
+      rm -f "$tmp_dump"
+      return 1
+    fi
     if zellij -s "$session" action dump-screen "$tmp_dump" 2>/dev/null; then
-      # CLIのプロンプトやready表示を検出
-      if grep -qE '(>|❯|\$|claude|codex|copilot|kimi|gemini|localapi|ready)' "$tmp_dump" 2>/dev/null; then
+      if grep -qiE "$ready_pattern" "$tmp_dump" 2>/dev/null; then
         rm -f "$tmp_dump"
         return 0
       fi
@@ -468,6 +503,7 @@ wait_for_cli_ready() {
 # send_line ではなく、短い「ファイル読み込み」指示のみ送信
 deliver_bootstrap_zellij() {
   local agent_id="$1"
+  local cli_type="${2:-claude}"
   local bootstrap_file="queue/runtime/bootstrap_${agent_id}.md"
 
   if [ ! -f "$SCRIPT_DIR/$bootstrap_file" ]; then
@@ -480,19 +516,17 @@ deliver_bootstrap_zellij() {
     return 1
   fi
 
-  # CLIが起動するまで待機（最大15秒）
-  if ! wait_for_cli_ready "$agent_id" 15; then
-    echo "[WARN] CLI not ready in session '$agent_id' after 15s, sending bootstrap anyway" >&2
-  fi
-
   # ブートストラップファイルの内容を読み込んで送信
   local msg
   msg="$(cat "$SCRIPT_DIR/$bootstrap_file")"
   if ! send_line "$agent_id" "$msg"; then
     echo "[WARN] failed to deliver bootstrap to $agent_id, retrying..." >&2
     sleep 2
-    send_line "$agent_id" "$msg" || echo "[ERROR] bootstrap delivery failed for $agent_id after retry" >&2
+    send_line "$agent_id" "$msg" || echo "[ERROR] bootstrap delivery failed for $agent_id ($cli_type) after retry" >&2
   fi
+
+  # 送信完了を待機（混線防止のため、次のエージェントへ進む前にバッファ処理完了を待つ）
+  sleep 1
 }
 
 role_linkage_directive() {
@@ -601,7 +635,13 @@ if [ "$SETUP_ONLY" = false ]; then
     generate_bootstrap_file "$agent" "$cli_type"
   done
 
-  # Phase 2: CLI起動（ブートストラップ送信とは分離）
+  BOOTSTRAP_AGENT_GAP="${MAS_ZELLIJ_BOOTSTRAP_GAP:-5}"
+  if ! [[ "$BOOTSTRAP_AGENT_GAP" =~ ^[0-9]+$ ]]; then
+    BOOTSTRAP_AGENT_GAP=5
+  fi
+
+  # Phase 2: エージェント単位で「CLI起動→ready確認→初動命令送信」を順次実行
+  log_info "📜 初動命令をエージェント単位で順次配信中（起動確認つき）"
   for agent in "${AGENTS[@]}"; do
     cli_type="$(awk -F '\t' -v a="$agent" '$1==a{print $2}' queue/runtime/agent_cli.tsv | tail -n1)"
     cli_cmd=$(build_cli_command_with_type "$agent" "$cli_type")
@@ -613,16 +653,14 @@ if [ "$SETUP_ONLY" = false ]; then
     if ! send_line "$agent" "$cli_cmd"; then
       echo "[WARN] failed to send CLI launch command to $agent ($cli_type)" >&2
     fi
-    log_info "  └─ $agent: $cli_type"
-  done
-
-  # Phase 3: 初動命令をエージェント毎に個別配信（per-agent CLI readiness確認付き）
-  # 一括sleep + ループではなく、各エージェントのCLI起動を確認してから送信
-  log_info "📜 初動命令をエージェント毎に個別配信中（CLI readiness確認付き）"
-  for agent in "${AGENTS[@]}"; do
-    deliver_bootstrap_zellij "$agent"
-    # 次のエージェントへの送信前にインターバルを置き、write-charsの競合を回避
-    sleep 1
+    if ! wait_for_cli_ready "$agent" "$cli_type" 25; then
+      echo "[WARN] CLI not ready in session '$agent' after timeout, sending bootstrap anyway" >&2
+    fi
+    deliver_bootstrap_zellij "$agent" "$cli_type"
+    log_info "  └─ $agent: $cli_type（初動配信完了）"
+    if [ "$BOOTSTRAP_AGENT_GAP" -gt 0 ]; then
+      sleep "$BOOTSTRAP_AGENT_GAP"
+    fi
   done
   log_info "📜 初動命令の配信完了"
 

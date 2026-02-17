@@ -609,3 +609,19 @@
    - 期待結果: 実行後に tmux 画面へ遷移する（失敗時は明示エラー）。
 3. コマンド: `rg -n "zellij_bootstrap_pure_goza_background|TMUX= tmux attach|MAS_CLI_READY_TIMEOUT" scripts/goza_no_ma.sh shutsujin_departure.sh`
    - 期待結果: 初動注入の背景送信、tmux attachの`TMUX=`明示、タイムアウト設定が実装されている。
+
+## 追補（2026-02-17: Docs/AGENTS確認後の開発再開 - zellij初動注入安定化）
+### 要求
+1. `AGENTS.md` と `docs/INDEX.md` / Must-read を確認した上で、続きの開発を再開する。
+2. zellij 起動時の初動注入で混線しにくいよう、起動フローを安定化する。
+3. tmux/zellij 並行運用に影響を出さない最小差分で修正する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "初動命令をエージェント単位で順次配信|wait_for_cli_ready \"\\$agent\" \"\\$cli_type\"" scripts/shutsujin_zellij.sh`
+   - 期待結果: zellij側で agent 単位の「CLI起動→ready確認→初動配信」が実装されている。
+2. コマンド: `rg -n "grep -qiE \"\\$ready_pattern\"" scripts/shutsujin_zellij.sh`
+   - 期待結果: ready 判定が CLI種別パターンで実装され、シェルプロンプト依存 (`\\$`) がない。
+3. コマンド: `bash -n scripts/shutsujin_zellij.sh`
+   - 期待結果: 構文エラーなし。
+4. コマンド: `bats tests/unit/test_zellij_bootstrap_delivery.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: 全テストPASS。

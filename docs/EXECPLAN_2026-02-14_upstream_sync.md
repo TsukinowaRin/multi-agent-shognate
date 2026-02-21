@@ -26,6 +26,9 @@
 - 2026-02-14: 対象コミットを `7f703f2`, `9d4ca4d`, `f10ee4b` に絞って比較。
 - 2026-02-14: Codex `--model`（明示設定のみ）と watcher self-watch改善を実装。
 - 2026-02-14: 関連ユニットテストを更新し、`112/112` PASS を確認。
+- 2026-02-21: 上流 `upstream/main`（先頭 `cbad684`）へ再同期し、`b01d56b` / `300eafc` を重点確認。
+- 2026-02-21: `lib/cli_adapter.sh` に Codex `--search` を反映。
+- 2026-02-21: `scripts/inbox_watcher.sh` の Codex escalation `/clear` 抑止を command-layer 限定へ更新。
 
 ## Surprises & Discoveries
 - 上流 `9d4ca4d` をそのまま適用すると、本リポジトリの既定モデル（`opus/sonnet`）が Codex に流れうるため、そのまま移植は不適切。
@@ -38,7 +41,10 @@
   - 理由: non-Claude での誤スキップを防ぐため。
 - D3: 上流の `gunshi` 追加は今回は非採用。
   - 理由: 本リポジトリの多家老/足軽可変トポロジと同時導入すると影響範囲が大きいため。
+- D4: 上流 `300eafc` の `/clear` 抑止は「全Codex」ではなく command-layer のみ採用。
+  - 理由: 足軽Codexまで抑止すると、実運用での自己回復手段が過度に弱くなるため。
 
 ## Outcomes & Retrospective
 - 上流の有効差分を本リポジトリ方針に合わせて取り込み、実運用で問題化しやすい2点（model注入、self-watch誤判定）を低減できた。
 - 次段では、上流 watcher 改善群（busy判定精度、context reset再試行）を本リポジトリの zellij 分岐に合わせて段階移植する余地がある。
+- 2026-02-21 時点で、Codex `--search` と command-layer 抑止条件の再同期を完了。

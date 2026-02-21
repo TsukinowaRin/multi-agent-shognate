@@ -591,6 +591,36 @@ MOCK
 
 # --- T-CODEX-009: invalid model_switch payload is rejected ---
 
+@test "T-CODEX-008b: command-layer codex は escalation /clear を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="shogun"
+        CLI_TYPE="claude"
+        send_cli_command "/clear" "escalation"
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys.*/new" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+}
+
+@test "T-CODEX-008c: ashigaru codex は escalation /clear を /new へ変換する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        CLI_TYPE="claude"
+        send_cli_command "/clear" "escalation"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys.*/new" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+}
+
+# --- T-CODEX-009: invalid model_switch payload is rejected ---
+
 @test "T-CODEX-009: normalize_special_command rejects invalid model_switch payload" {
     run bash -c '
         source "'"$TEST_HARNESS"'"

@@ -383,9 +383,10 @@ send_cli_command() {
     case "$effective_cli" in
         codex)
             # Codex: /clear不存在→/newで新規会話開始, /model非対応→スキップ
-            # escalation経由の/clearは対話中断を招くため抑止し、明示clear_command時のみ/new変換する。
+            # upstream追随: command-layer（shogun / gunshi / karo系）だけ
+            # escalation経由の/clearを抑止し、対話中断を防ぐ。
             if [[ "$cmd" == "/clear" ]]; then
-                if [[ "$source_context" == "escalation" ]]; then
+                if [[ "$source_context" == "escalation" ]] && [[ "$AGENT_ID" =~ ^(shogun|gunshi|karo|karo[0-9]+|karo_gashira)$ ]]; then
                     echo "[$(date)] [SKIP] Codex escalation /clear suppressed for $AGENT_ID (avoid /new interruption)" >&2
                     return 0
                 fi

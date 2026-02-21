@@ -30,15 +30,19 @@
 - 2026-02-17: 起動フローを agent 単位（起動→ready→送信）へ直列化。
 - 2026-02-17: `tests/unit/test_zellij_bootstrap_delivery.bats` を追加し、静的回帰検証を追加。
 - 2026-02-17: `bash -n scripts/shutsujin_zellij.sh` と `bats tests/unit/test_zellij_bootstrap_delivery.bats tests/unit/test_mux_parity.bats` がPASS。
+- 2026-02-21: pure zellij の `Waiting to run` 停止を再現し、`scripts/goza_no_ma.sh` に command pane 自動開始（Enter送信）を追加。
 
 ## Surprises & Discoveries
 - 従来の ready 判定は `\$` を含んでおり、CLI未起動でもシェル表示だけで ready 扱いになり得た。
+- zellij 0.41 系では `start_suspended=false` 指定でも command pane が待機するケースがあり、実行開始トリガが別途必要だった。
 
 ## Decision Log
 - D1: 並列起動より確実性を優先し、zellij起動を逐次化する。
 - D2: ready 判定は CLI UI文字列ベースに限定し、シェル記号は除外する。
+- D3: アクティブペインへの本文注入は再導入せず、Enterのみ外部送信して本文は各ペインTTY自己注入を維持する。
 
 ## Outcomes & Retrospective
 - zellij の初動注入は「全体一括」から「エージェント単位順次」に変更され、混線リスクの主要因（未起動CLIへの早期送信）を下げた。
 - ready 判定の誤検知源だったシェルプロンプト依存を撤去し、CLI画面文字列ベースへ切り替えた。
 - 残課題は実機E2Eでの最終確認（特に Gemini 初回 trust 画面と高負荷時）であり、必要に応じて `MAS_ZELLIJ_BOOTSTRAP_GAP` の調整余地を残した。
+- `Waiting to run` 由来で初動未注入に見えるケースの主要因を除去したため、以後の切り分けは `queue/runtime/goza_bootstrap_*.log` で行える状態になった。

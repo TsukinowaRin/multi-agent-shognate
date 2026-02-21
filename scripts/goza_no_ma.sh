@@ -264,8 +264,7 @@ layout {
         }
     }
     tab name="${tab_title_escaped}" {
-        pane name="${pane_name_escaped}" {
-            command "bash";
+        pane name="${pane_name_escaped}" command="bash" start_suspended=false {
             args "-lc" "${startup_cmd_escaped}";
         }
     }
@@ -321,6 +320,14 @@ zellij_agent_pane_cmd() {
   local agent="$1"
   local cli_type="codex"
   local cli_cmd="codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
+  local startup_msg=""
+  local wait_sec=4
+  local bootstrap_file=""
+  local bootstrap_file_abs=""
+  local bootstrap_file_quoted=""
+  local bootstrap_log_file=""
+  local bootstrap_log_file_abs=""
+  local bootstrap_log_file_quoted=""
 
   if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
     cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
@@ -333,8 +340,32 @@ zellij_agent_pane_cmd() {
     return 0
   fi
 
-  printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && clear && %s; echo %q; exec bash' \
-    "$ROOT_DIR" "$agent" "shout" "$cli_cmd" "[INFO] ${agent} pane ended. Waiting at shell."
+  case "$cli_type" in
+    gemini) wait_sec="${MAS_PURE_ZELLIJ_BOOTSTRAP_WAIT_GEMINI:-18}" ;;
+    codex) wait_sec="${MAS_PURE_ZELLIJ_BOOTSTRAP_WAIT_CODEX:-12}" ;;
+    claude) wait_sec="${MAS_PURE_ZELLIJ_BOOTSTRAP_WAIT_CLAUDE:-10}" ;;
+    *) wait_sec="${MAS_PURE_ZELLIJ_BOOTSTRAP_WAIT_DEFAULT:-10}" ;;
+  esac
+  if ! [[ "$wait_sec" =~ ^[0-9]+$ ]]; then
+    wait_sec=10
+  fi
+
+  mkdir -p "$ROOT_DIR/queue/runtime"
+  startup_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type" 2>/dev/null || true)"
+  bootstrap_file="queue/runtime/goza_bootstrap_${agent}.txt"
+  bootstrap_file_abs="$ROOT_DIR/$bootstrap_file"
+  printf '%s\n' "$startup_msg" > "$bootstrap_file_abs"
+  bootstrap_file_quoted="$(printf '%q' "$bootstrap_file_abs")"
+
+  bootstrap_log_file="queue/runtime/goza_bootstrap_${agent}.log"
+  bootstrap_log_file_abs="$ROOT_DIR/$bootstrap_log_file"
+  : > "$bootstrap_log_file_abs"
+  bootstrap_log_file_quoted="$(printf '%q' "$bootstrap_log_file_abs")"
+
+  # pure zellij はフォーカス移動注入を使わず、各ペインが自分のTTYへ自律注入する。
+  # これにより「アクティブペインに誤送信」問題を回避する。
+  printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && clear && tty_path="$(tty)" && bootstrap_file=%s && bootstrap_log=%s && ( sleep %s; for _retry in 1 2 3 4 5 6 7 8; do _line="$(cat "$bootstrap_file" 2>/dev/null || true)"; if [ -n "$_line" ]; then if printf "%%s\\r" "$_line" >"$tty_path" 2>/dev/null; then printf "[%%s] bootstrap delivered (retry=%%s)\\n" "$(date +%%F_%%T)" "$_retry" >>"$bootstrap_log" 2>/dev/null || true; break; fi; fi; sleep 2; done ) & %s; printf "[%%s] cli exited\\n" "$(date +%%F_%%T)" >>"$bootstrap_log" 2>/dev/null || true; echo %q; exec bash' \
+    "$ROOT_DIR" "$agent" "shout" "$bootstrap_file_quoted" "$bootstrap_log_file_quoted" "$wait_sec" "$cli_cmd" "[INFO] ${agent} pane ended. Waiting at shell."
 }
 
 zellij_collect_active_agents() {
@@ -557,7 +588,7 @@ zellij_send_line_to_session() {
   zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
 }
 
-zellij_bootstrap_pure_goza_background() {
+zellij_resume_pure_goza_panes_background() {
   local session="$1"
   shift
   local agents=("$@")
@@ -575,42 +606,6 @@ zellij_bootstrap_pure_goza_background() {
     local _i
     for _i in {1..6}; do zellij_focus_direction "$_session" "left" || true; done
     for _i in {1..6}; do zellij_focus_direction "$_session" "up" || true; done
-  }
-
-  zellij_send_bootstrap_current_pane() {
-    local _session="$1"
-    local _agent="$2"
-    local _cli_type="$3"
-    local _wait="$4"
-    local _startup_msg
-    local _sent
-    local _attempt
-
-    sleep "$_wait"
-    _startup_msg="$(goza_startup_bootstrap_message "$_agent" "$_cli_type")"
-    _sent=0
-    for _attempt in 1 2 3; do
-      if zellij_send_line_to_session "$_session" "$_startup_msg"; then
-        _sent=1
-        break
-      fi
-      sleep 0.8
-    done
-    if [[ "$_sent" -ne 1 ]]; then
-      echo "[WARN] pure zellij bootstrap send failed: ${_agent}" >&2
-    fi
-  }
-
-  zellij_prepare_gemini_gate_current_pane() {
-    local _session="$1"
-    local _agent="$2"
-    local _cli_type="$3"
-    if [[ "$_cli_type" != "gemini" || "$_agent" != ashigaru* ]]; then
-      return 0
-    fi
-    # 初回 trust / high-demand メニューに引っ掛かるケース向けに軽い先行入力を行う
-    zellij_send_line_to_session "$_session" "1" >/dev/null 2>&1 || true
-    sleep 0.8
   }
 
   zellij_focus_agent_index() {
@@ -655,36 +650,21 @@ zellij_bootstrap_pure_goza_background() {
   }
 
   (
-    # CLI起動直後の入力取りこぼしを避ける
-    sleep 8
+    # zellij 0.41 系では command pane が "Waiting to run" で止まることがある。
+    # ここで各ペインへ Enter を1回送り、実行を開始させる。
+    sleep 1
     local idx
-    local agent
-    local cli_type
-    local wait_sec
     local count="${#agents[@]}"
-    local role_cli=()
-
-    for idx in "${!agents[@]}"; do
-      agent="${agents[$idx]}"
-      cli_type="codex"
-      if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
-        cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
-      fi
-      role_cli[$idx]="$cli_type"
-    done
 
     for idx in "${!agents[@]}"; do
       zellij_focus_agent_index "$session" "$idx" "$count"
-      case "${role_cli[$idx]}" in
-        gemini) wait_sec=7 ;;
-        codex) wait_sec=2 ;;
-        *) wait_sec=3 ;;
-      esac
-      zellij_prepare_gemini_gate_current_pane "$session" "${agents[$idx]}" "${role_cli[$idx]}"
-      zellij_send_bootstrap_current_pane "$session" "${agents[$idx]}" "${role_cli[$idx]}" "$wait_sec"
+      zellij -s "$session" action write 13 >/dev/null 2>&1 || \
+      zellij -s "$session" action write 10 >/dev/null 2>&1 || \
+      zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || true
+      sleep 0.4
     done
 
-    # 最後に将軍ペインへフォーカスを戻す
+    # 最後に将軍ペインへフォーカスを戻す（人間が即対話しやすいように）
     zellij_focus_shogun_anchor "$session"
   ) >/dev/null 2>&1 &
 }
@@ -729,8 +709,7 @@ zellij_pure_goza_layout_file() {
       focus_attr=" focus=true"
     fi
     cat <<EOF
-${indent}pane name="${pane_name_escaped}"${focus_attr} {
-${indent}    command "bash";
+${indent}pane name="${pane_name_escaped}"${focus_attr} command="bash" start_suspended=false {
 ${indent}    args "-lc" "${startup_cmd_escaped}";
 ${indent}}
 EOF
@@ -823,9 +802,6 @@ zellij_pure_attach_goza_room() {
   if [[ "$NO_ATTACH" = true ]]; then
     if zellij attach --create-background "$ZELLIJ_UI_SESSION" >/dev/null 2>&1 || \
        zellij attach --create-background --session "$ZELLIJ_UI_SESSION" >/dev/null 2>&1; then
-      if [[ "$SETUP_ONLY" != "true" ]]; then
-        zellij_bootstrap_pure_goza_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
-      fi
       echo "[INFO] pure zellij goza session created: $ZELLIJ_UI_SESSION"
       echo "       attach: zellij attach $ZELLIJ_UI_SESSION"
       return 0
@@ -833,18 +809,19 @@ zellij_pure_attach_goza_room() {
     echo "[ERROR] pure zellij goza session の背景起動に失敗しました: $ZELLIJ_UI_SESSION" >&2
     return 1
   fi
-  # pure zellij の初動注入はセッション作成後に一括送信する（ペイン増減時のズレ防止）。
-  if [[ "$SETUP_ONLY" != "true" ]]; then
-    zellij_bootstrap_pure_goza_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
-  fi
+  # pure zellij の初動注入は各ペイン内で自律実行する（TTY直書き）。
+  # セッション全体へのフォーカス移動注入は行わない。
 
   if zellij --new-session-with-layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
+    zellij_resume_pure_goza_panes_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
     return 0
   fi
   if zellij --layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
+    zellij_resume_pure_goza_panes_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
     return 0
   fi
   if zellij --layout "$layout_file" attach -c "$ZELLIJ_UI_SESSION"; then
+    zellij_resume_pure_goza_panes_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
     return 0
   fi
   echo "[ERROR] pure zellij 御座の間起動に失敗しました（layout: $layout_file）" >&2

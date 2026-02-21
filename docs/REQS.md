@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-02-14
+最終更新: 2026-02-21
 出典: 直近ユーザープロンプト
 
 ## 要求
@@ -258,6 +258,23 @@
 ### 要求
 1. 御座の間（tmuxビュー）で、役職別タブ色が確実に反映されること。
 2. zellijセッションへのコマンド投入で Enter が効かない環境差分を吸収し、CLI自動起動を安定化すること。
+
+## 追補（2026-02-21: 上流最新同期 + pure zellij 起動安定化）
+### 要求
+1. 上流 `yohey-w/multi-agent-shogun` の最新設計差分を確認し、本リポジトリへ必要分を反映する。
+2. Codex 起動オプションを上流整合に合わせる（`--search` 有効化）。
+3. `inbox_watcher` の Codex escalation `/clear` 抑止は command-layer（将軍/軍師/家老系）のみに限定する。
+4. pure zellij の `Waiting to run` 状態を自動解除し、初動命令が各ペインへ入る前提を満たす。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: Codex コマンド期待値が `--search` 付きで PASS する。
+2. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: command-layer の escalation `/clear` 抑止テストを含め PASS する。
+3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats`
+   - 期待結果: pure zellij の command pane 自動解除（Enter送信）検証を含め PASS する。
+4. コマンド: `bash scripts/goza_no_ma.sh --mux zellij --ui zellij --template goza_room`
+   - 期待結果: 各ペインが `Waiting to run` で停止せず、CLI起動後に初動プロンプトが注入される。
 
 ## 追補（2026-02-14: 複数家老時の足軽均等割り振り）
 ### 要求
@@ -624,4 +641,44 @@
 3. コマンド: `bash -n scripts/shutsujin_zellij.sh`
    - 期待結果: 構文エラーなし。
 4. コマンド: `bats tests/unit/test_zellij_bootstrap_delivery.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: 全テストPASS。
+
+## 追補（2026-02-17: pure zellij のアクティブペイン注入廃止）
+### 要求
+1. ログをもとに、注入失敗/誤送信の再発要因を特定して解決策を提示する。
+2. pure zellij では「アクティブペインへ外部注入」方式をやめる。
+3. 各ペインが自分のTTYに対して初動命令を自律注入する方式に変更する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "tty_path=\"\$\(tty\)\"|bootstrap_line=|printf \"%%s\\\\r\" \"\$bootstrap_line\" >\"\$tty_path\"" scripts/goza_no_ma.sh`
+   - 期待結果: pure zellij の pane 起動コマンドに、各ペインTTYへの自律注入が実装されている。
+2. コマンド: `rg -n 'zellij_bootstrap_pure_goza_background "\\$ZELLIJ_UI_SESSION"' scripts/goza_no_ma.sh`
+   - 期待結果: `zellij_pure_attach_goza_room` からフォーカス移動注入呼び出しが消えている。
+3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_mux_parity.bats tests/unit/test_zellij_bootstrap_delivery.bats`
+   - 期待結果: 全テストPASS。
+
+## 追補（2026-02-21: エージェント未起動問題のログ分析）
+### 要求
+1. ログを読んで、起動できていない原因と解決策を提示する。
+2. 「アクティブペイン注入」依存を廃止し、起動直後に各エージェントが自動で立ち上がる状態にする。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "start_suspended=false|command=\"bash\"" scripts/goza_no_ma.sh`
+   - 期待結果: zellij layout で command pane が待機状態に入らない設定がある。
+2. コマンド: `rg -n "tty_path=\"\$\(tty\)\"|printf \"%%s\\\\r\" \"\$bootstrap_line\" >\"\$tty_path\"" scripts/goza_no_ma.sh`
+   - 期待結果: pure zellij は各ペインTTYへの自律注入になっている。
+3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_mux_parity.bats tests/unit/test_zellij_bootstrap_delivery.bats`
+   - 期待結果: 全テストPASS。
+
+## 追補（2026-02-21: 起動後に初動プロンプトが入らない問題）
+### 要求
+1. 起動は成功しているが、各エージェントCLIへ初動プロンプトが入らない不具合を解消する。
+2. 注入文面の巨大なコマンド直埋めを避け、注入の可観測性（成功/失敗ログ）を持たせる。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "goza_bootstrap_.*\.txt|bootstrap delivered" scripts/goza_no_ma.sh`
+   - 期待結果: 初動プロンプトをファイル経由で注入し、配信ログを書き出す実装がある。
+2. コマンド: `bash -n scripts/goza_no_ma.sh`
+   - 期待結果: 構文エラーなし。
+3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_mux_parity.bats tests/unit/test_zellij_bootstrap_delivery.bats`
    - 期待結果: 全テストPASS。

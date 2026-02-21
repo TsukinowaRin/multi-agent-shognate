@@ -1162,3 +1162,118 @@
   - `bats tests/unit/test_zellij_bootstrap_delivery.bats tests/unit/test_mux_parity.bats` → 9/9 PASS
 - 判断メモ:
   - この段階では「誤判定削減 + 逐次化」による安定化を優先し、pure zellij 実機E2Eは次チェックポイントで確認する。
+
+## 2026-02-17 17:00 (JST)
+- Goal: 実機E2E検証と引き継ぎドキュメント更新
+- Changes (files):
+  - config/settings.yaml — 将軍=codex, 家老=codex, 軍師=gemini, 足軽=geminiに設定
+  - docs/HANDOVER_2026-02-17_bootstrap_injection.md — 実機テスト結果を追記
+  - docs/WORKLOG.md — WORKLOG更新
+- Commands + Results:
+  - bash scripts/goza_zellij.sh → YAMLパースエラー（インデント修正）
+  - 実機テスト結果: 起動中にユーザーがZellijをポチポチすると、混線が発生
+    - 家老に軍師のプロンプトが注入される
+    - 将軍に別のプロンプトが注入される
+- Decisions / Assumptions:
+  - ユーザー操作によるフォーカス変更が、write-charsの送信先を誤認識させる可能性がある。
+  - 起動中はユーザー操作を禁止する警告を追加する必要がある。
+- Next:
+  1. ユーザー操作時の混線防止を実装
+  2. 実機E2E検証（Zellij Pure Mode）
+  3. WORKLOG更新
+- Blockers: ユーザー操作時の混線問題
+- Links: docs/REQS.md, docs/HANDOVER_2026-02-17_bootstrap_injection.md
+
+
+## 2026-02-17 (ログ分析: pure zellij のアクティブペイン注入廃止)
+- 背景:
+  - ユーザー報告「うまくいっていない。アクティブペイン注入手法が悪い」を受け、`logs/inbox_watcher_*.log` を確認。
+  - 主要観測:
+    - `inotifywait not found` が多数混在（古い運用履歴のノイズ）。
+    - `ashigaru2` で nudge→Escape→`/clear` の連鎖（`ESCALATION Phase 3`）が反復。
+    - tmux/zellij 混在起動履歴により、送信対象前提が不安定化していた。
+  - コード確認で、`scripts/goza_no_ma.sh` の pure zellij はフォーカス移動 + `write-chars` で「現在アクティブペイン」へ注入していた。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `zellij_agent_pane_cmd` を変更し、各ペイン内で `tty_path="$(tty)"` を取得。
+    - CLI起動後にそのペイン自身のTTYへ `bootstrap_line` を自律注入する方式へ変更。
+    - `MAS_PURE_ZELLIJ_BOOTSTRAP_WAIT_{CLAUDE,CODEX,GEMINI,DEFAULT}` を導入。
+    - `zellij_pure_attach_goza_room` から `zellij_bootstrap_pure_goza_background` 呼び出しを削除。
+  - テスト追加: `tests/unit/test_goza_pure_bootstrap.bats`
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_mux_parity.bats tests/unit/test_zellij_bootstrap_delivery.bats` → 11/11 PASS
+- 判断メモ:
+  - pure zellij は「外部フォーカス制御で注入」より「各ペイン内の自己注入」のほうが構造的に安全。
+  - watcherログには過去履歴が大量に残るため、今後の実機検証は起動ごとの専用ログファイル（run-id）分離が必要。
+
+## 2026-02-21 (起動失敗: Waiting to run 対策)
+- 背景:
+  - ユーザー報告: 「エージェントが立ち上がっていない」。スクリーンショットで各ペインに `Waiting to run:` が表示。
+- ログ確認:
+  - `logs/inbox_watcher_*.log` は過去分を含みノイズが多いが、`ashigaru2` で unresponsive→`/clear` 循環履歴を確認。
+  - 現象の直接原因は watcher より先に、zellij pane が「実行待ち」で停止していた点。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - zellij layout の pane 定義を `command="bash" start_suspended=false` に変更（UIレイアウト/純zellijレイアウト双方）。
+    - pure zellij は既存の「アクティブペイン外部注入」を使わず、各ペインのTTY自律注入を維持。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_mux_parity.bats tests/unit/test_zellij_bootstrap_delivery.bats` → 11/11 PASS
+- 補足:
+  - zellij 0.41系では command pane が待機表示になるケースがあり、`start_suspended=false` 明示で自動実行に寄せた。
+
+## 2026-02-21 (起動後に初動プロンプトが入らない問題の修正)
+- 背景:
+  - ユーザー実機で「エージェントは起動するがプロンプトが入らない」事象を確認。
+  - 旧実装は初動文面を pane 起動コマンドへ直埋めし、CLI起動タイミング依存で取りこぼしやすかった。
+- 実装:
+  - `scripts/goza_no_ma.sh`
+    - `zellij_agent_pane_cmd` で初動文面を `queue/runtime/goza_bootstrap_<agent>.txt` に事前書き出し。
+    - 各ペイン内で `tty_path` を取得し、`bootstrap_file` を読んで遅延リトライ送信する方式へ変更。
+    - 送信結果を `queue/runtime/goza_bootstrap_<agent>.log` に記録（`bootstrap delivered` / `cli exited`）。
+    - 待機時間デフォルトを引き上げ（codex 12s / claude 10s / gemini 18s）。
+  - `tests/unit/test_goza_pure_bootstrap.bats` を更新（bootstrap_file経由を検証）。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_mux_parity.bats tests/unit/test_zellij_bootstrap_delivery.bats` → 11/11 PASS
+- 判断メモ:
+  - フォーカス注入廃止に加え、文面直埋めを外すことで quoting/長文コマンド由来の不安定要因を削減。
+  - 実機で問題が残る場合は `queue/runtime/goza_bootstrap_<agent>.log` を一次データとして追跡する。
+
+## 2026-02-21 (上流再同期 + pure zellij `Waiting to run` 補正)
+- Goal:
+  - 上流 `yohey-w/multi-agent-shogun` 最新設計を再確認し、有効差分を反映する。
+  - ユーザー報告「起動したがプロンプト未注入」に対し、`Waiting to run` 停止点を除去する。
+- Upstream確認:
+  - `git fetch upstream --prune`
+  - 先頭確認: `upstream/main` = `cbad684`
+  - 重点コミット: `b01d56b`（codex `--search`）, `300eafc`（command-layer `/clear` 抑止）
+- Changes (files):
+  - `scripts/goza_no_ma.sh`
+    - `zellij_resume_pure_goza_panes_background` を追加。
+    - pure zellij セッション作成後、各ペインへ Enter を順次送信して command pane を自動開始。
+    - 初動本文は従来どおり各ペインTTY自己注入（アクティブペイン誤注入を再導入しない）。
+  - `lib/cli_adapter.sh`
+    - Codex起動コマンドに `--search` を追加（上流整合）。
+  - `scripts/inbox_watcher.sh`
+    - Codex escalation `/clear` 抑止を command-layer のみに限定。
+      - `shogun|gunshi|karo|karoN|karo_gashira`
+  - `tests/unit/test_goza_pure_bootstrap.bats`
+    - `Waiting to run` 自動解除（Enter送信）検証を追加。
+  - `tests/unit/test_cli_adapter.bats`
+    - Codex期待値を `--search` 付きへ更新。
+  - `tests/unit/test_send_wakeup.bats`
+    - command-layer抑止と ashigaru継続回復の分岐テストを追加。
+  - `docs/UPSTREAM_SYNC_2026-02-21.md`
+    - 上流比較結果と採用/非採用を記録。
+  - `docs/INDEX.md`, `docs/REQS.md`, `docs/EXECPLAN_2026-02-14_upstream_sync.md`, `docs/EXECPLAN_2026-02-17_zellij_bootstrap_stability.md`
+    - 参照・要件・計画ログを更新。
+- Commands + Results:
+  - `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats`
+    - 結果: `1..117` 全PASS
+  - `bash -n scripts/goza_no_ma.sh lib/cli_adapter.sh scripts/inbox_watcher.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh`
+    - 結果: PASS
+- Decisions / Assumptions:
+  - zellij 0.41系の `start_suspended=false` 依存は不十分と判断し、実行開始トリガ（Enter送信）を補助実装。
+  - command-layerの `/clear` 抑止は上流準拠、ashigaruは自己回復維持のため抑止しない。

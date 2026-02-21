@@ -186,7 +186,8 @@ build_cli_command_with_type() {
             if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
                 cmd="$cmd --model $configured_model"
             fi
-            cmd="$cmd --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
+            # upstream追随: codex は検索モードを有効化して起動する
+            cmd="$cmd --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
             echo "$cmd"
             ;;
         copilot)

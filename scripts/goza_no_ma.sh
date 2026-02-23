@@ -660,6 +660,7 @@ zellij_pure_goza_layout_file() {
   local layout_file="${TMPDIR:-/tmp}/zellij_pure_goza_${ZELLIJ_UI_SESSION}.kdl"
   local tab_title_escaped
   local shogun_agent="shogun"
+  local gunshi_agent=""
   local karo_agents=()
   local ashigaru_agents=()
   local agent
@@ -668,6 +669,7 @@ zellij_pure_goza_layout_file() {
   for agent in "${agents[@]}"; do
     case "$agent" in
       shogun) shogun_agent="$agent" ;;
+      gunshi) gunshi_agent="$agent" ;;
       karo|karo[1-9]*|karo_gashira) karo_agents+=("$agent") ;;
       ashigaru*) ashigaru_agents+=("$agent") ;;
     esac
@@ -760,6 +762,9 @@ EOF
     echo "        pane split_direction=\"vertical\" {"
     echo "            pane split_direction=\"horizontal\" size=\"46%\" {"
     zellij_emit_agent_leaf "                " "$shogun_agent" "focus"
+    if [[ -n "$gunshi_agent" ]]; then
+      zellij_emit_agent_leaf "                " "$gunshi_agent"
+    fi
     echo "            }"
     echo "            pane split_direction=\"horizontal\" size=\"32%\" {"
     zellij_emit_agent_grid "                " "${karo_agents[@]}"
@@ -914,6 +919,12 @@ if [[ "$MUX_MODE" == "tmux" ]]; then
       tmux set-window-option -t "$VIEW_SESSION":overview main-pane-width 65% >/dev/null 2>&1 || true
       tmux select-pane -t "$VIEW_SESSION":overview.0 -T "shogun"
       tmux select-pane -t "$VIEW_SESSION":overview.1 -T "multiagent"
+      # 軍師ウィンドウを別タブで追加（gunshi セッションが存在する場合）
+      if tmux has-session -t gunshi 2>/dev/null; then
+        tmux new-window -t "$VIEW_SESSION" -n "gunshi" "$(tmux_attach_session_cmd gunshi)" >/dev/null 2>&1 || true
+      fi
+      # 最初のウィンドウ（overview = 将軍）にフォーカスを戻す
+      tmux select-window -t "$VIEW_SESSION":overview >/dev/null 2>&1 || true
     fi
     tmux_target="$VIEW_SESSION"
   fi

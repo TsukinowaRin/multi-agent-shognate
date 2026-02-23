@@ -45,3 +45,19 @@ setup_file() {
     run rg -nF 'deliver_bootstrap_tmux "gunshi:main" "gunshi" "$_gunshi_cli_type"' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "tmux: deliver_bootstrap_tmux は -l フラグでリテラル送信し Enter で確定する" {
+    # -l フラグ（リテラル送信）が使われていること
+    run rg -nF 'tmux send-keys -l -t "$pane_target" "$msg"' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+    # ブートストラップ確定は Enter（名前付きキー）で行うこと
+    run rg -nF 'tmux send-keys -t "$pane_target" Enter' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "pure zellij: レイアウトに gunshi ペインが含まれる" {
+    run rg -nF 'gunshi_agent' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF '"$gunshi_agent"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}

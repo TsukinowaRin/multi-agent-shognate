@@ -250,8 +250,11 @@ deliver_bootstrap_tmux() {
 
     local msg
     msg="$(cat "$bootstrap_file")"
-    tmux send-keys -t "$pane_target" "$msg"
-    tmux send-keys -t "$pane_target" C-m
+    # -l: リテラル送信（日本語・特殊文字をキーシーケンスと誤解釈させない）
+    # sleep: CLI がテキストをバッファに受け取ってから Enter を送る
+    tmux send-keys -l -t "$pane_target" "$msg"
+    sleep 0.3
+    tmux send-keys -t "$pane_target" Enter
 }
 
 ensure_generated_instructions() {

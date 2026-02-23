@@ -1,5 +1,37 @@
 # Worklog
 
+## 2026-02-23 (引き継ぎ文書整備・状況把握セッション) [Claude Opus 4.6]
+- Goal: 前セッションからの引き継ぎ。Docs/AGENTS.mdを全読み込みし、実装状況を把握した上でWORKLOGを更新する。
+- Context（セッション開始時の状態）:
+  - 前回セッション（2026-02-16）で `39556af` をコミット済み（ブートストラップ根本修正）。
+  - Codexセッション（2026-02-17〜2026-02-23）でさらに `c5015ed`〜`0fccaa4` が追加されていた。
+  - HANDOVER_2026-02-23_prompt_injection_open_issues.md が既に存在し、未解決課題が整理されていた。
+- Changes (files):
+  - `docs/WORKLOG.md` — 今回のセッション記録を追記（本エントリー）
+- Commands + Results:
+  - `bats tests/ tests/unit/` → **209/209 PASS**（test_goza_pure_bootstrap.bats, test_zellij_bootstrap_delivery.bats含む）
+  - `git log --oneline` → 直近6コミット（`39556af`〜`0fccaa4`）を確認
+- 現時点の到達状況:
+  - ✅ `scripts/shutsujin_zellij.sh`: 順次起動 + CLI種別readiness判定 + bootstrap_file経由配信
+  - ✅ `scripts/goza_no_ma.sh`: attachブロッキング前にresume予約、ペインTTY自己注入
+  - ✅ `scripts/inbox_watcher.sh`: command-layer限定のCodex `/clear` 抑止
+  - ✅ `lib/cli_adapter.sh`: Codex `--search` 追加
+  - ✅ `tests/unit/test_goza_pure_bootstrap.bats`: pure zellij 起動フロー検証
+  - ✅ `tests/unit/test_zellij_bootstrap_delivery.bats`: zellij bootstrap配信静的検証
+  - 🔴 実機での「注入されない」問題が未解決（HANDOVER_2026-02-23参照）
+- 未解決課題（次エージェント向け）:
+  - P0: 起動経路別（goza_no_ma.sh / shutsujin_zellij.sh）の注入処理を一本化
+  - P0: ACK機構（ready:<agent>応答を確認してから次へ進む）の導入
+  - P0: 実機ログ（queue/runtime/goza_bootstrap_*.log）による再現確認
+  - P1: wait_for_cli_ready() の判定厳密化（CLI別idle promptの明確化）
+  - 詳細: docs/HANDOVER_2026-02-23_prompt_injection_open_issues.md
+- Notes:
+  - 実機テスト結果（2026-02-17ユーザー報告）: 起動中Zellijをポチポチすると、フォーカス変更で混線。
+    家老に軍師プロンプト、足軽に家老プロンプトが注入される症状。
+  - 本セッションでは新規実装なし。引き継ぎ文書の確認・整備が目的。
+
+---
+
 ## 2026-02-17 15:15 (JST)
 - Goal: Zellijプロンプト注入混線問題の修正（A案：順次起動方式の強化）
 - Changes (files):

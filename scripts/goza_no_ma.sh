@@ -319,7 +319,7 @@ zellij_ui_attach_tmux_target() {
 zellij_agent_pane_cmd() {
   local agent="$1"
   local cli_type="codex"
-  local cli_cmd="codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
+  local cli_cmd="codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
   local startup_msg=""
 
   if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
@@ -436,6 +436,9 @@ goza_role_linkage_directive() {
     shogun)
       echo "連携順序: 殿の指示を受けたら、必ず『将軍→家老→足軽』で委譲せよ。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
       ;;
+    gunshi)
+      echo "連携順序: 家老から queue/tasks/gunshi.yaml 経由でタスクを受領し、分析・戦略立案後に queue/reports/gunshi_report.yaml を作成、inbox通知で家老へ返せ。将軍・足軽へ直接命令しない。"
+      ;;
     karo|karo[1-9]*|karo_gashira)
       echo "連携順序: 将軍命令を受けたら、家老がサブタスク分解し queue/tasks/ashigaruN.yaml へ割当、inboxで該当足軽を起動せよ。人間へ直接報告せず、dashboardと既定フローを守れ。"
       ;;
@@ -462,6 +465,9 @@ goza_event_driven_directive() {
     shogun)
       echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、殿の次入力を待て。自分で実装作業に入るな。"
       ;;
+    gunshi)
+      echo "イベント駆動規則: ポーリング禁止。家老からのinboxイベント起点で分析・戦略立案を行い、報告後は待機へ戻れ。"
+      ;;
     karo|karo[1-9]*|karo_gashira|ashigaru*)
       echo "イベント駆動規則: ポーリング禁止。inboxイベント起点でタスク処理し、未読処理後は待機へ戻れ。"
       ;;
@@ -476,6 +482,9 @@ goza_reporting_chain_directive() {
   case "$agent_id" in
     shogun)
       echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
+      ;;
+    gunshi)
+      echo "報告規則: 分析完了後は queue/reports/gunshi_report.yaml に結果を書き、inbox通知で家老へ返せ。将軍・人間へ直接報告しない。"
       ;;
     karo|karo[1-9]*|karo_gashira)
       echo "報告規則: タスク完了時は将軍へ要約を返し、人間へ直接報告しない。"
@@ -507,6 +516,7 @@ goza_startup_bootstrap_message() {
   if [[ -z "$role_instruction_file" ]]; then
     case "$agent_id" in
       shogun) role_instruction_file="instructions/shogun.md" ;;
+      gunshi) role_instruction_file="instructions/gunshi.md" ;;
       karo|karo[1-9]*|karo_gashira) role_instruction_file="instructions/karo.md" ;;
       ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
       *) role_instruction_file="AGENTS.md" ;;

@@ -188,11 +188,42 @@ generate_bootstrap_file() {
     echo "$startup_msg" > "$bootstrap_file"
 }
 
+# CLIの準備完了をスクリーン内容で確認（pane_current_command の誤判定を回避）
+# codex は node、gemini は node 等で表示されるため、UI文字列パターンで判定する。
+wait_for_cli_ready_tmux() {
+    local pane_target="$1"
+    local cli_type="${2:-claude}"
+    local max_wait="${3:-30}"
+    local ready_pattern=""
+    local i
+
+    case "$cli_type" in
+        claude)  ready_pattern='(claude code|Claude Code|╰|/model|for shortcuts)' ;;
+        codex)   ready_pattern='(openai codex|Codex|context left|/model|for shortcuts|Press Ctrl)' ;;
+        gemini)  ready_pattern='(gemini|Gemini|type your message|Tips to get|yolo mode)' ;;
+        copilot) ready_pattern='(copilot|GitHub Copilot|/model)' ;;
+        kimi)    ready_pattern='(kimi|moonshot|/model)' ;;
+        localapi) ready_pattern='(localapi|LocalAPI|ready:|\$)' ;;
+        *)       ready_pattern='(claude|codex|gemini|copilot|kimi|localapi|ready:)' ;;
+    esac
+
+    for ((i=0; i<max_wait; i++)); do
+        local screen_content
+        screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+        if echo "$screen_content" | grep -qiE "$ready_pattern"; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
 # ファイルベースでブートストラップ配信（tmux版）
-# ペインターゲットの存在を確認してから送信
+# ペインターゲットの存在を確認し、CLIの準備完了を待ってから送信
 deliver_bootstrap_tmux() {
     local pane_target="$1"
     local agent_id="$2"
+    local cli_type="${3:-claude}"
     local bootstrap_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.md"
 
     if [ ! -f "$bootstrap_file" ]; then
@@ -204,6 +235,11 @@ deliver_bootstrap_tmux() {
     if ! tmux display-message -p -t "$pane_target" "#{pane_id}" >/dev/null 2>&1; then
         echo "[WARN] pane '$pane_target' not found, skipping bootstrap for $agent_id" >&2
         return 1
+    fi
+
+    # CLIの準備完了を最大30秒待機（スクリーン内容ベース判定）
+    if ! wait_for_cli_ready_tmux "$pane_target" "$cli_type" 30; then
+        echo "[WARN] CLI '$cli_type' not ready in '$pane_target' after 30s, sending bootstrap anyway" >&2
     fi
 
     local msg
@@ -1218,13 +1254,15 @@ NINJA_EOF
     echo -e "                               \033[0;36m[ASCII Art: syntax-samurai/ryu - CC0 1.0 Public Domain]\033[0m"
     echo ""
 
-    CLI_READY_TIMEOUT="${MAS_CLI_READY_TIMEOUT:-30}"
+    # 一括起動確認（高速パス）: スクリーン内容ベースで全CLI同時チェック
+    # 注: deliver_bootstrap_tmux でも個別に最大30秒待機するため、ここでは短時間チェックのみ。
+    # codex は node、gemini は node 等で表示されるため pane_current_command は使用しない。
+    CLI_READY_TIMEOUT="${MAS_CLI_READY_TIMEOUT:-15}"
     if ! [[ "$CLI_READY_TIMEOUT" =~ ^[0-9]+$ ]]; then
-        CLI_READY_TIMEOUT=30
+        CLI_READY_TIMEOUT=15
     fi
-    echo "  エージェントCLIの起動を確認中（最大${CLI_READY_TIMEOUT}秒）..."
+    echo "  エージェントCLIの起動を確認中（最大${CLI_READY_TIMEOUT}秒、スクリーン内容判定）..."
 
-    # 各ペインの current_command が期待CLIに遷移したかを確認
     _all_cli_ready=false
     for ((i=1; i<=CLI_READY_TIMEOUT; i++)); do
         _ready_count=0
@@ -1232,32 +1270,20 @@ NINJA_EOF
 
         # 将軍
         _shogun_cli=$(tmux show-options -p -t "shogun:main" -v @agent_cli 2>/dev/null || echo "claude")
-        _shogun_cmd=$(tmux display-message -p -t "shogun:main" "#{pane_current_command}" 2>/dev/null || echo "")
         _total_count=$((_total_count + 1))
-        case "$_shogun_cli" in
-            claude)  [[ "$_shogun_cmd" =~ ^(claude)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-            codex)   [[ "$_shogun_cmd" =~ ^(codex)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-            copilot) [[ "$_shogun_cmd" =~ ^(copilot)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-            kimi)    [[ "$_shogun_cmd" =~ ^(kimi|kimi-cli)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-            gemini)  [[ "$_shogun_cmd" =~ ^(gemini|gemini-cli)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-            localapi) [[ "$_shogun_cmd" =~ ^(python3|python)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-        esac
+        if wait_for_cli_ready_tmux "shogun:main" "$_shogun_cli" 0 2>/dev/null; then
+            _ready_count=$((_ready_count + 1))
+        fi
 
         # 家老 + 足軽
         for _idx in "${!MULTIAGENT_IDS[@]}"; do
             p=$((PANE_BASE + _idx))
             _pane_target="multiagent:agents.${p}"
             _expected_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
-            _pane_cmd=$(tmux display-message -p -t "$_pane_target" "#{pane_current_command}" 2>/dev/null || echo "")
             _total_count=$((_total_count + 1))
-            case "$_expected_cli" in
-                claude)  [[ "$_pane_cmd" =~ ^(claude)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-                codex)   [[ "$_pane_cmd" =~ ^(codex)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-                copilot) [[ "$_pane_cmd" =~ ^(copilot)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-                kimi)    [[ "$_pane_cmd" =~ ^(kimi|kimi-cli)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-                gemini)  [[ "$_pane_cmd" =~ ^(gemini|gemini-cli)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-                localapi) [[ "$_pane_cmd" =~ ^(python3|python)$ ]] && _ready_count=$((_ready_count + 1)) ;;
-            esac
+            if wait_for_cli_ready_tmux "$_pane_target" "$_expected_cli" 0 2>/dev/null; then
+                _ready_count=$((_ready_count + 1))
+            fi
         done
 
         if [ "$_ready_count" -ge "$_total_count" ] && [ "$_total_count" -gt 0 ]; then
@@ -1269,20 +1295,21 @@ NINJA_EOF
     done
 
     if [ "$_all_cli_ready" != true ]; then
-        log_info "⚠️  一部CLIの起動確認は未完了（タイムアウト）ですが、処理を継続します"
+        log_info "⚠️  一部CLIの起動確認は未完了（タイムアウト）ですが、deliver_bootstrap_tmux で個別待機します"
     fi
 
     # 各エージェントへ初動命令を投入（CLI起動確認後）
-    # ファイルベースでブートストラップ配信（事前生成済みファイルから読み出し）
-    # 将軍への注入を最後にして、注入後にフォーカスを将軍ペインに固定
-    log_info "📜 初動命令をエージェント毎に個別配信中"
+    # deliver_bootstrap_tmux 内でCLI毎のready判定（スクリーン内容ベース）を行うため、
+    # ここでの一括待機は不要。将軍への注入を最後にしてフォーカスを将軍ペインに固定。
+    log_info "📜 初動命令をエージェント毎に個別配信中（CLI ready確認つき）"
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
         p=$((PANE_BASE + _idx))
-        deliver_bootstrap_tmux "multiagent:agents.${p}" "$_agent"
+        _agent_cli_type="${MULTIAGENT_CLI[$_agent]:-claude}"
+        deliver_bootstrap_tmux "multiagent:agents.${p}" "$_agent" "$_agent_cli_type"
     done
-    deliver_bootstrap_tmux "gunshi:main" "gunshi"
-    deliver_bootstrap_tmux "shogun:main" "shogun"
+    deliver_bootstrap_tmux "gunshi:main" "gunshi" "$_gunshi_cli_type"
+    deliver_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
     tmux select-pane -t shogun:main >/dev/null 2>&1 || true
     log_info "📜 初動命令の配信完了"
 

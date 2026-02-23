@@ -25,3 +25,23 @@ setup_file() {
     run rg -n "MAS_ZELLIJ_BOOTSTRAP_GAP|BOOTSTRAP_AGENT_GAP" "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "tmux: wait_for_cli_ready_tmux はスクリーン内容ベースで判定する" {
+    run rg -nF 'wait_for_cli_ready_tmux' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'tmux capture-pane -p' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+    # コード行（コメントでない行）に pane_current_command が残っていないことを確認
+    # ^[^#]* でコメント行を除外（行頭 # 以外の行にパターンがあれば non-zero 以外で返す）
+    run rg -n '^[^#]*pane_current_command' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -ne 0 ]
+}
+
+@test "tmux: deliver_bootstrap_tmux はcli_typeを受け取り個別にready待機する" {
+    run rg -nF 'wait_for_cli_ready_tmux "$pane_target" "$cli_type"' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'deliver_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'deliver_bootstrap_tmux "gunshi:main" "gunshi" "$_gunshi_cli_type"' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}

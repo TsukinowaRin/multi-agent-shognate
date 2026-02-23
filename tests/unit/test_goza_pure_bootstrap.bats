@@ -5,12 +5,16 @@ setup_file() {
     PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 }
 
-@test "pure zellij: 各ペインでTTY自律注入を使う" {
+@test "pure zellij: 各ペインでCLI引数渡しによるブートストラップ注入を使う" {
+    # TTY直書き方式（旧実装）が削除され、CLI引数渡し方式になっていることを確認
     run rg -nF 'tty_path="$(tty)"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
-    [ "$status" -eq 0 ]
-    run rg -nF 'bootstrap_file=' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
-    [ "$status" -eq 0 ]
+    [ "$status" -ne 0 ]
     run rg -nF 'printf "%%s\\r" "$_line" >"$tty_path"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -ne 0 ]
+    # CLI引数渡し: startup_msg を %q でシェルクォートして CLI コマンドへ渡す
+    run rg -nF 'startup_msg' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF '"shout" "$cli_cmd" "$startup_msg"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 

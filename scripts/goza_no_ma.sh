@@ -321,13 +321,6 @@ zellij_agent_pane_cmd() {
   local cli_type="codex"
   local cli_cmd="codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
   local startup_msg=""
-  local wait_sec=4
-  local bootstrap_file=""
-  local bootstrap_file_abs=""
-  local bootstrap_file_quoted=""
-  local bootstrap_log_file=""
-  local bootstrap_log_file_abs=""
-  local bootstrap_log_file_quoted=""
 
   if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
     cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
@@ -340,32 +333,13 @@ zellij_agent_pane_cmd() {
     return 0
   fi
 
-  case "$cli_type" in
-    gemini) wait_sec="${MAS_PURE_ZELLIJ_BOOTSTRAP_WAIT_GEMINI:-18}" ;;
-    codex) wait_sec="${MAS_PURE_ZELLIJ_BOOTSTRAP_WAIT_CODEX:-12}" ;;
-    claude) wait_sec="${MAS_PURE_ZELLIJ_BOOTSTRAP_WAIT_CLAUDE:-10}" ;;
-    *) wait_sec="${MAS_PURE_ZELLIJ_BOOTSTRAP_WAIT_DEFAULT:-10}" ;;
-  esac
-  if ! [[ "$wait_sec" =~ ^[0-9]+$ ]]; then
-    wait_sec=10
-  fi
-
-  mkdir -p "$ROOT_DIR/queue/runtime"
   startup_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type" 2>/dev/null || true)"
-  bootstrap_file="queue/runtime/goza_bootstrap_${agent}.txt"
-  bootstrap_file_abs="$ROOT_DIR/$bootstrap_file"
-  printf '%s\n' "$startup_msg" > "$bootstrap_file_abs"
-  bootstrap_file_quoted="$(printf '%q' "$bootstrap_file_abs")"
 
-  bootstrap_log_file="queue/runtime/goza_bootstrap_${agent}.log"
-  bootstrap_log_file_abs="$ROOT_DIR/$bootstrap_log_file"
-  : > "$bootstrap_log_file_abs"
-  bootstrap_log_file_quoted="$(printf '%q' "$bootstrap_log_file_abs")"
-
-  # pure zellij はフォーカス移動注入を使わず、各ペインが自分のTTYへ自律注入する。
-  # これにより「アクティブペインに誤送信」問題を回避する。
-  printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && clear && tty_path="$(tty)" && bootstrap_file=%s && bootstrap_log=%s && ( sleep %s; for _retry in 1 2 3 4 5 6 7 8; do _line="$(cat "$bootstrap_file" 2>/dev/null || true)"; if [ -n "$_line" ]; then if printf "%%s\\r" "$_line" >"$tty_path" 2>/dev/null; then printf "[%%s] bootstrap delivered (retry=%%s)\\n" "$(date +%%F_%%T)" "$_retry" >>"$bootstrap_log" 2>/dev/null || true; break; fi; fi; sleep 2; done ) & %s; printf "[%%s] cli exited\\n" "$(date +%%F_%%T)" >>"$bootstrap_log" 2>/dev/null || true; echo %q; exec bash' \
-    "$ROOT_DIR" "$agent" "shout" "$bootstrap_file_quoted" "$bootstrap_log_file_quoted" "$wait_sec" "$cli_cmd" "[INFO] ${agent} pane ended. Waiting at shell."
+  # pure zellij: 各ペインが CLI を直接起動し、初動命令を引数として渡す。
+  # TTY直書き方式（旧実装）は stdout 側に書くだけで CLI の stdin に届かないため廃止。
+  # CLI引数渡しは claude/codex/gemini/copilot/kimi すべてで動作確認済み。
+  printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && clear && %s %q; echo %q; exec bash' \
+    "$ROOT_DIR" "$agent" "shout" "$cli_cmd" "$startup_msg" "[INFO] ${agent} pane ended. Waiting at shell."
 }
 
 zellij_collect_active_agents() {

@@ -693,3 +693,14 @@
    - 期待結果: 構文エラーなし。
 3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_mux_parity.bats tests/unit/test_zellij_bootstrap_delivery.bats`
    - 期待結果: 全テストPASS。
+
+## 追補（2026-02-23: 引き継ぎ文書の整備）
+### 要求
+1. 「起動はするがプロンプト注入されない」未解決事象について、次エージェント向けに課題・問題点・次アクションを文書化する。
+2. どの起動経路（`goza_no_ma.sh` / `shutsujin_zellij.sh` / `shutsujin_departure.sh`）で再現したかを切り分け可能な資料にする。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `sed -n '1,260p' docs/HANDOVER_2026-02-23_prompt_injection_open_issues.md`
+   - 期待結果: 症状、再現条件、仮説、優先タスク、検証手順、受け入れ条件が記載されている。
+2. コマンド: `rg -n "HANDOVER_2026-02-23_prompt_injection_open_issues.md" docs/INDEX.md`
+   - 期待結果: Docs INDEX の Specs に新規引き継ぎ文書が登録されている。

@@ -1298,3 +1298,14 @@
   - `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_send_wakeup.bats` → `1..44` PASS
 - Decision:
   - resume処理は attach 後ではなく「attach 開始前に予約」が必須。
+
+## 2026-02-23 (未解決のため引き継ぎ文書を整備)
+- Goal:
+  - ユーザー報告「起動するがプロンプト注入されない」が継続しているため、次エージェントが即着手できる引き継ぎ資料を作成。
+- Changes (files):
+  - `docs/HANDOVER_2026-02-23_prompt_injection_open_issues.md` を新規作成。
+  - `docs/INDEX.md` に handover 文書を登録。
+  - `docs/REQS.md` に引き継ぎ整備要求を追補。
+- Notes:
+  - 実装はここで止め、未解決のまま課題を明示的に移譲。
+  - 起動経路別（`goza_no_ma.sh` / `shutsujin_zellij.sh`）の切り分けをP0として指定。

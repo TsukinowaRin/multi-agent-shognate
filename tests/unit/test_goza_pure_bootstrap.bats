@@ -25,3 +25,8 @@ setup_file() {
     run rg -nF 'action write 13' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "pure zellij: attachブロッキング前にresume予約を行う" {
+    run rg -nF 'zellij_schedule_resume_after_attach "$ZELLIJ_UI_SESSION"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}

@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-02-21
+最終更新: 2026-02-23
 出典: 直近ユーザープロンプト
 
 ## 要求
@@ -275,6 +275,17 @@
    - 期待結果: pure zellij の command pane 自動解除（Enter送信）検証を含め PASS する。
 4. コマンド: `bash scripts/goza_no_ma.sh --mux zellij --ui zellij --template goza_room`
    - 期待結果: 各ペインが `Waiting to run` で停止せず、CLI起動後に初動プロンプトが注入される。
+
+## 追補（2026-02-23: attachブロッキングでresume未実行になる不具合）
+### 要求
+1. pure zellij (`goza_no_ma.sh --mux zellij --ui zellij --template goza_room`) で、attach中でも初動resume処理が確実に動くこと。
+2. `zellij --new-session-with-layout` のブロッキングにより、resumeがセッション終了後まで遅延する不具合を解消すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats`
+   - 期待結果: `attachブロッキング前にresume予約を行う` テストがPASSする。
+2. コマンド: `bash scripts/goza_no_ma.sh --mux zellij --ui zellij --template goza_room`
+   - 期待結果: 起動直後に `queue/runtime/goza_bootstrap_*.log` に `bootstrap delivered` が記録される。
 
 ## 追補（2026-02-14: 複数家老時の足軽均等割り振り）
 ### 要求

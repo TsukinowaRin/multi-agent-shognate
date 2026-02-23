@@ -1277,3 +1277,24 @@
 - Decisions / Assumptions:
   - zellij 0.41系の `start_suspended=false` 依存は不十分と判断し、実行開始トリガ（Enter送信）を補助実装。
   - command-layerの `/clear` 抑止は上流準拠、ashigaruは自己回復維持のため抑止しない。
+
+## 2026-02-23 (注入未実行の再修正: attachブロッキング対策)
+- Goal:
+  - ユーザー報告「起動はするがプロンプト注入されない」を再修正。
+- Root cause:
+  - `scripts/goza_no_ma.sh` の `zellij_pure_attach_goza_room` で、`zellij --new-session-with-layout ... -s` がブロッキングのため、
+    `zellij_resume_pure_goza_panes_background` 呼び出しが attach 終了後まで到達しなかった。
+  - 結果として `queue/runtime/goza_bootstrap_*.log` が空のままになり、注入処理が未実行だった。
+- Changes (files):
+  - `scripts/goza_no_ma.sh`
+    - `zellij_schedule_resume_after_attach` を追加。
+    - attach実行前に resume をバックグラウンド予約する形へ変更。
+  - `tests/unit/test_goza_pure_bootstrap.bats`
+    - `attachブロッキング前にresume予約を行う` テストを追加。
+  - `docs/REQS.md`
+    - 本不具合向け受け入れ条件を追補。
+- Commands + Results:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_send_wakeup.bats` → `1..44` PASS
+- Decision:
+  - resume処理は attach 後ではなく「attach 開始前に予約」が必須。

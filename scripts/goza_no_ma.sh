@@ -796,6 +796,22 @@ zellij_pure_attach_goza_room() {
   local layout_file
   layout_file="$(zellij_pure_goza_layout_file "御座の間 (zellij-core)" "${agents[@]}")"
 
+  zellij_schedule_resume_after_attach() {
+    local _session="$1"
+    shift
+    local _agents=("$@")
+    (
+      local _i
+      for _i in {1..30}; do
+        if zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -qx "$_session"; then
+          zellij_resume_pure_goza_panes_background "$_session" "${_agents[@]}"
+          break
+        fi
+        sleep 0.5
+      done
+    ) >/dev/null 2>&1 &
+  }
+
   zellij delete-session "$ZELLIJ_UI_SESSION" --force >/dev/null 2>&1 || \
     zellij kill-session "$ZELLIJ_UI_SESSION" >/dev/null 2>&1 || true
 
@@ -812,16 +828,17 @@ zellij_pure_attach_goza_room() {
   # pure zellij の初動注入は各ペイン内で自律実行する（TTY直書き）。
   # セッション全体へのフォーカス移動注入は行わない。
 
+  # attach はブロッキングのため、resume処理は先にバックグラウンドで予約する。
+  zellij_schedule_resume_after_attach "$ZELLIJ_UI_SESSION" "${agents[@]}"
   if zellij --new-session-with-layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
-    zellij_resume_pure_goza_panes_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
     return 0
   fi
+  zellij_schedule_resume_after_attach "$ZELLIJ_UI_SESSION" "${agents[@]}"
   if zellij --layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
-    zellij_resume_pure_goza_panes_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
     return 0
   fi
+  zellij_schedule_resume_after_attach "$ZELLIJ_UI_SESSION" "${agents[@]}"
   if zellij --layout "$layout_file" attach -c "$ZELLIJ_UI_SESSION"; then
-    zellij_resume_pure_goza_panes_background "$ZELLIJ_UI_SESSION" "${agents[@]}"
     return 0
   fi
   echo "[ERROR] pure zellij 御座の間起動に失敗しました（layout: $layout_file）" >&2

@@ -207,13 +207,19 @@ wait_for_cli_ready_tmux() {
         *)       ready_pattern='(claude|codex|gemini|copilot|kimi|localapi|ready:)' ;;
     esac
 
+    # max_wait=0 でも1回は即時チェックする（for ループでは 0<0 が偽でスキップされるため分離）
+    local screen_content
+    screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+    if echo "$screen_content" | grep -qiE "$ready_pattern"; then
+        return 0
+    fi
+
     for ((i=0; i<max_wait; i++)); do
-        local screen_content
+        sleep 1
         screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
         if echo "$screen_content" | grep -qiE "$ready_pattern"; then
             return 0
         fi
-        sleep 1
     done
     return 1
 }

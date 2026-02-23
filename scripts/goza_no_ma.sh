@@ -799,7 +799,7 @@ zellij_pure_attach_goza_room() {
     echo "[ERROR] pure zellij goza session の背景起動に失敗しました: $ZELLIJ_UI_SESSION" >&2
     return 1
   fi
-  # pure zellij の初動注入は各ペイン内で自律実行する（TTY直書き）。
+  # pure zellij の初動注入は各ペインが CLI 起動引数で自律実行する（CLI引数渡し）。
   # セッション全体へのフォーカス移動注入は行わない。
 
   # attach はブロッキングのため、resume処理は先にバックグラウンドで予約する。

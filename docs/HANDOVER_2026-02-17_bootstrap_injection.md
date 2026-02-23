@@ -11,6 +11,13 @@
 - 対策済み: ファイルベース配信 + エージェント毎個別送信（コミット `39556af`）
 - 効果: batsテスト200/200全パス、しかし実機では依然混入発生
 
+**実機テスト結果（2026-02-17）**:
+- テスト構成: 将軍=codex, 家老=codex, 軍師=gemini, 足軽=gemini
+- 症状: 起動中にユーザーがZellijをポチポチすると、混線が発生
+  - 家老に軍師のプロンプトが注入される
+  - 将軍に別のプロンプトが注入される
+- 原因推定: ユーザー操作によるフォーカス変更が、`write-chars`の送信先を誤認識させる可能性
+
 **優先度**: 🔴 Critical（システムコア機能の不具合、全運用に影響）
 
 **推奨即時対応**:
@@ -90,7 +97,54 @@ send_line "$agent" "$msg"       # write-chars送信
 
 ## 3. 次のアクション候補（優先度順）
 
-### 🔴 A案: 順次起動方式（完全1エージェントずつ）【推奨】
+### 🔴 A案: ユーザー操作時の混線防止（実機テスト結果に基づく）【緊急】
+
+**概要**: 起動中にユーザーがZellijを操作すると、フォーカス変更が`write-chars`の送信先を誤認識させる可能性があるため、対策を実装
+
+**実装場所**: `scripts/shutsujin_zellij.sh`
+
+**変更内容**:
+```bash
+# 起動中はユーザー操作を禁止する警告を追加
+log_warn "⚠️  起動中はウィンドウ操作を禁止してください（混線防止のため）"
+
+# send_line()でフォーカスチェックを追加
+send_line() {
+  local session="$1"
+  local text="$2"
+  if ! session_exists "$session"; then
+    echo "[WARN] send_line: session '$session' does not exist, skipping" >&2
+    return 1
+  fi
+  # フォーカスが正しいセッションにあるか確認
+  if ! zellij -s "$session" list-sessions | grep -q "$session"; then
+    echo "[WARN] send_line: session '$session' is not focused, skipping" >&2
+    return 1
+  fi
+  zellij -s "$session" action write-chars "$text" >/dev/null 2>&1 || return 1
+  if zellij -s "$session" action write 13 >/dev/null 2>&1; then
+    sleep 0.5
+    return 0
+  fi
+  if zellij -s "$session" action write 10 >/dev/null 2>&1; then
+    sleep 0.5
+    return 0
+  fi
+  zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
+  sleep 0.5
+}
+```
+
+**メリット**:
+- ユーザー操作による混線を防止
+- フォーカスチェックで誤送信を防止
+
+**デメリット**:
+- ユーザー体験が悪化（起動中は操作禁止）
+
+---
+
+### 🟡 B案: 順次起動方式（完全1エージェントずつ）【推奨】
 
 **概要**: CLI起動 → readiness確認 → ブートストラップ送信 → 次エージェントへ、を1サイクルとして順次実行
 
@@ -311,12 +365,16 @@ zellij attach ashigaru1  # 足軽のプロンプトが入っているか確認
 
 引き継ぎ者が作業を再開する際の確認事項:
 
-- [ ] デバッグコマンド4.1でブートストラップファイルが正しく生成されているか確認
-- [ ] デバッグコマンド4.3で起動ログを取得
-- [ ] デバッグコマンド4.4で各エージェントのプロンプト内容を確認
-- [ ] プロンプト混入が再現するか確認
-- [ ] 混入が再現する場合、どのエージェントに何のプロンプトが入ったか記録
-- [ ] A案/B案/C案/D案のいずれを採用するか決定
+- [x] デバッグコマンド4.1でブートストラップファイルが正しく生成されているか確認
+- [x] デバッグコマンド4.3で起動ログを取得
+- [x] デバッグコマンド4.4で各エージェントのプロンプト内容を確認
+- [x] プロンプト混入が再現するか確認
+- [x] 混入が再現する場合、どのエージェントに何のプロンプトが入ったか記録
+  - **実機テスト結果**: 起動中にユーザーがZellijをポチポチすると、混線が発生
+  - 家老に軍師のプロンプトが注入される
+  - 将軍に別のプロンプトが注入される
+- [ ] A案（ユーザー操作時の混線防止）を実装
+- [ ] B案（順次起動方式）を採用するか決定
 - [ ] 採用した案を実装
 - [ ] batsテスト実行（`bats tests/ tests/unit/`）
 - [ ] 実機テスト（Zellij Pure Mode）

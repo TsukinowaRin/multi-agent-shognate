@@ -694,6 +694,24 @@
 3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_mux_parity.bats tests/unit/test_zellij_bootstrap_delivery.bats`
    - 期待結果: 全テストPASS。
 
+## 追補（2026-02-23: bootstrap injection 根本修正）
+### 要求
+1. TTY直書き方式（stdout 側書き込み）を廃止し、CLI引数渡し方式でブートストラップを注入する。
+2. tmux path では `pane_current_command` に依存せず、`tmux capture-pane` によるスクリーン内容でCLI ready を判定する。
+3. 各CLIタイプ（codex/gemini/claude/copilot/kimi/localapi）に対応した ready_pattern を定義する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -nF 'tty_path="$(tty)"' scripts/goza_no_ma.sh`
+   - 期待結果: マッチなし（exit 1）。TTY直書き方式が完全に除去されている。
+2. コマンド: `rg -nF 'startup_msg' scripts/goza_no_ma.sh`
+   - 期待結果: マッチあり。CLI引数渡し方式が使われている。
+3. コマンド: `rg -nF 'wait_for_cli_ready_tmux' shutsujin_departure.sh`
+   - 期待結果: マッチあり。スクリーン内容ベースのready判定が実装されている。
+4. コマンド: `rg -n '^[^#]*pane_current_command' shutsujin_departure.sh`
+   - 期待結果: マッチなし（exit 1）。pane_current_command への依存がコードから除去されている。
+5. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_zellij_bootstrap_delivery.bats`
+   - 期待結果: 全テストPASS。
+
 ## 追補（2026-02-23: 引き継ぎ文書の整備）
 ### 要求
 1. 「起動はするがプロンプト注入されない」未解決事象について、次エージェント向けに課題・問題点・次アクションを文書化する。

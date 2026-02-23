@@ -1,5 +1,42 @@
 # Worklog
 
+## 2026-02-23 (bootstrap injection 根本修正) [Claude Sonnet 4.6]
+- Goal: 「起動はするがプロンプトが注入されない」問題の根本原因特定と修正。
+- Root Causes:
+  1. **pure zellij path** (`goza_no_ma.sh`): `zellij_agent_pane_cmd()` でTTY直書き方式
+     (`printf "%s\r" > "$tty_path"`) を使用していたが、TTYの**出力側**に書くため
+     CLIの**入力**には届かない。CLI は bootstrap message を受け取れなかった。
+  2. **hybrid tmux path** (`shutsujin_departure.sh`): ready判定に `pane_current_command` を使用。
+     codex/gemini はどちらも `node` プロセスとして見えるため判定が常に失敗し、
+     タイムアウト境界（12s）で bootstrap を送信 → CLI未起動時に送信することがあった。
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — `zellij_agent_pane_cmd()` をTTY直書き → **CLI引数渡し**に全面変更
+    （`cli_cmd "$startup_msg"` の形式で起動時にブートストラップメッセージをCLI引数として渡す）
+  - `shutsujin_departure.sh` — `wait_for_cli_ready_tmux()` 新規追加（`tmux capture-pane` によるスクリーン内容ベース判定）
+    `deliver_bootstrap_tmux()` に `cli_type` 引数追加 + ready待機を`wait_for_cli_ready_tmux`に切替
+    bulk wait ループを `pane_current_command` → `wait_for_cli_ready_tmux` ベースに変更
+    delivery呼び出し行に `$_shogun_cli_type` / `$_gunshi_cli_type` / `$_agent_cli_type` を追加
+  - `tests/unit/test_goza_pure_bootstrap.bats` — 第1テストをCLI引数渡し方式の検証に更新（TTY注入パターン消滅確認）
+  - `tests/unit/test_zellij_bootstrap_delivery.bats` — tmux ready判定 & cli_type引数受け取りテストを追加
+- Commands + Results:
+  - `bats tests/unit/` → **181/181 PASS**
+  - `git commit` → `e8ca2cd` "fix: bootstrap injection failure — CLI arg渡しとscreen-contentベースready判定に変更"
+  - `git push origin codex/auto` → push 済み
+- Decisions / Assumptions:
+  - TTY直書き (`/dev/pts/X` への書き込み) はターミナル出力側であり、CLIへの入力には届かない。
+    → positional argument として渡す方式 (`cli_cmd "msg"`) が確実かつシンプル。
+  - `pane_current_command` は node-based CLIでは "node" しか見えないため使えない。
+    → `tmux capture-pane -p` でスクリーン内容を取得し、CLI固有UI文字列を `grep -qiE` で判定。
+  - ready_pattern は cli_type ごとに定義（codex: "context left|/model", gemini: "type your message|yolo mode" 等）
+- Next:
+  1. 実機E2E検証（`start_zellij_goza.bat` 実行）— エージェントが role message を受け取ることを確認
+  2. `zellij_resume_pure_goza_panes_background` との相互作用確認（CLI起動後にEnterが届いて問題ないか）
+  3. REQS.md への追補（CLI引数渡し方式の受け入れ基準を正式化）
+- Blockers: なし
+- Links: docs/HANDOVER_2026-02-23_prompt_injection_open_issues.md, docs/REQS.md
+
+---
+
 ## 2026-02-23 (引き継ぎ文書整備・状況把握セッション) [Claude Opus 4.6]
 - Goal: 前セッションからの引き継ぎ。Docs/AGENTS.mdを全読み込みし、実装状況を把握した上でWORKLOGを更新する。
 - Context（セッション開始時の状態）:

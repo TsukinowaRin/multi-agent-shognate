@@ -11,12 +11,14 @@ topology:
     - ashigaru3
     - ashigaru4
 cli:
-  default: claude
+  default: gemini
   agents:
     shogun:
-      type: claude
+      type: codex
+    gunshi:
+      type: gemini
     karo:
-      type: claude
+      type: codex
     ashigaru1:
       type: gemini
     ashigaru2:

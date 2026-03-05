@@ -378,6 +378,12 @@ send_cli_command() {
     local effective_cli
     effective_cli=$(get_effective_cli_type)
 
+    # Busy guard: Working中の /clear は文脈破壊を起こすため、次サイクルへ延期する。
+    if [[ "$cmd" == "/clear" ]] && agent_is_busy; then
+        echo "[$(date)] [SKIP] Agent is busy — /clear deferred to next cycle (agent=$AGENT_ID)" >&2
+        return 0
+    fi
+
     # CLI別コマンド変換
     local actual_cmd="$cmd"
     case "$effective_cli" in
@@ -680,21 +686,29 @@ for s in data.get('specials', []):
 " 2>/dev/null)
 
     local clear_seen=0
+    local clear_sent=0
     if [ -n "$specials" ]; then
         local msg_type msg_content cmd
         while IFS=$'\t' read -r msg_type msg_content; do
             [ -n "$msg_type" ] || continue
             if [ "$msg_type" = "clear_command" ]; then
                 clear_seen=1
+                if agent_is_busy && [[ "$AGENT_ID" != "shogun" ]]; then
+                    echo "[$(date)] [SKIP] Agent $AGENT_ID is busy — /clear (clear_command) deferred to next cycle" >&2
+                    continue
+                fi
             fi
             cmd=$(normalize_special_command "$msg_type" "$msg_content")
-            [ -n "$cmd" ] && send_cli_command "$cmd" "special"
+            if [ -n "$cmd" ]; then
+                send_cli_command "$cmd" "special"
+                [ "$msg_type" = "clear_command" ] && clear_sent=1
+            fi
         done <<< "$specials"
     fi
 
     # /clear は Codex で /new へ変換される。再起動直後の取りこぼし防止として
     # 追加 task_assigned を自動投入し、次サイクルで確実に wake-up 可能にする。
-    if [ "$clear_seen" -eq 1 ]; then
+    if [ "$clear_sent" -eq 1 ]; then
         local recovery_id
         recovery_id=$(enqueue_recovery_task_assigned)
         if [ -n "$recovery_id" ] && [ "$recovery_id" != "SKIP_DUPLICATE" ] && [ "$recovery_id" != "ERROR" ]; then

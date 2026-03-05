@@ -61,3 +61,20 @@ setup_file() {
     run rg -nF '"$gunshi_agent"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "zellij: bootstrap配信ログを run-id 単位で出力する" {
+    run rg -n "bootstrap_run_\$\{BOOTSTRAP_RUN_ID\}|BOOTSTRAP_RUN_LOG" "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'bootstrap_run_log "run start' "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'bootstrap_run_log "run complete' "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+    [ "$status" -eq 0 ]
+}
+@test "zellij: ready ACK(ready:agent) を確認し未検出時は再送する" {
+    run rg -n "wait_for_ready_ack_zellij|ready:\$\{agent_id\}" "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'ready ack not detected for $agent_id' "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'bootstrap retry sent agent=$agent_id' "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+    [ "$status" -eq 0 ]
+}

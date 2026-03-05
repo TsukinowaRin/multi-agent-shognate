@@ -1378,3 +1378,32 @@
 - Notes:
   - 実装はここで止め、未解決のまま課題を明示的に移譲。
   - 起動経路別（`goza_no_ma.sh` / `shutsujin_zellij.sh`）の切り分けをP0として指定。
+
+### 2026-03-05 22:20 (JST)
+- Goal: Docs/AGENTS確認後に再開し、上流最新取得 + Gemini/Zellij安定化を進める
+- Changes (files):
+  - `_upstream_reference/upstream_latest_2026-03-05_86ee80b/` — upstream/main (`86ee80b`) 参照worktreeを作成
+  - `scripts/inbox_watcher.sh` — busy中 `/clear` 延期 + clear_commandの`clear_sent`判定へ変更
+  - `scripts/shutsujin_zellij.sh` — bootstrap run-idログと `ready:<agent>` ACK確認/再送を追加
+  - `tests/unit/test_send_wakeup.bats` — busy延期/auto-recovery抑止テストを追加
+  - `tests/unit/test_zellij_bootstrap_delivery.bats` — run-idログ/ACK再送の静的テストを追加
+  - `docs/UPSTREAM_SYNC_2026-03-05.md` — 上流同期内容を新規記録
+  - `docs/INDEX.md` — 新規同期ドキュメントを登録、更新日を更新
+  - `docs/REQS.md` — 2026-03-05追補を追加
+- Commands + Results:
+  - `git fetch upstream --prune` → 成功
+  - `git log --oneline upstream/main --max-count=20` → 先頭 `86ee80b` を確認
+  - `git worktree add _upstream_reference/upstream_latest_2026-03-05_86ee80b upstream/main` → 成功
+  - `bash -lc "bats ..."` → 失敗（`Bash/Service/CreateInstance/E_ACCESSDENIED`）
+  - 代替として `rg` ベースで追加実装とテスト記述を静的確認
+- Decisions / Assumptions:
+  - HTTPS直クローンは端末認証依存で不安定のため、`fetch + worktree` を「上流最新クローン相当」として採用。
+  - 上流の watcher busy保護（`e598f70`）は本フォークの multi-CLI/zellij 実装へ優先導入する。
+  - pure zellij (`goza_no_ma.sh`) へのACK再送拡張は次段に分離し、まず `shutsujin_zellij.sh` を可観測化する。
+- Next:
+  1. 実機で `bash scripts/shutsujin_zellij.sh` を実行し、`queue/runtime/bootstrap_run_*/delivery.log` の ACK検出を確認
+  2. bash実行環境（WSL/Git Bash）を復旧後に bats を再実行
+  3. pure zellij (`goza_no_ma.sh`) へ同等のACKログ機構を展開
+- Blockers:
+  - この端末では `bash` 実行が `E_ACCESSDENIED` で失敗し、Bats実行による動的検証が未実施
+- Links: docs/UPSTREAM_SYNC_2026-03-05.md, docs/REQS.md

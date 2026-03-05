@@ -794,3 +794,69 @@ PY
 
     grep -q "send-keys.*:model qwen2.5-coder" "$MOCK_LOG"
 }
+
+# --- T-CODEX-013: busy中の/clearは延期する ---
+
+@test "T-CODEX-013: send_cli_command defers /clear when agent is busy" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="◦ Working on request (9s • esc to interrupt)"
+        source "'"$TEST_HARNESS"'"
+        send_cli_command "/clear"
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+    ! grep -q "send-keys.*/new" "$MOCK_LOG"
+    echo "$output" | grep -qi "deferred"
+}
+
+# --- T-CODEX-014: clear_commandはbusy中にauto-recoveryを生成しない ---
+
+@test "T-CODEX-014: process_unread skips auto-recovery when clear_command is deferred by busy guard" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="◦ Thinking deeply (7s • esc to interrupt)"
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        CLI_TYPE="codex"
+        INBOX="$TEST_INBOX_DIR/ashigaru1.yaml"
+        LOCKFILE="${INBOX}.lock"
+        cat > "$INBOX" << "YAML"
+messages:
+  - id: msg_clear_busy
+    from: karo
+    timestamp: "2026-03-05T10:00:00+09:00"
+    type: clear_command
+    content: redo
+    read: false
+YAML
+        process_unread event
+        python3 - << "PY" "$INBOX"
+import sys
+import yaml
+
+inbox_path = sys.argv[1]
+with open(inbox_path, "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+
+msg = [m for m in messages if m.get("id") == "msg_clear_busy"]
+assert len(msg) == 1
+assert msg[0].get("read") is True
+
+auto = [
+    m for m in messages
+    if m.get("from") == "inbox_watcher"
+    and m.get("type") == "task_assigned"
+    and "[auto-recovery]" in (m.get("content") or "")
+    and m.get("read") is False
+]
+assert len(auto) == 0
+print("OK")
+PY
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "OK"
+
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+    ! grep -q "send-keys.*/new" "$MOCK_LOG"
+}

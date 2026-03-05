@@ -722,3 +722,19 @@
    - 期待結果: 症状、再現条件、仮説、優先タスク、検証手順、受け入れ条件が記載されている。
 2. コマンド: `rg -n "HANDOVER_2026-02-23_prompt_injection_open_issues.md" docs/INDEX.md`
    - 期待結果: Docs INDEX の Specs に新規引き継ぎ文書が登録されている。
+
+## 追補（2026-03-05: 上流最新クローン + Gemini/Zellij 安定化）
+### 要求
+1. 上流 `yohey-w/multi-agent-shogun` の最新コードをワークスペース内へ参照クローンし、差分を追跡可能にする。
+2. `inbox_watcher` で busy中の `/clear` を延期し、作業中コンテキスト破壊を防ぐ。
+3. `shutsujin_zellij.sh` で初動注入の run-id ログと `ready:<agent>` ACK確認を行い、未検出時は1回再送する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `git worktree list --porcelain`
+   - 期待結果: `_upstream_reference/upstream_latest_2026-03-05_86ee80b` が含まれる。
+2. コマンド: `rg -n "deferred to next cycle|clear_sent" scripts/inbox_watcher.sh`
+   - 期待結果: busy延期と `clear_sent` ベース判定の実装が存在する。
+3. コマンド: `rg -n "BOOTSTRAP_RUN_LOG|wait_for_ready_ack_zellij|ready ack" scripts/shutsujin_zellij.sh`
+   - 期待結果: run-idログ・ACK確認・未検出時再送の実装が存在する。
+4. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_zellij_bootstrap_delivery.bats`
+   - 期待結果: 追加テストを含めPASSする。

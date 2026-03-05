@@ -406,6 +406,44 @@ send_line() {
   sleep 0.5
 }
 
+bootstrap_run_log() {
+  local message="$1"
+  if [ -z "${BOOTSTRAP_RUN_LOG:-}" ]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "$BOOTSTRAP_RUN_LOG")" 2>/dev/null || true
+  printf "[%s] %s\n" "$(date -Iseconds)" "$message" >> "$BOOTSTRAP_RUN_LOG"
+}
+
+wait_for_ready_ack_zellij() {
+  local session="$1"
+  local agent_id="$2"
+  local max_wait="${3:-20}"
+  local i
+  local tmp_dump="/tmp/zellij_ready_ack_${agent_id}.txt"
+  local ack_pattern="ready:${agent_id}"
+
+  if ! [[ "$max_wait" =~ ^[0-9]+$ ]]; then
+    max_wait=20
+  fi
+
+  for ((i=0; i<max_wait; i++)); do
+    if ! session_exists "$session"; then
+      rm -f "$tmp_dump"
+      return 1
+    fi
+    if zellij -s "$session" action dump-screen "$tmp_dump" 2>/dev/null; then
+      if grep -qi "$ack_pattern" "$tmp_dump" 2>/dev/null; then
+        rm -f "$tmp_dump"
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+
+  rm -f "$tmp_dump"
+  return 1
+}
 # ブートストラップメッセージを事前にファイルへ書き出す
 # 各エージェントが自分専用のファイルを読むことで誤送信を根本的に排除
 generate_bootstrap_file() {
@@ -505,24 +543,53 @@ deliver_bootstrap_zellij() {
   local agent_id="$1"
   local cli_type="${2:-claude}"
   local bootstrap_file="queue/runtime/bootstrap_${agent_id}.md"
+  local ack_timeout="${MAS_ZELLIJ_READY_ACK_TIMEOUT:-20}"
 
   if [ ! -f "$SCRIPT_DIR/$bootstrap_file" ]; then
     echo "[WARN] bootstrap file not found for $agent_id: $bootstrap_file" >&2
+    bootstrap_run_log "bootstrap file missing agent=$agent_id file=$bootstrap_file"
     return 1
   fi
 
   if ! session_exists "$agent_id"; then
     echo "[WARN] session '$agent_id' not found, skipping bootstrap delivery" >&2
+    bootstrap_run_log "session missing agent=$agent_id"
     return 1
   fi
+
+  bootstrap_run_log "deliver start agent=$agent_id cli=$cli_type"
 
   # ブートストラップファイルの内容を読み込んで送信
   local msg
   msg="$(cat "$SCRIPT_DIR/$bootstrap_file")"
   if ! send_line "$agent_id" "$msg"; then
     echo "[WARN] failed to deliver bootstrap to $agent_id, retrying..." >&2
+    bootstrap_run_log "deliver first_send_failed agent=$agent_id"
     sleep 2
-    send_line "$agent_id" "$msg" || echo "[ERROR] bootstrap delivery failed for $agent_id ($cli_type) after retry" >&2
+    if ! send_line "$agent_id" "$msg"; then
+      echo "[ERROR] bootstrap delivery failed for $agent_id ($cli_type) after retry" >&2
+      bootstrap_run_log "deliver failed_after_retry agent=$agent_id"
+      return 1
+    fi
+  fi
+  bootstrap_run_log "bootstrap delivered agent=$agent_id cli=$cli_type"
+
+  if wait_for_ready_ack_zellij "$agent_id" "$agent_id" "$ack_timeout"; then
+    bootstrap_run_log "ready ack detected agent=$agent_id"
+  else
+    echo "[WARN] ready ack not detected for $agent_id within ${ack_timeout}s, retrying bootstrap once" >&2
+    bootstrap_run_log "ready ack missing first_try agent=$agent_id timeout=${ack_timeout}s"
+    sleep 2
+    if send_line "$agent_id" "$msg"; then
+      bootstrap_run_log "bootstrap retry sent agent=$agent_id"
+      if wait_for_ready_ack_zellij "$agent_id" "$agent_id" "$ack_timeout"; then
+        bootstrap_run_log "ready ack detected after_retry agent=$agent_id"
+      else
+        bootstrap_run_log "ready ack missing after_retry agent=$agent_id timeout=${ack_timeout}s"
+      fi
+    else
+      bootstrap_run_log "bootstrap retry failed_to_send agent=$agent_id"
+    fi
   fi
 
   # 送信完了を待機（混線防止のため、次のエージェントへ進む前にバッファ処理完了を待つ）
@@ -627,6 +694,11 @@ if [ "$SETUP_ONLY" = false ]; then
 
   : > queue/runtime/agent_cli.tsv
 
+  BOOTSTRAP_RUN_ID="$(date +%Y%m%d_%H%M%S)_$$"
+  BOOTSTRAP_RUN_LOG="$SCRIPT_DIR/queue/runtime/bootstrap_run_${BOOTSTRAP_RUN_ID}/delivery.log"
+  mkdir -p "$(dirname "$BOOTSTRAP_RUN_LOG")"
+  bootstrap_run_log "run start id=$BOOTSTRAP_RUN_ID agents=${AGENTS[*]}"
+
   # Phase 1: ブートストラップファイルを事前生成（CLIへの送信より前に全エージェント分書き出す）
   log_info "📝 ブートストラップファイルを事前生成中"
   for agent in "${AGENTS[@]}"; do
@@ -663,6 +735,8 @@ if [ "$SETUP_ONLY" = false ]; then
     fi
   done
   log_info "📜 初動命令の配信完了"
+  bootstrap_run_log "run complete id=$BOOTSTRAP_RUN_ID"
+  log_info "🧾 bootstrap配信ログ: $BOOTSTRAP_RUN_LOG"
 
   if command -v inotifywait >/dev/null 2>&1; then
     log_info "📬 inbox_watcher を起動中 (MUX_TYPE=zellij)"

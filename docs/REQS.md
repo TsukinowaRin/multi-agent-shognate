@@ -738,3 +738,16 @@
    - 期待結果: run-idログ・ACK確認・未検出時再送の実装が存在する。
 4. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_zellij_bootstrap_delivery.bats`
    - 期待結果: 追加テストを含めPASSする。
+
+## 追補（2026-03-06: pure zellij goza_room の ACK監視と配信ログ）
+### 要求
+1. `goza_no_ma.sh --mux zellij --ui zellij --template goza_room` の pure zellij 経路で、run-id 付き配信ログを保存する。
+2. `ready:<agent>` ACKを各ペインで確認し、未検出時は同一ペインへ初動命令を1回再送する。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "GOZA_BOOTSTRAP_LOG|goza_bootstrap_\$\{GOZA_BOOTSTRAP_RUN_ID\}" scripts/goza_no_ma.sh`
+   - 期待結果: `queue/runtime/goza_bootstrap_<run-id>.log` への出力実装が存在する。
+2. コマンド: `rg -n "zellij_wait_ready_ack_current_pane|ready ack missing first_try agent=\$agent|bootstrap retry sent agent=\$agent" scripts/goza_no_ma.sh`
+   - 期待結果: ACK確認と再送ロジックが存在する。
+3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats`
+   - 期待結果: 追加した pure zellij ログ/ACK テストを含めPASSする。

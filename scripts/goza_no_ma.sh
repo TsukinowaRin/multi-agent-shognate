@@ -238,6 +238,27 @@ kdl_escape() {
 }
 
 ZELLIJ_UI_SESSION="${ZELLIJ_UI_SESSION:-goza-no-ma-ui}"
+GOZA_BOOTSTRAP_RUN_ID=""
+GOZA_BOOTSTRAP_LOG=""
+
+goza_bootstrap_log() {
+  local message="$1"
+  if [[ -z "${GOZA_BOOTSTRAP_LOG:-}" ]]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "$GOZA_BOOTSTRAP_LOG")" 2>/dev/null || true
+  printf "[%s] %s\n" "$(date -Iseconds)" "$message" >> "$GOZA_BOOTSTRAP_LOG"
+}
+
+goza_init_bootstrap_log() {
+  if [[ -n "${GOZA_BOOTSTRAP_LOG:-}" ]]; then
+    return 0
+  fi
+  GOZA_BOOTSTRAP_RUN_ID="$(date +%Y%m%d_%H%M%S)_$$"
+  GOZA_BOOTSTRAP_LOG="$ROOT_DIR/queue/runtime/goza_bootstrap_${GOZA_BOOTSTRAP_RUN_ID}.log"
+  mkdir -p "$(dirname "$GOZA_BOOTSTRAP_LOG")" 2>/dev/null || true
+  goza_bootstrap_log "run start id=$GOZA_BOOTSTRAP_RUN_ID session=$ZELLIJ_UI_SESSION"
+}
 zellij_ui_layout_file() {
   local tmux_target="$1"
   local tab_title="$2"
@@ -572,6 +593,39 @@ zellij_send_line_to_session() {
   zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
 }
 
+zellij_wait_ready_ack_current_pane() {
+  local session="$1"
+  local agent="$2"
+  local max_wait="${3:-12}"
+  local i
+  local tmp_dump="${TMPDIR:-/tmp}/goza_ready_${agent}_$$.txt"
+
+  if ! [[ "$max_wait" =~ ^[0-9]+$ ]]; then
+    max_wait=12
+  fi
+
+  for ((i=0; i<max_wait; i++)); do
+    if zellij -s "$session" action dump-screen "$tmp_dump" >/dev/null 2>&1; then
+      if grep -qi "ready:${agent}" "$tmp_dump" 2>/dev/null; then
+        rm -f "$tmp_dump"
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+
+  rm -f "$tmp_dump"
+  return 1
+}
+
+zellij_resolve_cli_for_agent() {
+  local agent="$1"
+  if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
+    resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex"
+    return 0
+  fi
+  echo "codex"
+}
 zellij_resume_pure_goza_panes_background() {
   local session="$1"
   shift
@@ -639,17 +693,49 @@ zellij_resume_pure_goza_panes_background() {
     sleep 1
     local idx
     local count="${#agents[@]}"
+    local agent
+    local ack_timeout="${MAS_GOZA_READY_ACK_TIMEOUT:-12}"
+    local cli_type
+    local retry_msg
+
+    if ! [[ "$ack_timeout" =~ ^[0-9]+$ ]]; then
+      ack_timeout=12
+    fi
+
+    goza_bootstrap_log "resume start session=$session agents=${agents[*]}"
 
     for idx in "${!agents[@]}"; do
+      agent="${agents[$idx]}"
       zellij_focus_agent_index "$session" "$idx" "$count"
       zellij -s "$session" action write 13 >/dev/null 2>&1 || \
       zellij -s "$session" action write 10 >/dev/null 2>&1 || \
       zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || true
+      goza_bootstrap_log "bootstrap delivered agent=$agent mode=resume-enter"
+
+      if zellij_wait_ready_ack_current_pane "$session" "$agent" "$ack_timeout"; then
+        goza_bootstrap_log "ready ack detected agent=$agent"
+      else
+        goza_bootstrap_log "ready ack missing first_try agent=$agent timeout=${ack_timeout}s"
+        cli_type="$(zellij_resolve_cli_for_agent "$agent")"
+        retry_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type" 2>/dev/null || true)"
+        if [[ -n "$retry_msg" ]] && zellij_send_line_to_session "$session" "$retry_msg"; then
+          goza_bootstrap_log "bootstrap retry sent agent=$agent cli=$cli_type"
+          if zellij_wait_ready_ack_current_pane "$session" "$agent" "$ack_timeout"; then
+            goza_bootstrap_log "ready ack detected after_retry agent=$agent"
+          else
+            goza_bootstrap_log "ready ack missing after_retry agent=$agent timeout=${ack_timeout}s"
+          fi
+        else
+          goza_bootstrap_log "bootstrap retry failed_to_send agent=$agent"
+        fi
+      fi
+
       sleep 0.4
     done
 
     # 最後に将軍ペインへフォーカスを戻す（人間が即対話しやすいように）
     zellij_focus_shogun_anchor "$session"
+    goza_bootstrap_log "resume complete session=$session"
   ) >/dev/null 2>&1 &
 }
 
@@ -785,6 +871,9 @@ zellij_pure_attach_goza_room() {
   local layout_file
   layout_file="$(zellij_pure_goza_layout_file "御座の間 (zellij-core)" "${agents[@]}")"
 
+  goza_init_bootstrap_log
+  goza_bootstrap_log "pure goza layout ready session=$ZELLIJ_UI_SESSION agents=${agents[*]}"
+
   zellij_schedule_resume_after_attach() {
     local _session="$1"
     shift
@@ -794,6 +883,7 @@ zellij_pure_attach_goza_room() {
       for _i in {1..30}; do
         if zellij list-sessions -n 2>/dev/null | awk '{print $1}' | grep -qx "$_session"; then
           zellij_resume_pure_goza_panes_background "$_session" "${_agents[@]}"
+          goza_bootstrap_log "resume scheduled session=$_session agents=${_agents[*]}"
           break
         fi
         sleep 0.5
@@ -809,28 +899,34 @@ zellij_pure_attach_goza_room() {
        zellij attach --create-background --session "$ZELLIJ_UI_SESSION" >/dev/null 2>&1; then
       echo "[INFO] pure zellij goza session created: $ZELLIJ_UI_SESSION"
       echo "       attach: zellij attach $ZELLIJ_UI_SESSION"
+      goza_bootstrap_log "no_attach session created session=$ZELLIJ_UI_SESSION"
       return 0
     fi
     echo "[ERROR] pure zellij goza session の背景起動に失敗しました: $ZELLIJ_UI_SESSION" >&2
+    goza_bootstrap_log "no_attach session create failed session=$ZELLIJ_UI_SESSION"
     return 1
   fi
   # pure zellij の初動注入は各ペインが CLI 起動引数で自律実行する（CLI引数渡し）。
   # セッション全体へのフォーカス移動注入は行わない。
 
   # attach はブロッキングのため、resume処理は先にバックグラウンドで予約する。
+  goza_bootstrap_log "attach attempt method=--new-session-with-layout session=$ZELLIJ_UI_SESSION"
   zellij_schedule_resume_after_attach "$ZELLIJ_UI_SESSION" "${agents[@]}"
   if zellij --new-session-with-layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
     return 0
   fi
+  goza_bootstrap_log "attach attempt method=--layout -s session=$ZELLIJ_UI_SESSION"
   zellij_schedule_resume_after_attach "$ZELLIJ_UI_SESSION" "${agents[@]}"
   if zellij --layout "$layout_file" -s "$ZELLIJ_UI_SESSION"; then
     return 0
   fi
+  goza_bootstrap_log "attach attempt method=--layout attach -c session=$ZELLIJ_UI_SESSION"
   zellij_schedule_resume_after_attach "$ZELLIJ_UI_SESSION" "${agents[@]}"
   if zellij --layout "$layout_file" attach -c "$ZELLIJ_UI_SESSION"; then
     return 0
   fi
   echo "[ERROR] pure zellij 御座の間起動に失敗しました（layout: $layout_file）" >&2
+  goza_bootstrap_log "attach failed session=$ZELLIJ_UI_SESSION layout=$layout_file"
   return 1
 }
 

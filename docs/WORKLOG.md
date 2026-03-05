@@ -1407,3 +1407,24 @@
 - Blockers:
   - この端末では `bash` 実行が `E_ACCESSDENIED` で失敗し、Bats実行による動的検証が未実施
 - Links: docs/UPSTREAM_SYNC_2026-03-05.md, docs/REQS.md
+
+### 2026-03-06 00:10 (JST)
+- Goal: Go指示を受け、pure zellij (`goza_no_ma.sh`) 側にも ACK監視と配信ログを追加
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — run-idログ (`queue/runtime/goza_bootstrap_<run-id>.log`) 追加、`ready:<agent>` ACK確認と未検出時1回再送を追加
+  - `tests/unit/test_goza_pure_bootstrap.bats` — pure zellij のログ/ACK再送の静的テストを追加
+  - `docs/REQS.md` — 2026-03-06追補を追加
+- Commands + Results:
+  - `C:\Program Files\Git\bin\bash.exe -lc '... bash -n ...'` → 失敗（Win32 error 5）
+  - `C:\Program Files\Git\bin\bash.exe -lc '... bats ...'` → 失敗（Win32 error 5）
+  - `rg` による実装・テスト定義の静的確認 → 実施済み（ACK/再送/ログ実装を確認）
+- Decisions / Assumptions:
+  - bash実行不可のため、今回は静的検証を先行し、動的検証は実機環境で再実施する前提とした。
+  - `goza_no_ma.sh` では既存のEnter送信によるresume処理は維持し、ACK未検出時のみ追加再送する最小変更を採用。
+- Next:
+  1. bash実行可能な環境で `bash -n` と `bats tests/unit/test_goza_pure_bootstrap.bats` を実行
+  2. 実機で `bash scripts/goza_zellij.sh --template goza_room` を実行し、`queue/runtime/goza_bootstrap_*.log` を確認
+  3. 問題なければコミット・push
+- Blockers:
+  - この端末では Git Bash 実行時に Win32 error 5 が発生し、動的検証が実施できない
+- Links: docs/REQS.md

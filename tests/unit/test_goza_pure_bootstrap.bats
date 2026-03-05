@@ -34,3 +34,19 @@ setup_file() {
     run rg -nF 'zellij_schedule_resume_after_attach "$ZELLIJ_UI_SESSION"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "pure zellij: run-id付き bootstrap ログを出力する" {
+    run rg -n "GOZA_BOOTSTRAP_LOG|goza_bootstrap_\$\{GOZA_BOOTSTRAP_RUN_ID\}" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'goza_bootstrap_log "run start' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "pure zellij: ready ACK(ready:agent) を確認し未検出時は再送する" {
+    run rg -n "zellij_wait_ready_ack_current_pane|ready:\$\{agent\}" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'ready ack missing first_try agent=$agent' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'bootstrap retry sent agent=$agent' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}

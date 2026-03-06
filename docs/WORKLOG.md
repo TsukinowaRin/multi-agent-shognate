@@ -1535,3 +1535,19 @@
   2. `shutsujin_departure.sh` の tmux 本流を upstream 側へさらに寄せる
   3. `README.md` / `README_ja.md` を上流最新版説明へ寄せた上で zellij / Gemini 追記に整理する
 - Links: docs/UPSTREAM_SYNC_2026-03-07_FULL_BASELINE.md, docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md
+
+### 2026-03-07 00:41 (JST)
+- Goal: `first_setup.sh` の zellij / Gemini / Codex 導入案内を実運用に寄せる
+- Changes (files):
+  - `first_setup.sh` — zellij の Ubuntu/WSL 導入案内を現実的な手段へ修正し、Codex/Gemini の任意CLIチェックを追加
+  - `docs/WORKLOG.md` — 本記録を追記
+- Commands + Results:
+  - `bash -n first_setup.sh && bash -n lib/cli_adapter.sh scripts/build_instructions.sh` → PASS
+  - `rg -n "STEP 5\.5|Codex CLI: optional|Gemini CLI: optional|cargo install --locked zellij" first_setup.sh` → 期待行を確認
+- Decisions / Assumptions:
+  - Codex / Gemini は認証や配布形態が環境依存のため、自動インストールではなく「存在確認 + 導入案内」に留めた。
+  - zellij は apt 未提供の環境があるため、WSL向け案内を `cargo` / release binary ベースへ変更した。
+- Next:
+  1. `README.md` / `README_ja.md` を upstream 説明へ寄せつつ zellij / Gemini の使い方に絞って整理する
+  2. `shutsujin_departure.sh` の tmux 本流を upstream へさらに寄せる
+- Links: first_setup.sh

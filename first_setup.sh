@@ -186,8 +186,9 @@ if command -v zellij &> /dev/null; then
 else
     log_info "zellij は未インストールです（tmuxモードでは不要）"
     log_info "zellijモードを使う場合は手動インストールしてください"
-    log_info "  Ubuntu: sudo apt install zellij"
-    log_info "  macOS:  brew install zellij"
+    log_info "  Ubuntu/WSL: GitHub Releases のバイナリ配置、または cargo install --locked zellij"
+    log_info "  macOS:      brew install zellij"
+    log_info "  補足: 一部Ubuntu/WSL環境では apt に zellij パッケージがありません"
     RESULTS+=("zellij: optional (not installed)")
 fi
 
@@ -455,6 +456,32 @@ if [ "$NEED_CLAUDE_INSTALL" = true ]; then
         RESULTS+=("Claude Code CLI: インストール失敗")
         HAS_ERROR=true
     fi
+fi
+
+# ============================================================
+# STEP 5.5: 追加CLIチェック（Codex / Gemini）
+# ============================================================
+log_step "STEP 5.5: 追加CLIチェック"
+
+if command -v codex &> /dev/null; then
+    CODEX_VERSION=$(codex --version 2>/dev/null || echo "unknown")
+    log_success "Codex CLI がインストール済みです ($CODEX_VERSION)"
+    RESULTS+=("Codex CLI: OK ($CODEX_VERSION)")
+else
+    log_info "Codex CLI は未インストールです（必要時のみ導入）"
+    log_info "  例: npm install -g @openai/codex"
+    RESULTS+=("Codex CLI: optional (not installed)")
+fi
+
+if command -v gemini &> /dev/null || command -v gemini-cli &> /dev/null; then
+    GEMINI_BIN="$(command -v gemini 2>/dev/null || command -v gemini-cli 2>/dev/null)"
+    GEMINI_VERSION="$("$GEMINI_BIN" --version 2>/dev/null || echo "unknown")"
+    log_success "Gemini CLI がインストール済みです ($GEMINI_VERSION)"
+    RESULTS+=("Gemini CLI: OK ($GEMINI_VERSION)")
+else
+    log_info "Gemini CLI は未インストールです（Gemini運用時のみ導入）"
+    log_info "  Gemini CLI を導入し、'gemini' または 'gemini-cli' を PATH に通してください"
+    RESULTS+=("Gemini CLI: optional (not installed)")
 fi
 
 # ============================================================

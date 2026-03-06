@@ -165,3 +165,9 @@ queue/**
 
 # Upstream参照用のローカルcloneは追跡しない
 _upstream_reference/
+
+# 再出発時の退避資産（必要なスナップショットのみ追跡）
+!Waste/
+!Waste/README.md
+!Waste/**/*.md
+!Waste/**/*.before_upstream

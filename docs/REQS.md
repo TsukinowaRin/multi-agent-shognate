@@ -3,6 +3,23 @@
 最終更新: 2026-03-07
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-07: 上流完全クローン基準 + Waste退避）
+### 要求
+1. 上流 `yohey-w/multi-agent-shogun` をワークスペース内へ完全クローンし、それを基準に再実装する。
+2. 現在の独自基盤が邪魔なら、新設した `Waste/` 配下へ退避してよい。
+3. 今回の主対象は `zellij` 対応と `Gemini CLI` 対応の2点に限定する。
+4. 作業はユーザー確認なしで継続する。未確定事項は仮定して進める。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `git -C _upstream_reference/original_full_2026-03-07 rev-parse --short HEAD`
+   - 期待結果: 上流完全クローンの HEAD が取得できる。
+2. コマンド: `find Waste -maxdepth 2 -type f | sort`
+   - 期待結果: 退避した旧基盤または退避内容を説明するファイルが存在する。
+3. コマンド: `bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: 上流ベースへ寄せた `cli_adapter` でも `gemini` 系テストが PASS する。
+4. コマンド: `bash scripts/build_instructions.sh`
+   - 期待結果: `instructions/generated/gemini-*.md` を含む generated instructions が再生成される。
+
 ## 追補（2026-03-07: 上流最新構造への再出発）
 ### 要求
 1. `yohey-w/multi-agent-shogun` の最新内部構造を基準に、このフォークの実装を実質的にやり直してよい。

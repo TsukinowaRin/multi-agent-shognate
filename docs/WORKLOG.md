@@ -1505,3 +1505,33 @@
   2. `lib/cli_adapter.sh` を upstream 基盤ベースで再整理し、`gemini` を正式に載せる
   3. `scripts/build_instructions.sh` を upstream ベースへ寄せ、`gemini` 生成を整理する
 - Links: docs/UPSTREAM_SYNC_2026-03-07_RESTART.md, docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md
+
+### 2026-03-07 00:35 (JST)
+- Goal: 上流完全クローンを基準に、退避先 `Waste/` を正式化し、`cli_adapter` / `build_instructions` を上流骨格へ寄せる
+- Changes (files):
+  - `Waste/README.md` — 退避方針を記録
+  - `Waste/restart_2026-03-07_core/*.before_upstream` — 置換前の基盤スナップショットを tracked 化
+  - `.gitignore` — `Waste/` の必要最小限の追跡を許可
+  - `docs/REQS.md` — 上流完全クローン基準 + Waste退避の要求を追加
+  - `docs/INDEX.md` — 新規同期ノートを登録
+  - `docs/UPSTREAM_SYNC_2026-03-07_FULL_BASELINE.md` — 上流完全クローン基準の同期方針を追加
+  - `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` — full clone / Waste 方針へ更新
+  - `lib/cli_adapter.sh` — upstream骨格へ差し替えた上で gemini/localapi、role共通MD、CLIフォールバックAPIを再導入
+  - `scripts/build_instructions.sh` — upstream版へ差し替えた上で gemini/localapi generated instructions を再導入
+  - `AGENTS.md`, `.github/copilot-instructions.md`, `agents/default/system.md` — build再生成で更新
+- Commands + Results:
+  - `git -C _upstream_reference/original_full_2026-03-07 rev-parse --short HEAD` → `86ee80b`
+  - `bash -n lib/cli_adapter.sh scripts/build_instructions.sh first_setup.sh shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats` → `1..74` PASS
+  - `bash scripts/build_instructions.sh` → PASS（`instructions/generated/gemini-*.md` / `localapi-*.md` 再生成）
+  - `bats tests/unit/test_send_wakeup.bats tests/unit/test_zellij_bootstrap_delivery.bats tests/unit/test_mux_parity.bats` → `1..58` PASS
+  - `bash shutsujin_departure.sh -h` / `bash scripts/goza_zellij.sh -h` / `bash scripts/shutsujin_zellij.sh -h` → PASS
+- Decisions / Assumptions:
+  - `shutsujin_departure.sh` は既に `zellij` 分岐を持つため、この段では全面置換せず据え置いた。
+  - `cli_adapter` は upstream の動的モデル系関数を維持しつつ、このフォーク固有の `gemini/localapi` と `resolve_cli_type_for_agent` 系APIを上乗せした。
+  - `_trash/` は非追跡のままとし、再出発時点の重要スナップショットだけを `Waste/` に tracked 化した。
+- Next:
+  1. `first_setup.sh` を upstream 基準へ再確認し、zellij 導入案内を実環境向けに補正する
+  2. `shutsujin_departure.sh` の tmux 本流を upstream 側へさらに寄せる
+  3. `README.md` / `README_ja.md` を上流最新版説明へ寄せた上で zellij / Gemini 追記に整理する
+- Links: docs/UPSTREAM_SYNC_2026-03-07_FULL_BASELINE.md, docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md

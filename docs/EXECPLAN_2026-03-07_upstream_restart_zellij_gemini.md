@@ -26,6 +26,7 @@
 ## Progress
 - 2026-03-07: 再出発方針を採用。
 - 2026-03-07: 旧基盤を `_trash/restart_2026-03-07_core/` に退避し、`AGENTS.md` と `lib/agent_status.sh` を上流基準へ更新。
+- 2026-03-07: 上流完全クローン `original_full_2026-03-07` を基準参照として追加し、追跡可能な `Waste/` を正式な退避先として使う方針へ更新。
 
 ## Surprises & Discoveries
 - 上流とこのフォークは merge base を素直に辿れないほど履歴が離れている。
@@ -35,6 +36,8 @@
 - 全面削除ではなく「退避して再採用」を選ぶ。
 - まず runtime 安全性に寄与する `AGENTS.md` / `agent_status` / watcher から着手する。
 - `README_ja.md` の全面同期は runtime が再整備されてから行う。
+- shallow 参照ではなくフルクローン参照を正本とする。
+- 退避先は `_trash/` のみではなく、追跡可能な `Waste/` にも置く。
 
 ## Outcomes & Retrospective
-- 進行中。次段で `shutsujin_departure.sh` と `cli_adapter.sh` を上流ベースへ寄せる。
+- 進行中。次段で `first_setup.sh` / `build_instructions.sh` / `cli_adapter.sh` を上流ベースへ寄せ、その後 `shutsujin_departure.sh` に着手する。

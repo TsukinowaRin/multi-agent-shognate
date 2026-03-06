@@ -134,29 +134,17 @@ generate_agents_md() {
         return 1
     fi
 
-    # Normalize line endings to LF to keep tracked auto-load files stable across platforms.
     sed \
         -e 's|CLAUDE\.md|AGENTS.md|g' \
         -e 's|CLAUDE\.local\.md|AGENTS.override.md|g' \
         -e 's|instructions/shogun\.md|instructions/generated/codex-shogun.md|g' \
         -e 's|instructions/karo\.md|instructions/generated/codex-karo.md|g' \
         -e 's|instructions/ashigaru\.md|instructions/generated/codex-ashigaru.md|g' \
-        -e 's|instructions/gunshi\.md|instructions/generated/codex-gunshi.md|g' \
         -e 's|~/.claude/|~/.codex/|g' \
         -e 's|\.claude\.json|.codex/config.toml|g' \
         -e 's|\.mcp\.json|config.toml (mcp_servers section)|g' \
         -e 's|Claude Code|Codex CLI|g' \
-        -e 's|## /clear Recovery|## /new Recovery|g' \
-        -e 's|Forbidden after /clear|Forbidden after /new|g' \
-        -e 's|pre-/clear memory|pre-/new memory|g' \
-        -e 's|lost on /clear)|lost on /new)|g' \
-        -e 's|(/new or /clear)|(`/new`)|g' \
-        -e 's|sends `/clear` + Enter via send-keys|sends `/new` + Enter via send-keys（/clear→/new自動変換）|g' \
-        -e 's|`/clear` sent (max once per 5 min)|スキップ（Codexは`/clear`不可）|g' \
-        -e 's|escalation sends `/clear` (~4 min)|next nudge escalation or task reassignment|g' \
-        -e 's|delivers `/clear` to the agent|delivers `/new` to the agent（/clear→/new自動変換）|g' \
-        -e 's|`/clear` wipes old context|`/new` wipes old context|g' \
-        "$claude_md" | tr -d '\r' > "$output_path"
+        "$claude_md" > "$output_path"
 
     echo "  ✅ Created: AGENTS.md"
 }
@@ -180,19 +168,17 @@ generate_copilot_instructions() {
 
     mkdir -p "$github_dir"
 
-    # Normalize line endings to LF to keep tracked auto-load files stable across platforms.
     sed \
         -e 's|CLAUDE\.md|copilot-instructions.md|g' \
         -e 's|CLAUDE\.local\.md|copilot-instructions.local.md|g' \
         -e 's|instructions/shogun\.md|instructions/generated/copilot-shogun.md|g' \
         -e 's|instructions/karo\.md|instructions/generated/copilot-karo.md|g' \
         -e 's|instructions/ashigaru\.md|instructions/generated/copilot-ashigaru.md|g' \
-        -e 's|instructions/gunshi\.md|instructions/generated/copilot-gunshi.md|g' \
         -e 's|~/.claude/|~/.copilot/|g' \
         -e 's|\.claude\.json|.copilot/config.json|g' \
         -e 's|\.mcp\.json|.copilot/mcp-config.json|g' \
         -e 's|Claude Code|GitHub Copilot CLI|g' \
-        "$claude_md" | tr -d '\r' > "$output_path"
+        "$claude_md" > "$output_path"
 
     echo "  ✅ Created: .github/copilot-instructions.md"
 }
@@ -218,19 +204,17 @@ generate_kimi_instructions() {
     mkdir -p "$agents_dir"
 
     # Generate system.md (CLAUDE.md → Kimi版)
-    # Normalize line endings to LF to keep tracked auto-load files stable across platforms.
     sed \
         -e 's|CLAUDE\.md|agents/default/system.md|g' \
         -e 's|CLAUDE\.local\.md|agents/default/system.local.md|g' \
         -e 's|instructions/shogun\.md|instructions/generated/kimi-shogun.md|g' \
         -e 's|instructions/karo\.md|instructions/generated/kimi-karo.md|g' \
         -e 's|instructions/ashigaru\.md|instructions/generated/kimi-ashigaru.md|g' \
-        -e 's|instructions/gunshi\.md|instructions/generated/kimi-gunshi.md|g' \
         -e 's|~/.claude/|~/.kimi/|g' \
         -e 's|\.claude\.json|.kimi/config.json|g' \
         -e 's|\.mcp\.json|.kimi/mcp.json|g' \
         -e 's|Claude Code|Kimi K2 CLI|g' \
-        "$claude_md" | tr -d '\r' > "$system_md_path"
+        "$claude_md" > "$system_md_path"
 
     echo "  ✅ Created: agents/default/system.md"
 

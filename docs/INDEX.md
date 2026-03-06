@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-03-06
+最終更新: 2026-03-07
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -15,6 +15,7 @@
 - `docs/UPSTREAM_SYNC_2026-03-05.md` - 上流最新（86ee80b時点）の取得方法と反映差分（watcher busy保護 / zellij ACKログ）。
 - `docs/UPSTREAM_SYNC_2026-03-06_ZELLIJ_GEMINI.md` - 上流最新のうち zellij / Gemini CLI に限定して採用した差分と見送り範囲。
 - `docs/UPSTREAM_SYNC_2026-03-07_RESTART.md` - 上流の内部構造変化を踏まえ、zellij / Gemini だけを上流基盤へ載せ直す再出発方針。
+- `docs/UPSTREAM_SYNC_2026-03-07_FULL_BASELINE.md` - 上流完全クローンを基準にした再出発方針と、採用対象ファイルの優先順。
 - `docs/HANDOVER_2026-02-14_codex_limit.md` - Codex利用制限前の引き継ぎ（現状/即対応/次アクション）。
 - `docs/HANDOVER_2026-02-17_bootstrap_injection.md` - zellij初動注入混線の原因分析と暫定/恒久対策案。
 - `docs/HANDOVER_2026-02-23_prompt_injection_open_issues.md` - 「起動するが注入されない」未解決事象の課題整理と次エージェント向け実行計画。

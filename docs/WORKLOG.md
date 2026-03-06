@@ -1428,3 +1428,27 @@
 - Blockers:
   - この端末では Git Bash 実行時に Win32 error 5 が発生し、動的検証が実施できない
 - Links: docs/REQS.md
+
+### 2026-03-06 16:50 (JST)
+- Goal: 継続指示に基づき、PowerShell経由 `wsl` 検証と上流最新クローンの再確認を実施
+- Changes (files):
+  - `_upstream_reference/upstream_clone_2026-03-06_86ee80b/` — upstream/main (`86ee80b`) の shallow clone を追加
+  - `docs/UPSTREAM_SYNC_2026-03-05.md` — 2026-03-06再確認手順（openssl fetch/clone）を追記
+  - `docs/WORKLOG.md` — 本記録を追記
+- Commands + Results:
+  - `wsl bash -lc "cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate && ..."` → 失敗（`Wsl/Service/CreateInstance/E_ACCESSDENIED`）
+  - `wsl.exe --status` → 失敗（`Wsl/EnumerateDistros/Service/E_ACCESSDENIED`）
+  - `git fetch upstream --prune` → 失敗（`schannel: SEC_E_NO_CREDENTIALS`）
+  - `git -c http.sslbackend=openssl fetch upstream --prune` → 成功
+  - `git log --oneline --max-count=20 upstream/main` / `git rev-parse --short upstream/main` → 先頭 `86ee80b` を確認
+  - `git -c http.sslbackend=openssl clone --depth 1 https://github.com/yohey-w/multi-agent-shogun.git _upstream_reference/upstream_clone_2026-03-06_86ee80b` → 成功
+  - `git -C D:\Git_WorkSpace\multi-agent-shognate\multi-agent-shognate\_upstream_reference\upstream_clone_2026-03-06_86ee80b rev-parse --short HEAD` → `86ee80b`
+- Decisions / Assumptions:
+  - この実行環境では `wsl` サービスにアクセスできず、動的検証（`bash -n` / `bats`）は継続不能と判断。
+  - 上流取得は当面 `git -c http.sslbackend=openssl ...` を標準手順として扱う。
+- Next:
+  1. `wsl` サービスアクセス可能な端末で `bash -n` と `bats` を再実行
+  2. 実機で `bash scripts/goza_zellij.sh --template goza_room` を実行し、`queue/runtime/goza_bootstrap_*.log` の ACK記録を確認
+- Blockers:
+  - Codex実行環境側の `Wsl/*/E_ACCESSDENIED` により `wsl` 実行不可
+- Links: docs/UPSTREAM_SYNC_2026-03-05.md

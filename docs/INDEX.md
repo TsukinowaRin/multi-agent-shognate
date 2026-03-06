@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-03-05
+最終更新: 2026-03-06
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。

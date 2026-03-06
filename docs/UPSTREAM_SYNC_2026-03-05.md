@@ -9,6 +9,13 @@
   - 作成先: `_upstream_reference/upstream_latest_2026-03-05_86ee80b`
   - 参照コミット: `86ee80b`
 
+### 1.1) 2026-03-06 再確認（PowerShell実行）
+- `git fetch upstream --prune` は `schannel: SEC_E_NO_CREDENTIALS` で失敗。
+- `git -c http.sslbackend=openssl fetch upstream --prune` で成功。
+- 上流最新を「クローン」で保持するため、ワークスペース内へ shallow clone を追加。
+  - `git -c http.sslbackend=openssl clone --depth 1 https://github.com/yohey-w/multi-agent-shogun.git _upstream_reference/upstream_clone_2026-03-06_86ee80b`
+  - `git -C D:\Git_WorkSpace\multi-agent-shognate\multi-agent-shognate\_upstream_reference\upstream_clone_2026-03-06_86ee80b rev-parse --short HEAD` → `86ee80b`
+
 ## 2) Gemini CLI / Zellij へ反映した差分
 ### 採用: watcher の `/clear` busy保護（上流 `e598f70` の要点）
 - `scripts/inbox_watcher.sh`

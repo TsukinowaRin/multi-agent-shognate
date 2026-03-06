@@ -49,6 +49,13 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
 
     echo "[$(date)] inbox_watcher started — agent: $AGENT_ID, pane: $PANE_TARGET, cli: $CLI_TYPE, mux: $MUX_TYPE" >&2
 
+    # upstream追随: Claude は welcome 直後に stop hook がまだ走らず、
+    # idle flag 不在のまま false-busy に陥ることがある。起動時に初期 idle flag を作る。
+    if [[ "$CLI_TYPE" == "claude" ]]; then
+        touch "${IDLE_FLAG_DIR:-/tmp}/shogun_idle_${AGENT_ID}" 2>/dev/null || true
+        echo "[$(date)] Created initial idle flag for $AGENT_ID" >&2
+    fi
+
     # Ensure inotifywait is available
     if ! command -v inotifywait &>/dev/null; then
         echo "[inbox_watcher] ERROR: inotifywait not found. Install: sudo apt install inotify-tools" >&2

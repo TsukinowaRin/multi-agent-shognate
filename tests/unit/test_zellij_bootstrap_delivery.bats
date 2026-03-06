@@ -21,6 +21,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "zellij: Gemini preflight で trust/high-demand を自動処理する" {
+    run rg -n "handle_gemini_preflight_zellij|gemini trust accepted|gemini keep_trying" "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "zellij: エージェント間ギャップ設定がある" {
     run rg -n "MAS_ZELLIJ_BOOTSTRAP_GAP|BOOTSTRAP_AGENT_GAP" "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
     [ "$status" -eq 0 ]

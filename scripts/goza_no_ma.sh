@@ -259,6 +259,11 @@ goza_init_bootstrap_log() {
   mkdir -p "$(dirname "$GOZA_BOOTSTRAP_LOG")" 2>/dev/null || true
   goza_bootstrap_log "run start id=$GOZA_BOOTSTRAP_RUN_ID session=$ZELLIJ_UI_SESSION"
 }
+
+goza_agent_transcript_file() {
+  local agent="$1"
+  printf '%s' "$ROOT_DIR/queue/runtime/pure_zellij_${ZELLIJ_UI_SESSION}_${agent}.log"
+}
 zellij_ui_layout_file() {
   local tmux_target="$1"
   local tab_title="$2"
@@ -341,7 +346,9 @@ zellij_agent_pane_cmd() {
   local agent="$1"
   local cli_type="codex"
   local cli_cmd="codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
-  local startup_msg=""
+  local transcript_file=""
+  local transcript_dir=""
+  local cli_cmd_quoted=""
 
   if [[ "$CLI_ADAPTER_LOADED" == "true" ]]; then
     cli_type="$(resolve_cli_type_for_agent "$agent" 2>/dev/null || echo "codex")"
@@ -354,13 +361,14 @@ zellij_agent_pane_cmd() {
     return 0
   fi
 
-  startup_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type" 2>/dev/null || true)"
+  transcript_file="$(goza_agent_transcript_file "$agent")"
+  transcript_dir="$(dirname "$transcript_file")"
+  printf -v cli_cmd_quoted '%q' "$cli_cmd"
 
-  # pure zellij: 各ペインが CLI を直接起動し、初動命令を引数として渡す。
-  # TTY直書き方式（旧実装）は stdout 側に書くだけで CLI の stdin に届かないため廃止。
-  # CLI引数渡しは claude/codex/gemini/copilot/kimi すべてで動作確認済み。
-  printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && clear && %s %q; echo %q; exec bash' \
-    "$ROOT_DIR" "$agent" "shout" "$cli_cmd" "$startup_msg" "[INFO] ${agent} pane ended. Waiting at shell."
+  # pure zellij: 各ペインは CLI をまず起動し、初動命令は外側のブートストラップで明示送信する。
+  # transcript を agent ごとに分け、ready/trust/high-demand の判定を他ペインと混線させない。
+  printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && mkdir -p %q && : > %q && clear && if command -v script >/dev/null 2>&1; then script -qefc %s %q; else eval %s; fi; echo %q; exec bash' \
+    "$ROOT_DIR" "$agent" "shout" "$transcript_dir" "$transcript_file" "$cli_cmd_quoted" "$transcript_file" "$cli_cmd_quoted" "[INFO] ${agent} pane ended. Waiting at shell."
 }
 
 zellij_collect_active_agents() {
@@ -593,29 +601,55 @@ zellij_send_line_to_session() {
   zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || return 1
 }
 
-zellij_wait_ready_ack_current_pane() {
+zellij_agent_output_matches() {
   local session="$1"
   local agent="$2"
-  local max_wait="${3:-12}"
+  local pattern="$3"
+  local transcript_file=""
+  local tmp_dump=""
+
+  transcript_file="$(goza_agent_transcript_file "$agent")"
+  if [[ -f "$transcript_file" ]] && grep -qiE "$pattern" "$transcript_file" 2>/dev/null; then
+    return 0
+  fi
+
+  tmp_dump="${TMPDIR:-/tmp}/goza_ready_${agent}_$$.txt"
+  if zellij -s "$session" action dump-screen "$tmp_dump" >/dev/null 2>&1; then
+    if grep -qiE "$pattern" "$tmp_dump" 2>/dev/null; then
+      rm -f "$tmp_dump"
+      return 0
+    fi
+  fi
+  rm -f "$tmp_dump"
+  return 1
+}
+
+zellij_wait_agent_output() {
+  local session="$1"
+  local agent="$2"
+  local pattern="$3"
+  local max_wait="${4:-12}"
   local i
-  local tmp_dump="${TMPDIR:-/tmp}/goza_ready_${agent}_$$.txt"
 
   if ! [[ "$max_wait" =~ ^[0-9]+$ ]]; then
     max_wait=12
   fi
 
   for ((i=0; i<max_wait; i++)); do
-    if zellij -s "$session" action dump-screen "$tmp_dump" >/dev/null 2>&1; then
-      if grep -qi "ready:${agent}" "$tmp_dump" 2>/dev/null; then
-        rm -f "$tmp_dump"
-        return 0
-      fi
+    if zellij_agent_output_matches "$session" "$agent" "$pattern"; then
+      return 0
     fi
     sleep 1
   done
 
-  rm -f "$tmp_dump"
   return 1
+}
+
+zellij_wait_ready_ack_current_pane() {
+  local session="$1"
+  local agent="$2"
+  local max_wait="${3:-12}"
+  zellij_wait_agent_output "$session" "$agent" "ready:${agent}" "$max_wait"
 }
 
 zellij_resolve_cli_for_agent() {
@@ -626,6 +660,62 @@ zellij_resolve_cli_for_agent() {
   fi
   echo "codex"
 }
+
+zellij_pure_ready_pattern() {
+  case "${1:-codex}" in
+    claude) echo '(claude code|claude|for shortcuts|/model)' ;;
+    codex) echo '(openai codex|codex|for shortcuts|context left|/model)' ;;
+    gemini) echo '(type your message|yolo mode|/model|@path/to/file)' ;;
+    copilot) echo '(copilot|github copilot|for shortcuts|/model)' ;;
+    kimi) echo '(kimi|moonshot|for shortcuts|/model)' ;;
+    localapi) echo '(localapi|ready:|api)' ;;
+    *) echo '(claude|codex|gemini|copilot|kimi|localapi|ready:)' ;;
+  esac
+}
+
+zellij_bootstrap_delay_for_cli() {
+  case "${1:-codex}" in
+    claude) echo 5 ;;
+    gemini) echo 4 ;;
+    codex) echo 3 ;;
+    *) echo 3 ;;
+  esac
+}
+
+zellij_handle_gemini_preflight_current_pane() {
+  local session="$1"
+  local agent="$2"
+  local max_wait="${3:-20}"
+  local i
+
+  if ! [[ "$max_wait" =~ ^[0-9]+$ ]]; then
+    max_wait=20
+  fi
+
+  for ((i=0; i<max_wait; i++)); do
+    if zellij_agent_output_matches "$session" "$agent" '(type your message|yolo mode|/model|@path/to/file)'; then
+      return 0
+    fi
+    if zellij_agent_output_matches "$session" "$agent" '(trust this folder|trust parent folder|don.t trust)'; then
+      if zellij_send_line_to_session "$session" "1"; then
+        goza_bootstrap_log "gemini trust accepted agent=$agent"
+      fi
+      sleep 2
+      continue
+    fi
+    if zellij_agent_output_matches "$session" "$agent" '(high demand|keep trying)'; then
+      if zellij_send_line_to_session "$session" "1"; then
+        goza_bootstrap_log "gemini keep_trying agent=$agent"
+      fi
+      sleep 5
+      continue
+    fi
+    sleep 1
+  done
+
+  return 1
+}
+
 zellij_resume_pure_goza_panes_background() {
   local session="$1"
   shift
@@ -695,7 +785,12 @@ zellij_resume_pure_goza_panes_background() {
     local count="${#agents[@]}"
     local agent
     local ack_timeout="${MAS_GOZA_READY_ACK_TIMEOUT:-12}"
+    local ready_timeout="${MAS_GOZA_CLI_READY_TIMEOUT:-25}"
+    local gemini_preflight_timeout="${MAS_GOZA_GEMINI_PREFLIGHT_TIMEOUT:-25}"
     local cli_type
+    local startup_msg
+    local ready_pattern
+    local launch_delay
     local retry_msg
 
     if ! [[ "$ack_timeout" =~ ^[0-9]+$ ]]; then
@@ -710,13 +805,34 @@ zellij_resume_pure_goza_panes_background() {
       zellij -s "$session" action write 13 >/dev/null 2>&1 || \
       zellij -s "$session" action write 10 >/dev/null 2>&1 || \
       zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || true
-      goza_bootstrap_log "bootstrap delivered agent=$agent mode=resume-enter"
+      goza_bootstrap_log "pane resumed agent=$agent mode=resume-enter"
+
+      cli_type="$(zellij_resolve_cli_for_agent "$agent")"
+      launch_delay="$(zellij_bootstrap_delay_for_cli "$cli_type")"
+      sleep "$launch_delay"
+
+      if [[ "$cli_type" == "gemini" ]]; then
+        if ! zellij_handle_gemini_preflight_current_pane "$session" "$agent" "$gemini_preflight_timeout"; then
+          goza_bootstrap_log "gemini preflight unresolved agent=$agent timeout=${gemini_preflight_timeout}s"
+        fi
+      else
+        ready_pattern="$(zellij_pure_ready_pattern "$cli_type")"
+        if ! zellij_wait_agent_output "$session" "$agent" "$ready_pattern" "$ready_timeout"; then
+          goza_bootstrap_log "cli ready not detected agent=$agent cli=$cli_type timeout=${ready_timeout}s"
+        fi
+      fi
+
+      startup_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type" 2>/dev/null || true)"
+      if [[ -n "$startup_msg" ]] && zellij_send_line_to_session "$session" "$startup_msg"; then
+        goza_bootstrap_log "bootstrap delivered agent=$agent cli=$cli_type mode=send-line"
+      else
+        goza_bootstrap_log "bootstrap send failed agent=$agent cli=$cli_type"
+      fi
 
       if zellij_wait_ready_ack_current_pane "$session" "$agent" "$ack_timeout"; then
         goza_bootstrap_log "ready ack detected agent=$agent"
       else
         goza_bootstrap_log "ready ack missing first_try agent=$agent timeout=${ack_timeout}s"
-        cli_type="$(zellij_resolve_cli_for_agent "$agent")"
         retry_msg="$(goza_startup_bootstrap_message "$agent" "$cli_type" 2>/dev/null || true)"
         if [[ -n "$retry_msg" ]] && zellij_send_line_to_session "$session" "$retry_msg"; then
           goza_bootstrap_log "bootstrap retry sent agent=$agent cli=$cli_type"

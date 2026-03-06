@@ -1452,3 +1452,31 @@
 - Blockers:
   - Codex実行環境側の `Wsl/*/E_ACCESSDENIED` により `wsl` 実行不可
 - Links: docs/UPSTREAM_SYNC_2026-03-05.md
+
+### 2026-03-06 18:35 (JST)
+- Goal: 上流最新を zellij / Gemini CLI に限定反映し、pure zellij の未注入問題を減らす
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — pure zellij を CLI引数渡しから transcript + 明示送信方式へ変更、Gemini preflight を追加
+  - `scripts/shutsujin_zellij.sh` — Gemini trust/high-demand 自動処理を追加
+  - `scripts/inbox_watcher.sh` — Claude 初期 idle flag 作成を追加（上流 false-busy deadlock 緩和）
+  - `tests/unit/test_goza_pure_bootstrap.bats` — pure zellij の transcript / Gemini preflight を検証する静的テストへ更新
+  - `tests/unit/test_zellij_bootstrap_delivery.bats` — zellij Gemini preflight テストを追加
+  - `docs/REQS.md` — 2026-03-06 追補（zellij / Gemini 限定スコープ）を追加
+  - `docs/UPSTREAM_SYNC_2026-03-06_ZELLIJ_GEMINI.md` — 上流同期ノートを新規追加
+  - `docs/EXECPLAN_2026-03-06_zellij_gemini_upstream_sync.md` — 実行計画を新規追加
+  - `docs/INDEX.md` — 新規Docsを登録
+- Commands + Results:
+  - `git rev-parse --short upstream/main` → `86ee80b`
+  - `bash -n scripts/goza_no_ma.sh scripts/shutsujin_zellij.sh scripts/inbox_watcher.sh lib/cli_adapter.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_zellij_bootstrap_delivery.bats tests/unit/test_send_wakeup.bats` → `1..59` PASS
+  - `bash scripts/goza_no_ma.sh -s --no-attach --mux zellij --ui zellij --template goza_room` → PASS（`goza-no-ma-ui` 背景生成）
+  - `bash scripts/shutsujin_zellij.sh -s` → FAIL（`snap-confine ... cap_dac_override not found`）
+- Decisions / Assumptions:
+  - pure zellij では pane別 capture API の不足を transcript ファイルで補う。
+  - Gemini preflight は zellij bootstrap 層で吸収し、CLIコマンド自体は `gemini --yolo` のまま保つ。
+  - `shutsujin_zellij.sh -s` の失敗は、この実行環境の snap 版 zellij 制約と判断し、コード問題とは切り分ける。
+- Next:
+  1. ユーザー実機で `bash scripts/goza_no_ma.sh --mux zellij --ui zellij --template goza_room` を実行し、`queue/runtime/pure_zellij_*.log` を確認
+  2. 実機 zellij が snap 版なら、非 snap 版（cargo / apt / release binary）での再確認を行う
+  3. 必要なら `shutsujin_zellij.sh` も transcript 化して Gemini 判定基盤を共通化する
+- Links: docs/UPSTREAM_SYNC_2026-03-06_ZELLIJ_GEMINI.md, docs/EXECPLAN_2026-03-06_zellij_gemini_upstream_sync.md

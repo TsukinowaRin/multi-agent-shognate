@@ -1,7 +1,24 @@
 # Requirements (Normalized)
 
-最終更新: 2026-02-23
+最終更新: 2026-03-06
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-06: 上流最新の反映対象を zellij / Gemini CLI に限定）
+### 要求
+1. `yohey-w/multi-agent-shogun` の最新状況を確認し、このフォークでは `zellij` 対応と `Gemini CLI` 対応に関係する差分だけを反映する。
+2. pure `zellij` の御座の間起動で、各ペインの CLI が自動起動し、初動命令が自動送信されること。
+3. `Gemini CLI` の初回 `Trust folder` / 一時的な `high demand` 表示を、zellij 起動導線で自動的に処理または再試行できること。
+4. 既存の複雑な実験コードが邪魔であっても、今回は無理に全面整理せず、zellij / Gemini に必要な変更へ絞る。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `git rev-parse --short upstream/main`
+   - 期待結果: 上流最新コミットを確認でき、対応する同期ノートが `docs/` に記録される。
+2. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_zellij_bootstrap_delivery.bats`
+   - 期待結果: pure zellij と zellij session-per-agent のブートストラップ関連テストが PASS する。
+3. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: watcher 回りの回帰がない。
+4. コマンド: `rg -n "gemini trust accepted|gemini keep_trying|Created initial idle flag" scripts/goza_no_ma.sh scripts/shutsujin_zellij.sh scripts/inbox_watcher.sh`
+   - 期待結果: Gemini preflight と watcher の false-busy 対策がコード上に存在する。
 
 ## 要求
 1. 既存の `tmux` 前提のシステムを `zellij` で運用できるようにする。

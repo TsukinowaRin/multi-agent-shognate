@@ -504,7 +504,7 @@ wait_for_cli_ready() {
       ready_pattern='(openai codex|codex|for shortcuts|context left|/model)'
       ;;
     gemini)
-      ready_pattern='(gemini|trust this folder|keep trying|type your message|yolo mode)'
+      ready_pattern='(type your message|yolo mode|/model|@path/to/file)'
       ;;
     copilot)
       ready_pattern='(copilot|github copilot|for shortcuts|/model)'
@@ -533,6 +533,48 @@ wait_for_cli_ready() {
     fi
     sleep 1
   done
+  rm -f "$tmp_dump"
+  return 1
+}
+
+handle_gemini_preflight_zellij() {
+  local session="$1"
+  local max_wait="${2:-30}"
+  local i
+  local tmp_dump="/tmp/zellij_gemini_preflight_${session}.txt"
+
+  if ! [[ "$max_wait" =~ ^[0-9]+$ ]]; then
+    max_wait=30
+  fi
+
+  for ((i=0; i<max_wait; i++)); do
+    if ! session_exists "$session"; then
+      rm -f "$tmp_dump"
+      return 1
+    fi
+    if zellij -s "$session" action dump-screen "$tmp_dump" >/dev/null 2>&1; then
+      if grep -qiE '(type your message|yolo mode|/model|@path/to/file)' "$tmp_dump" 2>/dev/null; then
+        rm -f "$tmp_dump"
+        return 0
+      fi
+      if grep -qiE '(trust this folder|trust parent folder|don.t trust)' "$tmp_dump" 2>/dev/null; then
+        if send_line "$session" "1"; then
+          bootstrap_run_log "gemini trust accepted agent=$session"
+        fi
+        sleep 2
+        continue
+      fi
+      if grep -qiE '(high demand|keep trying)' "$tmp_dump" 2>/dev/null; then
+        if send_line "$session" "1"; then
+          bootstrap_run_log "gemini keep_trying agent=$session"
+        fi
+        sleep 5
+        continue
+      fi
+    fi
+    sleep 1
+  done
+
   rm -f "$tmp_dump"
   return 1
 }
@@ -725,8 +767,14 @@ if [ "$SETUP_ONLY" = false ]; then
     if ! send_line "$agent" "$cli_cmd"; then
       echo "[WARN] failed to send CLI launch command to $agent ($cli_type)" >&2
     fi
-    if ! wait_for_cli_ready "$agent" "$cli_type" 25; then
+    if [[ "$cli_type" == "gemini" ]]; then
+      if ! handle_gemini_preflight_zellij "$agent" 35; then
+        echo "[WARN] Gemini preflight unresolved in session '$agent' after timeout, sending bootstrap anyway" >&2
+        bootstrap_run_log "gemini preflight unresolved agent=$agent"
+      fi
+    elif ! wait_for_cli_ready "$agent" "$cli_type" 25; then
       echo "[WARN] CLI not ready in session '$agent' after timeout, sending bootstrap anyway" >&2
+      bootstrap_run_log "cli ready timeout agent=$agent cli=$cli_type"
     fi
     deliver_bootstrap_zellij "$agent" "$cli_type"
     log_info "  └─ $agent: $cli_type（初動配信完了）"

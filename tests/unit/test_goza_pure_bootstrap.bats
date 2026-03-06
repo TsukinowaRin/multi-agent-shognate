@@ -5,16 +5,18 @@ setup_file() {
     PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 }
 
-@test "pure zellij: 各ペインでCLI引数渡しによるブートストラップ注入を使う" {
-    # TTY直書き方式（旧実装）が削除され、CLI引数渡し方式になっていることを確認
+@test "pure zellij: 各ペインは transcript を取りつつ明示送信でブートストラップ注入する" {
+    # TTY直書き方式（旧実装）は使わない
     run rg -nF 'tty_path="$(tty)"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -ne 0 ]
     run rg -nF 'printf "%%s\\r" "$_line" >"$tty_path"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -ne 0 ]
-    # CLI引数渡し: startup_msg を %q でシェルクォートして CLI コマンドへ渡す
-    run rg -nF 'startup_msg' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    # CLI は先に起動し、script transcript に記録したうえで send-line 注入する
+    run rg -nF 'goza_agent_transcript_file' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
-    run rg -nF '"shout" "$cli_cmd" "$startup_msg"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    run rg -nF 'script -qefc' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'bootstrap delivered agent=$agent cli=$cli_type mode=send-line' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -43,10 +45,15 @@ setup_file() {
 }
 
 @test "pure zellij: ready ACK(ready:agent) を確認し未検出時は再送する" {
-    run rg -n "zellij_wait_ready_ack_current_pane|ready:\$\{agent\}" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    run rg -n "zellij_wait_ready_ack_current_pane|ready:\$\{agent\}|goza_agent_transcript_file" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
     run rg -nF 'ready ack missing first_try agent=$agent' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
     run rg -nF 'bootstrap retry sent agent=$agent' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "pure zellij: Gemini preflight の trust/high-demand を transcript ベースで処理する" {
+    run rg -n "zellij_handle_gemini_preflight_current_pane|gemini trust accepted|gemini keep_trying" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }

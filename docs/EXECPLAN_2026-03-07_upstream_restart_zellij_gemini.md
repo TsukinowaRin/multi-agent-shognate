@@ -1,0 +1,40 @@
+# ExecPlan: upstream restart for zellij / gemini
+
+## Context
+- ユーザーは、コピー元で内部構造が大きく変わったため、実装を最初からやり直してよいと明示した。
+- 上流 2026-03 時点では `agent_status` や `AGENTS.md` が進化しており、このフォークの古い基盤より整っている。
+
+## Scope
+- 上流共通基盤の再採用
+- `zellij` 対応
+- `Gemini CLI` 対応
+- 関連 Docs とテスト
+
+## Acceptance Criteria
+- 上流基盤の一部が本ワークツリーに再導入される。
+- 置換前ファイルは `_trash/restart_2026-03-07_core/` に退避される。
+- watcher は `lib/agent_status.sh` を用いた busy 判定に更新される。
+- 次段の `shutsujin_departure.sh` / `cli_adapter.sh` 再構築方針が文書化される。
+
+## Work Breakdown
+1. REQS を再定義する。
+2. 置換前ファイルを退避する。
+3. 上流 `AGENTS.md` と `lib/agent_status.sh` を導入する。
+4. watcher を上流 busy 判定基盤へ接続する。
+5. 次段で `shutsujin_departure.sh` / `cli_adapter.sh` / `build_instructions.sh` を上流ベースで再構築する。
+
+## Progress
+- 2026-03-07: 再出発方針を採用。
+- 2026-03-07: 旧基盤を `_trash/restart_2026-03-07_core/` に退避し、`AGENTS.md` と `lib/agent_status.sh` を上流基準へ更新。
+
+## Surprises & Discoveries
+- 上流とこのフォークは merge base を素直に辿れないほど履歴が離れている。
+- よって Git 履歴マージではなく、ファイル単位での基盤再採用が現実的。
+
+## Decision Log
+- 全面削除ではなく「退避して再採用」を選ぶ。
+- まず runtime 安全性に寄与する `AGENTS.md` / `agent_status` / watcher から着手する。
+- `README_ja.md` の全面同期は runtime が再整備されてから行う。
+
+## Outcomes & Retrospective
+- 進行中。次段で `shutsujin_departure.sh` と `cli_adapter.sh` を上流ベースへ寄せる。

@@ -1480,3 +1480,28 @@
   2. 実機 zellij が snap 版なら、非 snap 版（cargo / apt / release binary）での再確認を行う
   3. 必要なら `shutsujin_zellij.sh` も transcript 化して Gemini 判定基盤を共通化する
 - Links: docs/UPSTREAM_SYNC_2026-03-06_ZELLIJ_GEMINI.md, docs/EXECPLAN_2026-03-06_zellij_gemini_upstream_sync.md
+
+### 2026-03-07 00:25 (JST)
+- Goal: 上流の内部構造変化を踏まえ、「上流基盤へ戻して zellij / Gemini だけを載せ直す」再出発の第一段を開始
+- Changes (files):
+  - `_trash/restart_2026-03-07_core/` — 置換前の基盤ファイルを退避
+  - `AGENTS.md` — 上流最新版へ更新
+  - `lib/agent_status.sh` — 上流最新版を新規導入
+  - `scripts/inbox_watcher.sh` — `lib/agent_status.sh` を読むよう補正し、tmux busy 判定を共有化
+  - `docs/REQS.md` — 2026-03-07 追補（再出発方針）を追加
+  - `docs/UPSTREAM_SYNC_2026-03-07_RESTART.md` — 上流構造変化と再出発方針を新規追加
+  - `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` — 再出発ExecPlanを新規追加
+  - `docs/INDEX.md` — 新規Docsを登録
+- Commands + Results:
+  - `test -f _trash/restart_2026-03-07_core/AGENTS.md.before_upstream && test -f lib/agent_status.sh && echo OK` → `OK`
+  - `bash -n scripts/inbox_watcher.sh lib/agent_status.sh` → PASS
+  - `bats tests/unit/test_send_wakeup.bats` → `1..42` PASS
+- Decisions / Assumptions:
+  - いきなり `shutsujin_departure.sh` 全置換は危険なため、まず runtime 安全性へ効く `AGENTS.md` / `agent_status` / watcher から戻す。
+  - `README_ja.md` と `shutsujin_departure.sh` の全面同期は次段へ送る。
+  - 置換前ファイルは削除せず `_trash/restart_2026-03-07_core/` に保管する。
+- Next:
+  1. `shutsujin_departure.sh` を upstream 基盤へ寄せ、`MAS_MULTIPLEXER=zellij` 分岐だけを最小追加する
+  2. `lib/cli_adapter.sh` を upstream 基盤ベースで再整理し、`gemini` を正式に載せる
+  3. `scripts/build_instructions.sh` を upstream ベースへ寄せ、`gemini` 生成を整理する
+- Links: docs/UPSTREAM_SYNC_2026-03-07_RESTART.md, docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md

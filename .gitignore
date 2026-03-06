@@ -53,6 +53,7 @@
 
 # Multi-CLI: CLI adapter library + ntfy auth
 !lib/
+!lib/agent_status.sh
 !lib/cli_adapter.sh
 !lib/inbox_path.sh
 !lib/ntfy_auth.sh

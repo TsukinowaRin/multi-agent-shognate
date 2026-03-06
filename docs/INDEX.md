@@ -14,6 +14,7 @@
 - `docs/UPSTREAM_SYNC_2026-02-21.md` - 上流最新（cbad684時点）との差分確認と反映内容（Codex `--search` / watcher抑止条件 / zellij起動補正）。
 - `docs/UPSTREAM_SYNC_2026-03-05.md` - 上流最新（86ee80b時点）の取得方法と反映差分（watcher busy保護 / zellij ACKログ）。
 - `docs/UPSTREAM_SYNC_2026-03-06_ZELLIJ_GEMINI.md` - 上流最新のうち zellij / Gemini CLI に限定して採用した差分と見送り範囲。
+- `docs/UPSTREAM_SYNC_2026-03-07_RESTART.md` - 上流の内部構造変化を踏まえ、zellij / Gemini だけを上流基盤へ載せ直す再出発方針。
 - `docs/HANDOVER_2026-02-14_codex_limit.md` - Codex利用制限前の引き継ぎ（現状/即対応/次アクション）。
 - `docs/HANDOVER_2026-02-17_bootstrap_injection.md` - zellij初動注入混線の原因分析と暫定/恒久対策案。
 - `docs/HANDOVER_2026-02-23_prompt_injection_open_issues.md` - 「起動するが注入されない」未解決事象の課題整理と次エージェント向け実行計画。
@@ -27,6 +28,7 @@
 - `docs/EXECPLAN_2026-02-14_upstream_sync.md` - 上流更新の差分取り込み（Codex model / watcher判定）の実行計画。
 - `docs/EXECPLAN_2026-02-17_zellij_bootstrap_stability.md` - zellij初動注入の混線抑止（順次起動・ready判定厳密化）の実行計画。
 - `docs/EXECPLAN_2026-03-06_zellij_gemini_upstream_sync.md` - 上流同期を zellij / Gemini スコープに絞って bootstrap と preflight を修正する実行計画。
+- `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` - 上流基盤へ戻しつつ zellij / Gemini を再実装する再出発の実行計画。
 - `docs/EXECPLAN_TEMPLATE.md` - ExecPlanテンプレート。
 
 ## Logs

@@ -49,6 +49,18 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
 
     echo "[$(date)] inbox_watcher started — agent: $AGENT_ID, pane: $PANE_TARGET, cli: $CLI_TYPE, mux: $MUX_TYPE" >&2
 
+    _cli_adapter="${SCRIPT_DIR}/lib/cli_adapter.sh"
+    if [ -f "$_cli_adapter" ]; then
+        # shellcheck source=/dev/null
+        source "$_cli_adapter"
+    fi
+
+    _agent_status_lib="${SCRIPT_DIR}/lib/agent_status.sh"
+    if [ -f "$_agent_status_lib" ]; then
+        # shellcheck source=/dev/null
+        source "$_agent_status_lib"
+    fi
+
     # upstream追随: Claude は welcome 直後に stop hook がまだ走らず、
     # idle flag 不在のまま false-busy に陥ることがある。起動時に初期 idle flag を作る。
     if [[ "$CLI_TYPE" == "claude" ]]; then
@@ -524,11 +536,21 @@ agent_has_self_watch() {
 # Only checks bottom 5 lines — old markers linger in scroll-back.
 agent_is_busy() {
     local pane_tail
-    pane_tail=$(mux_capture_pane_tail)
+
     if ! is_tmux_mode; then
         # zellij mode: external per-pane capture is not available in stable CLI.
         return 1
     fi
+
+    if declare -F agent_is_busy_check >/dev/null 2>&1; then
+        agent_is_busy_check "$PANE_TARGET"
+        case $? in
+            0) return 0 ;;
+            1|2) return 1 ;;
+        esac
+    fi
+
+    pane_tail=$(mux_capture_pane_tail)
 
     # ── Idle check (takes priority) ──
     if echo "$pane_tail" | grep -qE '(\? for shortcuts|context left)'; then

@@ -1,7 +1,24 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-06
+最終更新: 2026-03-07
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-07: 上流最新構造への再出発）
+### 要求
+1. `yohey-w/multi-agent-shogun` の最新内部構造を基準に、このフォークの実装を実質的にやり直してよい。
+2. ただし今回の実装対象は `zellij` 対応と `Gemini CLI` 対応に限定する。
+3. 上流の整理された共通基盤（`AGENTS.md`、`agent_status`、watcher、instruction build など）は可能な限り採用し、その上に `zellij` と `Gemini` を載せ直す。
+4. 既存の独自実装が邪魔な場合は、ワークスペース内に退避用フォルダを作って保管してよい。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `test -f _trash/restart_2026-03-07_core/AGENTS.md.before_upstream && test -f lib/agent_status.sh`
+   - 期待結果: 旧基盤が退避され、新しい上流基盤ファイルが存在する。
+2. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: 上流 `agent_status` を取り込んでも watcher 回帰がない。
+3. コマンド: `rg -n "agent_is_busy_check|Created initial idle flag" scripts/inbox_watcher.sh lib/agent_status.sh`
+   - 期待結果: watcher が上流の busy 判定基盤を参照している。
+4. コマンド: `rg -n "zellij|gemini" docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md docs/UPSTREAM_SYNC_2026-03-07_RESTART.md`
+   - 期待結果: 再出発方針と対象範囲が文書化されている。
 
 ## 追補（2026-03-06: 上流最新の反映対象を zellij / Gemini CLI に限定）
 ### 要求

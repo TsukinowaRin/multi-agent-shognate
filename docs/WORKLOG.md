@@ -1616,3 +1616,24 @@
   1. ユーザー実機で `bash scripts/goza_zellij_pure.sh` を再実行し、`Waiting to run` が消えたか確認する。
   2. その後 `ready:` ACK と bootstrap 送信ログを確認する。
 - Links: scripts/goza_no_ma.sh, lib/cli_adapter.sh, shutsujin_departure.sh, scripts/shutsujin_zellij.sh
+
+### 2026-03-07 18:35 (JST)
+- Goal: pure zellij の「アクティブペインへ平文注入」方式をやめ、元リポジトリの file-based communication 原則へ寄せた dedicated bootstrap へ置き換える。
+- Changes (files):
+  - `scripts/zellij_agent_bootstrap.sh` — 各 pane が `AGENT_ID` 固定で起動し、agent別 bootstrap file を読み、CLI を transcript 付きで直接起動する専用 runner を追加。
+  - `lib/cli_adapter.sh` — `build_cli_command_with_startup_prompt()` を追加し、Codex/Claude は positional prompt、Gemini は `-i` で初回命令を起動引数へ載せるようにした。
+  - `scripts/goza_no_ma.sh` — pure zellij のレイアウトを dedicated runner 起動へ変更し、`prepare_pure_zellij_bootstrap_files()` で agent別 bootstrap file を生成するよう更新。外側の focus 巡回 bootstrap は pure zellij attach 経路から外した。
+  - `tests/unit/test_cli_adapter.bats` — startup prompt 付きCLI command 生成のテストを追加。
+  - `tests/unit/test_goza_pure_bootstrap.bats` — pure zellij が runner + bootstrap file 前提であることを確認するよう更新。
+  - `docs/REQS.md` / `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` — dedicated bootstrap 方針を追記。
+- Commands + Results:
+  - `chmod +x scripts/zellij_agent_bootstrap.sh && bash -n scripts/goza_no_ma.sh scripts/zellij_agent_bootstrap.sh lib/cli_adapter.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_goza_wrapper_modes.bats` → `1..87` PASS
+- Decisions / Assumptions:
+  - upstream の通信原則どおり、本文は file-based に寄せる。`zellij action write-chars` で本文を流す設計は pure zellij では混線しやすく、役職取り違えを再現したため不採用。
+  - Gemini CLI の初回命令は `-i` を使って interactive startup prompt に載せる前提で実装した。実機で trust/high-demand が残る場合は、次段で pane 内 runner 側へ preflight 自動化を追加する。
+- Next:
+  1. ユーザー実機で `bash scripts/goza_zellij_pure.sh -s` → `bash scripts/goza_zellij_pure.sh` を再実行し、`Waiting to run` ではなく各CLI本体が pane 起動するか確認する。
+  2. `queue/runtime/pure_zellij_goza-no-ma-ui_*.log` と `*.meta.log` を見て、Codex/Gemini の初回挙動を agent単位で切り分ける。
+  3. 必要なら Gemini の trust/high-demand 処理も runner 内へ閉じて自動化する。
+- Links: scripts/zellij_agent_bootstrap.sh, scripts/goza_no_ma.sh, lib/cli_adapter.sh

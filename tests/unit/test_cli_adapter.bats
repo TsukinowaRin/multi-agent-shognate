@@ -404,6 +404,24 @@ SH
     [[ "$result" == *"LOCALAI_MODEL=qwen2.5-coder"* ]]
 }
 
+@test "build_cli_command_with_startup_prompt: codex は positional prompt を付与する" {
+    load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
+    result=$(build_cli_command_with_startup_prompt "shogun" "codex" "ready:shogun")
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen ready:shogun" ]
+}
+
+@test "build_cli_command_with_startup_prompt: claude は positional prompt を付与する" {
+    load_adapter_with "${TEST_TMP}/settings_with_models.yaml"
+    result=$(build_cli_command_with_startup_prompt "karo" "claude" "ready:karo")
+    [ "$result" = "claude --model sonnet --dangerously-skip-permissions ready:karo" ]
+}
+
+@test "build_cli_command_with_startup_prompt: gemini は interactive prompt フラグを付与する" {
+    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+    result=$(build_cli_command_with_startup_prompt "ashigaru2" "gemini" "ready:ashigaru2")
+    [ "$result" = "gemini --yolo -i ready:ashigaru2" ]
+}
+
 @test "build_cli_command: cliセクションなし → claude フォールバック" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(build_cli_command "ashigaru1")

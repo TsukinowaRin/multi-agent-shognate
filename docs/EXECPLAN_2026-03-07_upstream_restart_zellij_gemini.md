@@ -28,6 +28,7 @@
 - 2026-03-07: 旧基盤を `_trash/restart_2026-03-07_core/` に退避し、`AGENTS.md` と `lib/agent_status.sh` を上流基準へ更新。
 - 2026-03-07: 上流完全クローン `original_full_2026-03-07` を基準参照として追加し、追跡可能な `Waste/` を正式な退避先として使う方針へ更新。
 - 2026-03-07: pure zellij の bootstrap 再失敗を受け、`goza_zellij.sh` を安定経路（zellij UI + tmux backend）へ戻し、pure zellij は `goza_zellij_pure.sh` へ分離。
+- 2026-03-07: pure zellij の bootstrap を「外側のアクティブペイン注入」から「paneごとの dedicated runner + bootstrap file」へ切り替えた。
 
 ## Surprises & Discoveries
 - 上流とこのフォークは merge base を素直に辿れないほど履歴が離れている。
@@ -40,6 +41,7 @@
 - shallow 参照ではなくフルクローン参照を正本とする。
 - 退避先は `_trash/` のみではなく、追跡可能な `Waste/` にも置く。
 - pure zellij は保持するが、ユーザー向け既定コマンドには使わない。理由は実機で「CLI未起動・初動未注入」が継続しているため。
+- pure zellij の本文配送は multiplexer 注入でなく file-based bootstrap に寄せる。理由は upstream の inbox 設計が「本文はファイル、multiplexer は起床通知のみ」であり、現状の focus 依存注入は agent 取り違えを起こしているため。
 
 ## Outcomes & Retrospective
-- 進行中。次段で `shutsujin_departure.sh` / `README_ja.md` を上流ベースへ寄せつつ、必要なら pure zellij を別実験系として継続検証する。
+- 進行中。次段は `scripts/zellij_agent_bootstrap.sh` の実機確認と、必要なら Gemini 初回 trust/high-demand の完全自動化を pane 内に閉じて解決する。

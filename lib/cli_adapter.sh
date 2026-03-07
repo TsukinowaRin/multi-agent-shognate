@@ -6,6 +6,7 @@
 #   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "gemini" | "localapi"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
 #   build_cli_command_with_type(agent_id, cli_type) → 指定CLIでの完全なコマンド文字列
+#   build_cli_command_with_startup_prompt(agent_id, cli_type, prompt) → 初回プロンプト付き完全コマンド
 #   get_role_instruction_file(agent_id)     → 役職共通指示書パス
 #   get_instruction_file(agent_id [,cli_type]) → 指示書パス
 #   validate_cli_availability(cli_type)     → 0=OK, 1=NG
@@ -245,6 +246,34 @@ build_cli_command_with_type() {
             ;;
         *)
             echo "claude --dangerously-skip-permissions"
+            ;;
+    esac
+}
+
+# build_cli_command_with_startup_prompt(agent_id, cli_type, prompt)
+# 対話CLIを起動しつつ、対応CLIには初回プロンプトを起動引数で渡す。
+# pure zellij では外側のアクティブペイン注入を避けるため、agent 自身の起動コマンドへ畳み込む。
+build_cli_command_with_startup_prompt() {
+    local agent_id="$1"
+    local cli_type="${2:-$(get_cli_type "$agent_id")}"
+    local prompt="${3:-}"
+    local base_cmd
+
+    base_cmd="$(build_cli_command_with_type "$agent_id" "$cli_type")"
+    if [[ -z "$prompt" ]]; then
+        echo "$base_cmd"
+        return 0
+    fi
+
+    case "$cli_type" in
+        gemini)
+            printf '%s -i %q\n' "$base_cmd" "$prompt"
+            ;;
+        codex|claude)
+            printf '%s %q\n' "$base_cmd" "$prompt"
+            ;;
+        *)
+            echo "$base_cmd"
             ;;
     esac
 }

@@ -107,6 +107,7 @@
 !scripts/goza_zellij_pure.sh
 !scripts/goza_hybrid.sh
 !scripts/goza_tmux.sh
+!scripts/zellij_agent_bootstrap.sh
 !scripts/configure_agents.sh
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh

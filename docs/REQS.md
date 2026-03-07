@@ -3,6 +3,21 @@
 最終更新: 2026-03-07
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-07: pure zellij の dedicated bootstrap 化）
+### 要求
+1. `pure zellij` の初動は、外側スクリプトがアクティブペインへ平文注入する方式をやめる。
+2. 各 pane は `AGENT_ID` 固定の専用 runner で起動し、agent ごとの bootstrap file を読んで自律起動する。
+3. 初回命令の本文は `tmux/zellij write-chars` ではなく、pane 内の CLI 起動引数で渡せるものは引数に畳み込む。
+4. 元リポジトリと同様に「本文は file-based、multiplexer は起床または表示だけ」という原則へ寄せる。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats`
+   - 期待結果: pure zellij が `dedicated runner + bootstrap file` 前提のテストで PASS する。
+2. コマンド: `rg -n "prepare_pure_zellij_bootstrap_files|zellij_agent_bootstrap.sh|build_cli_command_with_startup_prompt" scripts/goza_no_ma.sh scripts/zellij_agent_bootstrap.sh lib/cli_adapter.sh`
+   - 期待結果: 外側注入ではなく agent-local bootstrap の経路が実装されている。
+3. コマンド: `rg -n "bootstrap delivered agent=\\$agent cli=\\$cli_type mode=send-line" scripts/goza_no_ma.sh`
+   - 期待結果: pure zellij の bootstrap 本文を外側 send-line する旧ログが残っていない。
+
 ## 追補（2026-03-07: 上流完全クローン基準 + Waste退避）
 ### 要求
 1. 上流 `yohey-w/multi-agent-shogun` をワークスペース内へ完全クローンし、それを基準に再実装する。

@@ -1696,3 +1696,31 @@
   1. 実機で `shogun=claude/codex/gemini` を切り替え、未設定時に pane 表示と挙動が最小思考へ寄るか確認する。
   2. 必要なら `README.md` に `shogun` 既定値と `Kilo CLI` 方針を追記する。
 - Links: lib/cli_adapter.sh, scripts/sync_gemini_settings.py, scripts/configure_agents.sh
+
+### 2026-03-07 20:55 (JST)
+- Goal: `OpenCode` / `Kilo` を local-AI 向け CLI として正式対応し、`config/settings.yaml` から role 設定と shared provider 設定を保存できるようにする。
+- Changes (files):
+  - `lib/cli_adapter.sh` — `opencode` / `kilo` を許可CLIへ追加し、`--model provider/model`、`--prompt`、指示書解決、可用性判定、表示名を実装。
+  - `scripts/build_instructions.sh` / `scripts/ensure_generated_instructions.sh` — `opencode-*` / `kilo-*` / `gunshi` 生成対象を追加。
+  - `instructions/cli_specific/opencode_tools.md` / `instructions/cli_specific/kilo_tools.md` — CLI固有の運用メモを追加。
+  - `scripts/sync_opencode_config.py` — `config/settings.yaml` の `cli.opencode_like` から project-level `opencode.json` と `queue/runtime/opencode_like_config_summary.tsv` を生成する同期スクリプトを追加。
+  - `scripts/configure_agents.sh` — `opencode` / `kilo` を CUI 選択肢へ追加し、`provider/base_url/api_key_env/instructions` を `cli.opencode_like` として保存できるよう更新。空フィールド崩れで `Gemini thinking_level` が誤って `reasoning_effort` に入る不具合も修正。
+  - `shutsujin_departure.sh` / `scripts/shutsujin_zellij.sh` / `scripts/goza_no_ma.sh` — 起動前に `sync_opencode_config.py` を呼ぶよう更新。
+  - `first_setup.sh` — `OpenCode` / `Kilo` の存在確認と導入案内を追加。
+  - `tests/unit/test_cli_adapter.bats` / `tests/unit/test_sync_opencode_config.bats` / `tests/unit/test_configure_agents.bats` — CLI 対応、`opencode.json` 生成、CUI 保存の回帰テストを追加。
+  - `docs/REQS.md` / `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` — 今回の仕様と受け入れ条件を追記。
+- Commands + Results:
+  - `bash -n scripts/configure_agents.sh lib/cli_adapter.sh scripts/build_instructions.sh scripts/ensure_generated_instructions.sh scripts/goza_no_ma.sh scripts/shutsujin_zellij.sh shutsujin_departure.sh first_setup.sh` → PASS
+  - `python3 -m py_compile scripts/sync_opencode_config.py` → PASS
+  - `bash scripts/build_instructions.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_configure_agents.bats tests/unit/test_goza_wrapper_modes.bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_zellij_bootstrap_delivery.bats` → `1..127` PASS
+  - `bash scripts/configure_agents.sh` に対して入力を流し、`cli.opencode_like` 保存と `opencode.json` 生成を手動確認 → PASS
+- Decisions / Assumptions:
+  - `OpenCode` と `Kilo` は upstream 実装系が同じため、project provider 設定は `opencode.json` に一本化する。
+  - local provider は role ごとでなく workspace 共有設定とし、role ごとの差は `type/model` だけに絞る。
+  - `OpenCode/Kilo` の思考制御は provider/model 依存が強いため、この段では抽象 thinking API は持たず、provider config と model 指定までを正式対応とする。
+- Next:
+  1. `README.md` / `README_ja.md` に `OpenCode/Kilo` の設定例と local provider 例（Ollama/LM Studio/OpenAI-compatible）を追記する。
+  2. 実機で `opencode` / `kilo` 実体が入った状態で `goza_zellij_pure.sh` / `goza_zellij.sh` の起動確認を行う。
+  3. 必要なら `Kilo/OpenCode` 用に provider別プリセット（`ollama`, `lmstudio`, `openai-compatible`）を CUI へ追加する。
+- Links: lib/cli_adapter.sh, scripts/configure_agents.sh, scripts/sync_opencode_config.py, tests/unit/test_configure_agents.bats

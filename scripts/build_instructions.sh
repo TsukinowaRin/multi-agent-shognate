@@ -77,6 +77,12 @@ EOFYAML
         localapi)
             cat "$PARTS_DIR/cli_specific/localapi_tools.md" >> "$output_path"
             ;;
+        opencode)
+            cat "$PARTS_DIR/cli_specific/opencode_tools.md" >> "$output_path"
+            ;;
+        kilo)
+            cat "$PARTS_DIR/cli_specific/kilo_tools.md" >> "$output_path"
+            ;;
     esac
 
     echo "  ✅ Created: $output_filename"
@@ -117,6 +123,18 @@ build_instruction_file "localapi" "shogun" "localapi-shogun.md"
 build_instruction_file "localapi" "karo" "localapi-karo.md"
 build_instruction_file "localapi" "ashigaru" "localapi-ashigaru.md"
 build_instruction_file "localapi" "gunshi" "localapi-gunshi.md"
+
+# Build OpenCode instruction files
+build_instruction_file "opencode" "shogun" "opencode-shogun.md"
+build_instruction_file "opencode" "karo" "opencode-karo.md"
+build_instruction_file "opencode" "ashigaru" "opencode-ashigaru.md"
+build_instruction_file "opencode" "gunshi" "opencode-gunshi.md"
+
+# Build Kilo instruction files
+build_instruction_file "kilo" "shogun" "kilo-shogun.md"
+build_instruction_file "kilo" "karo" "kilo-karo.md"
+build_instruction_file "kilo" "ashigaru" "kilo-ashigaru.md"
+build_instruction_file "kilo" "gunshi" "kilo-gunshi.md"
 
 # ============================================================
 # AGENTS.md generation (Codex auto-load file)

@@ -459,7 +459,7 @@ if [ "$NEED_CLAUDE_INSTALL" = true ]; then
 fi
 
 # ============================================================
-# STEP 5.5: 追加CLIチェック（Codex / Gemini）
+# STEP 5.5: 追加CLIチェック（Codex / Gemini / OpenCode / Kilo）
 # ============================================================
 log_step "STEP 5.5: 追加CLIチェック"
 
@@ -482,6 +482,26 @@ else
     log_info "Gemini CLI は未インストールです（Gemini運用時のみ導入）"
     log_info "  Gemini CLI を導入し、'gemini' または 'gemini-cli' を PATH に通してください"
     RESULTS+=("Gemini CLI: optional (not installed)")
+fi
+
+if command -v opencode &> /dev/null; then
+    OPENCODE_VERSION=$(opencode --version 2>/dev/null || echo "unknown")
+    log_success "OpenCode CLI がインストール済みです ($OPENCODE_VERSION)"
+    RESULTS+=("OpenCode CLI: OK ($OPENCODE_VERSION)")
+else
+    log_info "OpenCode CLI は未インストールです（OpenCode運用時のみ導入）"
+    log_info "  例: npm install -g opencode-ai"
+    RESULTS+=("OpenCode CLI: optional (not installed)")
+fi
+
+if command -v kilo &> /dev/null; then
+    KILO_VERSION=$(kilo --version 2>/dev/null || echo "unknown")
+    log_success "Kilo CLI がインストール済みです ($KILO_VERSION)"
+    RESULTS+=("Kilo CLI: OK ($KILO_VERSION)")
+else
+    log_info "Kilo CLI は未インストールです（Kilo運用時のみ導入）"
+    log_info "  例: npm install -g @kilocode/cli"
+    RESULTS+=("Kilo CLI: optional (not installed)")
 fi
 
 # ============================================================

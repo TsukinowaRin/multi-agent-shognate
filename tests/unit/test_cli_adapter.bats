@@ -235,6 +235,30 @@ cli:
   commands:
     localapi: "python3 scripts/localapi_repl.py"
 YAML
+
+    # opencode settings
+    cat > "${TEST_TMP}/settings_opencode.yaml" << 'YAML'
+cli:
+  default: opencode
+  agents:
+    shogun:
+      type: opencode
+      model: ollama/qwen3-coder:30b
+  commands:
+    opencode: "opencode"
+YAML
+
+    # kilo settings
+    cat > "${TEST_TMP}/settings_kilo.yaml" << 'YAML'
+cli:
+  default: kilo
+  agents:
+    gunshi:
+      type: kilo
+      model: lmstudio/codellama-7b.Q4_0.gguf
+  commands:
+    kilo: "kilo"
+YAML
 }
 
 teardown() {
@@ -330,6 +354,18 @@ load_adapter_with() {
     load_adapter_with "${TEST_TMP}/settings_localapi.yaml"
     result=$(get_cli_type "ashigaru6")
     [ "$result" = "localapi" ]
+}
+
+@test "get_cli_type: opencode設定 shogun → opencode" {
+    load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
+    result=$(get_cli_type "shogun")
+    [ "$result" = "opencode" ]
+}
+
+@test "get_cli_type: kilo設定 gunshi → kilo" {
+    load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
+    result=$(get_cli_type "gunshi")
+    [ "$result" = "kilo" ]
 }
 
 @test "get_cli_type: 未定義agent → default継承" {
@@ -534,6 +570,18 @@ SH
     [[ "$result" == *"LOCALAI_MODEL=qwen2.5-coder"* ]]
 }
 
+@test "build_cli_command: opencode + provider/model → opencode --model ..." {
+    load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "opencode --model ollama/qwen3-coder:30b" ]
+}
+
+@test "build_cli_command: kilo + provider/model → kilo --model ..." {
+    load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
+    result=$(build_cli_command "gunshi")
+    [ "$result" = "kilo --model lmstudio/codellama-7b.Q4_0.gguf" ]
+}
+
 @test "build_cli_command_with_startup_prompt: codex は positional prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
     result=$(build_cli_command_with_startup_prompt "shogun" "codex" "ready:shogun")
@@ -550,6 +598,18 @@ SH
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     result=$(build_cli_command_with_startup_prompt "ashigaru2" "gemini" "ready:ashigaru2")
     [ "$result" = "gemini --yolo -i ready:ashigaru2" ]
+}
+
+@test "build_cli_command_with_startup_prompt: opencode は --prompt を付与する" {
+    load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
+    result=$(build_cli_command_with_startup_prompt "shogun" "opencode" "ready:shogun")
+    [ "$result" = "opencode --model ollama/qwen3-coder:30b --prompt ready:shogun" ]
+}
+
+@test "build_cli_command_with_startup_prompt: kilo は --prompt を付与する" {
+    load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
+    result=$(build_cli_command_with_startup_prompt "gunshi" "kilo" "ready:gunshi")
+    [ "$result" = "kilo --model lmstudio/codellama-7b.Q4_0.gguf --prompt ready:gunshi" ]
 }
 
 @test "build_cli_command: cliセクションなし → claude フォールバック" {
@@ -622,6 +682,18 @@ SH
     [ "$result" = "instructions/generated/localapi-ashigaru.md" ]
 }
 
+@test "get_instruction_file: shogun + opencode → instructions/generated/opencode-shogun.md" {
+    load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
+    result=$(get_instruction_file "shogun")
+    [ "$result" = "instructions/generated/opencode-shogun.md" ]
+}
+
+@test "get_instruction_file: gunshi + kilo → instructions/generated/kilo-gunshi.md" {
+    load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
+    result=$(get_instruction_file "gunshi")
+    [ "$result" = "instructions/generated/kilo-gunshi.md" ]
+}
+
 @test "get_instruction_file: cli_type引数で明示指定 (codex)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_instruction_file "shogun" "codex")
@@ -660,6 +732,14 @@ SH
     [ "$(get_instruction_file shogun localapi)" = "instructions/generated/localapi-shogun.md" ]
     [ "$(get_instruction_file karo localapi)" = "instructions/generated/localapi-karo.md" ]
     [ "$(get_instruction_file ashigaru6 localapi)" = "instructions/generated/localapi-ashigaru.md" ]
+    # opencode
+    [ "$(get_instruction_file shogun opencode)" = "instructions/generated/opencode-shogun.md" ]
+    [ "$(get_instruction_file karo opencode)" = "instructions/generated/opencode-karo.md" ]
+    [ "$(get_instruction_file ashigaru1 opencode)" = "instructions/generated/opencode-ashigaru.md" ]
+    # kilo
+    [ "$(get_instruction_file shogun kilo)" = "instructions/generated/kilo-shogun.md" ]
+    [ "$(get_instruction_file gunshi kilo)" = "instructions/generated/kilo-gunshi.md" ]
+    [ "$(get_instruction_file ashigaru1 kilo)" = "instructions/generated/kilo-ashigaru.md" ]
 }
 
 @test "get_instruction_file: 不明なagent_id → 空文字 + return 1" {
@@ -751,6 +831,24 @@ SH
     [ "$status" -eq 0 ]
 }
 
+@test "validate_cli_availability: opencode mock (PATH操作)" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    mkdir -p "${TEST_TMP}/bin"
+    echo '#!/bin/bash' > "${TEST_TMP}/bin/opencode"
+    chmod +x "${TEST_TMP}/bin/opencode"
+    PATH="${TEST_TMP}/bin:$PATH" run validate_cli_availability "opencode"
+    [ "$status" -eq 0 ]
+}
+
+@test "validate_cli_availability: kilo mock (PATH操作)" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    mkdir -p "${TEST_TMP}/bin"
+    echo '#!/bin/bash' > "${TEST_TMP}/bin/kilo"
+    chmod +x "${TEST_TMP}/bin/kilo"
+    PATH="${TEST_TMP}/bin:$PATH" run validate_cli_availability "kilo"
+    [ "$status" -eq 0 ]
+}
+
 @test "validate_cli_availability: codex未インストール → 1 + エラーメッセージ" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     # PATHからcodexを除外（空PATHは危険なのでminimal PATHを設定）
@@ -771,6 +869,20 @@ SH
     PATH="/usr/bin:/bin" run validate_cli_availability "gemini"
     [ "$status" -eq 1 ]
     [[ "$output" == *"Gemini CLI not found"* ]]
+}
+
+@test "validate_cli_availability: opencode未インストール → 1 + エラーメッセージ" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    PATH="/usr/bin:/bin" run validate_cli_availability "opencode"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"OpenCode CLI not found"* ]]
+}
+
+@test "validate_cli_availability: kilo未インストール → 1 + エラーメッセージ" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    PATH="/usr/bin:/bin" run validate_cli_availability "kilo"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Kilo CLI not found"* ]]
 }
 
 # =============================================================================

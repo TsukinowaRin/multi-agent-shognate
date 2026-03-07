@@ -3,7 +3,7 @@
 # Multi-CLI統合設計書 (reports/design_multi_cli_support.md) §2.2 準拠
 #
 # 提供関数:
-#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "gemini" | "localapi"
+#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "gemini" | "localapi" | "opencode" | "kilo"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
 #   build_cli_command_with_type(agent_id, cli_type) → 指定CLIでの完全なコマンド文字列
 #   build_cli_command_with_startup_prompt(agent_id, cli_type, prompt) → 初回プロンプト付き完全コマンド
@@ -23,7 +23,7 @@ if [[ ! -x "$CLI_ADAPTER_PYTHON" ]]; then
 fi
 
 # 許可されたCLI種別
-CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi gemini localapi"
+CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi gemini localapi opencode kilo"
 
 # --- 内部ヘルパー ---
 
@@ -264,18 +264,18 @@ try:
         print('claude'); sys.exit(0)
     agents = cli.get('agents', {})
     if not isinstance(agents, dict):
-        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','gemini','localapi') else 'claude')
+        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','gemini','localapi','opencode','kilo') else 'claude')
         sys.exit(0)
     agent_cfg = agents.get('${agent_id}')
     if isinstance(agent_cfg, dict):
         t = agent_cfg.get('type', '')
-        if t in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi'):
+        if t in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi', 'opencode', 'kilo'):
             print(t); sys.exit(0)
     elif isinstance(agent_cfg, str):
-        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi'):
+        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi', 'opencode', 'kilo'):
             print(agent_cfg); sys.exit(0)
     default = cli.get('default', 'claude')
-    if default in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi'):
+    if default in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi', 'opencode', 'kilo'):
         print(default)
     else:
         print('claude', file=sys.stderr)
@@ -392,6 +392,22 @@ build_cli_command_with_type() {
             fi
             echo "$localapi_cmd"
             ;;
+        opencode)
+            local opencode_cmd
+            opencode_cmd=$(_cli_adapter_read_yaml "cli.commands.opencode" "opencode")
+            if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
+                opencode_cmd="$opencode_cmd --model $configured_model"
+            fi
+            echo "$opencode_cmd"
+            ;;
+        kilo)
+            local kilo_cmd
+            kilo_cmd=$(_cli_adapter_read_yaml "cli.commands.kilo" "kilo")
+            if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
+                kilo_cmd="$kilo_cmd --model $configured_model"
+            fi
+            echo "$kilo_cmd"
+            ;;
         *)
             echo "claude --dangerously-skip-permissions"
             ;;
@@ -417,6 +433,9 @@ build_cli_command_with_startup_prompt() {
         gemini)
             printf '%s -i %q\n' "$base_cmd" "$prompt"
             ;;
+        opencode|kilo)
+            printf '%s --prompt %q\n' "$base_cmd" "$prompt"
+            ;;
         codex|claude)
             printf '%s %q\n' "$base_cmd" "$prompt"
             ;;
@@ -430,7 +449,7 @@ build_cli_command_with_startup_prompt() {
 # 現在の環境で利用可能なCLIを優先順で1つ返す
 get_first_available_cli() {
     local cli_type
-    for cli_type in codex gemini localapi claude copilot kimi; do
+    for cli_type in codex gemini opencode kilo localapi claude copilot kimi; do
         case "$cli_type" in
             claude)
                 command -v claude >/dev/null 2>&1 && { echo "claude"; return 0; }
@@ -449,6 +468,12 @@ get_first_available_cli() {
                 ;;
             localapi)
                 command -v python3 >/dev/null 2>&1 && { echo "localapi"; return 0; }
+                ;;
+            opencode)
+                command -v opencode >/dev/null 2>&1 && { echo "opencode"; return 0; }
+                ;;
+            kilo)
+                command -v kilo >/dev/null 2>&1 && { echo "kilo"; return 0; }
                 ;;
         esac
     done
@@ -523,6 +548,8 @@ get_instruction_file() {
         kimi) echo "instructions/generated/kimi-${role}.md" ;;
         gemini) echo "instructions/generated/gemini-${role}.md" ;;
         localapi) echo "instructions/generated/localapi-${role}.md" ;;
+        opencode) echo "instructions/generated/opencode-${role}.md" ;;
+        kilo) echo "instructions/generated/kilo-${role}.md" ;;
         *) echo "instructions/generated/${role}.md" ;;
     esac
 }
@@ -568,6 +595,18 @@ validate_cli_availability() {
                 echo "[ERROR] python3 not found. localapi mode requires python3." >&2
                 return 1
             fi
+            ;;
+        opencode)
+            command -v opencode &>/dev/null || {
+                echo "[ERROR] OpenCode CLI not found. Install with: npm install -g opencode-ai" >&2
+                return 1
+            }
+            ;;
+        kilo)
+            command -v kilo &>/dev/null || {
+                echo "[ERROR] Kilo CLI not found. Install with: npm install -g @kilocode/cli" >&2
+                return 1
+            }
             ;;
         *)
             echo "[ERROR] Unknown CLI type: '$cli_type'. Allowed: $CLI_ADAPTER_ALLOWED_CLIS" >&2
@@ -627,6 +666,9 @@ get_agent_model() {
                 *) echo "local-model" ;;
             esac
             ;;
+        opencode|kilo)
+            echo "auto"
+            ;;
         *)
             # Claude Code/Codex/Copilot用デフォルトモデル
             case "$agent_id" in
@@ -664,6 +706,7 @@ get_model_display_name() {
         *k2.5*|*kimi*)          short="Kimi" ;;
         *gemini*)               short="Gemini" ;;
         *local*)                short="Local" ;;
+        *qwen*|*ollama*|*lmstudio*) short="Local" ;;
         *)
             # CLI種別から推測
             case "$cli_type" in
@@ -672,6 +715,8 @@ get_model_display_name() {
                 kimi)    short="Kimi" ;;
                 gemini)  short="Gemini" ;;
                 localapi) short="Local" ;;
+                opencode) short="OpenCode" ;;
+                kilo) short="Kilo" ;;
                 *)       short="$model" ;;
             esac
             ;;

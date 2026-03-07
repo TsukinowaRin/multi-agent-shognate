@@ -40,6 +40,8 @@
 !instructions/cli_specific/kimi_tools.md
 !instructions/cli_specific/gemini_tools.md
 !instructions/cli_specific/localapi_tools.md
+!instructions/cli_specific/opencode_tools.md
+!instructions/cli_specific/kilo_tools.md
 
 # Multi-CLI: Build template parts (roles, common sections)
 !instructions/roles/
@@ -110,6 +112,7 @@
 !scripts/zellij_agent_bootstrap.sh
 !scripts/configure_agents.sh
 !scripts/sync_gemini_settings.py
+!scripts/sync_opencode_config.py
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh
 !scripts/seo_qc.sh

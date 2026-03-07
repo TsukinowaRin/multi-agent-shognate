@@ -31,6 +31,7 @@
 - 2026-03-07: pure zellij の bootstrap を「外側のアクティブペイン注入」から「paneごとの dedicated runner + bootstrap file」へ切り替えた。
 - 2026-03-07: `configure_agents.sh` を拡張し、`gunshi` / `Codex reasoning_effort` / `Gemini thinking_level|thinking_budget` を永続設定できるようにした。
 - 2026-03-07: `scripts/sync_gemini_settings.py` を追加し、workspace `.gemini/settings.json` の `customAliases` へ per-agent Gemini 設定を同期するようにした。
+- 2026-03-07: `OpenCode` / `Kilo` を CLI種別として追加し、`scripts/sync_opencode_config.py` で project-level `opencode.json` を生成、`configure_agents.sh` から shared provider 設定も保存できるようにした。
 
 ## Surprises & Discoveries
 - 上流とこのフォークは merge base を素直に辿れないほど履歴が離れている。
@@ -46,6 +47,7 @@
 - pure zellij の本文配送は multiplexer 注入でなく file-based bootstrap に寄せる。理由は upstream の inbox 設計が「本文はファイル、multiplexer は起床通知のみ」であり、現状の focus 依存注入は agent 取り違えを起こしているため。
 - Gemini の思考設定は CLIフラグ直指定ではなく `.gemini/settings.json` 生成を採用する。理由は公式 schema が `modelConfigs.customAliases` を前提としており、role ごとの恒久設定と相性がよいため。
 - Codex の思考設定は `-c model_reasoning_effort='<value>'` を採用する。理由は現行 CLI が `-c key=value` オーバーライドを正式に受け付けているため。
+- OpenCode と Kilo は同系統の CLI なので、project provider 設定は `opencode.json` へ一本化し、role ごとの差は `config/settings.yaml` の `type/model` に閉じ込める。理由は provider/base URL/API key まで role ごとに持たせるより設定の一貫性が高いため。
 
 ## Outcomes & Retrospective
-- 進行中。次段は `scripts/zellij_agent_bootstrap.sh` の実機確認、`Gemini` 初回 trust/high-demand の完全自動化、および `configure_agents.sh` の README 導線補強。
+- 進行中。次段は `scripts/zellij_agent_bootstrap.sh` の実機確認、`Gemini` 初回 trust/high-demand の完全自動化、および `OpenCode/Kilo` の README 導線補強。

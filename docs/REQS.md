@@ -3,6 +3,29 @@
 最終更新: 2026-03-07
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-07: OpenCode / Kilo CLI 対応）
+### 要求
+1. `OpenCode` と `Kilo CLI` を、このリポジトリの agent CLI として選択・起動できること。
+2. `OpenCode` / `Kilo` は `provider/model` 形式の model 指定を `config/settings.yaml` から受け取り、起動コマンドへ反映できること。
+3. pure `zellij` を含む起動導線で、`OpenCode` / `Kilo` の初回命令は active pane への平文注入ではなく `--prompt` 引数で渡すこと。
+4. `OpenCode` / `Kilo` の project config である `opencode.json` を、このリポジトリから生成できること。
+5. `Kilo CLI` は local model / OpenAI-compatible endpoint の設定を `OpenCode` と同じ `opencode.json` 形式で扱うことを前提にする。
+6. `scripts/configure_agents.sh` から `OpenCode/Kilo` の shared provider 設定（`provider` / `base_url` / `api_key_env` / `instructions`）を保存できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: `opencode` / `kilo` の CLI種別判定、起動コマンド、`--prompt` 付き起動、可用性判定、指示書解決が PASS する。
+2. コマンド: `bash scripts/build_instructions.sh`
+   - 期待結果: `instructions/generated/opencode-*.md` と `instructions/generated/kilo-*.md` が再生成される。
+3. コマンド: `python3 scripts/sync_opencode_config.py`
+   - 期待結果: `config/settings.yaml` に `cli.opencode_like` がある場合、project root の `opencode.json` が生成される。
+4. コマンド: `bats tests/unit/test_sync_opencode_config.bats`
+   - 期待結果: `opencode.json` 生成と skip/noop 条件のテストが PASS する。
+5. コマンド: `bats tests/unit/test_configure_agents.bats`
+   - 期待結果: `configure_agents.sh` が `cli.opencode_like` と `Gemini thinking_level` を崩さず保存できる。
+6. コマンド: `rg -n "opencode|kilo|opencode_like" lib/cli_adapter.sh scripts/configure_agents.sh first_setup.sh`
+   - 期待結果: CLI追加、shared provider 設定UI、初回セットアップ案内がコード上に存在する。
+
 ## 追補（2026-03-07: gunshi設定 + Codex/Gemini思考モード）
 ### 要求
 1. `scripts/configure_agents.sh` で `gunshi` も `shogun/karo/ashigaruN` と同様に設定できること。

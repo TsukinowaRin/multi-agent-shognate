@@ -13,6 +13,7 @@ cd "$ROOT_DIR"
 SETTINGS_PATH="$ROOT_DIR/config/settings.yaml"
 TMP_PATH="$ROOT_DIR/config/settings.yaml.tmp"
 OWNER_MAP_PATH="$ROOT_DIR/queue/runtime/ashigaru_owner.tsv"
+CONFIG_CAPTURE_DELIM=$'\x1f'
 
 TOPOLOGY_ADAPTER_LOADED=false
 if [[ -f "$ROOT_DIR/lib/topology_adapter.sh" ]]; then
@@ -55,6 +56,43 @@ try:
 except Exception:
     value = fallback
 print('' if value is None else value)
+PY
+}
+
+read_current_opencode_like_field() {
+  local field="$1"
+  local fallback="$2"
+  python3 - "$SETTINGS_PATH" "$field" "$fallback" <<'PY'
+import sys, yaml
+path, field, fallback = sys.argv[1:4]
+try:
+    with open(path, encoding='utf-8') as fh:
+        cfg = yaml.safe_load(fh) or {}
+    cli = cfg.get('cli') or {}
+    section = cli.get('opencode_like') or cfg.get('opencode_like') or {}
+    value = section.get(field, fallback) if isinstance(section, dict) else fallback
+except Exception:
+    value = fallback
+print('' if value is None else value)
+PY
+}
+
+read_current_opencode_like_instructions() {
+  python3 - "$SETTINGS_PATH" <<'PY'
+import sys, yaml
+path = sys.argv[1]
+try:
+    with open(path, encoding='utf-8') as fh:
+        cfg = yaml.safe_load(fh) or {}
+    cli = cfg.get('cli') or {}
+    section = cli.get('opencode_like') or cfg.get('opencode_like') or {}
+    items = section.get('instructions') if isinstance(section, dict) else []
+except Exception:
+    items = []
+if isinstance(items, list):
+    print(','.join(str(x) for x in items if isinstance(x, str) and x.strip()))
+else:
+    print('')
 PY
 }
 
@@ -135,6 +173,23 @@ prompt_choice() {
   done
 }
 
+prompt_line() {
+  local prompt="$1"
+  local default_value="${2:-}"
+  local example="${3:-}"
+  local input
+  echo "" >&2
+  echo "$prompt" >&2
+  if [[ -n "$default_value" ]]; then
+    echo "  default: ${default_value}" >&2
+  fi
+  if [[ -n "$example" ]]; then
+    echo "  例: ${example}" >&2
+  fi
+  read -r -p "> " input >&2
+  echo "${input:-$default_value}"
+}
+
 prompt_model() {
   local role="$1"
   local cli="$2"
@@ -143,6 +198,9 @@ prompt_model() {
   echo "" >&2
   echo "${role} の model を入力してください（空なら自動）" >&2
   echo "  cli: ${cli}" >&2
+  if [[ "$cli" == "opencode" || "$cli" == "kilo" ]]; then
+    echo "  例: ollama/qwen3-coder:30b, lmstudio/codellama-7b.Q4_0.gguf, openai/gpt-4.1" >&2
+  fi
   if [[ -n "$default_model" ]]; then
     echo "  default: ${default_model}" >&2
   fi
@@ -160,6 +218,7 @@ default_model_for_cli() {
     gemini) echo "auto" ;;
     kimi) echo "k2.5" ;;
     localapi) echo "local-model" ;;
+    opencode|kilo) echo "auto" ;;
     *) echo "" ;;
   esac
 }
@@ -248,12 +307,68 @@ prompt_gemini_thinking_budget() {
   echo "${input:-$default_budget}"
 }
 
+default_opencode_like_base_url() {
+  local provider="$1"
+  case "$provider" in
+    ollama) echo "http://127.0.0.1:11434/v1" ;;
+    lmstudio|openai-compatible) echo "http://127.0.0.1:1234/v1" ;;
+    *) echo "" ;;
+  esac
+}
+
+default_opencode_like_api_key_env() {
+  local provider="$1"
+  case "$provider" in
+    openai-compatible) echo "LOCALAI_API_KEY" ;;
+    *) echo "" ;;
+  esac
+}
+
+uses_opencode_like_cli() {
+  local cli_type="$1"
+  [[ "$cli_type" == "opencode" || "$cli_type" == "kilo" ]]
+}
+
+emit_opencode_like_yaml() {
+  local provider="$1"
+  local base_url="$2"
+  local api_key_env="$3"
+  local instructions_csv="$4"
+  local item
+
+  if [[ -z "$provider" && -z "$base_url" && -z "$api_key_env" && -z "$instructions_csv" ]]; then
+    return 0
+  fi
+
+  echo "  opencode_like:"
+  if [[ -n "$provider" ]]; then
+    echo "    provider: ${provider}"
+  fi
+  if [[ -n "$base_url" ]]; then
+    echo "    base_url: ${base_url}"
+  fi
+  if [[ -n "$api_key_env" ]]; then
+    echo "    api_key_env: ${api_key_env}"
+  fi
+  if [[ -n "$instructions_csv" ]]; then
+    echo "    instructions:"
+    IFS=',' read -r -a _opencode_instruction_items <<< "$instructions_csv"
+    for item in "${_opencode_instruction_items[@]}"; do
+      item="${item#"${item%%[![:space:]]*}"}"
+      item="${item%"${item##*[![:space:]]}"}"
+      if [[ -n "$item" ]]; then
+        echo "      - ${item}"
+      fi
+    done
+  fi
+}
+
 capture_agent_config() {
   local role="$1"
   local cli_fallback="$2"
   local type model reasoning level budget
 
-  type="$(prompt_choice "${role} の CLI を選択" "$(read_current_agent_field "$role" "type" "$cli_fallback")" "codex" "gemini" "claude" "localapi" "kimi" "copilot")"
+  type="$(prompt_choice "${role} の CLI を選択" "$(read_current_agent_field "$role" "type" "$cli_fallback")" "codex" "gemini" "claude" "localapi" "opencode" "kilo" "kimi" "copilot")"
   model="$(prompt_model "$role" "$type" "$(read_current_agent_field "$role" "model" "$(default_model_for_cli "$type")")")"
   reasoning=""
   level=""
@@ -269,7 +384,12 @@ capture_agent_config() {
       ;;
   esac
 
-  printf '%s\t%s\t%s\t%s\t%s\n' "$type" "$model" "$reasoning" "$level" "$budget"
+  printf '%s%s%s%s%s%s%s%s%s\n' \
+    "$type" "$CONFIG_CAPTURE_DELIM" \
+    "$model" "$CONFIG_CAPTURE_DELIM" \
+    "$reasoning" "$CONFIG_CAPTURE_DELIM" \
+    "$level" "$CONFIG_CAPTURE_DELIM" \
+    "$budget"
 }
 
 emit_agent_yaml() {
@@ -315,7 +435,7 @@ echo "設定ファイル: $SETTINGS_PATH" >&2
 
 mux="$(prompt_choice "multiplexer.default を選択" "$default_mux" "zellij" "tmux")"
 template="$(prompt_choice "startup.template を選択" "$default_template" "shogun_only" "goza_room")"
-cli_default="$(prompt_choice "cli.default を選択" "$default_cli" "codex" "gemini" "claude" "localapi" "kimi" "copilot")"
+cli_default="$(prompt_choice "cli.default を選択" "$default_cli" "codex" "gemini" "claude" "localapi" "opencode" "kilo" "kimi" "copilot")"
 
 echo "" >&2
 read -r -p "足軽人数を入力 (1以上) [default: $default_count]: " count_input
@@ -325,15 +445,52 @@ if ! [[ "$ashigaru_count" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-IFS=$'\t' read -r SHOGUN_CLI SHOGUN_MODEL SHOGUN_REASONING SHOGUN_GEMINI_LEVEL SHOGUN_GEMINI_BUDGET <<< "$(capture_agent_config "shogun" "$cli_default")"
-IFS=$'\t' read -r GUNSHI_CLI GUNSHI_MODEL GUNSHI_REASONING GUNSHI_GEMINI_LEVEL GUNSHI_GEMINI_BUDGET <<< "$(capture_agent_config "gunshi" "$cli_default")"
-IFS=$'\t' read -r KARO_CLI KARO_MODEL KARO_REASONING KARO_GEMINI_LEVEL KARO_GEMINI_BUDGET <<< "$(capture_agent_config "karo" "$cli_default")"
+IFS="$CONFIG_CAPTURE_DELIM" read -r SHOGUN_CLI SHOGUN_MODEL SHOGUN_REASONING SHOGUN_GEMINI_LEVEL SHOGUN_GEMINI_BUDGET <<< "$(capture_agent_config "shogun" "$cli_default")"
+IFS="$CONFIG_CAPTURE_DELIM" read -r GUNSHI_CLI GUNSHI_MODEL GUNSHI_REASONING GUNSHI_GEMINI_LEVEL GUNSHI_GEMINI_BUDGET <<< "$(capture_agent_config "gunshi" "$cli_default")"
+IFS="$CONFIG_CAPTURE_DELIM" read -r KARO_CLI KARO_MODEL KARO_REASONING KARO_GEMINI_LEVEL KARO_GEMINI_BUDGET <<< "$(capture_agent_config "karo" "$cli_default")"
 
 declare -a ASHI_CLI ASHI_MODEL ASHI_REASONING ASHI_GEMINI_LEVEL ASHI_GEMINI_BUDGET
 for ((i=1; i<=ashigaru_count; i++)); do
   role="ashigaru${i}"
-  IFS=$'\t' read -r ASHI_CLI[$i] ASHI_MODEL[$i] ASHI_REASONING[$i] ASHI_GEMINI_LEVEL[$i] ASHI_GEMINI_BUDGET[$i] <<< "$(capture_agent_config "$role" "$cli_default")"
+  IFS="$CONFIG_CAPTURE_DELIM" read -r ASHI_CLI[$i] ASHI_MODEL[$i] ASHI_REASONING[$i] ASHI_GEMINI_LEVEL[$i] ASHI_GEMINI_BUDGET[$i] <<< "$(capture_agent_config "$role" "$cli_default")"
 done
+
+USES_OPENCODE_LIKE=false
+if uses_opencode_like_cli "$cli_default" || \
+   uses_opencode_like_cli "$SHOGUN_CLI" || \
+   uses_opencode_like_cli "$GUNSHI_CLI" || \
+   uses_opencode_like_cli "$KARO_CLI"; then
+  USES_OPENCODE_LIKE=true
+fi
+if [[ "$USES_OPENCODE_LIKE" == false ]]; then
+  for ((i=1; i<=ashigaru_count; i++)); do
+    if uses_opencode_like_cli "${ASHI_CLI[$i]}"; then
+      USES_OPENCODE_LIKE=true
+      break
+    fi
+  done
+fi
+
+CURRENT_OPENCODE_PROVIDER="$(read_current_opencode_like_field "provider" "")"
+CURRENT_OPENCODE_BASE_URL="$(read_current_opencode_like_field "base_url" "")"
+CURRENT_OPENCODE_API_KEY_ENV="$(read_current_opencode_like_field "api_key_env" "")"
+CURRENT_OPENCODE_INSTRUCTIONS="$(read_current_opencode_like_instructions)"
+
+ENABLE_OPENCODE_PROVIDER_CONFIG="no"
+OPENCODE_PROVIDER=""
+OPENCODE_BASE_URL=""
+OPENCODE_API_KEY_ENV=""
+OPENCODE_INSTRUCTIONS=""
+
+if [[ "$USES_OPENCODE_LIKE" == true || -n "$CURRENT_OPENCODE_PROVIDER$CURRENT_OPENCODE_BASE_URL$CURRENT_OPENCODE_API_KEY_ENV$CURRENT_OPENCODE_INSTRUCTIONS" ]]; then
+  ENABLE_OPENCODE_PROVIDER_CONFIG="$(prompt_choice "OpenCode/Kilo の project provider 設定を保存するか" "$( [[ -n "$CURRENT_OPENCODE_PROVIDER$CURRENT_OPENCODE_BASE_URL$CURRENT_OPENCODE_API_KEY_ENV$CURRENT_OPENCODE_INSTRUCTIONS" ]] && echo yes || echo no )" "yes" "no")"
+  if [[ "$ENABLE_OPENCODE_PROVIDER_CONFIG" == "yes" ]]; then
+    OPENCODE_PROVIDER="$(prompt_line "provider ID を入力してください" "${CURRENT_OPENCODE_PROVIDER:-openai-compatible}" "ollama / lmstudio / openai-compatible")"
+    OPENCODE_BASE_URL="$(prompt_line "base_url を入力してください（空で provider 既定値）" "${CURRENT_OPENCODE_BASE_URL:-$(default_opencode_like_base_url "$OPENCODE_PROVIDER")}" "http://127.0.0.1:11434/v1")"
+    OPENCODE_API_KEY_ENV="$(prompt_line "api_key_env を入力してください（不要なら空）" "${CURRENT_OPENCODE_API_KEY_ENV:-$(default_opencode_like_api_key_env "$OPENCODE_PROVIDER")}" "LOCALAI_API_KEY")"
+    OPENCODE_INSTRUCTIONS="$(prompt_line "追加 instructions をカンマ区切りで入力してください（空で省略）" "${CURRENT_OPENCODE_INSTRUCTIONS:-AGENTS.md}" "AGENTS.md,instructions/shogun.md")"
+  fi
+fi
 
 {
   echo "language: $default_language"
@@ -359,6 +516,9 @@ done
   echo "  commands:"
   echo "    gemini: \"gemini --yolo\""
   echo "    localapi: \"python3 scripts/localapi_repl.py\""
+  echo "    opencode: \"opencode\""
+  echo "    kilo: \"kilo\""
+  emit_opencode_like_yaml "$OPENCODE_PROVIDER" "$OPENCODE_BASE_URL" "$OPENCODE_API_KEY_ENV" "$OPENCODE_INSTRUCTIONS"
 } > "$TMP_PATH"
 
 mv "$TMP_PATH" "$SETTINGS_PATH"

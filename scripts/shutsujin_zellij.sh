@@ -90,6 +90,16 @@ sync_gemini_workspace_settings() {
   fi
 }
 
+sync_opencode_like_workspace_settings() {
+  local sync_script="$SCRIPT_DIR/scripts/sync_opencode_config.py"
+  if [ ! -x "$sync_script" ]; then
+    return 0
+  fi
+  if ! python3 "$sync_script" >/dev/null 2>&1; then
+    log_info "⚠️  OpenCode/Kilo project config の同期に失敗しました。既存 opencode.json を使用して継続します"
+  fi
+}
+
 ensure_generated_instructions() {
   local ensure_script="$SCRIPT_DIR/scripts/ensure_generated_instructions.sh"
   if [ ! -x "$ensure_script" ]; then
@@ -761,6 +771,7 @@ reporting_chain_directive() {
 
 ensure_generated_instructions
 sync_gemini_workspace_settings
+sync_opencode_like_workspace_settings
 
 log_war "⚔️ zellij セッションを構築中（1エージェント=1セッション）"
 # 非アクティブ化された管理セッションは削除して配備一覧を一致させる

@@ -142,6 +142,35 @@ auto_retry_gemini_busy_tmux() {
     return 0
 }
 
+auto_skip_codex_update_prompt_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local i
+    local pane_text
+
+    [ "$cli_type" = "codex" ] || return 0
+
+    for i in {1..20}; do
+        pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
+        if echo "$pane_text" | grep -qiE "Update available|Update now|Skip until next version|Press enter to continue"; then
+            tmux send-keys -t "$pane_target" "2"
+            tmux send-keys -t "$pane_target" Enter
+            sleep 2
+            pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
+            if echo "$pane_text" | grep -qiE "Update available|Update now|Skip until next version|Press enter to continue"; then
+                tmux send-keys -t "$pane_target" Down
+                tmux send-keys -t "$pane_target" Enter
+            fi
+            log_info "  └─ ${agent_id}: Codex update prompt を自動スキップ"
+            sleep 1
+            return 0
+        fi
+        sleep 1
+    done
+    return 0
+}
+
 # ブートストラップメッセージを事前にファイルへ書き出す
 # 各エージェントが自分専用のファイルを読むことで誤送信を根本的に排除
 generate_bootstrap_file() {
@@ -1162,22 +1191,23 @@ if [ "$SETUP_ONLY" = false ]; then
         log_info "  └─ 足軽（平時の陣: ${_ashigaru_launched}名）"
     fi
 
-    # Gemini初回 trust prompt 自動承認 + 高負荷応答自動再試行（並列実行）
+    # Gemini / Codex の初回プリフライトを自動処理（並列実行）
     _gemini_pids=()
-    _gemini_gate_handler() {
+    _cli_gate_handler() {
         local _pane="$1" _agent="$2" _cli="$3"
+        auto_skip_codex_update_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_gemini_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_retry_gemini_busy_tmux "$_pane" "$_agent" "$_cli"
     }
-    _gemini_gate_handler "shogun:main" "shogun" "$_shogun_cli_type" &
+    _cli_gate_handler "shogun:main" "shogun" "$_shogun_cli_type" &
     _gemini_pids+=($!)
-    _gemini_gate_handler "gunshi:main" "gunshi" "$_gunshi_cli_type" &
+    _cli_gate_handler "gunshi:main" "gunshi" "$_gunshi_cli_type" &
     _gemini_pids+=($!)
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
         p=$((PANE_BASE + _idx))
         _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        _gemini_gate_handler "multiagent:agents.${p}" "$_agent" "$_pane_cli" &
+        _cli_gate_handler "multiagent:agents.${p}" "$_agent" "$_pane_cli" &
         _gemini_pids+=($!)
     done
     for _pid in "${_gemini_pids[@]}"; do

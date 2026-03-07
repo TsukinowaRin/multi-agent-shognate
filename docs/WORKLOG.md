@@ -1594,3 +1594,25 @@
   1. ユーザー実機で `bash scripts/goza_zellij.sh` を再実行し、タイトルが `tmux-core` になることを確認する
   2. その上で Codex / Claude / Gemini の起動内容を capture-pane で確認する
 - Links: scripts/goza_no_ma.sh, scripts/goza_zellij_pure.sh
+
+### 2026-03-07 13:40 (JST)
+- Goal: pure zellij を native に戻し、`Waiting to run` を前提にしない shell pane 起動へ切り替える。あわせて Codex updater で bootstrap が止まる問題を抑止する。
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — pure zellij の pane を command pane ではなく shell pane にし、pane ごとに `launch command` を send-line して CLI を起動する方式へ変更。Gemini に加えて Codex preflight を追加。
+  - `lib/cli_adapter.sh` — Codex 起動コマンドに `NO_UPDATE_NOTIFIER=1` を付与。
+  - `scripts/shutsujin_zellij.sh` — session-per-agent の Codex preflight を追加。
+  - `shutsujin_departure.sh` — tmux 経路の Codex update prompt 自動スキップを追加。
+  - `tests/unit/test_cli_adapter.bats` — Codex command 期待値を更新。
+  - `tests/unit/test_goza_pure_bootstrap.bats` — pure zellij を shell pane launch 前提へ更新、Codex preflight 検証を追加。
+  - `tests/unit/test_zellij_bootstrap_delivery.bats` — zellij/tmux の Codex preflight 検証を追加。
+  - `docs/REQS.md` — pure zellij shell pane 起動化 + Codex updater抑止の要求を追加。
+- Commands + Results:
+  - `bash -n lib/cli_adapter.sh scripts/goza_no_ma.sh scripts/shutsujin_zellij.sh shutsujin_departure.sh scripts/goza_zellij_pure.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_goza_wrapper_modes.bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_zellij_bootstrap_delivery.bats` → `1..97` PASS
+- Decisions / Assumptions:
+  - pure zellij の本質的な不安定さは `command pane` 起因と判断し、通常 shell pane + send-line launch へ設計変更した。
+  - Codex updater は設定で完全無効化できる確証がないため、`NO_UPDATE_NOTIFIER=1` と preflight UI処理の二段で抑止する。
+- Next:
+  1. ユーザー実機で `bash scripts/goza_zellij_pure.sh` を再実行し、`Waiting to run` が消えたか確認する。
+  2. その後 `ready:` ACK と bootstrap 送信ログを確認する。
+- Links: scripts/goza_no_ma.sh, lib/cli_adapter.sh, shutsujin_departure.sh, scripts/shutsujin_zellij.sh

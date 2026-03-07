@@ -819,3 +819,17 @@
    - 期待結果: stable / experimental の責務分離が README に記載されている。
 4. コマンド: `bats tests/unit/test_goza_wrapper_modes.bats`
    - 期待結果: PASS。
+
+## 追補（2026-03-07: pure zellij の shell pane 起動化 + Codex updater抑止）
+### 要求
+1. pure `zellij` は command pane 前提をやめ、通常の shell pane に `launch command` を送って CLI を起動する。
+2. pure `zellij` 起動時に `Waiting to run` が前提にならないこと。
+3. Codex CLI 起動時の update prompt が bootstrap を塞がないようにする。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "zellij_agent_boot_cmd|launch command sent agent=\\$agent" scripts/goza_no_ma.sh`
+   - 期待結果: pure zellij が shell pane への launch command 送信で起動する実装が存在する。
+2. コマンド: `rg -n "NO_UPDATE_NOTIFIER=1 codex|zellij_handle_codex_preflight_current_pane|codex update skipped" lib/cli_adapter.sh scripts/goza_no_ma.sh`
+   - 期待結果: Codex updater 抑止と preflight 処理が実装されている。
+3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_goza_wrapper_modes.bats`
+   - 期待結果: PASS。

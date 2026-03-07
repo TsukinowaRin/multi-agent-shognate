@@ -330,22 +330,22 @@ load_adapter_with() {
     [ "$result" = "claude --model opus --dangerously-skip-permissions" ]
 }
 
-@test "build_cli_command: codex → codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" {
+@test "build_cli_command: codex → NO_UPDATE_NOTIFIER=1 付きで起動" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru5")
-    [ "$result" = "codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
 @test "build_cli_command: codex + explicit model → codex --model ... --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" {
     load_adapter_with "${TEST_TMP}/settings_codex_model.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "codex --model gpt-5.3-codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --model gpt-5.3-codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
 @test "build_cli_command: codex + model auto → --model を付けない" {
     load_adapter_with "${TEST_TMP}/settings_codex_auto.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
 @test "build_cli_command: copilot → copilot --yolo" {

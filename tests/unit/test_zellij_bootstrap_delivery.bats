@@ -26,6 +26,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "zellij: Codex update prompt を自動スキップする" {
+    run rg -n "handle_codex_preflight_zellij|codex update skipped" "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "zellij: エージェント間ギャップ設定がある" {
     run rg -n "MAS_ZELLIJ_BOOTSTRAP_GAP|BOOTSTRAP_AGENT_GAP" "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
     [ "$status" -eq 0 ]
@@ -57,6 +62,11 @@ setup_file() {
     [ "$status" -eq 0 ]
     # ブートストラップ確定は Enter（名前付きキー）で行うこと
     run rg -nF 'tmux send-keys -t "$pane_target" Enter' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux: Codex update prompt を自動スキップする" {
+    run rg -n "auto_skip_codex_update_prompt_tmux|Codex update prompt" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 

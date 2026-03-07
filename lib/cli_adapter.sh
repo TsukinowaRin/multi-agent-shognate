@@ -198,7 +198,7 @@ build_cli_command_with_type() {
             echo "${prefix}${cmd}"
             ;;
         codex)
-            local cmd="codex"
+            local cmd="NO_UPDATE_NOTIFIER=1 codex"
             if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
                 cmd="$cmd --model $configured_model"
             fi

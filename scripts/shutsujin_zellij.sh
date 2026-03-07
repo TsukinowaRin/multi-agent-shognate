@@ -579,6 +579,49 @@ handle_gemini_preflight_zellij() {
   return 1
 }
 
+handle_codex_preflight_zellij() {
+  local session="$1"
+  local max_wait="${2:-25}"
+  local i
+  local tmp_dump="/tmp/zellij_codex_preflight_${session}.txt"
+
+  if ! [[ "$max_wait" =~ ^[0-9]+$ ]]; then
+    max_wait=25
+  fi
+
+  for ((i=0; i<max_wait; i++)); do
+    if ! session_exists "$session"; then
+      rm -f "$tmp_dump"
+      return 1
+    fi
+    if zellij -s "$session" action dump-screen "$tmp_dump" >/dev/null 2>&1; then
+      if grep -qiE '(openai codex|codex|for shortcuts|context left|/model)' "$tmp_dump" 2>/dev/null; then
+        rm -f "$tmp_dump"
+        return 0
+      fi
+      if grep -qiE '(update available|update now|skip until next version|press enter to continue)' "$tmp_dump" 2>/dev/null; then
+        if send_line "$session" "2"; then
+          bootstrap_run_log "codex update skipped agent=$session via numeric-select"
+        fi
+        sleep 2
+        if zellij -s "$session" action dump-screen "$tmp_dump" >/dev/null 2>&1 && \
+           grep -qiE '(update available|update now|skip until next version|press enter to continue)' "$tmp_dump" 2>/dev/null; then
+          zellij -s "$session" action write-chars $'\e[B' >/dev/null 2>&1 || true
+          sleep 0.1
+          zellij -s "$session" action write 13 >/dev/null 2>&1 || true
+          bootstrap_run_log "codex update skipped agent=$session via down-enter"
+          sleep 2
+        fi
+        continue
+      fi
+    fi
+    sleep 1
+  done
+
+  rm -f "$tmp_dump"
+  return 1
+}
+
 # 初動ブートストラップをファイルベースで配信（レースコンディション排除）
 # send_line ではなく、短い「ファイル読み込み」指示のみ送信
 deliver_bootstrap_zellij() {
@@ -771,6 +814,11 @@ if [ "$SETUP_ONLY" = false ]; then
       if ! handle_gemini_preflight_zellij "$agent" 35; then
         echo "[WARN] Gemini preflight unresolved in session '$agent' after timeout, sending bootstrap anyway" >&2
         bootstrap_run_log "gemini preflight unresolved agent=$agent"
+      fi
+    elif [[ "$cli_type" == "codex" ]]; then
+      if ! handle_codex_preflight_zellij "$agent" 25; then
+        echo "[WARN] Codex preflight unresolved in session '$agent' after timeout, sending bootstrap anyway" >&2
+        bootstrap_run_log "codex preflight unresolved agent=$agent"
       fi
     elif ! wait_for_cli_ready "$agent" "$cli_type" 25; then
       echo "[WARN] CLI not ready in session '$agent' after timeout, sending bootstrap anyway" >&2

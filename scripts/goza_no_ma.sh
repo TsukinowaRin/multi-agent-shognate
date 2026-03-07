@@ -352,7 +352,7 @@ zellij_ui_attach_tmux_target() {
   return 1
 }
 
-zellij_agent_pane_cmd() {
+zellij_agent_boot_cmd() {
   local agent="$1"
   local cli_type="codex"
   local cli_cmd="codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
@@ -375,7 +375,8 @@ zellij_agent_pane_cmd() {
   transcript_dir="$(dirname "$transcript_file")"
   printf -v cli_cmd_quoted '%q' "$cli_cmd"
 
-  # pure zellij: 各ペインは CLI をまず起動し、初動命令は外側のブートストラップで明示送信する。
+  # pure zellij: shell pane に launch command を送って CLI を起動し、
+  # 初動命令は外側のブートストラップで明示送信する。
   # transcript を agent ごとに分け、ready/trust/high-demand の判定を他ペインと混線させない。
   printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && mkdir -p %q && : > %q && clear && if command -v script >/dev/null 2>&1; then script -qefc %s %q; else eval %s; fi; echo %q; exec bash' \
     "$ROOT_DIR" "$agent" "shout" "$transcript_dir" "$transcript_file" "$cli_cmd_quoted" "$transcript_file" "$cli_cmd_quoted" "[INFO] ${agent} pane ended. Waiting at shell."
@@ -692,6 +693,40 @@ zellij_bootstrap_delay_for_cli() {
   esac
 }
 
+zellij_handle_codex_preflight_current_pane() {
+  local session="$1"
+  local agent="$2"
+  local max_wait="${3:-20}"
+  local i
+
+  if ! [[ "$max_wait" =~ ^[0-9]+$ ]]; then
+    max_wait=20
+  fi
+
+  for ((i=0; i<max_wait; i++)); do
+    if zellij_agent_output_matches "$session" "$agent" '(openai codex|for shortcuts|context left|/model)'; then
+      return 0
+    fi
+    if zellij_agent_output_matches "$session" "$agent" '(update available|update now|skip until next version|press enter to continue)'; then
+      if zellij_send_line_to_session "$session" "2"; then
+        goza_bootstrap_log "codex update skipped agent=$agent via numeric-select"
+      fi
+      sleep 2
+      if zellij_agent_output_matches "$session" "$agent" '(update available|update now|skip until next version|press enter to continue)'; then
+        zellij -s "$session" action write-chars $'\e[B' >/dev/null 2>&1 || true
+        sleep 0.1
+        zellij -s "$session" action write 13 >/dev/null 2>&1 || true
+        goza_bootstrap_log "codex update skipped agent=$agent via down-enter"
+        sleep 2
+      fi
+      continue
+    fi
+    sleep 1
+  done
+
+  return 1
+}
+
 zellij_handle_gemini_preflight_current_pane() {
   local session="$1"
   local agent="$2"
@@ -788,8 +823,6 @@ zellij_resume_pure_goza_panes_background() {
   }
 
   (
-    # zellij 0.41 系では command pane が "Waiting to run" で止まることがある。
-    # ここで各ペインへ Enter を1回送り、実行を開始させる。
     sleep 1
     local idx
     local count="${#agents[@]}"
@@ -801,6 +834,7 @@ zellij_resume_pure_goza_panes_background() {
     local startup_msg
     local ready_pattern
     local launch_delay
+    local launch_cmd
     local retry_msg
 
     if ! [[ "$ack_timeout" =~ ^[0-9]+$ ]]; then
@@ -812,10 +846,12 @@ zellij_resume_pure_goza_panes_background() {
     for idx in "${!agents[@]}"; do
       agent="${agents[$idx]}"
       zellij_focus_agent_index "$session" "$idx" "$count"
-      zellij -s "$session" action write 13 >/dev/null 2>&1 || \
-      zellij -s "$session" action write 10 >/dev/null 2>&1 || \
-      zellij -s "$session" action write-chars $'\n' >/dev/null 2>&1 || true
-      goza_bootstrap_log "pane resumed agent=$agent mode=resume-enter"
+      launch_cmd="$(zellij_agent_boot_cmd "$agent")"
+      if [[ -n "$launch_cmd" ]] && zellij_send_line_to_session "$session" "$launch_cmd"; then
+        goza_bootstrap_log "launch command sent agent=$agent"
+      else
+        goza_bootstrap_log "launch command failed agent=$agent"
+      fi
 
       cli_type="$(zellij_resolve_cli_for_agent "$agent")"
       launch_delay="$(zellij_bootstrap_delay_for_cli "$cli_type")"
@@ -824,6 +860,10 @@ zellij_resume_pure_goza_panes_background() {
       if [[ "$cli_type" == "gemini" ]]; then
         if ! zellij_handle_gemini_preflight_current_pane "$session" "$agent" "$gemini_preflight_timeout"; then
           goza_bootstrap_log "gemini preflight unresolved agent=$agent timeout=${gemini_preflight_timeout}s"
+        fi
+      elif [[ "$cli_type" == "codex" ]]; then
+        if ! zellij_handle_codex_preflight_current_pane "$session" "$agent" "$ready_timeout"; then
+          goza_bootstrap_log "codex preflight unresolved agent=$agent timeout=${ready_timeout}s"
         fi
       else
         ready_pattern="$(zellij_pure_ready_pattern "$cli_type")"
@@ -898,18 +938,12 @@ zellij_pure_goza_layout_file() {
     local target_agent="$2"
     local focus_attr="${3:-}"
     local pane_name_escaped
-    local startup_cmd
-    local startup_cmd_escaped
     pane_name_escaped="$(kdl_escape "$target_agent")"
-    startup_cmd="$(zellij_agent_pane_cmd "$target_agent")"
-    startup_cmd_escaped="$(kdl_escape "$startup_cmd")"
     if [[ -n "$focus_attr" ]]; then
       focus_attr=" focus=true"
     fi
     cat <<EOF
-${indent}pane name="${pane_name_escaped}"${focus_attr} command="bash" start_suspended=false {
-${indent}    args "-lc" "${startup_cmd_escaped}";
-${indent}}
+${indent}pane name="${pane_name_escaped}"${focus_attr}
 EOF
   }
 
@@ -1032,8 +1066,8 @@ zellij_pure_attach_goza_room() {
     goza_bootstrap_log "no_attach session create failed session=$ZELLIJ_UI_SESSION"
     return 1
   fi
-  # pure zellij の初動注入は各ペインが CLI 起動引数で自律実行する（CLI引数渡し）。
-  # セッション全体へのフォーカス移動注入は行わない。
+  # pure zellij の初動は、shell pane 起動後に各ペインへ launch command を送る。
+  # セッション全体への雑なアクティブペイン注入は行わない。
 
   # attach はブロッキングのため、resume処理は先にバックグラウンドで予約する。
   goza_bootstrap_log "attach attempt method=--new-session-with-layout session=$ZELLIJ_UI_SESSION"

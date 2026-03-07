@@ -25,10 +25,10 @@ setup_file() {
     [ "$status" -ne 0 ]
 }
 
-@test "pure zellij: command pane の Waiting to run を Enter で自動解除する" {
-    run rg -nF 'zellij_resume_pure_goza_panes_background' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+@test "pure zellij: shell pane に launch command を send-line して CLI を起動する" {
+    run rg -nF 'zellij_agent_boot_cmd' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
-    run rg -nF 'action write 13' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    run rg -nF 'launch command sent agent=$agent' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -55,5 +55,10 @@ setup_file() {
 
 @test "pure zellij: Gemini preflight の trust/high-demand を transcript ベースで処理する" {
     run rg -n "zellij_handle_gemini_preflight_current_pane|gemini trust accepted|gemini keep_trying" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "pure zellij: Codex update prompt を preflight でスキップする" {
+    run rg -n "zellij_handle_codex_preflight_current_pane|codex update skipped" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }

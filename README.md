@@ -27,7 +27,8 @@ bash scripts/goza_tmux.sh
 ### 4. 単一コマンドでモード指定して起動
 ```bash
 bash scripts/goza_no_ma.sh --mux tmux --ui zellij
-bash scripts/goza_no_ma.sh --mux zellij --ui zellij
+# pure zellij を明示opt-inで試す場合のみ
+bash scripts/goza_zellij_pure.sh
 bash scripts/goza_no_ma.sh --mux tmux --ui tmux
 ```
 
@@ -56,7 +57,7 @@ bash scripts/goza_tmux.sh --template goza_room
   - 共通フロントエンド。
   - `--mux`（バックエンド）と `--ui`（表示）を分離して指定できます。
   - 安定運用は `--mux tmux --ui zellij` を優先します。
-  - `goza_room` の pure zellij は experimental 扱いです。
+  - `goza_room` の pure zellij は experimental 扱いで、明示opt-in時のみ有効です。
   - 役職別の色付き罫線演出は `zellij` / `tmux` 側で提供します。
 
 - `shutsujin_departure.sh`

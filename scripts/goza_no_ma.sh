@@ -183,6 +183,16 @@ if [[ "$VIEW_TEMPLATE" != "shogun_only" && "$VIEW_TEMPLATE" != "goza_room" ]]; t
   exit 1
 fi
 
+PURE_ZELLIJ_REQUESTED=0
+if [[ "$MUX_MODE" == "zellij" && "$UI_MODE" == "zellij" && "$VIEW_TEMPLATE" == "goza_room" ]]; then
+  PURE_ZELLIJ_REQUESTED=1
+fi
+
+if [[ "$PURE_ZELLIJ_REQUESTED" -eq 1 && "${MAS_ENABLE_PURE_ZELLIJ:-0}" != "1" ]]; then
+  echo "[INFO] pure zellij goza_room は experimental のため、既定では zellij UI + tmux backend へフォールバックします。"
+  MUX_MODE="tmux"
+fi
+
 if ! command -v tmux >/dev/null 2>&1; then
   echo "[ERROR] tmux が見つかりません。ビュー作成に tmux が必要です。" >&2
   exit 1

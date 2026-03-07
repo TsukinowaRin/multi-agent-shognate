@@ -1575,3 +1575,22 @@
   2. pure zellij が必要なら `bash scripts/goza_zellij_pure.sh` を別途デバッグする
   3. 次段で `README_ja.md` と `shutsujin_departure.sh` の上流寄せを続行する
 - Links: README.md, scripts/goza_zellij.sh, scripts/goza_zellij_pure.sh, docs/REQS.md
+
+### 2026-03-07 13:18 (JST)
+- Goal: 画像の `Waiting to run` 再発に対し、古い pure zellij 呼び出しでも stable 経路へ逃がすガードを追加する
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — `MAS_ENABLE_PURE_ZELLIJ` opt-in が無い限り pure zellij `goza_room` を `tmux backend + zellij UI` へフォールバック
+  - `scripts/goza_zellij_pure.sh` — pure zellij 実験コマンドとして `MAS_ENABLE_PURE_ZELLIJ=1` を明示設定
+  - `tests/unit/test_goza_wrapper_modes.bats` — fallback guard の回帰テストを追加
+  - `README.md` / `docs/REQS.md` — 明示opt-in制へ更新
+- Commands + Results:
+  - `bash -n scripts/goza_zellij.sh scripts/goza_zellij_pure.sh scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_wrapper_modes.bats` → `1..3` PASS
+  - `rg -n "MAS_ENABLE_PURE_ZELLIJ|フォールバック" scripts/goza_no_ma.sh README.md` → 期待行を確認
+- Decisions / Assumptions:
+  - 画像で出ている `Waiting to run` は pure zellij command pane 起因と判断し、ユーザー導線からは完全に外す。
+  - pure zellij は `goza_zellij_pure.sh` に閉じ込め、通常の `goza_zellij.sh` では到達不能にする。
+- Next:
+  1. ユーザー実機で `bash scripts/goza_zellij.sh` を再実行し、タイトルが `tmux-core` になることを確認する
+  2. その上で Codex / Claude / Gemini の起動内容を capture-pane で確認する
+- Links: scripts/goza_no_ma.sh, scripts/goza_zellij_pure.sh

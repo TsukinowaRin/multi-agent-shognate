@@ -807,12 +807,15 @@
 ### 要求
 1. ユーザー向け既定コマンド `bash scripts/goza_zellij.sh` は、`zellij UI + tmux backend` の安定経路を使う。
 2. pure `zellij` 経路は `bash scripts/goza_zellij_pure.sh` として明示分離し、experimental 扱いにする。
-3. `bash first_setup.sh && bash scripts/goza_zellij.sh -s && bash scripts/goza_zellij.sh` の導線で、少なくとも backend 側の CLI 起動と初動注入が pure `zellij` 不具合に巻き込まれないこと。
+3. `goza_no_ma.sh --mux zellij --ui zellij --template goza_room` も、明示opt-inなしでは stable 側へフォールバックする。
+4. `bash first_setup.sh && bash scripts/goza_zellij.sh -s && bash scripts/goza_zellij.sh` の導線で、少なくとも backend 側の CLI 起動と初動注入が pure `zellij` 不具合に巻き込まれないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `sed -n '1,20p' scripts/goza_zellij.sh scripts/goza_zellij_pure.sh`
    - 期待結果: `goza_zellij.sh` は `--mux tmux --ui zellij`、`goza_zellij_pure.sh` は `--mux zellij --ui zellij` を呼ぶ。
-2. コマンド: `rg -n "goza_zellij_pure|既定の運用コマンド|experimental" README.md`
+2. コマンド: `rg -n "MAS_ENABLE_PURE_ZELLIJ|フォールバック" scripts/goza_no_ma.sh`
+   - 期待結果: 明示opt-inなしでは stable 側へ切り替える実装が存在する。
+3. コマンド: `rg -n "goza_zellij_pure|既定の運用コマンド|experimental" README.md`
    - 期待結果: stable / experimental の責務分離が README に記載されている。
-3. コマンド: `bats tests/unit/test_goza_wrapper_modes.bats`
+4. コマンド: `bats tests/unit/test_goza_wrapper_modes.bats`
    - 期待結果: PASS。

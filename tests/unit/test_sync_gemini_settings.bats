@@ -64,3 +64,26 @@ PY
   run rg -n "gemini-3-pro-preview は MINIMAL/MEDIUM 非対応|gemini-2.5-pro は thinkingBudget=0" "$MAS_GEMINI_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
+
+@test "sync_gemini_settings: shogun の未設定デフォルトで low thinking alias を生成する" {
+  cat > "$TEST_TMP/settings.yaml" <<'YAML'
+cli:
+  default: gemini
+  agents:
+    shogun:
+      type: gemini
+      model: auto
+YAML
+  run python3 "$PROJECT_ROOT/scripts/sync_gemini_settings.py"
+  [ "$status" -eq 0 ]
+  run python3 - "$MAS_GEMINI_SETTINGS_PATH" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding='utf-8') as fh:
+    cfg = json.load(fh)
+alias = cfg["modelConfigs"]["customAliases"]["mas-shogun"]
+assert alias["modelConfig"]["model"] == "gemini-3-pro-preview"
+assert alias["modelConfig"]["generateContentConfig"]["thinkingConfig"]["thinkingLevel"] == "LOW"
+print("ok")
+PY
+  [ "$status" -eq 0 ]
+}

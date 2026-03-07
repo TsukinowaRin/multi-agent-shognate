@@ -164,6 +164,47 @@ default_model_for_cli() {
   esac
 }
 
+default_reasoning_for_role() {
+  local role="$1"
+  if [[ "$role" == "shogun" ]]; then
+    echo "none"
+  else
+    echo "auto"
+  fi
+}
+
+default_gemini_level_for_role() {
+  local role="$1"
+  local model="$2"
+  local normalized_model
+  normalized_model="$(printf '%s' "$model" | tr '[:upper:]' '[:lower:]')"
+  if [[ "$role" != "shogun" ]]; then
+    echo "auto"
+    return 0
+  fi
+  case "$normalized_model" in
+    gemini-3-flash*) echo "minimal" ;;
+    gemini-3-pro*|auto|default|"") echo "low" ;;
+    *) echo "auto" ;;
+  esac
+}
+
+default_gemini_budget_for_role() {
+  local role="$1"
+  local model="$2"
+  local normalized_model
+  normalized_model="$(printf '%s' "$model" | tr '[:upper:]' '[:lower:]')"
+  if [[ "$role" != "shogun" ]]; then
+    echo ""
+    return 0
+  fi
+  case "$normalized_model" in
+    gemini-2.5-flash*|gemini-2.5-flash-lite*) echo "0" ;;
+    gemini-2.5-pro*) echo "-1" ;;
+    *) echo "" ;;
+  esac
+}
+
 prompt_codex_reasoning() {
   local role="$1"
   local default_effort="${2:-auto}"
@@ -220,11 +261,11 @@ capture_agent_config() {
 
   case "$type" in
     codex)
-      reasoning="$(prompt_codex_reasoning "$role" "$(read_current_agent_field "$role" "reasoning_effort" "auto")")"
+      reasoning="$(prompt_codex_reasoning "$role" "$(read_current_agent_field "$role" "reasoning_effort" "$(default_reasoning_for_role "$role")")")"
       ;;
     gemini)
-      level="$(prompt_gemini_thinking_level "$role" "$model" "$(read_current_agent_field "$role" "thinking_level" "auto")")"
-      budget="$(prompt_gemini_thinking_budget "$role" "$model" "$(read_current_agent_field "$role" "thinking_budget" "")")"
+      level="$(prompt_gemini_thinking_level "$role" "$model" "$(read_current_agent_field "$role" "thinking_level" "$(default_gemini_level_for_role "$role" "$model")")")"
+      budget="$(prompt_gemini_thinking_budget "$role" "$model" "$(read_current_agent_field "$role" "thinking_budget" "$(default_gemini_budget_for_role "$role" "$model")")")"
       ;;
   esac
 

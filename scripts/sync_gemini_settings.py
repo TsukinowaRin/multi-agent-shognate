@@ -66,6 +66,28 @@ def normalize_budget(agent_cfg):
     return None
 
 
+def default_level_for_agent(agent_id: str, model: str) -> str:
+    if agent_id != "shogun":
+        return ""
+    lowered = (model or "auto").strip().lower()
+    if lowered.startswith("gemini-3-flash"):
+        return "minimal"
+    if lowered in {"", "auto", "default"} or lowered.startswith("gemini-3-pro"):
+        return "low"
+    return ""
+
+
+def default_budget_for_agent(agent_id: str, model: str):
+    if agent_id != "shogun":
+        return None
+    lowered = (model or "auto").strip().lower()
+    if lowered.startswith("gemini-2.5-flash"):
+        return 0
+    if lowered.startswith("gemini-2.5-pro"):
+        return -1
+    return None
+
+
 def choose_base_model(configured_model: str, level: str, budget):
     model = (configured_model or "auto").strip()
     lowered = model.lower()
@@ -100,6 +122,10 @@ def build_alias(agent_id: str, agent_cfg: dict):
     model = normalize_model(agent_cfg)
     level = normalize_level(agent_cfg)
     budget = normalize_budget(agent_cfg)
+    if not level:
+        level = default_level_for_agent(agent_id, model)
+    if budget is None:
+        budget = default_budget_for_agent(agent_id, model)
     if not level and budget is None:
         return None
 

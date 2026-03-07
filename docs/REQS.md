@@ -10,6 +10,7 @@
 3. `Codex` は agent ごとに `reasoning_effort` を設定できること。
 4. `Gemini` は agent ごとに、`Gemini 3` 系では `thinking_level`、`Gemini 2.5` 系では `thinking_budget` を設定できること。
 5. `Gemini` の思考設定は workspace の `.gemini/settings.json` へ自動同期され、起動コマンドは per-agent alias を用いて反映されること。
+6. `shogun` は、明示設定が無い場合でも各CLIで「そのCLI/モデルが許す最小思考」に自動で寄せること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/configure_agents.sh`
@@ -20,6 +21,8 @@
    - 期待結果: `modelConfigs.customAliases.mas-<agent>` が生成される。
 4. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_gemini_settings.bats`
    - 期待結果: `Codex` の `reasoning_effort` と `Gemini` alias 同期テストが PASS する。
+5. コマンド: `rg -n "default_codex_reasoning_effort|default_claude_thinking|default_gemini_thinking" lib/cli_adapter.sh scripts/sync_gemini_settings.py`
+   - 期待結果: `shogun` の既定最小思考ロジックがコード上に存在する。
 
 ## 追補（2026-03-07: pure zellij の dedicated bootstrap 化）
 ### 要求

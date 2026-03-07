@@ -97,34 +97,106 @@ _cli_adapter_normalize_lower() {
     printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]'
 }
 
+_cli_adapter_is_shogun() {
+    [[ "${1:-}" == "shogun" ]]
+}
+
+_cli_adapter_default_codex_reasoning_effort() {
+    local agent_id="$1"
+    if _cli_adapter_is_shogun "$agent_id"; then
+        echo "none"
+    else
+        echo ""
+    fi
+}
+
+_cli_adapter_default_claude_thinking() {
+    local agent_id="$1"
+    if _cli_adapter_is_shogun "$agent_id"; then
+        echo "false"
+    else
+        echo ""
+    fi
+}
+
+_cli_adapter_default_gemini_thinking_level() {
+    local agent_id="$1"
+    local model="$2"
+    if ! _cli_adapter_is_shogun "$agent_id"; then
+        echo ""
+        return 0
+    fi
+
+    local normalized_model
+    normalized_model="$(_cli_adapter_normalize_lower "$model")"
+    case "$normalized_model" in
+        gemini-3-flash*|gemini-3-flash-preview)
+            echo "minimal"
+            ;;
+        gemini-3-pro*|auto|default|"")
+            echo "low"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+_cli_adapter_default_gemini_thinking_budget() {
+    local agent_id="$1"
+    local model="$2"
+    if ! _cli_adapter_is_shogun "$agent_id"; then
+        echo ""
+        return 0
+    fi
+
+    local normalized_model
+    normalized_model="$(_cli_adapter_normalize_lower "$model")"
+    case "$normalized_model" in
+        gemini-2.5-flash*|gemini-2.5-flash-lite*)
+            echo "0"
+            ;;
+        gemini-2.5-pro*)
+            echo "-1"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
 get_agent_reasoning_effort() {
     local agent_id="$1"
     local effort
     effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.reasoning_effort" "")")
     case "$effort" in
         auto|none|low|medium|high) echo "$effort" ;;
-        *) echo "" ;;
+        *) _cli_adapter_default_codex_reasoning_effort "$agent_id" ;;
     esac
 }
 
 get_agent_gemini_thinking_level() {
     local agent_id="$1"
     local level
+    local model
+    model="$(_cli_adapter_get_configured_model "$agent_id")"
     level=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_level" "")")
     case "$level" in
         auto|minimal|low|medium|high) echo "$level" ;;
-        *) echo "" ;;
+        *) _cli_adapter_default_gemini_thinking_level "$agent_id" "$model" ;;
     esac
 }
 
 get_agent_gemini_thinking_budget() {
     local agent_id="$1"
     local budget
+    local model
+    model="$(_cli_adapter_get_configured_model "$agent_id")"
     budget="$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_budget" "")"
     case "$budget" in
         ""|auto|dynamic) echo "" ;;
         -1|0|[1-9][0-9]*) echo "$budget" ;;
-        *) echo "" ;;
+        *) _cli_adapter_default_gemini_thinking_budget "$agent_id" "$model" ;;
     esac
 }
 
@@ -246,6 +318,9 @@ build_cli_command_with_type() {
     configured_model=$(_cli_adapter_get_configured_model "$agent_id")
     local thinking
     thinking=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking" "")
+    if [[ -z "$thinking" ]]; then
+        thinking="$(_cli_adapter_default_claude_thinking "$agent_id")"
+    fi
     local reasoning_effort
     reasoning_effort="$(get_agent_reasoning_effort "$agent_id")"
 

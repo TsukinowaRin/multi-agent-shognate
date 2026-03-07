@@ -192,6 +192,38 @@ cli:
       reasoning_effort: none
 YAML
 
+    cat > "${TEST_TMP}/settings_shogun_defaults.yaml" << 'YAML'
+cli:
+  default: codex
+  agents:
+    shogun:
+      type: codex
+    gunshi:
+      type: codex
+    ashigaru1:
+      type: gemini
+    ashigaru2:
+      type: claude
+YAML
+
+    cat > "${TEST_TMP}/settings_shogun_gemini_default.yaml" << 'YAML'
+cli:
+  default: gemini
+  agents:
+    shogun:
+      type: gemini
+      model: auto
+YAML
+
+    cat > "${TEST_TMP}/settings_shogun_claude_default.yaml" << 'YAML'
+cli:
+  default: claude
+  agents:
+    shogun:
+      type: claude
+      model: opus
+YAML
+
     # localapi settings
     cat > "${TEST_TMP}/settings_localapi.yaml" << 'YAML'
 cli:
@@ -365,7 +397,7 @@ load_adapter_with() {
 @test "build_cli_command: claude + model → claude --model opus --dangerously-skip-permissions" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "claude --model opus --dangerously-skip-permissions" ]
+    [ "$result" = "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions" ]
 }
 
 @test "build_cli_command: codex → NO_UPDATE_NOTIFIER=1 付きで起動" {
@@ -377,7 +409,7 @@ load_adapter_with() {
 @test "build_cli_command: codex + explicit model → codex --model ... --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" {
     load_adapter_with "${TEST_TMP}/settings_codex_model.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --model gpt-5.3-codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --model gpt-5.3-codex -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
 @test "build_cli_command: codex + reasoning_effort → -c model_reasoning_effort を付与" {
@@ -392,10 +424,22 @@ load_adapter_with() {
     [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --model gpt-5.4 -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
+@test "build_cli_command: shogun codex は未設定でも reasoning_effort none を既定適用" {
+    load_adapter_with "${TEST_TMP}/settings_shogun_defaults.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+}
+
+@test "build_cli_command: gunshi codex は未設定なら reasoning_effort を付けない" {
+    load_adapter_with "${TEST_TMP}/settings_shogun_defaults.yaml"
+    result=$(build_cli_command "gunshi")
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+}
+
 @test "build_cli_command: codex + model auto → --model を付けない" {
     load_adapter_with "${TEST_TMP}/settings_codex_auto.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
 @test "build_cli_command: copilot → copilot --yolo" {
@@ -458,6 +502,18 @@ SH
     [ "$result" = "gemini --yolo --model mas-ashigaru3" ]
 }
 
+@test "build_cli_command: shogun gemini は未設定でも最小思考aliasを既定適用" {
+    load_adapter_with "${TEST_TMP}/settings_shogun_gemini_default.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "gemini --yolo --model mas-shogun" ]
+}
+
+@test "build_cli_command: shogun claude は未設定でも thinking無効を既定適用" {
+    load_adapter_with "${TEST_TMP}/settings_shogun_claude_default.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions" ]
+}
+
 @test "build_cli_command: gemini-cliのみ存在時は gemini-cli を使用" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     mkdir -p "${TEST_TMP}/bin"
@@ -481,7 +537,7 @@ SH
 @test "build_cli_command_with_startup_prompt: codex は positional prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
     result=$(build_cli_command_with_startup_prompt "shogun" "codex" "ready:shogun")
-    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen ready:shogun" ]
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen ready:shogun" ]
 }
 
 @test "build_cli_command_with_startup_prompt: claude は positional prompt を付与する" {

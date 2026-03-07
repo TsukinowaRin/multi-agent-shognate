@@ -1677,3 +1677,22 @@
   1. 実機で `configure_agents.sh` を使い、`gunshi=codex(high)`、`ashigaru1=gemini(gemini-3-flash-preview/minimal)` などの構成を保存して再起動し、pane 表示と初動が維持されるか確認する。
   2. 必要なら pane 見出しへ `Codex(high)` / `Gemini(low)` のような簡易表示を追加する。
 - Links: scripts/configure_agents.sh, lib/cli_adapter.sh, scripts/sync_gemini_settings.py
+
+### 2026-03-07 20:05 (JST)
+- Goal: `shogun` の未設定デフォルトを、CLIごとに最小思考へ寄せる。
+- Changes (files):
+  - `lib/cli_adapter.sh` — `shogun` 向けの既定値を追加。`Claude` は `MAX_THINKING_TOKENS=0`、`Codex` は `reasoning_effort=none`、`Gemini` はモデルに応じて `low / minimal / 0 / -1` の最小側へ寄せる。
+  - `scripts/sync_gemini_settings.py` — `shogun` が `Gemini` で thinking 未設定のとき、workspace alias に既定最小思考を反映するよう更新。
+  - `scripts/configure_agents.sh` — 設定UIでも `shogun` の既定選択を最小思考寄りに変更。
+  - `tests/unit/test_cli_adapter.bats` / `tests/unit/test_sync_gemini_settings.bats` — `shogun` 既定挙動の回帰テストを追加。
+  - `docs/REQS.md` — `shogun` 最小思考既定の受け入れ条件を追加。
+- Commands + Results:
+  - `bash -n scripts/configure_agents.sh lib/cli_adapter.sh scripts/sync_gemini_settings.py` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_gemini_settings.bats` → `1..90` PASS
+- Decisions / Assumptions:
+  - `Gemini 2.5 Pro` は完全OFFできないため、`shogun` 既定でも `dynamic(-1)` を下限扱いとする。
+  - `Gemini auto` の `shogun` 既定は `gemini-3-pro-preview + LOW` 相当の alias を生成する。これは「auto のまま無制御」よりも意図が明確で、思考を抑えたいというユーザー要求に近いため。
+- Next:
+  1. 実機で `shogun=claude/codex/gemini` を切り替え、未設定時に pane 表示と挙動が最小思考へ寄るか確認する。
+  2. 必要なら `README.md` に `shogun` 既定値と `Kilo CLI` 方針を追記する。
+- Links: lib/cli_adapter.sh, scripts/sync_gemini_settings.py, scripts/configure_agents.sh

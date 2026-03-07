@@ -132,6 +132,18 @@ if [ -f "$ROOT_DIR/lib/topology_adapter.sh" ]; then
   TOPOLOGY_ADAPTER_LOADED=true
 fi
 
+sync_gemini_workspace_settings() {
+  local sync_script="$ROOT_DIR/scripts/sync_gemini_settings.py"
+  if [[ ! -x "$sync_script" ]]; then
+    return 0
+  fi
+  if ! python3 "$sync_script" >/dev/null 2>&1; then
+    echo "[WARN] Gemini workspace settings の同期に失敗しました。既存 .gemini/settings.json を使用して継続します" >&2
+  fi
+}
+
+sync_gemini_workspace_settings
+
 if [[ "$MUX_MODE" != "zellij" && "$MUX_MODE" != "tmux" ]]; then
   echo "[ERROR] --mux は zellij または tmux を指定してください（指定値: $MUX_MODE）" >&2
   exit 1

@@ -3,6 +3,24 @@
 最終更新: 2026-03-07
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-07: gunshi設定 + Codex/Gemini思考モード）
+### 要求
+1. `scripts/configure_agents.sh` で `gunshi` も `shogun/karo/ashigaruN` と同様に設定できること。
+2. `config/settings.yaml` に保存した役職別CLI設定は、再起動後も保持されること。
+3. `Codex` は agent ごとに `reasoning_effort` を設定できること。
+4. `Gemini` は agent ごとに、`Gemini 3` 系では `thinking_level`、`Gemini 2.5` 系では `thinking_budget` を設定できること。
+5. `Gemini` の思考設定は workspace の `.gemini/settings.json` へ自動同期され、起動コマンドは per-agent alias を用いて反映されること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/configure_agents.sh`
+   - 期待結果: `gunshi` を含む全役職の CLI / model / thinking 設定を保存できる。
+2. コマンド: `cat config/settings.yaml`
+   - 期待結果: `cli.agents.gunshi`、`reasoning_effort`、`thinking_level`、`thinking_budget` の各キーが保存される。
+3. コマンド: `python3 scripts/sync_gemini_settings.py && sed -n '1,200p' .gemini/settings.json`
+   - 期待結果: `modelConfigs.customAliases.mas-<agent>` が生成される。
+4. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_gemini_settings.bats`
+   - 期待結果: `Codex` の `reasoning_effort` と `Gemini` alias 同期テストが PASS する。
+
 ## 追補（2026-03-07: pure zellij の dedicated bootstrap 化）
 ### 要求
 1. `pure zellij` の初動は、外側スクリプトがアクティブペインへ平文注入する方式をやめる。

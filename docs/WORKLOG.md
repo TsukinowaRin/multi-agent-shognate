@@ -1652,3 +1652,28 @@
   1. ユーザー実機で `bash scripts/goza_zellij_pure.sh` を再起動し、足軽ペインの可読性を再確認する。
   2. まだ縦長なら、次は右端列の中で `2列固定` から `1列+タブ切替` など別構成を検討する。
 - Links: scripts/goza_no_ma.sh
+
+### 2026-03-07 19:35 (JST)
+- Goal: `gunshi` を設定CUIへ追加し、`Codex/Gemini` の思考モードを `config/settings.yaml` から永続化して起動時へ反映する。
+- Changes (files):
+  - `scripts/configure_agents.sh` — `gunshi` を設定対象へ追加し、`Codex reasoning_effort`、`Gemini thinking_level / thinking_budget` を role 単位で保存できるよう更新。
+  - `lib/cli_adapter.sh` — `reasoning_effort` / `thinking_level` / `thinking_budget` の読み出しを追加し、`Codex` では `-c model_reasoning_effort='...'`、`Gemini` では `mas-<agent>` alias を用いるよう更新。
+  - `scripts/sync_gemini_settings.py` — workspace `.gemini/settings.json` の `modelConfigs.customAliases` を `config/settings.yaml` から自動生成する同期スクリプトを追加。
+  - `shutsujin_departure.sh` / `scripts/shutsujin_zellij.sh` / `scripts/goza_no_ma.sh` — 起動前に Gemini workspace settings を同期する処理を追加。
+  - `tests/unit/test_cli_adapter.bats` — `Codex reasoning_effort` と `Gemini alias` のテストを追加。
+  - `tests/unit/test_sync_gemini_settings.bats` — `.gemini/settings.json` 生成と丸め warning のテストを追加。
+  - `docs/REQS.md` / `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` — 今回の設定仕様を追記。
+- Commands + Results:
+  - `bash -n scripts/configure_agents.sh lib/cli_adapter.sh scripts/shutsujin_zellij.sh shutsujin_departure.sh scripts/goza_no_ma.sh` → PASS
+  - `python3 -m py_compile scripts/sync_gemini_settings.py scripts/localapi_repl.py` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_gemini_settings.bats` → `1..85` PASS
+  - `printf '\n%.0s' {1..40} | bash scripts/configure_agents.sh` → `config/settings.yaml` が壊れず更新されることを確認後、元のローカル設定へ復元。
+  - `python3 scripts/sync_gemini_settings.py` → `.gemini/settings.json` と `queue/runtime/gemini_aliases.tsv` を生成できることを確認。
+- Decisions / Assumptions:
+  - `Codex` は現行 CLI の `-c key=value` を用い、`reasoning_effort` は `auto|none|low|medium|high` に限定する。
+  - `Gemini 3` は `thinking_level`、`Gemini 2.5` は `thinking_budget` に分ける。`auto` のまま思考設定が入った場合は、`Gemini 3` は `gemini-3-pro-preview`、`2.5` 予算系は `gemini-2.5-pro` を基底モデルとして alias 生成する。
+  - `gemini-3-pro-preview` + `minimal/medium`、`gemini-2.5-pro` + `thinkingBudget=0` は公式仕様に合わせて安全側へ丸め、warning を summary に残す。
+- Next:
+  1. 実機で `configure_agents.sh` を使い、`gunshi=codex(high)`、`ashigaru1=gemini(gemini-3-flash-preview/minimal)` などの構成を保存して再起動し、pane 表示と初動が維持されるか確認する。
+  2. 必要なら pane 見出しへ `Codex(high)` / `Gemini(low)` のような簡易表示を追加する。
+- Links: scripts/configure_agents.sh, lib/cli_adapter.sh, scripts/sync_gemini_settings.py

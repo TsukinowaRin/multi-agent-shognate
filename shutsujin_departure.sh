@@ -81,6 +81,16 @@ if [ -f "$SCRIPT_DIR/lib/inbox_path.sh" ]; then
     source "$SCRIPT_DIR/lib/inbox_path.sh"
 fi
 
+sync_gemini_workspace_settings() {
+    local sync_script="$SCRIPT_DIR/scripts/sync_gemini_settings.py"
+    if [ ! -x "$sync_script" ]; then
+        return 0
+    fi
+    if ! python3 "$sync_script" >/dev/null 2>&1; then
+        log_info "⚠️  Gemini workspace settings の同期に失敗しました。既存 .gemini/settings.json を使用して継続します"
+    fi
+}
+
 # 色付きログ関数（戦国風）
 log_info() {
     echo -e "\033[1;33m【報】\033[0m $1"
@@ -510,6 +520,7 @@ fi
 
 # 役職正本/CLI最適化指示書の差分がある場合は自動再生成
 ensure_generated_instructions
+sync_gemini_workspace_settings
 
 # zellijモード分岐（tmuxフロー互換を保つため専用スクリプトに委譲）
 if [ "$MULTIPLEXER_SETTING" = "zellij" ]; then

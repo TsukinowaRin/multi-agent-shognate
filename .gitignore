@@ -109,6 +109,7 @@
 !scripts/goza_tmux.sh
 !scripts/zellij_agent_bootstrap.sh
 !scripts/configure_agents.sh
+!scripts/sync_gemini_settings.py
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh
 !scripts/seo_qc.sh

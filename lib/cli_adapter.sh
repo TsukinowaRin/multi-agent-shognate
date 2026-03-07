@@ -92,6 +92,72 @@ _cli_adapter_get_configured_model() {
     _cli_adapter_read_yaml "models.${agent_id}" ""
 }
 
+# _cli_adapter_normalize_lower value
+_cli_adapter_normalize_lower() {
+    printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]'
+}
+
+get_agent_reasoning_effort() {
+    local agent_id="$1"
+    local effort
+    effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.reasoning_effort" "")")
+    case "$effort" in
+        auto|none|low|medium|high) echo "$effort" ;;
+        *) echo "" ;;
+    esac
+}
+
+get_agent_gemini_thinking_level() {
+    local agent_id="$1"
+    local level
+    level=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_level" "")")
+    case "$level" in
+        auto|minimal|low|medium|high) echo "$level" ;;
+        *) echo "" ;;
+    esac
+}
+
+get_agent_gemini_thinking_budget() {
+    local agent_id="$1"
+    local budget
+    budget="$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_budget" "")"
+    case "$budget" in
+        ""|auto|dynamic) echo "" ;;
+        -1|0|[1-9][0-9]*) echo "$budget" ;;
+        *) echo "" ;;
+    esac
+}
+
+get_agent_gemini_runtime_model() {
+    local agent_id="$1"
+    local configured_model
+    configured_model="$(_cli_adapter_get_configured_model "$agent_id")"
+    local thinking_level
+    thinking_level="$(get_agent_gemini_thinking_level "$agent_id")"
+    local thinking_budget
+    thinking_budget="$(get_agent_gemini_thinking_budget "$agent_id")"
+
+    if [[ -z "$thinking_level" && -z "$thinking_budget" ]]; then
+        if [[ -n "$configured_model" ]]; then
+            echo "$configured_model"
+            return 0
+        fi
+        get_agent_model "$agent_id"
+        return 0
+    fi
+
+    if [[ -z "$configured_model" || "$configured_model" == "auto" || "$configured_model" == "default" ]]; then
+        if [[ -n "$thinking_budget" ]]; then
+            echo "mas-${agent_id}"
+            return 0
+        fi
+        echo "mas-${agent_id}"
+        return 0
+    fi
+
+    echo "mas-${agent_id}"
+}
+
 # _cli_adapter_is_valid_cli cli_type
 # 許可されたCLI種別かチェック
 _cli_adapter_is_valid_cli() {
@@ -180,6 +246,8 @@ build_cli_command_with_type() {
     configured_model=$(_cli_adapter_get_configured_model "$agent_id")
     local thinking
     thinking=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking" "")
+    local reasoning_effort
+    reasoning_effort="$(get_agent_reasoning_effort "$agent_id")"
 
     # thinking prefix: Claude CLI でのみ有効
     # thinking: true or 未設定 → そのまま（デフォルトでThinking ON）
@@ -203,6 +271,9 @@ build_cli_command_with_type() {
             if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
                 cmd="$cmd --model $configured_model"
             fi
+            if [[ -n "$reasoning_effort" && "$reasoning_effort" != "auto" ]]; then
+                cmd="$cmd -c model_reasoning_effort='$reasoning_effort'"
+            fi
             cmd="$cmd --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
             echo "$cmd"
             ;;
@@ -223,8 +294,10 @@ build_cli_command_with_type() {
             gemini_bin=$(_cli_adapter_pick_executable "gemini" "gemini-cli")
             local cmd
             cmd=$(_cli_adapter_read_yaml "cli.commands.gemini" "${gemini_bin} --yolo")
-            if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
-                cmd="$cmd --model $model"
+            local runtime_model
+            runtime_model="$(get_agent_gemini_runtime_model "$agent_id")"
+            if [[ -n "$runtime_model" && "$runtime_model" != "auto" && "$runtime_model" != "default" ]]; then
+                cmd="$cmd --model $runtime_model"
             fi
             echo "$cmd"
             ;;

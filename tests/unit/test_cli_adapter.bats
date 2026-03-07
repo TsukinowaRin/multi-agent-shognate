@@ -154,6 +154,44 @@ cli:
       model: auto
 YAML
 
+    # gemini thinking settings
+    cat > "${TEST_TMP}/settings_gemini_thinking.yaml" << 'YAML'
+cli:
+  default: gemini
+  agents:
+    gunshi:
+      type: gemini
+      model: gemini-3-pro-preview
+      thinking_level: low
+    ashigaru1:
+      type: gemini
+      model: gemini-3-flash-preview
+      thinking_level: minimal
+    ashigaru2:
+      type: gemini
+      model: gemini-2.5-flash
+      thinking_budget: 0
+    ashigaru3:
+      type: gemini
+      model: auto
+      thinking_level: high
+YAML
+
+    # codex reasoning settings
+    cat > "${TEST_TMP}/settings_codex_reasoning.yaml" << 'YAML'
+cli:
+  default: codex
+  agents:
+    shogun:
+      type: codex
+      model: auto
+      reasoning_effort: high
+    gunshi:
+      type: codex
+      model: gpt-5.4
+      reasoning_effort: none
+YAML
+
     # localapi settings
     cat > "${TEST_TMP}/settings_localapi.yaml" << 'YAML'
 cli:
@@ -342,6 +380,18 @@ load_adapter_with() {
     [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --model gpt-5.3-codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
+@test "build_cli_command: codex + reasoning_effort → -c model_reasoning_effort を付与" {
+    load_adapter_with "${TEST_TMP}/settings_codex_reasoning.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex -c model_reasoning_effort='high' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+}
+
+@test "build_cli_command: codex + explicit model + reasoning_effort none を付与" {
+    load_adapter_with "${TEST_TMP}/settings_codex_reasoning.yaml"
+    result=$(build_cli_command "gunshi")
+    [ "$result" = "NO_UPDATE_NOTIFIER=1 codex --model gpt-5.4 -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+}
+
 @test "build_cli_command: codex + model auto → --model を付けない" {
     load_adapter_with "${TEST_TMP}/settings_codex_auto.yaml"
     result=$(build_cli_command "shogun")
@@ -382,6 +432,30 @@ SH
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     result=$(build_cli_command "ashigaru2")
     [ "$result" = "gemini --yolo" ]
+}
+
+@test "build_cli_command: gemini 3 pro + thinking_level → per-agent alias を使う" {
+    load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
+    result=$(build_cli_command "gunshi")
+    [ "$result" = "gemini --yolo --model mas-gunshi" ]
+}
+
+@test "build_cli_command: gemini 3 flash + thinking_level minimal → per-agent alias を使う" {
+    load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
+    result=$(build_cli_command "ashigaru1")
+    [ "$result" = "gemini --yolo --model mas-ashigaru1" ]
+}
+
+@test "build_cli_command: gemini 2.5 + thinking_budget → per-agent alias を使う" {
+    load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
+    result=$(build_cli_command "ashigaru2")
+    [ "$result" = "gemini --yolo --model mas-ashigaru2" ]
+}
+
+@test "build_cli_command: gemini auto + thinking_level → inferred alias を使う" {
+    load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
+    result=$(build_cli_command "ashigaru3")
+    [ "$result" = "gemini --yolo --model mas-ashigaru3" ]
 }
 
 @test "build_cli_command: gemini-cliのみ存在時は gemini-cli を使用" {

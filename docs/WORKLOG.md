@@ -1724,3 +1724,13 @@
   2. 実機で `opencode` / `kilo` 実体が入った状態で `goza_zellij_pure.sh` / `goza_zellij.sh` の起動確認を行う。
   3. 必要なら `Kilo/OpenCode` 用に provider別プリセット（`ollama`, `lmstudio`, `openai-compatible`）を CUI へ追加する。
 - Links: lib/cli_adapter.sh, scripts/configure_agents.sh, scripts/sync_opencode_config.py, tests/unit/test_configure_agents.bats
+
+### 2026-03-07 21:05 (JST)
+- Goal: OpenCode/Kilo 対応 checkpoint の commit/push を完了する。
+- Commands + Results:
+  - `git commit -m "codex: opencodeとkiloのCLI対応を追加"` → PASS (`e6cace8`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装・テストは完了しているため、次の停止理由は認証のみ。
+  - 作業差分は commit 済みなので、次回はユーザーの認証後に同じ push コマンドを再実行すればよい。
+- Links: e6cace8

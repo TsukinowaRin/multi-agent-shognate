@@ -1637,3 +1637,18 @@
   2. `queue/runtime/pure_zellij_goza-no-ma-ui_*.log` と `*.meta.log` を見て、Codex/Gemini の初回挙動を agent単位で切り分ける。
   3. 必要なら Gemini の trust/high-demand 処理も runner 内へ閉じて自動化する。
 - Links: scripts/zellij_agent_bootstrap.sh, scripts/goza_no_ma.sh, lib/cli_adapter.sh
+
+### 2026-03-07 18:49 (JST)
+- Goal: pure zellij の足軽ペインが細すぎるため、右端グリッドの横幅を拡張する。
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — pure zellij `goza_room` の列配分を `46/32/22` から `42/28/30` へ変更し、足軽グリッドを横に広げた。
+- Commands + Results:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats` → `1..7` PASS
+- Decisions / Assumptions:
+  - 将軍列は最優先で大きく保ちつつ、家老列を少し削って足軽列を拡張した。
+  - 2x2 の足軽配置自体は維持し、今回は列比率だけ変更した。
+- Next:
+  1. ユーザー実機で `bash scripts/goza_zellij_pure.sh` を再起動し、足軽ペインの可読性を再確認する。
+  2. まだ縦長なら、次は右端列の中で `2列固定` から `1列+タブ切替` など別構成を検討する。
+- Links: scripts/goza_no_ma.sh

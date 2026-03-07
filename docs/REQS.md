@@ -802,3 +802,17 @@
    - 期待結果: ACK確認と再送ロジックが存在する。
 3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats`
    - 期待結果: 追加した pure zellij ログ/ACK テストを含めPASSする。
+
+## 追補（2026-03-07: zellij運用コマンドの安定経路切替）
+### 要求
+1. ユーザー向け既定コマンド `bash scripts/goza_zellij.sh` は、`zellij UI + tmux backend` の安定経路を使う。
+2. pure `zellij` 経路は `bash scripts/goza_zellij_pure.sh` として明示分離し、experimental 扱いにする。
+3. `bash first_setup.sh && bash scripts/goza_zellij.sh -s && bash scripts/goza_zellij.sh` の導線で、少なくとも backend 側の CLI 起動と初動注入が pure `zellij` 不具合に巻き込まれないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `sed -n '1,20p' scripts/goza_zellij.sh scripts/goza_zellij_pure.sh`
+   - 期待結果: `goza_zellij.sh` は `--mux tmux --ui zellij`、`goza_zellij_pure.sh` は `--mux zellij --ui zellij` を呼ぶ。
+2. コマンド: `rg -n "goza_zellij_pure|既定の運用コマンド|experimental" README.md`
+   - 期待結果: stable / experimental の責務分離が README に記載されている。
+3. コマンド: `bats tests/unit/test_goza_wrapper_modes.bats`
+   - 期待結果: PASS。

@@ -1551,3 +1551,27 @@
   1. `README.md` / `README_ja.md` を upstream 説明へ寄せつつ zellij / Gemini の使い方に絞って整理する
   2. `shutsujin_departure.sh` の tmux 本流を upstream へさらに寄せる
 - Links: first_setup.sh
+
+### 2026-03-07 13:08 (JST)
+- Goal: `bash scripts/goza_zellij.sh` で Codex / Claude が起動せず初回注入も入らない問題に対し、既定の zellij 導線を pure zellij から安定経路へ切り替える
+- Changes (files):
+  - `scripts/goza_zellij.sh` — 既定導線を `--mux tmux --ui zellij` へ変更
+  - `scripts/goza_zellij_pure.sh` — pure zellij 導線を experimental コマンドとして新設
+  - `tests/unit/test_goza_wrapper_modes.bats` — wrapper責務の回帰テストを追加
+  - `README.md` — stable / experimental の運用コマンドを整理
+  - `docs/REQS.md` — 2026-03-07追補（zellij運用コマンドの安定経路切替）を追加
+  - `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` — 本判断を Progress / Decision Log に追記
+- Commands + Results:
+  - `bash -n scripts/goza_zellij.sh scripts/goza_zellij_pure.sh scripts/goza_hybrid.sh scripts/goza_tmux.sh scripts/goza_no_ma.sh` → PASS
+  - `bash scripts/goza_zellij.sh -h` / `bash scripts/goza_zellij_pure.sh -h` → PASS
+  - `bats tests/unit/test_goza_wrapper_modes.bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_zellij_bootstrap_delivery.bats tests/unit/test_mux_parity.bats` → `1..25` PASS
+  - `bash scripts/goza_zellij.sh -s --no-attach` → この実行環境では `tmux create window failed: fork failed: Permission denied` で実機起動検証は不可（sandbox制約と判断）
+- Decisions / Assumptions:
+  - pure zellij の bootstrap は `goza_bootstrap_*.log` 上で `pane resumed agent=shogun` 以降が止まり、未収束のため既定導線から外した。
+  - ユーザー向けの `goza_zellij.sh` は安定運用を優先し、zellij UI + tmux backend を既定とする。
+  - pure zellij は削除せず `goza_zellij_pure.sh` として残し、別系統で継続検証できるようにする。
+- Next:
+  1. ユーザー実機で `bash scripts/goza_zellij.sh -s` → `bash scripts/goza_zellij.sh` を再確認する
+  2. pure zellij が必要なら `bash scripts/goza_zellij_pure.sh` を別途デバッグする
+  3. 次段で `README_ja.md` と `shutsujin_departure.sh` の上流寄せを続行する
+- Links: README.md, scripts/goza_zellij.sh, scripts/goza_zellij_pure.sh, docs/REQS.md

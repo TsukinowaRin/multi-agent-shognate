@@ -27,6 +27,7 @@
 - 2026-03-07: 再出発方針を採用。
 - 2026-03-07: 旧基盤を `_trash/restart_2026-03-07_core/` に退避し、`AGENTS.md` と `lib/agent_status.sh` を上流基準へ更新。
 - 2026-03-07: 上流完全クローン `original_full_2026-03-07` を基準参照として追加し、追跡可能な `Waste/` を正式な退避先として使う方針へ更新。
+- 2026-03-07: pure zellij の bootstrap 再失敗を受け、`goza_zellij.sh` を安定経路（zellij UI + tmux backend）へ戻し、pure zellij は `goza_zellij_pure.sh` へ分離。
 
 ## Surprises & Discoveries
 - 上流とこのフォークは merge base を素直に辿れないほど履歴が離れている。
@@ -38,6 +39,7 @@
 - `README_ja.md` の全面同期は runtime が再整備されてから行う。
 - shallow 参照ではなくフルクローン参照を正本とする。
 - 退避先は `_trash/` のみではなく、追跡可能な `Waste/` にも置く。
+- pure zellij は保持するが、ユーザー向け既定コマンドには使わない。理由は実機で「CLI未起動・初動未注入」が継続しているため。
 
 ## Outcomes & Retrospective
-- 進行中。次段で `first_setup.sh` / `build_instructions.sh` / `cli_adapter.sh` を上流ベースへ寄せ、その後 `shutsujin_departure.sh` に着手する。
+- 進行中。次段で `shutsujin_departure.sh` / `README_ja.md` を上流ベースへ寄せつつ、必要なら pure zellij を別実験系として継続検証する。

@@ -2,21 +2,21 @@
 
 このリポジトリは、将軍・家老・足軽の階層で複数AI CLIを並列運用するための実行基盤です。  
 現在は次の3モードを用途で使い分けます。  
-- **純正 zellij**: backend=zellij, ui=zellij（zellij操作をそのまま使う）
-- **hybrid**: backend=tmux, ui=zellij（御座の間の俯瞰表示向け）
+- **zellij（既定・安定版）**: backend=tmux, ui=zellij
+- **純正 zellij（experimental）**: backend=zellij, ui=zellij
 - **tmux**: backend=tmux, ui=tmux（従来運用）
 既定テンプレートは `shogun_only`（将軍セッションへ直接アタッチ）です。
 
 ## いま使う起動コマンド
 
-### 1. 純正 zellij モードで起動
+### 1. zellij モードで起動（既定・安定版）
 ```bash
 bash scripts/goza_zellij.sh
 ```
 
-### 2. hybrid モードで起動（zellij表示 + tmux内部）
+### 2. 純正 zellij モードで起動（experimental）
 ```bash
-bash scripts/goza_hybrid.sh
+bash scripts/goza_zellij_pure.sh
 ```
 
 ### 3. tmux モードで起動
@@ -26,26 +26,27 @@ bash scripts/goza_tmux.sh
 
 ### 4. 単一コマンドでモード指定して起動
 ```bash
-bash scripts/goza_no_ma.sh --mux zellij --ui zellij
 bash scripts/goza_no_ma.sh --mux tmux --ui zellij
+bash scripts/goza_no_ma.sh --mux zellij --ui zellij
 bash scripts/goza_no_ma.sh --mux tmux --ui tmux
 ```
 
 ### 5. 全体俯瞰テンプレートで起動（御座の間）
 ```bash
-bash scripts/goza_hybrid.sh --template goza_room
+bash scripts/goza_zellij.sh --template goza_room
+bash scripts/goza_zellij_pure.sh --template goza_room
 bash scripts/goza_tmux.sh --template goza_room
 ```
 
 ## 主要スクリプト
 
 - `scripts/goza_zellij.sh`
-  - `goza_no_ma.sh --mux zellij --ui zellij` のラッパー。
-  - 純正zellij運用（zellij操作をそのまま利用）。
-
-- `scripts/goza_hybrid.sh`
   - `goza_no_ma.sh --mux tmux --ui zellij` のラッパー。
-  - 御座の間俯瞰（tmux内部運用をzellijで表示）向け。
+  - 既定の運用コマンド。zellij UI で操作しつつ、内部起動は tmux backend を使います。
+
+- `scripts/goza_zellij_pure.sh`
+  - `goza_no_ma.sh --mux zellij --ui zellij` のラッパー。
+  - 純正zellij運用（experimental）。
 
 - `scripts/goza_tmux.sh`
   - `goza_no_ma.sh --mux tmux --ui tmux` のラッパー。
@@ -54,8 +55,9 @@ bash scripts/goza_tmux.sh --template goza_room
 - `scripts/goza_no_ma.sh`
   - 共通フロントエンド。
   - `--mux`（バックエンド）と `--ui`（表示）を分離して指定できます。
-  - `goza_room` は pure zellij でも複数ペイン表示に対応（ネストした zellij attach ではなく、1セッション内ペインで直接起動）。
-  - 役職別の色付き罫線演出は `hybrid` / `tmux` 側で提供します。
+  - 安定運用は `--mux tmux --ui zellij` を優先します。
+  - `goza_room` の pure zellij は experimental 扱いです。
+  - 役職別の色付き罫線演出は `zellij` / `tmux` 側で提供します。
 
 - `shutsujin_departure.sh`
   - 実際の出陣処理本体。
@@ -115,7 +117,7 @@ bash scripts/configure_agents.sh
 
 ## 操作方法（zellij表示時）
 
-`goza_hybrid.sh` は「zellij UI + tmux backend」です。  
+`goza_zellij.sh` は「zellij UI + tmux backend」です。  
 見た目は zellij タブですが、ペイン操作は tmux 側で行います。
 
 - 起動直後のアクティブペイン: 将軍（`shogun`）
@@ -127,8 +129,8 @@ bash scripts/configure_agents.sh
 人間が将軍とだけ会話する運用なら、起動後はそのまま左の将軍ペインに入力すれば動作します。
 
 補足:
-- 純正 zellij（`goza_zellij.sh`）では zellij標準操作がそのまま使えます。
-- hybrid（`goza_hybrid.sh`）では tmux操作が必要です。
+- 既定の `goza_zellij.sh` では tmux操作が必要です。
+- 純正 zellij 操作を試す場合は `goza_zellij_pure.sh` を使ってください。
 
 ## クイックスタート
 
@@ -150,18 +152,18 @@ bash first_setup.sh
 ### 日次運用
 
 ```bash
-# 純正 zellij で運用（既定: shogun_only）
+# zellij で運用（既定: shogun_only, stable）
 bash scripts/goza_zellij.sh
 
-# hybrid（zellij表示 + tmux内部）で運用
-bash scripts/goza_hybrid.sh
+# 純正 zellij（experimental）
+bash scripts/goza_zellij_pure.sh
 
 # tmux で直接運用（既定: shogun_only）
 bash scripts/goza_tmux.sh
 
 # 全体俯瞰（御座の間）で運用
 bash scripts/goza_zellij.sh --template goza_room
-bash scripts/goza_hybrid.sh --template goza_room
+bash scripts/goza_zellij_pure.sh --template goza_room
 bash scripts/goza_tmux.sh --template goza_room
 ```
 
@@ -250,7 +252,7 @@ sed -n '1,80p' queue/history/rekishi_book.md
   - 既存ビューを破棄して再起動（hybrid/tmux）:
   ```bash
   tmux kill-session -t goza-no-ma 2>/dev/null || true
-  bash scripts/goza_hybrid.sh
+  bash scripts/goza_zellij.sh
   ```
   - 反映確認（役職別の色付きヘッダ書式）:
   ```bash
@@ -306,6 +308,7 @@ sed -n '1,80p' queue/history/rekishi_book.md
 ## 開発者メモ
 
 - `scripts/goza_zellij.sh` / `scripts/goza_tmux.sh` は運用コマンドとして固定。
+- pure zellij の検証は `scripts/goza_zellij_pure.sh` で行う。
 - `scripts/goza_no_ma.sh` は共通ロジックを持つため、機能追加はここを起点に行う。
 - `shutsujin_departure.sh` 側は `MAS_MULTIPLEXER` によりモードを強制可能。
 - テンプレート定義は `templates/multiplexer/tmux_templates.yaml` と `templates/multiplexer/zellij_templates.yaml`。

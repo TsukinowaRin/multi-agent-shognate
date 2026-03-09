@@ -3,6 +3,19 @@
 最終更新: 2026-03-09
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-09: pure zellij setup-only session 分離）
+### 要求
+1. `bash scripts/goza_zellij_pure.sh -s` を実行しても、次の `bash scripts/goza_zellij_pure.sh` 通常起動が `setup-only` pane command を再利用しないこと。
+2. `pure zellij` の setup-only と通常起動は、既定では別 session 名で扱い、通常起動用 session を汚染しないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/goza_zellij_pure.sh -s`
+   - 期待結果: setup-only 用 session が通常起動用 session とは別名で作られる。
+2. コマンド: `bash scripts/goza_zellij_pure.sh`
+   - 期待結果: 通常起動時の pane 内 `zellij_agent_bootstrap.sh` へ `GOZA_SETUP_ONLY=true` が渡らない。
+3. コマンド: `bats tests/unit/test_goza_wrapper_modes.bats tests/unit/test_goza_pure_bootstrap.bats`
+   - 期待結果: pure wrapper の session 分離回帰テストを含めて PASS する。
+
 ## 追補（2026-03-09: 足軽ID混線修正 + Codex既定Auto + Codex ready後初動）
 ### 要求
 1. `pure zellij` では、agent 自己識別を `tmux display-message` 固定にせず、まず `AGENT_ID` 環境変数を正本として使うこと。

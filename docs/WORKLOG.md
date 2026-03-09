@@ -1846,3 +1846,23 @@
   1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
   2. 実機で `bash scripts/goza_zellij_pure.sh -s && bash scripts/goza_zellij_pure.sh` を実行し、Codex pane の updater 後 bootstrap と足軽 ID 誤認が解消したか確認する。
 - Links: 403ff61
+
+### 2026-03-09 23:00 (JST)
+- Goal: `bash scripts/goza_zellij_pure.sh -s` 実行後に通常起動でも全 pane が `setup-only` になる回帰を修正する。
+- Findings:
+  - `queue/runtime/pure_zellij_goza-no-ma-ui_*.meta.log` が全 agent で `setup-only agent=...` のみを記録していた。
+  - `/tmp/zellij_pure_goza_goza-no-ma-ui.kdl` には `export GOZA_SETUP_ONLY=true` が焼き込まれており、setup-only 用 layout が通常起動用 session 名 `goza-no-ma-ui` を汚染していた。
+  - これにより、ユーザーが `bash scripts/goza_zellij_pure.sh -s` の直後に `bash scripts/goza_zellij_pure.sh` を実行しても、既存 setup-only session を掴んで CLI が一切起動しない状況が発生した。
+- Changes (files):
+  - `scripts/goza_zellij_pure.sh` — `-s/--setup-only` かつ `--session` 未指定時は `ZELLIJ_UI_SESSION=goza-no-ma-ui-setup` を使うよう変更。
+  - `tests/unit/test_goza_wrapper_modes.bats` — setup-only が専用 session 名を使う回帰テストを追加。
+- Commands + Results:
+  - `bash -n scripts/goza_zellij_pure.sh scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_wrapper_modes.bats tests/unit/test_goza_pure_bootstrap.bats` → `1..11` PASS
+- Decisions / Assumptions:
+  - pure zellij の setup-only は通常起動用 session と分離する。理由は user workflow が `-s` → 通常起動の2段であり、この導線で session 汚染を起こさないことが最優先のため。
+  - `goza_zellij_pure.sh -s` の完全な background setup 化までは、この checkpoint では行わない。最小修正で再現バグを止める。
+- Next:
+  1. 実機で `bash scripts/goza_zellij_pure.sh -s` 実行後、通常起動 `bash scripts/goza_zellij_pure.sh` を再試験する。
+  2. 問題が続く場合は、通常起動後の `/tmp/zellij_pure_goza_goza-no-ma-ui.kdl` と `queue/runtime/pure_zellij_goza-no-ma-ui_*.meta.log` を再採取する。
+- Links: scripts/goza_zellij_pure.sh, tests/unit/test_goza_wrapper_modes.bats

@@ -36,6 +36,7 @@
 - 2026-03-09: 実機ログで `shogun` の Gemini implicit alias (`mas-shogun`) が UX と初動安定性を損ねたため、Gemini は explicit thinking 指定時のみ alias を生成する方針へ変更した。
 - 2026-03-09: `pure zellij` の Codex 起動は、起動引数へ本文を即埋め込む方式をやめ、pane 内 PTY runner が `update prompt` / `ready pattern` を見てから bootstrap を送る方式へ変更した。
 - 2026-03-09: agent 自己識別は `tmux display-message` 固定をやめ、`AGENT_ID` 優先に変更した。これにより `ashigaru1` が `ashigaru4` と誤認する混線を防ぐ。
+- 2026-03-09: `goza_zellij_pure.sh -s` と通常起動が同じ session 名を共有しないよう変更し、setup-only pane command が次回通常起動へ残留する回帰を防いだ。
 
 ## Surprises & Discoveries
 - 上流とこのフォークは merge base を素直に辿れないほど履歴が離れている。
@@ -56,6 +57,7 @@
 - Gemini の implicit alias 既定は採用しない。理由は Shogun pane で `model mas-shogun` 表示となり、実機ログ上も `Auto (Gemini 3)` より初動停滞の切り分けが難しくなったため。
 - `pure zellij` の interactive CLI は、pane 内 PTY runner を採用する。理由は `Codex` update prompt と ready 待ちを multiplexer 外側で扱うと、active pane 依存や timing race が避けられないため。
 - agent 自己識別の正本は `AGENT_ID` とし、`tmux display-message` は tmux fallback に限定する。理由は pure `zellij` では `@agent_id` が正本にならず、実機で足軽 ID 混線を起こしたため。
+- `pure zellij` の setup-only は既定で専用 session 名を使う。理由は `GOZA_SETUP_ONLY=true` を焼いた setup-only layout が通常起動用 session に残ると、次回通常起動でも全paneが shell のままになるため。
 
 ## Outcomes & Retrospective
 - 進行中。次段は `scripts/zellij_agent_bootstrap.sh` の実機確認、および `OpenCode/Kilo/Ollama/LM Studio` の README 導線補強と実機起動確認。

@@ -17,6 +17,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "goza_zellij_pure の setup-only は専用 session 名を使う" {
+    run rg -nF 'goza-no-ma-ui-setup' "$PROJECT_ROOT/scripts/goza_zellij_pure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "goza_no_ma は明示opt-inなしでは pure zellij goza_room を stable 側へフォールバックする" {
     run rg -nF 'PURE_ZELLIJ_REQUESTED=0' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]

@@ -1833,3 +1833,16 @@
   1. 実機で `bash scripts/goza_zellij_pure.sh -s && bash scripts/goza_zellij_pure.sh` を再起動し、Codex pane が updater を越えた後に初動命令を受けるか確認する。
   2. `ashigaru1` / `ashigaru2` の transcript で `ashigaru4` 誤認が消えたか確認する。
 - Links: scripts/interactive_agent_runner.py, scripts/zellij_agent_bootstrap.sh, lib/cli_adapter.sh, CLAUDE.md, instructions/common/forbidden_actions.md
+
+### 2026-03-09 16:40 (JST)
+- Goal: `pure zellij` の ID混線 / Codex初動 fix checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijのID混線とcodex初動を修正"` → PASS (`403ff61`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は未ステージのまま維持した。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で `bash scripts/goza_zellij_pure.sh -s && bash scripts/goza_zellij_pure.sh` を実行し、Codex pane の updater 後 bootstrap と足軽 ID 誤認が解消したか確認する。
+- Links: 403ff61

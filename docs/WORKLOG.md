@@ -1866,3 +1866,16 @@
   1. 実機で `bash scripts/goza_zellij_pure.sh -s` 実行後、通常起動 `bash scripts/goza_zellij_pure.sh` を再試験する。
   2. 問題が続く場合は、通常起動後の `/tmp/zellij_pure_goza_goza-no-ma-ui.kdl` と `queue/runtime/pure_zellij_goza-no-ma-ui_*.meta.log` を再採取する。
 - Links: scripts/goza_zellij_pure.sh, tests/unit/test_goza_wrapper_modes.bats
+
+### 2026-03-09 23:04 (JST)
+- Goal: `pure zellij setup-only session 分離` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijのsetup-only sessionを分離"` → PASS (`215767c`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は既存未整理差分として維持した。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で `bash scripts/goza_zellij_pure.sh -s` → `bash scripts/goza_zellij_pure.sh` を再試験する。
+- Links: 215767c

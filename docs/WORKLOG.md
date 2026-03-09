@@ -1910,3 +1910,22 @@
   1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
   2. 実機で `bash scripts/goza_zellij_pure.sh` を再起動し、自動送信が submit されるか確認する。
 - Links: a79983f
+
+### 2026-03-09 23:29 (JST)
+- Goal: `pure zellij` のリサイズ時に足軽 pane が細すぎる問題を緩和する。
+- Findings:
+  - 既定レイアウト比率は `42 / 28 / 30` で、右列の足軽 2x2 グリッドに割ける横幅が不足していた。
+  - 特にウィンドウ幅を詰めた際、`ashigaru1..4` が縦に潰れてテキスト可読性が急激に落ちていた。
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — pure zellij レイアウト比率を `40 / 24 / 36` に変更し、環境変数 `GOZA_PURE_LEFT_WIDTH` / `GOZA_PURE_MIDDLE_WIDTH` / `GOZA_PURE_RIGHT_WIDTH` で上書きできるよう更新。
+  - `tests/unit/test_goza_pure_bootstrap.bats` — 右列を広めに確保する既定比率の回帰テストを追加。
+- Commands + Results:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats` → `1..8` PASS
+- Decisions / Assumptions:
+  - まずは固定比率を見直して右列を広げる。理由は KDL レイアウトに動的レスポンシブ判定を増やすより、既定値改善の方が影響が小さいため。
+  - 将来的に画面幅ごとの自動再配置はあり得るが、この checkpoint では行わない。
+- Next:
+  1. 実機で `bash scripts/goza_zellij_pure.sh` を再起動し、足軽 pane の可読性が改善したか確認する。
+  2. さらに詰めるなら、環境変数で比率を調整する導線を README に追加する。
+- Links: scripts/goza_no_ma.sh, tests/unit/test_goza_pure_bootstrap.bats

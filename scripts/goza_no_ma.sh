@@ -961,6 +961,9 @@ zellij_pure_goza_layout_file() {
   local karo_agents=()
   local ashigaru_agents=()
   local agent
+  local left_width="${GOZA_PURE_LEFT_WIDTH:-40%}"
+  local middle_width="${GOZA_PURE_MIDDLE_WIDTH:-24%}"
+  local right_width="${GOZA_PURE_RIGHT_WIDTH:-36%}"
   tab_title_escaped="$(kdl_escape "$tab_title")"
 
   for agent in "${agents[@]}"; do
@@ -1058,16 +1061,16 @@ EOF
     echo "    }"
     echo "    tab name=\"${tab_title_escaped}\" {"
     echo "        pane split_direction=\"vertical\" {"
-    echo "            pane split_direction=\"horizontal\" size=\"42%\" {"
+    echo "            pane split_direction=\"horizontal\" size=\"${left_width}\" {"
     zellij_emit_agent_leaf "                " "$shogun_agent" "focus"
     if [[ -n "$gunshi_agent" ]]; then
       zellij_emit_agent_leaf "                " "$gunshi_agent"
     fi
     echo "            }"
-    echo "            pane split_direction=\"horizontal\" size=\"28%\" {"
+    echo "            pane split_direction=\"horizontal\" size=\"${middle_width}\" {"
     zellij_emit_agent_grid "                " "${karo_agents[@]}"
     echo "            }"
-    echo "            pane split_direction=\"horizontal\" size=\"30%\" {"
+    echo "            pane split_direction=\"horizontal\" size=\"${right_width}\" {"
     zellij_emit_agent_grid "                " "${ashigaru_agents[@]}"
     echo "            }"
     echo "        }"

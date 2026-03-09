@@ -30,6 +30,15 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "pure zellij: 既定レイアウト比率は右列を広めに確保する" {
+    run rg -nF 'GOZA_PURE_LEFT_WIDTH:-40%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'GOZA_PURE_MIDDLE_WIDTH:-24%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'GOZA_PURE_RIGHT_WIDTH:-36%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "pure zellij: run-id付き bootstrap ログを出力する" {
     run rg -n "GOZA_BOOTSTRAP_LOG|goza_bootstrap_\$\{GOZA_BOOTSTRAP_RUN_ID\}" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]

@@ -1897,3 +1897,16 @@
   1. 実機で `bash scripts/goza_zellij_pure.sh` を再起動し、初動命令が「入力欄に入るだけ」で止まらず送信されるか確認する。
   2. なお送信が不発なら、次は CLI ごとの submit キー差分（`Enter` / `Ctrl-J`）を切り分ける。
 - Links: scripts/interactive_agent_runner.py
+
+### 2026-03-09 23:18 (JST)
+- Goal: `pure zellij 自動送信 submit 分離` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijの自動送信をsubmit分離にする"` → PASS (`a79983f`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - 既存未整理差分 `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は維持する。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で `bash scripts/goza_zellij_pure.sh` を再起動し、自動送信が submit されるか確認する。
+- Links: a79983f

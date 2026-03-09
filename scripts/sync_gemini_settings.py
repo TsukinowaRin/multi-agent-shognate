@@ -46,7 +46,9 @@ def normalize_level(agent_cfg) -> str:
     if not isinstance(agent_cfg, dict):
         return ""
     level = str(agent_cfg.get("thinking_level", "") or "").strip().lower()
-    if level in {"auto", "minimal", "low", "medium", "high"}:
+    if level == "auto":
+        return ""
+    if level in {"minimal", "low", "medium", "high"}:
         return level
     return ""
 
@@ -67,24 +69,10 @@ def normalize_budget(agent_cfg):
 
 
 def default_level_for_agent(agent_id: str, model: str) -> str:
-    if agent_id != "shogun":
-        return ""
-    lowered = (model or "auto").strip().lower()
-    if lowered.startswith("gemini-3-flash"):
-        return "minimal"
-    if lowered in {"", "auto", "default"} or lowered.startswith("gemini-3-pro"):
-        return "low"
     return ""
 
 
 def default_budget_for_agent(agent_id: str, model: str):
-    if agent_id != "shogun":
-        return None
-    lowered = (model or "auto").strip().lower()
-    if lowered.startswith("gemini-2.5-flash"):
-        return 0
-    if lowered.startswith("gemini-2.5-pro"):
-        return -1
     return None
 
 

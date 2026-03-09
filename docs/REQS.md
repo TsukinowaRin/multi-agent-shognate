@@ -1,7 +1,25 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-07
+最終更新: 2026-03-09
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-09: 足軽ID混線修正 + Codex既定Auto + Codex ready後初動）
+### 要求
+1. `pure zellij` では、agent 自己識別を `tmux display-message` 固定にせず、まず `AGENT_ID` 環境変数を正本として使うこと。
+2. `ashigaru` / `karo` / `gunshi` / `shogun` の generated instructions と `AGENTS.md` は、`zellij` でも誤った `@agent_id` を読みに行かないこと。
+3. `Codex` を使う agent は、未設定時の既定 `reasoning_effort` を `auto` とし、暗黙の `high` や `none` を入れないこと。
+4. `pure zellij` の `Codex` 初動命令は、CLI ready 前の引数注入ではなく、pane 内 runner が `update prompt` と `ready pattern` を見てから送信すること。
+5. `Gemini` / `Codex` の preflight は、active pane 依存ではなく agent 専用 runner が pane 内で処理すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_sync_gemini_settings.bats`
+   - 期待結果: `Codex reasoning auto`、`AGENT_ID優先`、`pure zellij runner` の回帰テストが PASS する。
+2. コマンド: `bash scripts/build_instructions.sh`
+   - 期待結果: `AGENTS.md` と `instructions/generated/*.md` が再生成され、旧 `tmux display-message` 固定の自己識別手順が source から消える。
+3. コマンド: `rg -n "interactive_agent_runner.py|AGENT_ID unavailable|Identify self:" scripts/zellij_agent_bootstrap.sh instructions/common/forbidden_actions.md AGENTS.md CLAUDE.md`
+   - 期待結果: `interactive_agent_runner.py` と `AGENT_ID` 優先自己識別がコード/文書上に存在する。
+4. コマンド: `rg -n "default_codex_reasoning_effort|default_reasoning_for_role" lib/cli_adapter.sh scripts/configure_agents.sh`
+   - 期待結果: `Codex` の未設定既定が `auto` 側であることを確認できる。
 
 ## 追補（2026-03-07: OpenCode / Kilo CLI 対応）
 ### 要求
@@ -36,7 +54,8 @@
 3. `Codex` は agent ごとに `reasoning_effort` を設定できること。
 4. `Gemini` は agent ごとに、`Gemini 3` 系では `thinking_level`、`Gemini 2.5` 系では `thinking_budget` を設定できること。
 5. `Gemini` の思考設定は workspace の `.gemini/settings.json` へ自動同期され、起動コマンドは per-agent alias を用いて反映されること。
-6. `shogun` は、明示設定が無い場合でも各CLIで「そのCLI/モデルが許す最小思考」に自動で寄せること。
+6. `shogun` は、`Claude` では明示設定が無い場合でも最小思考へ寄せること。`Codex` は未設定時 `auto` とすること。
+7. `Gemini` は `thinking_level` / `thinking_budget` を明示設定した場合だけ alias を生成し、未設定時は素の `Gemini 3` モデル表示で起動すること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/configure_agents.sh`
@@ -47,8 +66,8 @@
    - 期待結果: `modelConfigs.customAliases.mas-<agent>` が生成される。
 4. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_gemini_settings.bats`
    - 期待結果: `Codex` の `reasoning_effort` と `Gemini` alias 同期テストが PASS する。
-5. コマンド: `rg -n "default_codex_reasoning_effort|default_claude_thinking|default_gemini_thinking" lib/cli_adapter.sh scripts/sync_gemini_settings.py`
-   - 期待結果: `shogun` の既定最小思考ロジックがコード上に存在する。
+5. コマンド: `rg -n "default_codex_reasoning_effort|default_claude_thinking|get_agent_gemini_runtime_model|normalize_level" lib/cli_adapter.sh scripts/sync_gemini_settings.py`
+   - 期待結果: `shogun` の `Claude` 既定最小思考、`Codex` 未設定 `auto`、`Gemini` の明示設定時のみ alias を使うロジックがコード上に存在する。
 
 ## 追補（2026-03-07: pure zellij の dedicated bootstrap 化）
 ### 要求

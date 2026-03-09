@@ -33,6 +33,9 @@
 - 2026-03-07: `scripts/sync_gemini_settings.py` を追加し、workspace `.gemini/settings.json` の `customAliases` へ per-agent Gemini 設定を同期するようにした。
 - 2026-03-07: `OpenCode` / `Kilo` を CLI種別として追加し、`scripts/sync_opencode_config.py` で project-level `opencode.json` を生成、`configure_agents.sh` から shared provider 設定も保存できるようにした。
 - 2026-03-09: `Ollama` / `LM Studio` を `OpenCode/Kilo` 用 provider として明示化し、`base_url` 未指定時の既定URL補完と `first_setup.sh` の存在確認/案内を追加した。
+- 2026-03-09: 実機ログで `shogun` の Gemini implicit alias (`mas-shogun`) が UX と初動安定性を損ねたため、Gemini は explicit thinking 指定時のみ alias を生成する方針へ変更した。
+- 2026-03-09: `pure zellij` の Codex 起動は、起動引数へ本文を即埋め込む方式をやめ、pane 内 PTY runner が `update prompt` / `ready pattern` を見てから bootstrap を送る方式へ変更した。
+- 2026-03-09: agent 自己識別は `tmux display-message` 固定をやめ、`AGENT_ID` 優先に変更した。これにより `ashigaru1` が `ashigaru4` と誤認する混線を防ぐ。
 
 ## Surprises & Discoveries
 - 上流とこのフォークは merge base を素直に辿れないほど履歴が離れている。
@@ -50,6 +53,9 @@
 - Codex の思考設定は `-c model_reasoning_effort='<value>'` を採用する。理由は現行 CLI が `-c key=value` オーバーライドを正式に受け付けているため。
 - OpenCode と Kilo は同系統の CLI なので、project provider 設定は `opencode.json` へ一本化し、role ごとの差は `config/settings.yaml` の `type/model` に閉じ込める。理由は provider/base URL/API key まで role ごとに持たせるより設定の一貫性が高いため。
 - `ollama` と `lmstudio` は free-form provider ではなく、CUI に明示選択肢を出して既定URLを持たせる。理由は local-AI 導線としてのセットアップを短縮し、`base_url` 手入力ミスを減らすため。
+- Gemini の implicit alias 既定は採用しない。理由は Shogun pane で `model mas-shogun` 表示となり、実機ログ上も `Auto (Gemini 3)` より初動停滞の切り分けが難しくなったため。
+- `pure zellij` の interactive CLI は、pane 内 PTY runner を採用する。理由は `Codex` update prompt と ready 待ちを multiplexer 外側で扱うと、active pane 依存や timing race が避けられないため。
+- agent 自己識別の正本は `AGENT_ID` とし、`tmux display-message` は tmux fallback に限定する。理由は pure `zellij` では `@agent_id` が正本にならず、実機で足軽 ID 混線を起こしたため。
 
 ## Outcomes & Retrospective
 - 進行中。次段は `scripts/zellij_agent_bootstrap.sh` の実機確認、および `OpenCode/Kilo/Ollama/LM Studio` の README 導線補強と実機起動確認。

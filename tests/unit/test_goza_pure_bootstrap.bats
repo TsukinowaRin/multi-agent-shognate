@@ -12,7 +12,7 @@ setup_file() {
     [ "$status" -eq 0 ]
     run rg -nF 'scripts/zellij_agent_bootstrap.sh' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
-    run rg -nF 'build_cli_command_with_startup_prompt' "$PROJECT_ROOT/scripts/zellij_agent_bootstrap.sh"
+    run rg -nF 'interactive_agent_runner.py' "$PROJECT_ROOT/scripts/zellij_agent_bootstrap.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -44,12 +44,12 @@ setup_file() {
     [ "$status" -ne 0 ]
 }
 
-@test "pure zellij: Gemini は interactive prompt フラグで初回命令を起動引数に載せる" {
-    run rg -nF "printf '%s -i %q\\n'" "$PROJECT_ROOT/lib/cli_adapter.sh"
+@test "pure zellij: runner は Codex update / Gemini preflight を pane 内で処理する" {
+    run rg -n 'codex update skipped agent=|gemini trust accepted agent=|gemini keep_trying agent=' "$PROJECT_ROOT/scripts/interactive_agent_runner.py"
     [ "$status" -eq 0 ]
 }
 
-@test "pure zellij: Codex と Claude は初回命令を positional prompt で起動引数に載せる" {
-    run rg -nF "printf '%s %q\\n' \"\$base_cmd\" \"\$prompt\"" "$PROJECT_ROOT/lib/cli_adapter.sh"
+@test "pure zellij: runner は CLI ready 検出後に bootstrap を送信する" {
+    run rg -n 'ready_pattern.search|bootstrap delivered agent=' "$PROJECT_ROOT/scripts/interactive_agent_runner.py"
     [ "$status" -eq 0 ]
 }

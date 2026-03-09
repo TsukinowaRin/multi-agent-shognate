@@ -246,44 +246,15 @@ default_model_for_cli() {
 }
 
 default_reasoning_for_role() {
-  local role="$1"
-  if [[ "$role" == "shogun" ]]; then
-    echo "none"
-  else
-    echo "auto"
-  fi
+  echo "auto"
 }
 
 default_gemini_level_for_role() {
-  local role="$1"
-  local model="$2"
-  local normalized_model
-  normalized_model="$(printf '%s' "$model" | tr '[:upper:]' '[:lower:]')"
-  if [[ "$role" != "shogun" ]]; then
-    echo "auto"
-    return 0
-  fi
-  case "$normalized_model" in
-    gemini-3-flash*) echo "minimal" ;;
-    gemini-3-pro*|auto|default|"") echo "low" ;;
-    *) echo "auto" ;;
-  esac
+  echo "auto"
 }
 
 default_gemini_budget_for_role() {
-  local role="$1"
-  local model="$2"
-  local normalized_model
-  normalized_model="$(printf '%s' "$model" | tr '[:upper:]' '[:lower:]')"
-  if [[ "$role" != "shogun" ]]; then
-    echo ""
-    return 0
-  fi
-  case "$normalized_model" in
-    gemini-2.5-flash*|gemini-2.5-flash-lite*) echo "0" ;;
-    gemini-2.5-pro*) echo "-1" ;;
-    *) echo "" ;;
-  esac
+  echo ""
 }
 
 prompt_codex_reasoning() {

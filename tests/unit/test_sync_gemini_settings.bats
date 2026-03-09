@@ -65,7 +65,7 @@ PY
   [ "$status" -eq 0 ]
 }
 
-@test "sync_gemini_settings: shogun の未設定デフォルトで low thinking alias を生成する" {
+@test "sync_gemini_settings: shogun の未設定デフォルトでは alias を生成しない" {
   cat > "$TEST_TMP/settings.yaml" <<'YAML'
 cli:
   default: gemini
@@ -80,9 +80,8 @@ YAML
 import json, sys
 with open(sys.argv[1], encoding='utf-8') as fh:
     cfg = json.load(fh)
-alias = cfg["modelConfigs"]["customAliases"]["mas-shogun"]
-assert alias["modelConfig"]["model"] == "gemini-3-pro-preview"
-assert alias["modelConfig"]["generateContentConfig"]["thinkingConfig"]["thinkingLevel"] == "LOW"
+aliases = cfg["modelConfigs"]["customAliases"]
+assert "mas-shogun" not in aliases
 print("ok")
 PY
   [ "$status" -eq 0 ]

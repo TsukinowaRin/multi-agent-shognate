@@ -1766,3 +1766,70 @@
   - 実装・テストは完了しているため、停止理由は認証のみ。
   - 次回は認証後に同じ push コマンドを再実行すればよい。
 - Links: 7049b39
+
+### 2026-03-09 15:34 (JST)
+- Goal: 実機起動前の役職CLI構成を、ユーザー指定どおり `shogun=gemini / karo=codex / gunshi=gemini / ashigaru1-2=codex / ashigaru3-4=gemini` に合わせる。
+- Changes (files):
+  - `config/settings.yaml` — active ashigaru 4名を維持したまま、各役職の `type` をユーザー指定構成へ更新。
+- Commands + Results:
+  - `python3 scripts/sync_gemini_settings.py` → PASS
+  - `cat config/settings.yaml` → 指定どおりの role 割当を確認
+  - `cat queue/runtime/gemini_aliases.tsv` → `shogun` の Gemini alias が生成されることを確認
+- Decisions / Assumptions:
+  - `cli.default` は未指定役職用のまま `gemini` を維持し、今回の起動対象は全役職を個別指定で固定した。
+  - `gunshi` / `ashigaru3` / `ashigaru4` は thinking 未指定のため、Gemini alias は不要として扱う。
+- Next:
+  1. 実機で `bash scripts/goza_zellij_pure.sh -s && bash scripts/goza_zellij_pure.sh` または stable 側 `bash scripts/goza_zellij.sh -s && bash scripts/goza_zellij.sh` を実行する。
+  2. 起動後に `cat queue/runtime/agent_cli.tsv` で role ごとの CLI 割当を確認する。
+- Links: config/settings.yaml, queue/runtime/gemini_aliases.tsv
+
+### 2026-03-09 16:05 (JST)
+- Goal: `shogun` の Gemini pane で `mas-shogun` alias 表示と初動停滞が出る問題を、runtime ログに基づいて切り分けて修正する。
+- Findings:
+  - `queue/runtime/pure_zellij_goza-no-ma-ui_shogun.log` では `model mas-shogun` のまま長時間 spinner が継続していた。
+  - `queue/runtime/pure_zellij_goza-no-ma-ui_gunshi.log` は `Auto (Gemini 3)` 表示で通常応答していた。
+  - 原因は `shogun` にだけ適用していた Gemini implicit thinking alias (`LOW`) で、`config/settings.yaml` に明示 thinking が無くても `mas-shogun` alias を強制していたこと。
+- Changes (files):
+  - `lib/cli_adapter.sh` — Gemini は `thinking_level=auto/未設定` の場合 alias を使わず、明示 `minimal|low|medium|high` または `thinking_budget` があるときだけ alias を使うよう更新。
+  - `scripts/sync_gemini_settings.py` — `thinking_level: auto` を alias 生成対象から除外し、`shogun` の implicit default alias を削除。
+  - `scripts/configure_agents.sh` — Gemini thinking の既定値を `auto` / 空へ戻し、Shogun だけに暗黙値を入れないよう更新。
+  - `tests/unit/test_cli_adapter.bats` / `tests/unit/test_sync_gemini_settings.bats` — `shogun` の未設定 Gemini は alias を使わない回帰テストへ更新。
+  - `docs/REQS.md` / `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` — Gemini alias は明示設定時のみ、という仕様へ更新。
+- Commands + Results:
+  - `python3 scripts/sync_gemini_settings.py` → PASS (`0 alias(es)`)
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_gemini_settings.bats` → `1..102` PASS
+- Decisions / Assumptions:
+  - `Claude/Codex` の Shogun 既定最小思考は維持するが、Gemini だけは UX と初動安定性を優先して implicit alias を廃止した。
+  - Gemini の thinking は explicit 設定時だけ alias を作る。未設定時は `Auto (Gemini 3)` の素の表示を使う。
+- Next:
+  1. 実機で `bash scripts/goza_zellij_pure.sh -s && bash scripts/goza_zellij_pure.sh` を再起動し、Shogun pane が `mas-shogun` ではなく `Auto (Gemini 3)` で立ち上がるか確認する。
+  2. 必要なら Shogun にだけ explicit `model: gemini-3-pro-preview` を入れるか検討する。
+- Links: queue/runtime/pure_zellij_goza-no-ma-ui_shogun.log, queue/runtime/pure_zellij_goza-no-ma-ui_gunshi.log
+
+### 2026-03-09 16:34 (JST)
+- Goal: 足軽 ID 混線と pure zellij 上の Codex 初動 race を修正し、Codex の未設定既定を `auto` へ揃える。
+- Findings:
+  - `queue/runtime/pure_zellij_goza-no-ma-ui_ashigaru1.log` に `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'` と `ashigaru4` が残っており、`ashigaru1` が `ashigaru4` と誤認していた。
+  - 原因は generated instructions と `AGENTS.md` に残っていた `tmux display-message` 固定の自己識別手順だった。
+  - pure `zellij` の `zellij_agent_bootstrap.sh` は `build_cli_command_with_startup_prompt()` で Codex 起動引数へ本文を即埋め込みしており、`update prompt` や CLI ready 前に bootstrap が流れる構造だった。
+- Changes (files):
+  - `scripts/interactive_agent_runner.py` — pane 内 PTY runner を新規追加。`Codex` の update prompt と `Gemini` preflight を pane 内で処理し、ready 後に bootstrap を送る。
+  - `scripts/zellij_agent_bootstrap.sh` — `script -qefc` / startup prompt 引数埋め込みをやめ、専用 PTY runner を呼ぶよう更新。`GOZA_SETUP_ONLY=true` も正しく扱う。
+  - `lib/cli_adapter.sh` — `Codex` の未設定既定 `reasoning_effort` を空 (`auto`) に変更。
+  - `scripts/configure_agents.sh` — CUI の `Codex reasoning_effort` 既定を role 不問で `auto` に統一。
+  - `CLAUDE.md` / `instructions/common/forbidden_actions.md` — agent 自己識別を `AGENT_ID` 優先へ更新。
+  - `tests/unit/test_cli_adapter.bats` / `tests/unit/test_goza_pure_bootstrap.bats` — `Codex auto` と PTY runner 前提の回帰テストへ更新。
+  - `bash scripts/build_instructions.sh` により `AGENTS.md` と generated instructions を再生成。
+- Commands + Results:
+  - `bash scripts/build_instructions.sh` → PASS
+  - `bash -n scripts/zellij_agent_bootstrap.sh scripts/goza_no_ma.sh scripts/configure_agents.sh lib/cli_adapter.sh` → PASS
+  - `python3 -m py_compile scripts/interactive_agent_runner.py scripts/sync_gemini_settings.py` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_sync_gemini_settings.bats` → `1..109` PASS
+- Decisions / Assumptions:
+  - pure `zellij` の interactive CLI は、今後も pane 内 PTY runner を正本とする。理由は ready 待ちと preflight を pane 内で完結させる方が race を潰しやすいため。
+  - `Codex` の UI に出る `gpt-5.4 high` 表示は CLI 側のモデル表示であり、repo 側の `reasoning_effort` 既定とは分けて扱う。repo 側は未設定時 `auto` とする。
+  - `tmux display-message` は tmux fallback に限定し、pure `zellij` では `AGENT_ID` を正本とする。
+- Next:
+  1. 実機で `bash scripts/goza_zellij_pure.sh -s && bash scripts/goza_zellij_pure.sh` を再起動し、Codex pane が updater を越えた後に初動命令を受けるか確認する。
+  2. `ashigaru1` / `ashigaru2` の transcript で `ashigaru4` 誤認が消えたか確認する。
+- Links: scripts/interactive_agent_runner.py, scripts/zellij_agent_bootstrap.sh, lib/cli_adapter.sh, CLAUDE.md, instructions/common/forbidden_actions.md

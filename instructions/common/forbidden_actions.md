@@ -37,8 +37,11 @@
 ```bash
 if [ -n "$AGENT_ID" ]; then
   echo "$AGENT_ID"
-else
+elif [ -n "$TMUX_PANE" ]; then
   tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'
+else
+  echo "[ERROR] AGENT_ID unavailable" >&2
+  exit 1
 fi
 ```
 Output: `ashigaru3` → You are Ashigaru 3. The number is your ID.

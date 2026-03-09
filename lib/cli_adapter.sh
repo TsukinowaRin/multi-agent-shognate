@@ -102,12 +102,7 @@ _cli_adapter_is_shogun() {
 }
 
 _cli_adapter_default_codex_reasoning_effort() {
-    local agent_id="$1"
-    if _cli_adapter_is_shogun "$agent_id"; then
-        echo "none"
-    else
-        echo ""
-    fi
+    echo ""
 }
 
 _cli_adapter_default_claude_thinking() {
@@ -120,49 +115,16 @@ _cli_adapter_default_claude_thinking() {
 }
 
 _cli_adapter_default_gemini_thinking_level() {
-    local agent_id="$1"
-    local model="$2"
-    if ! _cli_adapter_is_shogun "$agent_id"; then
-        echo ""
-        return 0
-    fi
-
-    local normalized_model
-    normalized_model="$(_cli_adapter_normalize_lower "$model")"
-    case "$normalized_model" in
-        gemini-3-flash*|gemini-3-flash-preview)
-            echo "minimal"
-            ;;
-        gemini-3-pro*|auto|default|"")
-            echo "low"
-            ;;
-        *)
-            echo ""
-            ;;
-    esac
+    echo ""
 }
 
 _cli_adapter_default_gemini_thinking_budget() {
-    local agent_id="$1"
-    local model="$2"
-    if ! _cli_adapter_is_shogun "$agent_id"; then
-        echo ""
-        return 0
-    fi
+    echo ""
+}
 
-    local normalized_model
-    normalized_model="$(_cli_adapter_normalize_lower "$model")"
-    case "$normalized_model" in
-        gemini-2.5-flash*|gemini-2.5-flash-lite*)
-            echo "0"
-            ;;
-        gemini-2.5-pro*)
-            echo "-1"
-            ;;
-        *)
-            echo ""
-            ;;
-    esac
+_cli_adapter_read_raw_gemini_thinking_level() {
+    local agent_id="$1"
+    _cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_level" "")"
 }
 
 get_agent_reasoning_effort() {
@@ -180,9 +142,10 @@ get_agent_gemini_thinking_level() {
     local level
     local model
     model="$(_cli_adapter_get_configured_model "$agent_id")"
-    level=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_level" "")")
+    level="$(_cli_adapter_read_raw_gemini_thinking_level "$agent_id")"
     case "$level" in
-        auto|minimal|low|medium|high) echo "$level" ;;
+        auto|"") echo "" ;;
+        minimal|low|medium|high) echo "$level" ;;
         *) _cli_adapter_default_gemini_thinking_level "$agent_id" "$model" ;;
     esac
 }

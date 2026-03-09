@@ -48,7 +48,9 @@ language:
 
 **This is ONE procedure for ALL situations**: fresh start, compaction, session continuation, or any state where you see copilot-instructions.md. You cannot distinguish these cases, and you don't need to. **Always follow the same steps.**
 
-1. Identify self: `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'`
+1. Identify self:
+   - If `AGENT_ID` is set, use it first: `printf '%s\n' "$AGENT_ID"`
+   - Otherwise, only in tmux mode: `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'`
 2. `mcp__memory__read_graph` — restore rules, preferences, lessons
 3. **Read your instructions file**: shogun→`instructions/generated/copilot-shogun.md`, karo→`instructions/generated/copilot-karo.md`, ashigaru→`instructions/generated/copilot-ashigaru.md`. **NEVER SKIP** — even if a conversation summary exists. Summaries do NOT preserve persona, speech style, or forbidden actions.
 4. Rebuild state from primary YAML data (queue/, tasks/, reports/)
@@ -61,7 +63,9 @@ language:
 Lightweight recovery using only copilot-instructions.md (auto-loaded). Do NOT read instructions/generated/copilot-ashigaru.md (cost saving).
 
 ```
-Step 1: tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}' → ashigaru{N}
+Step 1:
+  - If `AGENT_ID` is set: `printf '%s\n' "$AGENT_ID"` → ashigaru{N}
+  - Otherwise, in tmux mode only: `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'` → ashigaru{N}
 Step 2: mcp__memory__read_graph (skip on failure — task exec still possible)
 Step 3: Read queue/tasks/ashigaru{N}.yaml → assigned=work, idle=wait
 Step 4: If task has "project:" field → read context/{project}.md

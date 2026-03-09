@@ -190,6 +190,28 @@ prompt_line() {
   echo "${input:-$default_value}"
 }
 
+prompt_optional_line() {
+  local prompt="$1"
+  local default_value="${2:-}"
+  local example="${3:-}"
+  local input
+  echo "" >&2
+  echo "$prompt" >&2
+  if [[ -n "$default_value" ]]; then
+    echo "  default: ${default_value}" >&2
+  fi
+  if [[ -n "$example" ]]; then
+    echo "  例: ${example}" >&2
+  fi
+  echo "  空入力で未設定" >&2
+  read -r -p "> " input >&2
+  if [[ -z "$input" ]]; then
+    echo "$default_value"
+  else
+    echo "$input"
+  fi
+}
+
 prompt_model() {
   local role="$1"
   local cli="$2"
@@ -321,6 +343,15 @@ default_opencode_like_api_key_env() {
   case "$provider" in
     openai-compatible) echo "LOCALAI_API_KEY" ;;
     *) echo "" ;;
+  esac
+}
+
+normalize_opencode_provider_choice() {
+  local value="$1"
+  case "$value" in
+    ollama|lmstudio|openai-compatible) echo "$value" ;;
+    custom) echo "custom" ;;
+    *) echo "$value" ;;
   esac
 }
 
@@ -485,10 +516,20 @@ OPENCODE_INSTRUCTIONS=""
 if [[ "$USES_OPENCODE_LIKE" == true || -n "$CURRENT_OPENCODE_PROVIDER$CURRENT_OPENCODE_BASE_URL$CURRENT_OPENCODE_API_KEY_ENV$CURRENT_OPENCODE_INSTRUCTIONS" ]]; then
   ENABLE_OPENCODE_PROVIDER_CONFIG="$(prompt_choice "OpenCode/Kilo の project provider 設定を保存するか" "$( [[ -n "$CURRENT_OPENCODE_PROVIDER$CURRENT_OPENCODE_BASE_URL$CURRENT_OPENCODE_API_KEY_ENV$CURRENT_OPENCODE_INSTRUCTIONS" ]] && echo yes || echo no )" "yes" "no")"
   if [[ "$ENABLE_OPENCODE_PROVIDER_CONFIG" == "yes" ]]; then
-    OPENCODE_PROVIDER="$(prompt_line "provider ID を入力してください" "${CURRENT_OPENCODE_PROVIDER:-openai-compatible}" "ollama / lmstudio / openai-compatible")"
-    OPENCODE_BASE_URL="$(prompt_line "base_url を入力してください（空で provider 既定値）" "${CURRENT_OPENCODE_BASE_URL:-$(default_opencode_like_base_url "$OPENCODE_PROVIDER")}" "http://127.0.0.1:11434/v1")"
-    OPENCODE_API_KEY_ENV="$(prompt_line "api_key_env を入力してください（不要なら空）" "${CURRENT_OPENCODE_API_KEY_ENV:-$(default_opencode_like_api_key_env "$OPENCODE_PROVIDER")}" "LOCALAI_API_KEY")"
-    OPENCODE_INSTRUCTIONS="$(prompt_line "追加 instructions をカンマ区切りで入力してください（空で省略）" "${CURRENT_OPENCODE_INSTRUCTIONS:-AGENTS.md}" "AGENTS.md,instructions/shogun.md")"
+    provider_default="$(normalize_opencode_provider_choice "${CURRENT_OPENCODE_PROVIDER:-openai-compatible}")"
+    case "$provider_default" in
+      ollama|lmstudio|openai-compatible|custom) ;;
+      *) provider_default="custom" ;;
+    esac
+    provider_choice="$(prompt_choice "provider を選択" "$provider_default" "ollama" "lmstudio" "openai-compatible" "custom")"
+    if [[ "$provider_choice" == "custom" ]]; then
+      OPENCODE_PROVIDER="$(prompt_line "custom provider ID を入力してください" "${CURRENT_OPENCODE_PROVIDER:-}" "my-provider")"
+    else
+      OPENCODE_PROVIDER="$provider_choice"
+    fi
+    OPENCODE_BASE_URL="$(prompt_optional_line "base_url を入力してください（空で provider 既定値）" "${CURRENT_OPENCODE_BASE_URL:-$(default_opencode_like_base_url "$OPENCODE_PROVIDER")}" "http://127.0.0.1:11434/v1")"
+    OPENCODE_API_KEY_ENV="$(prompt_optional_line "api_key_env を入力してください（不要なら空）" "${CURRENT_OPENCODE_API_KEY_ENV:-$(default_opencode_like_api_key_env "$OPENCODE_PROVIDER")}" "LOCALAI_API_KEY")"
+    OPENCODE_INSTRUCTIONS="$(prompt_optional_line "追加 instructions をカンマ区切りで入力してください（空で省略）" "${CURRENT_OPENCODE_INSTRUCTIONS:-AGENTS.md}" "AGENTS.md,instructions/shogun.md")"
   fi
 fi
 

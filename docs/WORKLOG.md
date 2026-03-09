@@ -1734,3 +1734,25 @@
   - 実装・テストは完了しているため、次の停止理由は認証のみ。
   - 作業差分は commit 済みなので、次回はユーザーの認証後に同じ push コマンドを再実行すればよい。
 - Links: e6cace8
+
+### 2026-03-09 15:20 (JST)
+- Goal: `OpenCode/Kilo` の local provider として `Ollama` / `LM Studio` を明示対応し、設定UIと同期スクリプトで既定URL補完を持たせる。
+- Changes (files):
+  - `scripts/configure_agents.sh` — `provider` を free-form だけでなく `ollama / lmstudio / openai-compatible / custom` から選べるよう更新し、`base_url` / `api_key_env` / `instructions` は空入力を許す optional prompt に変更。
+  - `scripts/sync_opencode_config.py` — `ollama` は `http://127.0.0.1:11434/v1`、`lmstudio` / `openai-compatible` は `http://127.0.0.1:1234/v1` を既定補完するよう更新。
+  - `first_setup.sh` — `ollama` の存在確認と、`LM Studio` は GUI 側 local server を有効化する運用案内を追加。
+  - `tests/unit/test_sync_opencode_config.bats` — `ollama` / `lmstudio` の base_url 既定補完テストを追加。
+  - `docs/REQS.md` / `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` — local provider 明示対応を追記。
+- Commands + Results:
+  - `bash -n scripts/configure_agents.sh scripts/sync_opencode_config.py first_setup.sh` → PASS
+  - `python3 -m py_compile scripts/sync_opencode_config.py` → PASS
+  - `bats tests/unit/test_sync_opencode_config.bats tests/unit/test_configure_agents.bats` → `1..5` PASS
+  - `bash scripts/build_instructions.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_configure_agents.bats` → `1..104` PASS
+- Decisions / Assumptions:
+  - `LM Studio` は WSL からの安定自動検出が難しいため、CLI ではなく OpenAI-compatible local server 前提の対応に留める。
+  - `Ollama` / `LM Studio` は provider プリセットとして固定し、詳細 provider 拡張は `custom` へ逃がす。
+- Next:
+  1. `README.md` / `README_ja.md` に `OpenCode/Kilo + Ollama/LM Studio` の設定例を追記する。
+  2. 実機で `opencode` / `kilo` 本体と `ollama` / `LM Studio local server` を起動し、`goza_zellij_pure.sh` で実起動確認する。
+- Links: scripts/configure_agents.sh, scripts/sync_opencode_config.py, first_setup.sh, tests/unit/test_sync_opencode_config.bats

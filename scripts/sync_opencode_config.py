@@ -46,12 +46,24 @@ def read_shared_section(cfg: dict) -> dict:
     return section if isinstance(section, dict) else {}
 
 
+def default_base_url(provider_id: str) -> str:
+    normalized = provider_id.strip().lower()
+    if normalized == "ollama":
+        return "http://127.0.0.1:11434/v1"
+    if normalized in {"lmstudio", "openai-compatible"}:
+        return "http://127.0.0.1:1234/v1"
+    return ""
+
+
 def build_config(section: dict) -> dict:
     provider_id = str(section.get("provider") or section.get("provider_id") or "").strip()
     base_url = str(section.get("base_url") or section.get("endpoint") or "").strip()
     api_key_env = str(section.get("api_key_env") or "").strip()
     instructions = section.get("instructions") or []
     extra_options = section.get("options") or {}
+
+    if provider_id and not base_url:
+        base_url = default_base_url(provider_id)
 
     config: dict = {}
     if isinstance(instructions, list):
@@ -99,6 +111,8 @@ def main() -> int:
 
     provider_id = str(section.get("provider") or section.get("provider_id") or "")
     base_url = str(section.get("base_url") or section.get("endpoint") or "")
+    if provider_id and not base_url:
+        base_url = default_base_url(provider_id)
     api_key_env = str(section.get("api_key_env") or "")
     SUMMARY_PATH.write_text(
         "status\tgenerated\n"

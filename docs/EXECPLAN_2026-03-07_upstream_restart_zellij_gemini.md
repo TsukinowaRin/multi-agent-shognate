@@ -32,6 +32,7 @@
 - 2026-03-07: `configure_agents.sh` を拡張し、`gunshi` / `Codex reasoning_effort` / `Gemini thinking_level|thinking_budget` を永続設定できるようにした。
 - 2026-03-07: `scripts/sync_gemini_settings.py` を追加し、workspace `.gemini/settings.json` の `customAliases` へ per-agent Gemini 設定を同期するようにした。
 - 2026-03-07: `OpenCode` / `Kilo` を CLI種別として追加し、`scripts/sync_opencode_config.py` で project-level `opencode.json` を生成、`configure_agents.sh` から shared provider 設定も保存できるようにした。
+- 2026-03-09: `Ollama` / `LM Studio` を `OpenCode/Kilo` 用 provider として明示化し、`base_url` 未指定時の既定URL補完と `first_setup.sh` の存在確認/案内を追加した。
 
 ## Surprises & Discoveries
 - 上流とこのフォークは merge base を素直に辿れないほど履歴が離れている。
@@ -48,6 +49,7 @@
 - Gemini の思考設定は CLIフラグ直指定ではなく `.gemini/settings.json` 生成を採用する。理由は公式 schema が `modelConfigs.customAliases` を前提としており、role ごとの恒久設定と相性がよいため。
 - Codex の思考設定は `-c model_reasoning_effort='<value>'` を採用する。理由は現行 CLI が `-c key=value` オーバーライドを正式に受け付けているため。
 - OpenCode と Kilo は同系統の CLI なので、project provider 設定は `opencode.json` へ一本化し、role ごとの差は `config/settings.yaml` の `type/model` に閉じ込める。理由は provider/base URL/API key まで role ごとに持たせるより設定の一貫性が高いため。
+- `ollama` と `lmstudio` は free-form provider ではなく、CUI に明示選択肢を出して既定URLを持たせる。理由は local-AI 導線としてのセットアップを短縮し、`base_url` 手入力ミスを減らすため。
 
 ## Outcomes & Retrospective
-- 進行中。次段は `scripts/zellij_agent_bootstrap.sh` の実機確認、`Gemini` 初回 trust/high-demand の完全自動化、および `OpenCode/Kilo` の README 導線補強。
+- 進行中。次段は `scripts/zellij_agent_bootstrap.sh` の実機確認、および `OpenCode/Kilo/Ollama/LM Studio` の README 導線補強と実機起動確認。

@@ -64,3 +64,51 @@ YAML
   run rg -n "skipped|noop" "$MAS_OPENCODE_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
+
+@test "sync_opencode_config: ollama は base_url 未指定でも既定URLを補完する" {
+  cat > "$TEST_TMP/settings.yaml" <<'YAML'
+cli:
+  default: opencode
+  agents:
+    shogun:
+      type: opencode
+      model: ollama/qwen3-coder:30b
+  opencode_like:
+    provider: ollama
+YAML
+  run python3 "$PROJECT_ROOT/scripts/sync_opencode_config.py"
+  [ "$status" -eq 0 ]
+
+  run python3 - "$MAS_OPENCODE_CONFIG_PATH" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding='utf-8') as fh:
+    cfg = json.load(fh)
+assert cfg["provider"]["ollama"]["options"]["baseURL"] == "http://127.0.0.1:11434/v1"
+print("ok")
+PY
+  [ "$status" -eq 0 ]
+}
+
+@test "sync_opencode_config: lmstudio は base_url 未指定でも既定URLを補完する" {
+  cat > "$TEST_TMP/settings.yaml" <<'YAML'
+cli:
+  default: kilo
+  agents:
+    gunshi:
+      type: kilo
+      model: lmstudio/codellama-7b.Q4_0.gguf
+  opencode_like:
+    provider: lmstudio
+YAML
+  run python3 "$PROJECT_ROOT/scripts/sync_opencode_config.py"
+  [ "$status" -eq 0 ]
+
+  run python3 - "$MAS_OPENCODE_CONFIG_PATH" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding='utf-8') as fh:
+    cfg = json.load(fh)
+assert cfg["provider"]["lmstudio"]["options"]["baseURL"] == "http://127.0.0.1:1234/v1"
+print("ok")
+PY
+  [ "$status" -eq 0 ]
+}

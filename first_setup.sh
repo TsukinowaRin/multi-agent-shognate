@@ -504,6 +504,20 @@ else
     RESULTS+=("Kilo CLI: optional (not installed)")
 fi
 
+if command -v ollama &> /dev/null; then
+    OLLAMA_VERSION=$(ollama --version 2>/dev/null || echo "unknown")
+    log_success "Ollama がインストール済みです ($OLLAMA_VERSION)"
+    RESULTS+=("Ollama: OK ($OLLAMA_VERSION)")
+else
+    log_info "Ollama は未インストールです（local provider に Ollama を使う場合のみ導入）"
+    log_info "  例: curl -fsSL https://ollama.com/install.sh | sh"
+    RESULTS+=("Ollama: optional (not installed)")
+fi
+
+log_info "LM Studio は GUI アプリのため自動検出しません"
+log_info "  LM Studio を使う場合は Local Server を有効化し、既定の http://127.0.0.1:1234/v1 を利用してください"
+RESULTS+=("LM Studio: optional (manual local server check)")
+
 # ============================================================
 # STEP 6: ディレクトリ構造作成
 # ============================================================

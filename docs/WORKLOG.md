@@ -1756,3 +1756,13 @@
   1. `README.md` / `README_ja.md` に `OpenCode/Kilo + Ollama/LM Studio` の設定例を追記する。
   2. 実機で `opencode` / `kilo` 本体と `ollama` / `LM Studio local server` を起動し、`goza_zellij_pure.sh` で実起動確認する。
 - Links: scripts/configure_agents.sh, scripts/sync_opencode_config.py, first_setup.sh, tests/unit/test_sync_opencode_config.bats
+
+### 2026-03-09 15:24 (JST)
+- Goal: `Ollama/LM Studio` 対応 checkpoint の commit/push を完了する。
+- Commands + Results:
+  - `git commit -m "codex: ollamaとlmstudioのprovider対応を追加"` → PASS (`7049b39`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装・テストは完了しているため、停止理由は認証のみ。
+  - 次回は認証後に同じ push コマンドを再実行すればよい。
+- Links: 7049b39

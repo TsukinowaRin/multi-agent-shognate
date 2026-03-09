@@ -1929,3 +1929,16 @@
   1. 実機で `bash scripts/goza_zellij_pure.sh` を再起動し、足軽 pane の可読性が改善したか確認する。
   2. さらに詰めるなら、環境変数で比率を調整する導線を README に追加する。
 - Links: scripts/goza_no_ma.sh, tests/unit/test_goza_pure_bootstrap.bats
+
+### 2026-03-09 23:31 (JST)
+- Goal: `pure zellij 既定レイアウト比率調整` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijの既定レイアウト比率を調整"` → PASS (`d937e12`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - 既存未整理差分 `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は維持する。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で pure zellij を再起動し、右列の足軽 pane 可読性を確認する。
+- Links: d937e12

@@ -68,6 +68,25 @@ def send_line(fd: int, text: str) -> None:
     os.write(fd, text.encode("utf-8", errors="ignore") + b"\r")
 
 
+def send_text(fd: int, text: str) -> None:
+    if not text:
+        return
+    os.write(fd, text.encode("utf-8", errors="ignore"))
+
+
+def send_enter(fd: int) -> None:
+    os.write(fd, b"\r")
+
+
+def deliver_bootstrap(fd: int, text: str, meta_path: Path, agent: str, cli: str) -> None:
+    send_text(fd, text)
+    # TUI系CLIでは本文とEnterを同一writeにすると submit されず、
+    # 入力欄への貼り付けだけで終わることがあるため分離する。
+    time.sleep(0.2)
+    send_enter(fd)
+    append_meta(meta_path, f"bootstrap delivered agent={agent} cli={cli}")
+
+
 def main() -> int:
     args = parse_args()
     root = Path(args.root)
@@ -171,9 +190,8 @@ def main() -> int:
                             continue
 
                     if not startup_sent and ready_pattern.search(buffer):
-                        send_line(master_fd, startup_prompt)
+                        deliver_bootstrap(master_fd, startup_prompt, meta_path, args.agent, args.cli)
                         startup_sent = True
-                        append_meta(meta_path, f"bootstrap delivered agent={args.agent} cli={args.cli}")
                         time.sleep(0.1)
                 elif proc.poll() is not None:
                     break

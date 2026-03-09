@@ -1879,3 +1879,21 @@
   1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
   2. 実機で `bash scripts/goza_zellij_pure.sh -s` → `bash scripts/goza_zellij_pure.sh` を再試験する。
 - Links: 215767c
+
+### 2026-03-09 23:16 (JST)
+- Goal: `pure zellij` で bootstrap 本文は入力されるが submit されない問題を修正する。
+- Findings:
+  - pane 内 runner `scripts/interactive_agent_runner.py` は `send_line()` で「本文 + Enter」を単一 write として PTY へ送っていた。
+  - TUI CLI では、この送信方法だと入力欄への貼り付けだけで終わり、submit が無視されるケースがある。
+- Changes (files):
+  - `scripts/interactive_agent_runner.py` — `send_text()` / `send_enter()` / `deliver_bootstrap()` を追加し、bootstrap 本文送信後に短い待ち時間を入れて Enter を別 write で送るよう変更。
+- Commands + Results:
+  - `python3 -m py_compile scripts/interactive_agent_runner.py` → PASS
+  - `bats tests/unit/test_interactive_agent_runner.bats tests/unit/test_goza_pure_bootstrap.bats` → `1..8` PASS（PTY 不可環境のテストは skip）
+- Decisions / Assumptions:
+  - 自動送信は「本文入力」と「submit」を分離する。理由は `Codex` / `Gemini` の TUI 入力欄が paste と submit を同一 write で安定処理しないため。
+  - retry や二重 Enter はこの checkpoint では入れない。まず最小差分で submit 不発だけを止める。
+- Next:
+  1. 実機で `bash scripts/goza_zellij_pure.sh` を再起動し、初動命令が「入力欄に入るだけ」で止まらず送信されるか確認する。
+  2. なお送信が不発なら、次は CLI ごとの submit キー差分（`Enter` / `Ctrl-J`）を切り分ける。
+- Links: scripts/interactive_agent_runner.py

@@ -16,6 +16,19 @@
 3. コマンド: `bats tests/unit/test_goza_wrapper_modes.bats tests/unit/test_goza_pure_bootstrap.bats`
    - 期待結果: pure wrapper の session 分離回帰テストを含めて PASS する。
 
+## 追補（2026-03-09: pure zellij 自動送信の submit 分離）
+### 要求
+1. `pure zellij` の pane 内 runner は、bootstrap 本文を入力欄に貼り付けるだけで終わらず、自動で submit まで行うこと。
+2. `Codex` / `Gemini` のような TUI CLI では、本文と Enter を同一 write で送らず、分離して送ること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `python3 -m py_compile scripts/interactive_agent_runner.py`
+   - 期待結果: pane 内 runner の送信ロジック変更後も構文エラーがない。
+2. コマンド: `bats tests/unit/test_interactive_agent_runner.bats tests/unit/test_goza_pure_bootstrap.bats`
+   - 期待結果: PTY runner と pure zellij の回帰テストが PASS する。
+3. コマンド: `rg -n "send_text|send_enter|deliver_bootstrap" scripts/interactive_agent_runner.py`
+   - 期待結果: bootstrap 本文送信と submit が分離実装されている。
+
 ## 追補（2026-03-09: 足軽ID混線修正 + Codex既定Auto + Codex ready後初動）
 ### 要求
 1. `pure zellij` では、agent 自己識別を `tmux display-message` 固定にせず、まず `AGENT_ID` 環境変数を正本として使うこと。

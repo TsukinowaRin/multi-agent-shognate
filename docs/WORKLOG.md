@@ -1942,3 +1942,22 @@
   1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
   2. 実機で pure zellij を再起動し、右列の足軽 pane 可読性を確認する。
 - Links: d937e12
+
+### 2026-03-10 10:20 (JST)
+- Goal: pure `zellij` のリサイズ時に足軽 pane が依然として細すぎる問題を追加緩和する。
+- Findings:
+  - 既定レイアウト比率 `40 / 24 / 36` でも、4足軽 2x2 の右列が still narrow で、`Codex` / `Gemini` の入力欄が潰れやすかった。
+  - 現行 KDL は 3列固定のため、最小差分で効く改善は右列比率の追加拡張である。
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — pure zellij の既定列比率を `38 / 22 / 40` へ変更。
+  - `tests/unit/test_goza_pure_bootstrap.bats` — 既定比率の回帰期待値を更新。
+- Commands + Results:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats` → `1..8` PASS
+- Decisions / Assumptions:
+  - 今回はレイアウトアルゴリズムを変えず、右列へさらに 4% 返す。理由は、固定 3 列のまま効果が大きく、他ペインへの影響も読みやすいため。
+  - まだ極端に狭い画面では限界がある。必要なら次段で「幅しきい値以下なら足軽配置を別形」にする。
+- Next:
+  1. 実機で pure zellij を再起動し、右列の足軽 pane 可読性を再確認する。
+  2. まだ狭いなら、右列 1カラム化または幅しきい値別レイアウトへ進む。
+- Links: scripts/goza_no_ma.sh, tests/unit/test_goza_pure_bootstrap.bats

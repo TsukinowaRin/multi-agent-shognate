@@ -961,9 +961,9 @@ zellij_pure_goza_layout_file() {
   local karo_agents=()
   local ashigaru_agents=()
   local agent
-  local left_width="${GOZA_PURE_LEFT_WIDTH:-40%}"
-  local middle_width="${GOZA_PURE_MIDDLE_WIDTH:-24%}"
-  local right_width="${GOZA_PURE_RIGHT_WIDTH:-36%}"
+  local left_width="${GOZA_PURE_LEFT_WIDTH:-38%}"
+  local middle_width="${GOZA_PURE_MIDDLE_WIDTH:-22%}"
+  local right_width="${GOZA_PURE_RIGHT_WIDTH:-40%}"
   tab_title_escaped="$(kdl_escape "$tab_title")"
 
   for agent in "${agents[@]}"; do

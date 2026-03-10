@@ -1961,3 +1961,37 @@
   1. 実機で pure zellij を再起動し、右列の足軽 pane 可読性を再確認する。
   2. まだ狭いなら、右列 1カラム化または幅しきい値別レイアウトへ進む。
 - Links: scripts/goza_no_ma.sh, tests/unit/test_goza_pure_bootstrap.bats
+
+### 2026-03-10 10:22 (JST)
+- Goal: `pure zellij 足軽列追加拡張` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijの足軽列をさらに拡張"` → PASS (`e27ee20`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - 既存未整理差分 `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は維持する。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で pure zellij を再起動し、右列可読性を確認する。
+- Links: e27ee20
+
+### 2026-03-10 10:31 (JST)
+- Goal: pure `zellij` で pane 内 CLI の内部端末幅が細すぎる問題を緩和する。
+- Findings:
+  - ユーザー報告の症状は zellij pane 幅ではなく、pane 内で起動した `Codex` / `Gemini` が細い terminal width を見ていることに起因していた。
+  - pure zellij 導線では `scripts/interactive_agent_runner.py` が PTY を作っており、ここで child PTY の列数を補正できる。
+- Changes (files):
+  - `scripts/interactive_agent_runner.py` — `MAS_CLI_COL_MULTIPLIER` を導入し、child PTY の `cols` を倍率補正するよう変更。あわせて `COLUMNS` / `LINES` の環境継承を除去。
+  - `scripts/zellij_agent_bootstrap.sh` — pure zellij では既定で `MAS_CLI_COL_MULTIPLIER=2` を export。
+  - `tests/unit/test_goza_pure_bootstrap.bats` — 列幅 2 倍補正の回帰テストを追加。
+- Commands + Results:
+  - `python3 -m py_compile scripts/interactive_agent_runner.py` → PASS
+  - `bash -n scripts/zellij_agent_bootstrap.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats` → `1..9` PASS
+- Decisions / Assumptions:
+  - 補正は pure zellij 導線に限定し、tmux や hybrid には入れない。理由は今回の症状が nested PTY を使う pure zellij runner 固有だから。
+  - まずはユーザー要望どおり 2 倍補正を既定とする。必要なら `MAS_CLI_COL_MULTIPLIER` で後から 1/3 へ調整可能。
+- Next:
+  1. 実機で pure zellij を再起動し、内部 CLI の描画幅が改善したか確認する。
+  2. なお狭い場合は CLI ごとに倍率を分けるか、pane 配置と併用して調整する。
+- Links: scripts/interactive_agent_runner.py, scripts/zellij_agent_bootstrap.sh, tests/unit/test_goza_pure_bootstrap.bats

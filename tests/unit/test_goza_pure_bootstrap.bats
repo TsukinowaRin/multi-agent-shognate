@@ -62,3 +62,10 @@ setup_file() {
     run rg -n 'ready_pattern.search|bootstrap delivered agent=' "$PROJECT_ROOT/scripts/interactive_agent_runner.py"
     [ "$status" -eq 0 ]
 }
+
+@test "pure zellij: pane runner は内部CLI列幅を2倍で渡す" {
+    run rg -nF 'MAS_CLI_COL_MULTIPLIER="${MAS_CLI_COL_MULTIPLIER:-2}"' "$PROJECT_ROOT/scripts/zellij_agent_bootstrap.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'cols *= get_col_multiplier()' "$PROJECT_ROOT/scripts/interactive_agent_runner.py"
+    [ "$status" -eq 0 ]
+}

@@ -18,6 +18,7 @@ source "$ROOT_DIR/lib/cli_adapter.sh"
 
 DISPLAY_MODE="${DISPLAY_MODE:-shout}"
 export AGENT_ID DISPLAY_MODE
+export MAS_CLI_COL_MULTIPLIER="${MAS_CLI_COL_MULTIPLIER:-2}"
 
 TRANSCRIPT_FILE="$ROOT_DIR/queue/runtime/pure_zellij_${SESSION_ID}_${AGENT_ID}.log"
 BOOTSTRAP_FILE="$ROOT_DIR/queue/runtime/pure_zellij_${SESSION_ID}_${AGENT_ID}.bootstrap.txt"

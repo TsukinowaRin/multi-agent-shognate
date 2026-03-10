@@ -50,6 +50,15 @@ def append_meta(meta_path: Path, message: str) -> None:
         fh.write(f"[{time.strftime('%Y-%m-%dT%H:%M:%S%z')}] {message}\n")
 
 
+def get_col_multiplier() -> int:
+    raw = os.environ.get("MAS_CLI_COL_MULTIPLIER", "1").strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        return 1
+    return max(1, value)
+
+
 def read_prompt(path: Path) -> str:
     if not path.exists():
         return ""
@@ -58,8 +67,9 @@ def read_prompt(path: Path) -> str:
 
 def copy_winsize(from_fd: int, to_fd: int) -> None:
     try:
-        size = termios.tcgetwinsize(from_fd)
-        termios.tcsetwinsize(to_fd, size)
+        rows, cols = termios.tcgetwinsize(from_fd)
+        cols *= get_col_multiplier()
+        termios.tcsetwinsize(to_fd, (rows, cols))
     except Exception:
         pass
 
@@ -106,6 +116,8 @@ def main() -> int:
     old_tty = None
 
     env = os.environ.copy()
+    env.pop("COLUMNS", None)
+    env.pop("LINES", None)
 
     def on_winch(_signum, _frame):
         copy_winsize(stdin_fd, slave_fd)

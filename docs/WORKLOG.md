@@ -2336,3 +2336,24 @@
   - fallback 時の表示名は `codex / Gemini` のように設定値ベースで見える箇所が残る。これは UX 修正候補だが、起動可否には影響しない。
 - 2026-03-11 17:47 JST: `git push -u origin codex/auto` は GitHub 認証未設定のため失敗 (`could not read Username for 'https://github.com'`)。コミット `14ce036` までは完了。
 - 2026-03-11 17:55 JST: `get_model_display_name()` を修正し、`claude` 以外では旧 `Opus/Sonnet` 既定値より CLI 種別表示を優先するよう変更。`codex / Opus` や `gemini / Gemini` の不整合を解消。`tests/unit/test_cli_adapter.bats` に表示名回帰テストを追加して PASS 確認。
+- 2026-03-11 17:56 JST: `git push -u origin codex/auto` は引き続き GitHub 認証未設定で失敗。コミット `b0e4f03` までは完了。
+
+## 2026-03-11 21:35 JST — tmux御座の間復活 + csg/cgo 導線追加
+- 要求: `gunshi` へ `csg` で attach したい。加えて、`tmux` のまま全陣を一望できる `御座の間` を復活させる。
+- 実施:
+  - `scripts/goza_no_ma.sh` を tmux-only で新規実装。`shogun / gunshi / multiagent` を `goza-no-ma` session の `overview` window に集約する。
+  - detached 生成時の `size missing` を避けるため、`split-window -p` をやめて固定サイズ `-l` に変更。
+  - nested `tmux attach-session` の起動を pane 作成時に即実行せず、`scripts/bootstrap_goza_view.sh` を追加して `client-attached` hook で respawn する構造に変更。
+  - `first_setup.sh` に `csg='tmux attach-session -t gunshi'` と `cgo='bash .../scripts/goza_no_ma.sh'` を追加。
+  - `README.md` / `README_ja.md` / `shutsujin_departure.sh` の次ステップとヘルプへ `csg` / `cgo` / `御座の間` を追記。
+  - `tests/unit/test_mux_parity.bats` を更新し、`zellij` が現役コードに戻っていないこと、`御座の間` と `csg/cgo` が案内されていることを確認する回帰を追加。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh scripts/bootstrap_goza_view.sh first_setup.sh shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_build_system.bats` → PASS (`1..42`)
+  - `bash -x scripts/goza_no_ma.sh --view-only --no-attach` → PASS（detached 作成と `goza-no-ma` session 準備を確認）
+  - `bash scripts/bootstrap_goza_view.sh goza-no-ma "$PWD"` → PASS（hook 本体を直接実行し、overview pane が `shogun / gunshi / multiagent` へ差し替わることを capture で確認）
+- 判断:
+  - 旧 `goza*` をそのまま戻すのではなく、`tmux` 専用で最小再実装する方が upstream 本線と整合する。
+  - detached 生成の安定性を優先し、pane attach は `client-attached` hook に遅延させた。
+- Git:
+  - 次の checkpoint でまとめて commit する。

@@ -3,6 +3,23 @@
 最終更新: 2026-03-11
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-11: tmux御座の間復活 + csg alias）
+### 要求
+1. `gunshi` へは `csg` で短縮 attach できること。
+2. `tmux` ベースで `shogun / gunshi / multiagent` を一望できる `御座の間` を復活させること。
+3. `御座の間` は `scripts/goza_no_ma.sh` から起動し、`zellij` を再導入しないこと。
+4. `first_setup.sh` / `README` / `shutsujin_departure.sh` の導線は `csg` と `御座の間` を含むこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/goza_no_ma.sh -s --no-attach`
+   - 期待結果: `tmux` ベースの `goza-no-ma` session が作成され、`shogun / gunshi / multiagent` を表示する俯瞰ビューが準備される。
+2. コマンド: `rg -n "alias csg=|alias cgo=" first_setup.sh`
+   - 期待結果: `csg` と `cgo` の alias 追加処理が存在する。
+3. コマンド: `rg -n "csg|cgo|goza_no_ma\\.sh|御座の間" README.md README_ja.md shutsujin_departure.sh`
+   - 期待結果: ユーザー向け導線に `軍師 attach` と `御座の間` が含まれる。
+4. コマンド: `bash -n scripts/goza_no_ma.sh first_setup.sh shutsujin_departure.sh`
+   - 期待結果: `tmux` 専用 `御座の間` 導線に構文エラーがない。
+
 ## 追補（2026-03-11: tmux 実機テスト導線の安定化）
 ### 要求
 1. `shutsujin_departure.sh` は `.venv` や `requirements.txt` が無くても、`python3 + PyYAML` が利用可能なら起動を継続できること。

@@ -32,6 +32,7 @@
 - `docs/EXECPLAN_2026-03-06_zellij_gemini_upstream_sync.md` - 上流同期を zellij / Gemini スコープに絞って bootstrap と preflight を修正する実行計画。
 - `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` - 上流基盤へ戻しつつ zellij / Gemini を再実装する再出発の実行計画。
 - `docs/EXECPLAN_2026-03-11_tmux_only_consolidation.md` - zellij 廃止と tmux 一本化、Waste 退避の実行計画。
+- `docs/EXECPLAN_2026-03-11_tmux_goza_return.md` - tmux 専用の御座の間復活と `csg/cgo` 導線追加の実行計画。
 - `docs/EXECPLAN_2026-03-11_upstream_cli_only_rebase.md` - upstream `main` 正本化と CLI 拡張差分の再整理計画。
 - `docs/EXECPLAN_TEMPLATE.md` - ExecPlanテンプレート。
 

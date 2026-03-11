@@ -17,9 +17,19 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "現役 scripts から goza/zellij 導線が外れている" {
-    run rg -n "goza_|shutsujin_zellij|zellij action|--mux zellij|--ui zellij" "$PROJECT_ROOT/scripts" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/config/settings.yaml" "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "現役 scripts から zellij 導線が外れている" {
+    run rg -n "shutsujin_zellij|zellij action|--mux zellij|--ui zellij" "$PROJECT_ROOT/scripts" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/config/settings.yaml" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -ne 0 ]
+}
+
+@test "御座の間スクリプトが現役で存在する" {
+    run rg -n "goza_no_ma\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "軍師 attach alias csg と御座の間 alias cgo を案内する" {
+    run rg -n "alias csg=|alias cgo=|または: csg|cgo\\s+→" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
 }
 
 @test "agent収集は shutsujin_departure が topology_adapter を利用する" {

@@ -181,7 +181,7 @@ log_step "STEP 3.5: 本フォークの方針"
 
 log_info "このフォークは upstream の tmux 本線を基準にしています"
 log_info "独自差分は Gemini / OpenCode / Kilo / localapi / local provider 対応です"
-log_info "旧 zellij / goza 実装は Waste/ に退避済みです"
+log_info "旧 zellij 実装と旧 goza 資産は Waste/ に退避済みです"
 RESULTS+=("strategy: upstream tmux base + cli extensions")
 
 # ============================================================
@@ -705,6 +705,7 @@ SCRIPTS=(
     "setup.sh"
     "shutsujin_departure.sh"
     "first_setup.sh"
+    "scripts/goza_no_ma.sh"
 )
 
 for script in "${SCRIPTS[@]}"; do
@@ -749,6 +750,27 @@ if [ -f "$BASHRC_FILE" ]; then
         log_info "alias css は既に正しく設定されています"
     fi
 
+    # csg alias (軍師ウィンドウの起動)
+    EXPECTED_CSG="alias csg='tmux attach-session -t gunshi'"
+    if ! grep -q "alias csg=" "$BASHRC_FILE" 2>/dev/null; then
+        if [ "$ALIAS_ADDED" = false ]; then
+            echo "" >> "$BASHRC_FILE"
+            echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
+        fi
+        echo "$EXPECTED_CSG" >> "$BASHRC_FILE"
+        log_info "alias csg を追加しました（軍師ウィンドウの起動）"
+        ALIAS_ADDED=true
+    elif ! grep -qF "$EXPECTED_CSG" "$BASHRC_FILE" 2>/dev/null; then
+        if sed -i "s|alias csg=.*|$EXPECTED_CSG|" "$BASHRC_FILE" 2>/dev/null; then
+            log_info "alias csg を更新しました（パス変更検出）"
+        else
+            log_warn "alias csg の更新に失敗しました"
+        fi
+        ALIAS_ADDED=true
+    else
+        log_info "alias csg は既に正しく設定されています"
+    fi
+
     # csm alias (家老・足軽ウィンドウの起動)
     EXPECTED_CSM="alias csm='tmux attach-session -t multiagent'"
     if ! grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
@@ -768,6 +790,27 @@ if [ -f "$BASHRC_FILE" ]; then
         ALIAS_ADDED=true
     else
         log_info "alias csm は既に正しく設定されています"
+    fi
+
+    # cgo alias (御座の間)
+    EXPECTED_CGO="alias cgo='bash $SCRIPT_DIR/scripts/goza_no_ma.sh'"
+    if ! grep -q "alias cgo=" "$BASHRC_FILE" 2>/dev/null; then
+        if [ "$ALIAS_ADDED" = false ]; then
+            echo "" >> "$BASHRC_FILE"
+            echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
+        fi
+        echo "$EXPECTED_CGO" >> "$BASHRC_FILE"
+        log_info "alias cgo を追加しました（御座の間の起動）"
+        ALIAS_ADDED=true
+    elif ! grep -qF "$EXPECTED_CGO" "$BASHRC_FILE" 2>/dev/null; then
+        if sed -i "s|alias cgo=.*|$EXPECTED_CGO|" "$BASHRC_FILE" 2>/dev/null; then
+            log_info "alias cgo を更新しました（パス変更検出）"
+        else
+            log_warn "alias cgo の更新に失敗しました"
+        fi
+        ALIAS_ADDED=true
+    else
+        log_info "alias cgo は既に正しく設定されています"
     fi
 else
     log_warn "$BASHRC_FILE が見つかりません"

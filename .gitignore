@@ -102,6 +102,8 @@
 !scripts/build_instructions.sh
 !scripts/localapi_repl.py
 !scripts/configure_agents.sh
+!scripts/goza_no_ma.sh
+!scripts/bootstrap_goza_view.sh
 !scripts/sync_gemini_settings.py
 !scripts/sync_opencode_config.py
 !scripts/history_book.sh

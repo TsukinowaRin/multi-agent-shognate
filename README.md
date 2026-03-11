@@ -3,8 +3,9 @@
 このフォークは `yohey-w/multi-agent-shogun` の `tmux` 本線を基準に、CLI 対応を拡張した実行基盤です。
 
 現役運用は `tmux` のみです。  
-起動入口は `shutsujin_departure.sh` のみです。  
-`zellij` / `goza*` は廃止済みで、必要なら `Waste/` を参照します。
+起動入口の本体は `shutsujin_departure.sh` です。  
+俯瞰ビューとして `scripts/goza_no_ma.sh` による `御座の間` を使えます。  
+`zellij` は廃止済みで、履歴が必要なら `Waste/` を参照します。
 
 ## このフォーク独自の差分
 - `Gemini CLI`
@@ -30,6 +31,15 @@ bash shutsujin_departure.sh
 tmux attach-session -t shogun
 tmux attach-session -t gunshi
 tmux attach-session -t multiagent
+bash scripts/goza_no_ma.sh
+```
+
+短縮 alias:
+```bash
+css   # 将軍
+csg   # 軍師
+csm   # 家老・足軽
+cgo   # 御座の間
 ```
 
 ## 最短手順
@@ -38,6 +48,11 @@ cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate
 bash first_setup.sh
 bash scripts/configure_agents.sh
 bash shutsujin_departure.sh
+```
+
+御座の間だけ開く:
+```bash
+bash scripts/goza_no_ma.sh
 ```
 
 ## 設定 CUI
@@ -112,6 +127,8 @@ cli:
 ## 主なスクリプト
 - `shutsujin_departure.sh`
   - 本体。tmux セッション生成、CLI 起動、watcher 起動を行います。
+- `scripts/goza_no_ma.sh`
+  - `shogun / gunshi / multiagent` を一望する `tmux` 俯瞰ビューです。
 - `scripts/configure_agents.sh`
   - `config/settings.yaml` を対話更新します。
 - `scripts/build_instructions.sh`

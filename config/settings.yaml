@@ -14,15 +14,15 @@ cli:
   default: gemini
   agents:
     shogun:
-      type: codex
+      type: gemini
     gunshi:
       type: gemini
     karo:
       type: codex
     ashigaru1:
-      type: gemini
+      type: codex
     ashigaru2:
-      type: gemini
+      type: codex
     ashigaru3:
       type: gemini
     ashigaru4:

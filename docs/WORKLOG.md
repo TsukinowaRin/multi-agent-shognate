@@ -2167,3 +2167,33 @@
   1. root instruction 群の更新をコミットし、runtime/user state (`config/settings.yaml`, `dashboard.md`, `queue/*.yaml`) はコミット対象から外す。
   2. その後、`upstream/main` ベースで再統合する場合は別ブランチで staged migration を行う。
 - Links: 2ef81f974bbb633a0cdfe00566671d8a64d5f462, docs/UPSTREAM_SYNC_2026-03-11_COMPACTION.md
+
+### 2026-03-11 00:51 (JST)
+- Goal: `upstream 2ef81f9 compaction recovery 反映` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: upstream compaction復帰手順を反映"` → PASS (`29137ea`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - runtime/user state (`config/settings.yaml`, `dashboard.md`, `queue/shogun_to_karo.yaml`) は upstream sync コミットへ混ぜない。
+  - `upstream/latest` という remote branch は無く、今回の取り込み対象は `upstream/main` の `2ef81f9` とした。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. upstream 全体を基準に再統合する場合は、`upstream/main` ベースの別ブランチで staged migration を行う。
+- Links: 29137ea, 2ef81f974bbb633a0cdfe00566671d8a64d5f462
+
+### 2026-03-11 14:55 (JST)
+- Goal: ユーザーが行った merge 後に、conflict / 構文 / 既存 unit test 回帰が無いかを確認する。
+- Findings:
+  - `git diff --stat --summary HEAD~1..HEAD` の差分は `docs/` と root instruction 群（`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `agents/default/system.md`）に限定され、コード本体の直接変更は無かった。
+  - `rg -n "^(<<<<<<<|=======|>>>>>>>)" -S .` はヒット無しで、merge conflict marker は残っていない。
+  - `git status --short` では既存 dirty file として `config/settings.yaml`, `dashboard.md`, `docs/UPSTREAM_SYNC_2026-03-05.md`, `queue/shogun_to_karo.yaml` が残っている。今回の merge 検証とは別系統の user/runtime state とみなす。
+- Commands + Results:
+  - `bats tests/unit/test_build_system.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_goza_wrapper_modes.bats tests/unit/test_interactive_agent_runner.bats tests/unit/test_mux_parity.bats tests/unit/test_ntfy_auth.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats tests/unit/test_zellij_bootstrap_delivery.bats` → PASS (`1..235`)
+  - `git log --oneline --merges -n 10` → 直近 merge commit は repo 履歴上の過去 merge のみで、現 HEAD に未解決 merge 状態は無い。
+- Decisions / Assumptions:
+  - 今回は review/検証タスクであり、runtime/user state を巻き込む追加 commit は作らない。
+  - dirty file のうち `docs/WORKLOG.md` と `docs/REQS.md` は今回の検証ログ追加によるもの。既存 dirty file とは分けて扱う。
+- Next:
+  1. もしユーザーが merge した内容で実機不具合を疑っているなら、次は `goza_zellij_pure.sh` または `goza_zellij.sh` の実起動 smoke を行う。
+  2. commit/push を行う場合は、user/runtime state を分離してから docs-only で行う。
+- Links: docs/REQS.md, docs/WORKLOG.md

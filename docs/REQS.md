@@ -3,6 +3,20 @@
 最終更新: 2026-03-11
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-11: merge 後の健全性確認）
+### 要求
+1. 直近マージ後の現在ブランチについて、conflict marker や構文破綻が残っていないことを確認すること。
+2. 直近マージ差分が `docs/` と root instruction 群に限定されている前提で、既存 unit test 群が回帰していないことを確認すること。
+3. もし破綻が無ければ、少なくとも「どこを確認して問題が無かったか」を人間が追える形で残すこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "^(<<<<<<<|=======|>>>>>>>)" -S .`
+   - 期待結果: conflict marker が検出されない。
+2. コマンド: `bats tests/unit/test_build_system.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_goza_wrapper_modes.bats tests/unit/test_interactive_agent_runner.bats tests/unit/test_mux_parity.bats tests/unit/test_ntfy_auth.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats tests/unit/test_zellij_bootstrap_delivery.bats`
+   - 期待結果: 全 235 テストが PASS する。
+3. コマンド: `git diff --stat --summary HEAD~1..HEAD`
+   - 期待結果: 直近マージ相当の差分が `docs/` と root instruction 群中心であることを確認できる。
+
 ## 追補（2026-03-11: upstream compaction recovery 反映）
 ### 要求
 1. upstream `2ef81f9` の趣旨に従い、compaction 後は system message が "Continue the conversation from where it left off." であっても instructions file の再読を必須とすること。

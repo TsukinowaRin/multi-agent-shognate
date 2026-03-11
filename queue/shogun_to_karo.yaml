@@ -32,12 +32,27 @@
   purpose: "家老がashigaru2のblocked状態を解消し、任務実行可否を確定して報告できる状態にする。"
   acceptance_criteria:
     - "ashigaru2に対して新規task_idで再割当が実施され、queue/tasks/ashigaru2.yaml が更新されている。"
-    - "ashigaru2の最新報告が queue/reports/ashigaru2_report.yaml に記録され、statusがdoneまたはblocked理由明記で更新されている。"
+    - "ashigaru2の最新報告が queue/reports/ashigaru2_report.yaml に記録され、statusがdoneまたはblocked 理由明記で更新されている。"
     - "原因、実施した対処、次アクションがdashboard.mdに時刻付きで追記されている。"
   command: |
     ashigaru2 の blocked 状態を調査し、必要な再割当または設定修正を行って解消せよ。
     ただし将軍への報告は dashboard.md に統合し、原因と対処を明文化すること。
     解消不能の場合は、blocked理由を具体化し、再試行条件と予定時刻を明記せよ。
+  project: multi-agent-shogun
+  priority: high
+  status: done
+
+- id: cmd_111
+  timestamp: "2026-03-09T16:05:00+09:00"
+  purpose: "家老自身の生存確認、および足軽一号・二号の動静（生存・稼働状態）を確認して報告する。"
+  acceptance_criteria:
+    - "家老が自らの現在時刻をdashboard.mdに記し、応答性を証明する。"
+    - "足軽一号（ashigaru1）と足軽二号（ashigaru2）の最新報告時刻と稼働状態（active/idle/offline等）がdashboard.mdに記録される。"
+    - "足軽らが応答せぬ場合、その旨をdashboardへ記載する。"
+  command: |
+    家老自身の生存を示すとともに、足軽一号および二号に点呼を取れ。
+    現在、家老の画面にてCLI更新の問い（Update prompt）が出ている場合は、それをスキップして速やかに任務に当たれ。
+    結果はdashboard.mdにまとめ、将軍へ報告せよ。
   project: multi-agent-shogun
   priority: high
   status: done

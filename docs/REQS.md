@@ -31,6 +31,21 @@
 3. コマンド: `rg -n "copy_winsize\\(|os.killpg\\(proc.pid, signal.SIGWINCH\\)" scripts/interactive_agent_runner.py`
    - 期待結果: child PTY winsize 更新と `SIGWINCH` 伝播の両方が実装されている。
 
+## 追補（2026-03-11: pure zellij の起動時 auto layout profile）
+### 要求
+1. pure `zellij` の `goza_room` は、起動時の terminal 幅を読み取り `wide / normal / narrow` のレイアウトプロファイルを自動選択できること。
+2. `narrow` では `shogun/gunshi` を左列縦積みに戻し、狭い画面での横方向圧迫を避けること。
+3. `normal/wide` では `shogun` full-height / `karo` full-height / `gunshi` 右列上段を維持すること。
+4. この自動化は「起動時判定」であり、起動後の live 構造変更を前提にしないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats`
+   - 期待結果: auto profile / narrow profile 分岐を含む pure zellij テストが PASS する。
+2. コマンド: `rg -n "PURE_LAYOUT_PROFILE|GOZA_PURE_LAYOUT_PROFILE|print\\(\"wide\"\\)|print\\(\"normal\"\\)|print\\(\"narrow\"\\)" scripts/goza_no_ma.sh`
+   - 期待結果: 起動時 terminal 幅の auto 判定ロジックがコード上に存在する。
+3. コマンド: `rg -n 'if \\[\\[ \"\\$layout_profile\" == \"narrow\" \\]\\]' scripts/goza_no_ma.sh`
+   - 期待結果: narrow profile で別配置へ切り替える実装が存在する。
+
 ## 追補（2026-03-09: pure zellij setup-only session 分離）
 ### 要求
 1. `bash scripts/goza_zellij_pure.sh -s` を実行しても、次の `bash scripts/goza_zellij_pure.sh` 通常起動が `setup-only` pane command を再利用しないこと。

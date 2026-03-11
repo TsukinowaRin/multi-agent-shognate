@@ -17,6 +17,7 @@ NO_ATTACH=false
 MUX_MODE="${MUX_MODE:-zellij}"
 UI_MODE="${UI_MODE:-}"
 VIEW_TEMPLATE="${VIEW_TEMPLATE:-}"
+PURE_LAYOUT_PROFILE="${PURE_LAYOUT_PROFILE:-${GOZA_PURE_LAYOUT_PROFILE:-auto}}"
 PASS_THROUGH=()
 CLI_ADAPTER_LOADED=false
 INBOX_PATH_HELPER_LOADED=false
@@ -35,6 +36,7 @@ Options:
   --ui MODE          表示モード（zellij|tmux, default: muxと同じ）
   --template NAME    表示テンプレート（shogun_only|goza_room, default: settings）
   --session NAME     tmux ビューセッション名（default: goza-no-ma）
+  --layout-profile P pure zellij レイアウトプロファイル（auto|wide|normal|narrow）
   -h, --help         このヘルプ
 
 Examples:
@@ -95,6 +97,15 @@ while [[ $# -gt 0 ]]; do
         shift 2
       else
         echo "[ERROR] --session には名前を指定してください" >&2
+        exit 1
+      fi
+      ;;
+    --layout-profile)
+      if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+        PURE_LAYOUT_PROFILE="$2"
+        shift 2
+      else
+        echo "[ERROR] --layout-profile には auto|wide|normal|narrow を指定してください" >&2
         exit 1
       fi
       ;;
@@ -203,6 +214,11 @@ fi
 
 if [[ "$VIEW_TEMPLATE" != "shogun_only" && "$VIEW_TEMPLATE" != "goza_room" ]]; then
   echo "[ERROR] --template は shogun_only または goza_room を指定してください（指定値: $VIEW_TEMPLATE）" >&2
+  exit 1
+fi
+
+if [[ "$PURE_LAYOUT_PROFILE" != "auto" && "$PURE_LAYOUT_PROFILE" != "wide" && "$PURE_LAYOUT_PROFILE" != "normal" && "$PURE_LAYOUT_PROFILE" != "narrow" ]]; then
+  echo "[ERROR] --layout-profile は auto|wide|normal|narrow を指定してください（指定値: $PURE_LAYOUT_PROFILE）" >&2
   exit 1
 fi
 
@@ -960,11 +976,12 @@ zellij_pure_goza_layout_file() {
   local gunshi_agent=""
   local karo_agents=()
   local ashigaru_agents=()
+  local layout_profile=""
   local agent
-  local left_width="${GOZA_PURE_LEFT_WIDTH:-44%}"
-  local middle_width="${GOZA_PURE_MIDDLE_WIDTH:-24%}"
-  local right_width="${GOZA_PURE_RIGHT_WIDTH:-32%}"
-  local gunshi_height="${GOZA_PURE_GUNSHI_HEIGHT:-34%}"
+  local left_width=""
+  local middle_width=""
+  local right_width=""
+  local gunshi_height=""
   tab_title_escaped="$(kdl_escape "$tab_title")"
 
   for agent in "${agents[@]}"; do
@@ -981,6 +998,45 @@ zellij_pure_goza_layout_file() {
   if [[ ${#ashigaru_agents[@]} -eq 0 ]]; then
     ashigaru_agents=("ashigaru1")
   fi
+
+  zellij_detect_layout_profile() {
+    if [[ "$PURE_LAYOUT_PROFILE" != "auto" ]]; then
+      echo "$PURE_LAYOUT_PROFILE"
+      return 0
+    fi
+    "$CLI_ADAPTER_PYTHON" - <<'PY'
+import shutil
+cols = shutil.get_terminal_size((200, 60)).columns
+if cols >= 230:
+    print("wide")
+elif cols >= 170:
+    print("normal")
+else:
+    print("narrow")
+PY
+  }
+
+  layout_profile="$(zellij_detect_layout_profile)"
+  case "$layout_profile" in
+    wide)
+      left_width="${GOZA_PURE_LEFT_WIDTH:-44%}"
+      middle_width="${GOZA_PURE_MIDDLE_WIDTH:-24%}"
+      right_width="${GOZA_PURE_RIGHT_WIDTH:-32%}"
+      gunshi_height="${GOZA_PURE_GUNSHI_HEIGHT:-34%}"
+      ;;
+    normal)
+      left_width="${GOZA_PURE_LEFT_WIDTH:-42%}"
+      middle_width="${GOZA_PURE_MIDDLE_WIDTH:-24%}"
+      right_width="${GOZA_PURE_RIGHT_WIDTH:-34%}"
+      gunshi_height="${GOZA_PURE_GUNSHI_HEIGHT:-38%}"
+      ;;
+    narrow|*)
+      left_width="${GOZA_PURE_LEFT_WIDTH:-40%}"
+      middle_width="${GOZA_PURE_MIDDLE_WIDTH:-24%}"
+      right_width="${GOZA_PURE_RIGHT_WIDTH:-36%}"
+      gunshi_height="${GOZA_PURE_GUNSHI_HEIGHT:-34%}"
+      ;;
+  esac
 
   zellij_emit_agent_leaf() {
     local indent="$1"
@@ -1066,21 +1122,37 @@ EOF
     echo "    }"
     echo "    tab name=\"${tab_title_escaped}\" {"
     echo "        pane split_direction=\"vertical\" {"
-    zellij_emit_agent_leaf "            " "$shogun_agent" "focus" "$left_width"
-    echo "            pane split_direction=\"horizontal\" size=\"${middle_width}\" {"
-    zellij_emit_agent_grid "                " "${karo_agents[@]}"
-    echo "            }"
-    echo "            pane split_direction=\"horizontal\" size=\"${right_width}\" {"
-    if [[ -n "$gunshi_agent" ]]; then
-      zellij_emit_agent_leaf "                " "$gunshi_agent" "" "$gunshi_height"
+    if [[ "$layout_profile" == "narrow" ]]; then
+      echo "            pane split_direction=\"horizontal\" size=\"${left_width}\" {"
+      zellij_emit_agent_leaf "                " "$shogun_agent" "focus"
+      if [[ -n "$gunshi_agent" ]]; then
+        zellij_emit_agent_leaf "                " "$gunshi_agent"
+      fi
+      echo "            }"
+      echo "            pane split_direction=\"horizontal\" size=\"${middle_width}\" {"
+      zellij_emit_agent_grid "                " "${karo_agents[@]}"
+      echo "            }"
+      echo "            pane split_direction=\"horizontal\" size=\"${right_width}\" {"
+      zellij_emit_agent_grid "                " "${ashigaru_agents[@]}"
+      echo "            }"
+    else
+      zellij_emit_agent_leaf "            " "$shogun_agent" "focus" "$left_width"
+      echo "            pane split_direction=\"horizontal\" size=\"${middle_width}\" {"
+      zellij_emit_agent_grid "                " "${karo_agents[@]}"
+      echo "            }"
+      echo "            pane split_direction=\"horizontal\" size=\"${right_width}\" {"
+      if [[ -n "$gunshi_agent" ]]; then
+        zellij_emit_agent_leaf "                " "$gunshi_agent" "" "$gunshi_height"
+      fi
+      zellij_emit_agent_grid "                " "${ashigaru_agents[@]}"
+      echo "            }"
     fi
-    zellij_emit_agent_grid "                " "${ashigaru_agents[@]}"
-    echo "            }"
     echo "        }"
     echo "    }"
     echo "}"
   } > "$layout_file"
 
+  goza_bootstrap_log "pure layout profile=$layout_profile left=$left_width middle=$middle_width right=$right_width gunshi_height=$gunshi_height"
   echo "$layout_file"
 }
 

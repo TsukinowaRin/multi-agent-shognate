@@ -63,3 +63,4 @@
 - 進行中。次段は `scripts/zellij_agent_bootstrap.sh` の実機確認、および `OpenCode/Kilo/Ollama/LM Studio` の README 導線補強と実機起動確認。
 - 2026-03-11: pure zellij の wide 画面可用性改善として、`shogun` を full-height 左列、`karo` を full-height 中列、`gunshi` を右列上段、足軽を右列下段 grid に再配置した。従来の `shogun/gunshi` 左列縦積みは wide 画面での情報密度と操作性が悪かったため採用しない。
 - 2026-03-11: pure zellij の nested PTY runner は、child PTY の winsize 更新に加えて child process group へ `SIGWINCH` を送るよう変更した。これにより WSL ウィンドウリサイズ時の `Codex` / `Gemini` TUI 再レイアウトを tmux に近づける。
+- 2026-03-11: pure zellij の画面サイズ差を吸収するため、起動時 terminal 幅から `wide / normal / narrow` を auto 判定する layout profile を追加した。runtime 中の live 構造変更は pure zellij の static layout 制約により別課題とする。

@@ -48,6 +48,26 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "pure zellij: 起動時 terminal 幅から layout profile を auto 判定できる" {
+    run rg -nF 'PURE_LAYOUT_PROFILE="${PURE_LAYOUT_PROFILE:-${GOZA_PURE_LAYOUT_PROFILE:-auto}}"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'print("wide")' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'print("normal")' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'print("narrow")' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "pure zellij: narrow profile では shogun/gunshi を左列縦積みに戻す" {
+    run rg -nF 'if [[ "$layout_profile" == "narrow" ]]; then' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'zellij_emit_agent_leaf "                " "$shogun_agent" "focus"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'zellij_emit_agent_leaf "                " "$gunshi_agent"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "pure zellij: run-id付き bootstrap ログを出力する" {
     run rg -n "GOZA_BOOTSTRAP_LOG|goza_bootstrap_\$\{GOZA_BOOTSTRAP_RUN_ID\}" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]

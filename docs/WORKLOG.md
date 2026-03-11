@@ -2095,3 +2095,36 @@
   1. 実機で WSL ウィンドウを大小に変更し、`Codex` / `Gemini` pane が崩れず再レイアウトするか確認する。
   2. なお改善が弱い場合は、pure zellij だけ narrow/wide の layout 切替も併用する。
 - Links: scripts/interactive_agent_runner.py, tests/unit/test_goza_pure_bootstrap.bats, docs/REQS.md
+
+### 2026-03-11 00:24 (JST)
+- Goal: `pure zellij resize追従改善` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijのresize追従を改善"` → PASS (`058b2a6`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - 既存未整理差分 `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は維持する。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で WSL ウィンドウを resize し、pane 内 TUI が追従するか確認する。
+- Links: 058b2a6
+
+### 2026-03-11 00:33 (JST)
+- Goal: pure `zellij` のレイアウトを、起動時の terminal 幅に応じて `wide / normal / narrow` で自動選択する。
+- Findings:
+  - pure zellij の static layout は、起動後に安全に構造変更する仕組みが弱く、runtime live reflow を前提にするのは危険である。
+  - 一方で、ユーザー報告は「小さい時は正常、大きいと余白が大きすぎる」であり、起動時の terminal 幅に応じた profile 選択で大半を吸収できる。
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — `PURE_LAYOUT_PROFILE` / `--layout-profile` を追加。terminal 幅から `wide / normal / narrow` を auto 判定し、narrow では `shogun/gunshi` 左列縦積み、normal/wide では `shogun full-height` 構造を使い分けるよう変更。
+  - `tests/unit/test_goza_pure_bootstrap.bats` — auto profile 判定と narrow profile 分岐の回帰テストを追加。
+  - `docs/REQS.md` — 起動時 auto layout profile の要件を追加。
+- Commands + Results:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats` → `1..13` PASS
+- Decisions / Assumptions:
+  - runtime 中の live 構造変更はこの checkpoint では扱わず、起動時判定に留める。理由は pure zellij の static layout 制約を超えるため。
+  - `narrow` では以前の左列縦積みへ戻す。理由は、狭い画面では `gunshi` を右列へ退避させるより `shogun` と同列にまとめた方が横圧迫を減らせるため。
+- Next:
+  1. 実機で小さいウィンドウと大きいウィンドウの両方から起動し、auto profile の選択結果を確認する。
+  2. 必要なら `--layout-profile wide|normal|narrow` の明示指定も README へ追記する。
+- Links: scripts/goza_no_ma.sh, tests/unit/test_goza_pure_bootstrap.bats, docs/REQS.md

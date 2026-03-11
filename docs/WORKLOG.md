@@ -2309,3 +2309,6 @@
 - 判断:
   - `cli_adapter` の Python 選択は起動系全体の前提なので、表示改善より優先して修正した。
   - `docs/UPSTREAM_SYNC_2026-03-05.md` は今回の commit から除外する。
+- Git:
+  - `git commit -m "codex: shutsujin表示を動的CLI構成へ寄せる"` → `cbc3042`
+  - `git push -u origin codex/auto` → GitHub 認証未設定で失敗 (`could not read Username for 'https://github.com': No such device or address`)

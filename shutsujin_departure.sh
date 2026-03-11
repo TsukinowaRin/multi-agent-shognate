@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # 🏯 multi-agent-shogun 出陣スクリプト（毎日の起動用）
 # Daily Deployment Script for Multi-Agent Orchestration System
 #
@@ -9,12 +9,10 @@
 #   ./shutsujin_departure.sh -h        # ヘルプ表示
 
 set -e
-trap 'echo "[DEBUG] shutsujin_departure.sh: ERR at line $LINENO (exit code $?)" >&2' ERR
 
 # スクリプトのディレクトリを取得
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-ORIGINAL_ARGS=("$@")
 
 # 言語設定を読み取り（デフォルト: ja）
 LANG_SETTING="ja"
@@ -28,41 +26,30 @@ if [ -f "./config/settings.yaml" ]; then
     SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
 fi
 
-# マルチプレクサ設定（tmux専用）
-MULTIPLEXER_SETTING="tmux"
-if [ -f "./config/settings.yaml" ]; then
-    # supports:
-    # multiplexer: tmux
-    # or
-    # multiplexer:\n#   default: tmux
-    _mux_inline=$(grep '^multiplexer:' ./config/settings.yaml 2>/dev/null | head -n1 | sed -E 's/^multiplexer:[[:space:]]*//')
-    _mux_nested=$(awk '
-      $0 ~ /^multiplexer:[[:space:]]*$/ {in_mux=1; next}
-      in_mux && $0 ~ /^[^[:space:]]/ {in_mux=0}
-      in_mux && $0 ~ /^[[:space:]]*default:[[:space:]]*/ {
-        sub(/^[[:space:]]*default:[[:space:]]*/, "", $0); print $0; exit
-      }
-    ' ./config/settings.yaml 2>/dev/null)
-    MULTIPLEXER_SETTING=$(printf '%s\n%s\n' "${_mux_inline}" "${_mux_nested}" | sed '/^$/d' | head -n1 | tr -d '\r' | tr -d '"' | tr -d '[:space:]')
-    MULTIPLEXER_SETTING=${MULTIPLEXER_SETTING:-tmux}
-fi
-
-# 環境変数による強制切替（設定ファイルより優先）
-# zellij は廃止済み。指定されても tmux へフォールバックする。
-if [ -n "${MAS_MULTIPLEXER:-}" ]; then
-    case "${MAS_MULTIPLEXER}" in
-        tmux)
-            MULTIPLEXER_SETTING="${MAS_MULTIPLEXER}"
-            ;;
-        zellij)
-            echo "[INFO] zellij モードは廃止されました。tmux モードで継続します。" >&2
-            MULTIPLEXER_SETTING="tmux"
-            ;;
-        *)
-            echo "[ERROR] Invalid MAS_MULTIPLEXER='${MAS_MULTIPLEXER}'. Use 'tmux'." >&2
+# ═══════════════════════════════════════════════════════════════════════════════
+# Python venv プリフライトチェック
+# ───────────────────────────────────────────────────────────────────────────────
+# inbox_write.sh, inbox_watcher.sh, cli_adapter.sh が .venv/bin/python3 に依存。
+# venv が存在しない場合は自動作成する（git pull 後の初回起動対策）。
+# ═══════════════════════════════════════════════════════════════════════════════
+VENV_DIR="$SCRIPT_DIR/.venv"
+if [ ! -f "$VENV_DIR/bin/python3" ] || ! "$VENV_DIR/bin/python3" -c "import yaml" 2>/dev/null; then
+    echo -e "\033[1;33m【報】\033[0m Python venv をセットアップ中..."
+    if command -v python3 &>/dev/null; then
+        python3 -m venv "$VENV_DIR" 2>/dev/null || {
+            echo -e "\033[1;31m【ERROR】\033[0m python3 -m venv に失敗しました。python3-venv パッケージが必要かもしれません。"
+            echo "  Ubuntu/Debian: sudo apt-get install python3-venv"
             exit 1
-            ;;
-    esac
+        }
+        "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt" -q 2>/dev/null || {
+            echo -e "\033[1;31m【ERROR】\033[0m pip install に失敗しました。"
+            exit 1
+        }
+        echo -e "\033[1;32m【成】\033[0m Python venv セットアップ完了"
+    else
+        echo -e "\033[1;31m【ERROR】\033[0m python3 が見つかりません。first_setup.sh を実行してください。"
+        exit 1
+    fi
 fi
 
 # CLI Adapter読み込み（Multi-CLI Support）

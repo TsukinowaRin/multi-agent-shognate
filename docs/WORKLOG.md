@@ -2279,3 +2279,17 @@
 - Git:
   - `git commit -m "codex: upstream正本とCLI拡張方針を整理"` → `a59dc75`
   - `git push -u origin codex/auto` → GitHub 認証未設定で失敗 (`could not read Username for 'https://github.com'`)
+
+## 2026-03-11 (shutsujin top-level upstream alignment)
+- 要求: upstream `main` を正本にしつつ、`shutsujin_departure.sh` を tmux 本線へ寄せる。
+- 実施:
+  - `shutsujin_departure.sh` の shebang を `#!/usr/bin/env bash` へ戻した。
+  - 廃止済み `MULTIPLEXER_SETTING` / `MAS_MULTIPLEXER` / `ORIGINAL_ARGS` の上部処理を削除した。
+  - upstream 本線にある Python venv プリフライトチェックを復元し、`.venv` 自動作成と `requirements.txt` 導入をスクリプト上部へ戻した。
+  - `TOPOLOGY_ADAPTER` / `inbox_path` / `Gemini/OpenCode/Kilo` 同期関数はそのまま維持し、CLI拡張差分だけを残した。
+- 検証:
+  - `bash -n shutsujin_departure.sh first_setup.sh scripts/configure_agents.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats` → 1..161 PASS
+- 判断:
+  - tmux-only 化後の multiplexer 強制分岐は不要なので、上流構造へ戻してよい。
+  - `shutsujin_departure.sh` の次段整理対象は、起動メッセージ・モデル説明・CLI ready/bootstrap の役割分離。

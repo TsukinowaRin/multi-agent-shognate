@@ -106,6 +106,7 @@
 !scripts/bootstrap_goza_view.sh
 !scripts/sync_gemini_settings.py
 !scripts/sync_opencode_config.py
+!scripts/sync_runtime_cli_preferences.py
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh
 !scripts/seo_qc.sh

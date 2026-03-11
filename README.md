@@ -73,6 +73,9 @@ bash scripts/configure_agents.sh
 - `cli.agents.gunshi`
 - `cli.agents.karo`
 - `cli.agents.ashigaruN`
+
+補足:
+- `Codex` / `Gemini` は、pane 内で変更した live の `model` / `reasoning` / 一部 `thinking` を次回 `bash shutsujin_departure.sh` 実行前に `config/settings.yaml` へ同期します。
 - `cli.opencode_like`
 
 ## 設定例

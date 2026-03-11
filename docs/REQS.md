@@ -3,6 +3,21 @@
 最終更新: 2026-03-11
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-11: live CLI設定の次回起動反映）
+### 要求
+1. 各 pane 内で変更した `model` や `reasoning/thinking` のうち、判別可能なものは次回起動前に `config/settings.yaml` へ同期すること。
+2. 同期は `tmux` の live pane を破棄する前に実行し、次回 `shutsujin_departure.sh` 起動へ反映されること。
+3. 最初の対応対象は `Codex` と `Gemini` とし、`Codex` は `model / reasoning_effort`、`Gemini` は `model` と alias 判別可能な `thinking_level / thinking_budget` を扱うこと。
+4. tmux session が存在しない場合は no-op で終了し、起動を妨げないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `python3 scripts/sync_runtime_cli_preferences.py`
+   - 期待結果: 実行中 tmux pane が存在する場合、`queue/runtime/runtime_cli_prefs.tsv` が生成され、判別できた live 設定が `config/settings.yaml` へ反映される。
+2. コマンド: `bash shutsujin_departure.sh`
+   - 期待結果: 既存 session がある状態では cleanup 前に runtime 同期が走り、その後の再起動に live 設定が反映される。
+3. コマンド: `bats tests/unit/test_sync_runtime_cli_preferences.bats`
+   - 期待結果: fake tmux fixture 上で `Codex` と `Gemini` の live 設定が YAML へ同期される。
+
 ## 追補（2026-03-11: tmux御座の間復活 + csg alias）
 ### 要求
 1. `gunshi` へは `csg` で短縮 attach できること。

@@ -2402,3 +2402,26 @@
   - backend 起動が必要なケースは少数なので、明示オプションへ分離する方が運用が明快。
 - Git:
   - この checkpoint で今回差分をコミットする。
+
+## 2026-03-11 live CLI設定の次回起動反映
+- 背景:
+  - ユーザーから、pane 内で変更した `model` / `thinking` / `reasoning` が次回起動時に保持されるかを問われ、現状は `config/settings.yaml` へ戻していないため保持されないことが判明した。
+- 実施:
+  - `docs/EXECPLAN_2026-03-11_runtime_cli_pref_sync.md` を新規作成し、`docs/INDEX.md` に追加した。
+  - `docs/REQS.md` に `Codex/Gemini` の live state を次回起動前に `config/settings.yaml` へ同期する要求と受け入れ条件を追記した。
+  - `scripts/sync_runtime_cli_preferences.py` を新規追加した。
+    - `tmux` の live pane を `capture-pane -J` で読み取り、`Codex` の `model / reasoning_effort`、`Gemini` の `model` と alias 判別可能な `thinking_level / thinking_budget` を抽出する。
+    - 結果を `config/settings.yaml` へ反映し、`queue/runtime/runtime_cli_prefs.tsv` へ summary を出力する。
+    - tmux session が存在しない場合は no-op で終了する。
+  - `shutsujin_departure.sh` の cleanup 前に runtime 同期フックを追加し、既存 `shogun / gunshi / multiagent` session がある場合だけ自動同期するようにした。
+  - `README.md` / `README_ja.md` に、`Codex/Gemini` の live 設定が次回起動前に同期される旨を追記した。
+  - `tests/unit/test_sync_runtime_cli_preferences.bats` を新規追加し、fake tmux fixture で `Codex/Gemini` の同期と no-op を検証した。
+- 検証:
+  - `python3 -m py_compile scripts/sync_runtime_cli_preferences.py` → PASS
+  - `bash -n shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats` → PASS (`1..107`)
+- 判断:
+  - 常駐 watcher ではなく、次回起動前の pre-cleanup 同期にすることで、tmux 本線を崩さずに「次回起動へ反映」を満たせる。
+  - 最初の対応対象は `Codex/Gemini` に限定し、取得不能な CLI の runtime state は今後必要になった時に個別対応する。
+- Git:
+  - この checkpoint で今回差分をコミットする。

@@ -62,6 +62,9 @@ bash scripts/configure_agents.sh
 - `Gemini` の `thinking_level` / `thinking_budget`
 - `OpenCode/Kilo` 用 provider 設定
 
+補足:
+- `Codex` / `Gemini` は、pane 内で変更した live の `model` / `reasoning` / 一部 `thinking` を次回 `bash shutsujin_departure.sh` 実行前に `config/settings.yaml` へ同期します。
+
 ## 設定例
 ```yaml
 language: ja

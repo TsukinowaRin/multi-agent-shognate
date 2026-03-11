@@ -746,6 +746,16 @@ echo ""
 # STEP 1: 既存セッションクリーンアップ
 # ═══════════════════════════════════════════════════════════════════════════════
 log_info "🧹 既存の陣を撤収中..."
+if [ -f "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" ]; then
+    if tmux has-session -t shogun 2>/dev/null || tmux has-session -t gunshi 2>/dev/null || tmux has-session -t multiagent 2>/dev/null; then
+        log_info "💾 前回CLI設定を同期中..."
+        if python3 "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" >/tmp/mas_runtime_cli_sync.log 2>&1; then
+            tail -n 1 /tmp/mas_runtime_cli_sync.log 2>/dev/null || true
+        else
+            log_info "  └─ runtime CLI同期は失敗しましたが出陣は継続"
+        fi
+    fi
+fi
 tmux kill-session -t multiagent 2>/dev/null && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
 tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
 

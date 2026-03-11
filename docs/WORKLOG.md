@@ -2425,3 +2425,24 @@
   - 最初の対応対象は `Codex/Gemini` に限定し、取得不能な CLI の runtime state は今後必要になった時に個別対応する。
 - Git:
   - この checkpoint で今回差分をコミットする。
+
+## 2026-03-11 live CLI設定の即時同期化
+- 背景:
+  - ユーザー要求が「次回起動前の同期」ではなく「pane 内で model / thinking / reasoning を変えたら即保存」に変わった。
+  - pre-cleanup 同期では要件を満たせないため、tmux 本線上で常駐 daemon による継続同期へ切り替えた。
+- 実施:
+  - `scripts/runtime_cli_pref_daemon.sh` を追加し、`scripts/sync_runtime_cli_preferences.py` を約1秒ごとに実行する常駐同期を実装した。
+  - daemon は `MAS_RUNTIME_PREF_SYNC_PYTHON` と `MAS_RUNTIME_PREF_SYNC_SCRIPT` を受け取り、環境差分と `--once` テストに対応した。
+  - `shutsujin_departure.sh` の watcher 起動後に daemon 起動フックを追加し、既存 daemon は `pkill` で掃除してから再起動するようにした。
+  - `README.md` / `README_ja.md` / `docs/REQS.md` / `docs/EXECPLAN_2026-03-11_runtime_cli_pref_sync.md` を、即時同期（約1秒）前提の説明へ更新した。
+  - `tests/unit/test_runtime_cli_pref_daemon.bats` を追加し、`--once` で同期スクリプトを1回実行する smoke を追加した。
+- 検証:
+  - `bash -n scripts/runtime_cli_pref_daemon.sh shutsujin_departure.sh` → PASS
+  - `python3 -m py_compile scripts/sync_runtime_cli_preferences.py` → PASS
+  - `bats tests/unit/test_runtime_cli_pref_daemon.bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats` → PASS (`1..108`)
+  - `tail -n 40 /tmp/mas_runtime_cli_sync_daemon.log` → `[INFO] runtime CLI preferences unchanged`
+- 判断:
+  - 即時同期の正本は `config/settings.yaml` のまま維持し、pane live state を daemon で継続反映する方が安全。
+  - 常時監視対象は現時点で `Codex` / `Gemini` に限定する。他 CLI は live state の安定抽出方式が固まってから拡張する。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

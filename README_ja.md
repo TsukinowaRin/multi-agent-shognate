@@ -63,7 +63,8 @@ bash scripts/configure_agents.sh
 - `OpenCode/Kilo` 用 provider 設定
 
 補足:
-- `Codex` / `Gemini` は、pane 内で変更した live の `model` / `reasoning` / 一部 `thinking` を次回 `bash shutsujin_departure.sh` 実行前に `config/settings.yaml` へ同期します。
+- `Codex` / `Gemini` は、pane 内で変更した live の `model` / `reasoning` / 一部 `thinking` を、起動中に daemon が約1秒ごとに `config/settings.yaml` へ同期します。
+- 即時同期の対象は現時点で `Codex` / `Gemini` のみです。
 
 ## 設定例
 ```yaml

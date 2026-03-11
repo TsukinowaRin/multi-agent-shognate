@@ -1408,6 +1408,16 @@ NINJA_EOF
         log_info "⚠️  inotifywait 未導入のため inbox_watcher はスキップ（sudo apt install -y inotify-tools）"
     fi
 
+    if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then
+        pkill -f "runtime_cli_pref_daemon.sh" 2>/dev/null || true
+        nohup env MAS_RUNTIME_PREF_SYNC_INTERVAL="${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}" \
+            bash "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" \
+            >> "$SCRIPT_DIR/logs/runtime_cli_pref_sync.log" 2>&1 &
+        disown
+        log_info "💾 live CLI設定の自動同期を起動中..."
+        log_success "  └─ runtime_cli_pref_daemon 起動完了"
+    fi
+
     # STEP 6.7 は廃止 — CLAUDE.md Session Start (step 1: tmux agent_id) で各自が自律的に
     # 自分のinstructions/*.mdを読み込む。検証済み (2026-02-08)。
     log_info "📜 指示書読み込みは各エージェントが自律実行（CLAUDE.md Session Start）"

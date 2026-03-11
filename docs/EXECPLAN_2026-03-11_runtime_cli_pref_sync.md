@@ -6,32 +6,34 @@
 - tmux 本線では既存 session を起動前に破棄するため、破棄前に live state を同期すれば次回起動へ反映できる。
 
 ## Scope
-- `tmux` pane の live state を読み取り、`config/settings.yaml` へ同期するスクリプトを追加する。
-- `shutsujin_departure.sh` の既存 session cleanup 前に同期を自動実行する。
+- `tmux` pane の live state を読み取り、`config/settings.yaml` へ継続同期するスクリプトと daemon を追加する。
+- `shutsujin_departure.sh` から daemon を自動起動し、起動中に約1秒ごとに live state を settings へ反映する。
 - 対象はまず `Codex` と `Gemini` の runtime 変更とする。
 
 ## Acceptance Criteria
-1. `Codex` pane での model / reasoning 変更が、次回 `shutsujin_departure.sh` 実行前に `config/settings.yaml` へ同期される。
-2. `Gemini` pane での model 変更が、次回 `shutsujin_departure.sh` 実行前に `config/settings.yaml` へ同期される。
+1. `Codex` pane での model / reasoning 変更が、起動中に約1秒以内で `config/settings.yaml` へ同期される。
+2. `Gemini` pane での model 変更が、起動中に約1秒以内で `config/settings.yaml` へ同期される。
 3. `Gemini` alias が判別できる場合、対応する `thinking_level` / `thinking_budget` も同期される。
 4. session が存在しない場合は no-op で終わり、起動を妨げない。
 
 ## Work Breakdown
 1. `REQS` / `INDEX` / ExecPlan を更新する。
 2. `scripts/sync_runtime_cli_preferences.py` を追加する。
-3. `shutsujin_departure.sh` に pre-cleanup 同期フックを追加する。
-4. 単体テストを追加する。
-5. `WORKLOG` を更新し、checkpoint で commit する。
+3. `scripts/runtime_cli_pref_daemon.sh` を追加する。
+4. `shutsujin_departure.sh` から daemon を起動する。
+5. 単体テストを追加する。
+6. `WORKLOG` を更新し、checkpoint で commit する。
 
 ## Progress
 - 2026-03-11: 開始。
+- 2026-03-11: pre-cleanup 同期だけでは「即保存」要件を満たさないため、数秒周期の daemon 同期へ方針変更。
 
 ## Surprises & Discoveries
 - なし（開始時点）。
 
 ## Decision Log
-- live state の同期は background watcher ではなく、次回起動直前の pre-cleanup で行う。
+- live state の同期は常駐 daemon で行い、pane 変更の数秒後に settings へ反映する。
 - 最初の対象 CLI は `Codex` / `Gemini` とし、他 CLI は明示対応まで現状維持にする。
 
 ## Outcomes & Retrospective
-- 進行中。
+- 進行中。daemon 方式へ切り替えた。

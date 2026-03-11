@@ -2128,3 +2128,42 @@
   1. 実機で小さいウィンドウと大きいウィンドウの両方から起動し、auto profile の選択結果を確認する。
   2. 必要なら `--layout-profile wide|normal|narrow` の明示指定も README へ追記する。
 - Links: scripts/goza_no_ma.sh, tests/unit/test_goza_pure_bootstrap.bats, docs/REQS.md
+
+### 2026-03-11 00:35 (JST)
+- Goal: `pure zellij autoレイアウト追加` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijのautoレイアウトを追加"` → PASS (`db474b5`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - 既存未整理差分 `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は維持する。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で小窓/大窓から pure zellij を起動し、auto profile の選択結果を確認する。
+- Links: db474b5
+
+### 2026-03-11 00:48 (JST)
+- Goal: upstream `2ef81f9`（compaction 復帰時の persona 再読強制）を、このフォークの複数 CLI 用 root instruction 群へ反映する。
+- Findings:
+  - `git show 2ef81f9 -- CLAUDE.md` を確認したところ、upstream の差分は `CLAUDE.md` に `Post-Compaction Recovery (CRITICAL)` を追加するものだった。
+  - このフォークでは `CLAUDE.md` のみでなく `AGENTS.md` / `.github/copilot-instructions.md` / `agents/default/system.md` も root instruction として使っているため、`CLAUDE.md` だけに反映しても不十分。
+  - `upstream/latest` という remote branch は存在せず、最新は `upstream/main` の `2ef81f9` (`v4.0.4`) だった。
+- Changes (files):
+  - `CLAUDE.md` — upstream 同等の `Post-Compaction Recovery (CRITICAL)` 節を追加。
+  - `AGENTS.md` — Codex 用 root instruction に同節を追加。
+  - `.github/copilot-instructions.md` — Copilot 用 root instruction に同節を追加。
+  - `agents/default/system.md` — Kimi 系 default system instruction に同節を追加。
+  - `docs/UPSTREAM_SYNC_2026-03-11_COMPACTION.md` — upstream `2ef81f9` の反映メモを追加。
+  - `docs/INDEX.md`, `docs/REQS.md`, `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` — 追補と同期記録を更新。
+- Commands + Results:
+  - `git show --stat --summary 2ef81f974bbb633a0cdfe00566671d8a64d5f462` → upstream 差分が `CLAUDE.md` 1ファイルであることを確認。
+  - `git fetch upstream --prune` → PASS（`upstream/main` が `2ef81f9` に更新、tag `v4.0.4` 取得）。
+  - `git rev-list --left-right --count HEAD...upstream/main` → `207 249`（大きく乖離）
+  - `git diff --stat HEAD..upstream/main` → 289 files changed（単純 merge 不適）
+- Decisions / Assumptions:
+  - 今回は upstream 全体 merge ではなく、重要差分 `2ef81f9` のみを先行反映する。理由は `upstream/main` とこのフォークの差分が大きく、単純 merge が非現実的なため。
+  - compaction recovery は root instruction 群すべてへ横展開する。理由は CLI ごとに system prompt 入口が分かれているため。
+- Next:
+  1. root instruction 群の更新をコミットし、runtime/user state (`config/settings.yaml`, `dashboard.md`, `queue/*.yaml`) はコミット対象から外す。
+  2. その後、`upstream/main` ベースで再統合する場合は別ブランチで staged migration を行う。
+- Links: 2ef81f974bbb633a0cdfe00566671d8a64d5f462, docs/UPSTREAM_SYNC_2026-03-11_COMPACTION.md

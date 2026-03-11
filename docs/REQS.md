@@ -3,6 +3,20 @@
 最終更新: 2026-03-11
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-11: upstream compaction recovery 反映）
+### 要求
+1. upstream `2ef81f9` の趣旨に従い、compaction 後は system message が "Continue the conversation from where it left off." であっても instructions file の再読を必須とすること。
+2. このフォークでは `CLAUDE.md` だけでなく、`AGENTS.md` / `.github/copilot-instructions.md` / `agents/default/system.md` にも同等の `Post-Compaction Recovery` を持たせること。
+3. 再開手順では persona / speech style / forbidden actions は compaction summary では復元されない前提を明記すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `git show 2ef81f974bbb633a0cdfe00566671d8a64d5f462 -- CLAUDE.md`
+   - 期待結果: upstream 側の変更が `Post-Compaction Recovery (CRITICAL)` 追加であることを確認できる。
+2. コマンド: `rg -n "Post-Compaction Recovery|Continue the conversation from where it left off|Compaction summaries do NOT preserve persona" CLAUDE.md AGENTS.md .github/copilot-instructions.md agents/default/system.md`
+   - 期待結果: root instruction 群すべてに compaction 復帰節が存在する。
+3. コマンド: `rg -n "Session Start Step 3 again|Re-read your instructions file" CLAUDE.md AGENTS.md .github/copilot-instructions.md agents/default/system.md`
+   - 期待結果: 再開前に instructions 再読を強制する文言が存在する。
+
 ## 追補（2026-03-11: pure zellij の wide 画面での可用性改善）
 ### 要求
 1. pure `zellij` の `goza_room` は、ウィンドウ最大化時でも `shogun` / `karo` / `gunshi` / `ashigaru` の主要 pane が読みやすい配置であること。

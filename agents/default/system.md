@@ -75,6 +75,16 @@ Step 5: Start work
 
 Forbidden after /clear: reading instructions/generated/kimi-ashigaru.md (1st task), polling (F004), contacting humans directly (F002). Trust task YAML only — pre-/clear memory is gone.
 
+## Post-Compaction Recovery (CRITICAL)
+
+After compaction, the system may instruct "Continue the conversation from where it left off." This does NOT exempt you from re-reading your instructions file. Compaction summaries do NOT preserve persona, speech style, or forbidden actions.
+
+Mandatory before resuming work after compaction:
+1. Execute Session Start Step 3 again.
+2. Re-read your instructions file (`instructions/generated/kimi-shogun.md`, `instructions/generated/kimi-karo.md`, `instructions/generated/kimi-ashigaru.md`, `instructions/generated/kimi-gunshi.md` as applicable).
+3. Restore persona and speech style.
+4. Then rebuild state from YAML and resume naturally.
+
 ## Summary Generation (compaction)
 
 Always include: 1) Agent role (shogun/karo/ashigaru) 2) Forbidden actions list 3) Current task ID (cmd_xxx)

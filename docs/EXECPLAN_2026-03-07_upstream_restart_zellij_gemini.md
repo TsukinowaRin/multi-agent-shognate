@@ -64,3 +64,4 @@
 - 2026-03-11: pure zellij の wide 画面可用性改善として、`shogun` を full-height 左列、`karo` を full-height 中列、`gunshi` を右列上段、足軽を右列下段 grid に再配置した。従来の `shogun/gunshi` 左列縦積みは wide 画面での情報密度と操作性が悪かったため採用しない。
 - 2026-03-11: pure zellij の nested PTY runner は、child PTY の winsize 更新に加えて child process group へ `SIGWINCH` を送るよう変更した。これにより WSL ウィンドウリサイズ時の `Codex` / `Gemini` TUI 再レイアウトを tmux に近づける。
 - 2026-03-11: pure zellij の画面サイズ差を吸収するため、起動時 terminal 幅から `wide / normal / narrow` を auto 判定する layout profile を追加した。runtime 中の live 構造変更は pure zellij の static layout 制約により別課題とする。
+- 2026-03-11: upstream `2ef81f9` の compaction recovery 修正を先行反映した。upstream では `CLAUDE.md` のみ更新だが、このフォークでは `AGENTS.md` / `copilot-instructions` / `agents/default/system.md` も root instruction なので、同一の `Post-Compaction Recovery` 節を横展開した。

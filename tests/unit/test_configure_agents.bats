@@ -14,8 +14,6 @@ language: ja
 shell: bash
 multiplexer:
   default: tmux
-startup:
-  template: goza_room
 topology:
   active_ashigaru:
     - ashigaru1
@@ -45,7 +43,6 @@ teardown() {
 @test "configure_agents: opencode_like設定とGemini thinking_levelを正しく保存する" {
   run bash -lc "cd '$TEST_TMP' && printf '%s\n' \
     'tmux' \
-    'goza_room' \
     'opencode' \
     '1' \
     'opencode' \

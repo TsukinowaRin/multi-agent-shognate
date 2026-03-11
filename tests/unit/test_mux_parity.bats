@@ -12,18 +12,14 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "旧 zellij ラッパーは tmux 本体へ委譲する" {
-    run rg -n "goza_tmux\\.sh|shutsujin_departure\\.sh" \
-        "$PROJECT_ROOT/scripts/goza_zellij.sh" \
-        "$PROJECT_ROOT/scripts/goza_zellij_pure.sh" \
-        "$PROJECT_ROOT/scripts/goza_hybrid.sh" \
-        "$PROJECT_ROOT/scripts/shutsujin_zellij.sh"
+@test "tmux起動入口は shutsujin_departure.sh のみを使う" {
+    run rg -n "Usage:|./shutsujin_departure\\.sh|tmux attach-session" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/README.md"
     [ "$status" -eq 0 ]
 }
 
-@test "goza起動は tmux フロントエンドとして起動する" {
-    run rg -n "MAS_MULTIPLEXER=tmux|tmux attach|tmux new-session" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
-    [ "$status" -eq 0 ]
+@test "現役 scripts から goza/zellij 導線が外れている" {
+    run rg -n "goza_|shutsujin_zellij|zellij action|--mux zellij|--ui zellij" "$PROJECT_ROOT/scripts" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/config/settings.yaml" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -ne 0 ]
 }
 
 @test "agent収集は shutsujin_departure が topology_adapter を利用する" {

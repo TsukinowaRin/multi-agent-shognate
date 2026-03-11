@@ -13,3 +13,5 @@
 - `restart_2026-03-07_core/cli_adapter.sh.before_upstream`
 - `restart_2026-03-07_core/build_instructions.sh.before_upstream`
 - `restart_2026-03-07_core/inbox_watcher.sh.before_upstream`
+- `zellij_2026-03-11/` - 廃止した zellij 実装と関連テストの初回退避。
+- `tmux_unification_2026-03-11/` - `shutsujin_departure.sh` 一本化に伴い廃止した `goza*` / `shutsujin_zellij.sh` / 旧テンプレート / 旧 bat ランチャー。

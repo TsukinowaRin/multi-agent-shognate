@@ -2218,3 +2218,31 @@
   1. tmux 実機 smoke (`bash scripts/goza_tmux.sh -s`, `bash scripts/goza_tmux.sh --template goza_room`) を確認する。
   2. 必要なら historical zellij docs も `Waste/` へ追加退避する。
 - Links: README.md, scripts/goza_no_ma.sh, scripts/watcher_supervisor.sh, Waste/zellij_2026-03-11/, docs/EXECPLAN_2026-03-11_tmux_only_consolidation.md
+
+### 2026-03-11 15:42 (JST)
+- Goal: `tmux 一本化` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: tmux一本化とzellij退避を実施"` → PASS (`880860d`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - `docs/UPSTREAM_SYNC_2026-03-05.md` / `dashboard.md` / `queue/shogun_to_karo.yaml` は今回の checkpoint から除外した。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+
+### 2026-03-11 16:18 (JST)
+- Goal: `shutsujin_departure.sh` 一本化を完了し、`goza*` と `startup.template` を現役運用から外す。
+- Changes:
+  - `scripts/goza_no_ma.sh` / `scripts/goza_tmux.sh` / `scripts/goza_zellij.sh` / `scripts/goza_zellij_pure.sh` / `scripts/goza_hybrid.sh` / `scripts/shutsujin_zellij.sh` / `templates/multiplexer/tmux_templates.yaml` / `start_tmux_goza.bat` / `start_zellij_goza.bat` を `Waste/tmux_unification_2026-03-11/` へ退避。
+  - `README.md` を `shutsujin_departure.sh` だけを案内する形へ簡素化。
+  - `config/settings.yaml` / `first_setup.sh` / `scripts/configure_agents.sh` から `startup.template` を削除。
+  - `tests/unit/test_configure_agents.bats` / `tests/unit/test_mux_parity.bats` を `goza` 非依存の形へ更新。
+- Commands + Results:
+  - `find Waste -maxdepth 3 -type f | sort` → `tmux_unification_2026-03-11/` 以下へ `goza*` / `shutsujin_zellij.sh` / 旧 template / 旧 bat が退避されたことを確認。
+  - `rg -n "goza_|goza_room|shogun_only|startup\\.template|scripts/goza|tmux_templates|shutsujin_zellij|start_.*goza" . -g '!Waste/**'` → 現役コードではヒット無し、履歴 docs のみヒット。
+- Decisions / Assumptions:
+  - `goza` は tmux-only 化後も単なる別フロントエンドであり、upstream 本線の `shutsujin_departure.sh` と二重入口になるため廃止する。
+  - 過去の zellij / goza 経緯は履歴 docs に残すが、現役仕様は `docs/REQS.md` と `README.md` で上書きする。
+- Next:
+  1. `bash -n` と `bats` を再実行して、tmux-only 最終形の回帰確認を行う。
+  2. 問題が無ければ checkpoint commit を作成する。

@@ -2,8 +2,6 @@ language: ja
 shell: bash
 multiplexer:
   default: tmux
-startup:
-  template: goza_room
 topology:
   active_ashigaru:
     - ashigaru1

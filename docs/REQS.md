@@ -3,22 +3,22 @@
 最終更新: 2026-03-11
 出典: 直近ユーザープロンプト
 
-## 追補（2026-03-11: zellij 廃止・tmux 一本化）
+## 追補（2026-03-11: shutsujin_departure 一本化・goza 廃止）
 ### 要求
 1. このリポジトリのマルチプレクサ対応は `tmux` のみに一本化すること。
-2. `zellij` 用の起動スクリプト・テンプレート・テスト・補助コードは、ワークスペース内の `Waste/` 配下へ退避すること。
-3. 既存の `zellij` 名コマンドを叩いても、少なくとも利用者が迷わないよう `tmux` へ委譲するか、明確な廃止メッセージを返すこと。
-4. `config/settings.yaml` / `scripts/configure_agents.sh` / `first_setup.sh` / `shutsujin_departure.sh` / `scripts/inbox_watcher.sh` / `scripts/watcher_supervisor.sh` / `README.md` は `tmux` 前提へ更新すること。
-5. root instruction と generated instruction から、現役運用としての `zellij` 手順を外し、`tmux` 前提へ更新すること。
+2. 現役の起動入口は `shutsujin_departure.sh` のみに一本化し、`goza*` は現役コードから外すこと。
+3. `goza*` / `shutsujin_zellij.sh` / 旧テンプレート / 旧 bat ランチャーは、ワークスペース内の `Waste/` 配下へ退避すること。
+4. `config/settings.yaml` / `scripts/configure_agents.sh` / `first_setup.sh` / `README.md` から `startup.template` と `goza_room` 前提を外すこと。
+5. root instruction と generated instruction から、現役運用としての `zellij` / `goza` 手順を外し、`tmux` 前提へ更新すること。
 
 ### 受け入れ条件（観測可能）
-1. コマンド: `rg -n "default: zellij|--mux zellij|--ui zellij|scripts/shutsujin_zellij.sh|goza_zellij_pure|zellij action" shutsujin_departure.sh scripts README.md first_setup.sh config/settings.yaml`
-   - 期待結果: 現役運用ファイルから `zellij` 前提の記述が除去される。
+1. コマンド: `rg -n "goza_|goza_room|shogun_only|startup.template|scripts/shutsujin_zellij.sh|--mux zellij|--ui zellij|zellij action" README.md first_setup.sh scripts config .gitignore -g '!Waste/**'`
+   - 期待結果: 現役運用ファイルから `goza` / `zellij` 前提の記述が除去される。
 2. コマンド: `find Waste -maxdepth 3 -type f | sort`
-   - 期待結果: 旧 `zellij` 実装・テスト・補助ファイルが `Waste/` 配下へ退避されている。
-3. コマンド: `bash -n shutsujin_departure.sh scripts/goza_no_ma.sh scripts/goza_tmux.sh scripts/configure_agents.sh scripts/inbox_watcher.sh scripts/watcher_supervisor.sh first_setup.sh`
-   - 期待結果: tmux 一本化後も主要シェルスクリプトに構文エラーがない。
-4. コマンド: `bats tests/unit/test_build_system.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_ntfy_auth.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats`
+   - 期待結果: 旧 `zellij` 実装に加え、`goza*` / `shutsujin_zellij.sh` / 旧 template / 旧 bat ランチャーが `Waste/` 配下へ退避されている。
+3. コマンド: `bash -n shutsujin_departure.sh scripts/configure_agents.sh scripts/inbox_watcher.sh scripts/watcher_supervisor.sh first_setup.sh scripts/mux_parity_smoke.sh`
+   - 期待結果: `shutsujin_departure.sh` 一本化後も主要シェルスクリプトに構文エラーがない。
+4. コマンド: `bats tests/unit/test_build_system.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_ntfy_auth.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats`
    - 期待結果: tmux 一本化後の残存 unit test が PASS する。
 
 ## 追補（2026-03-11: merge 後の健全性確認）

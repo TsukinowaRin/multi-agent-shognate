@@ -180,7 +180,7 @@ RESULTS+=("tmux マウス設定: OK")
 log_step "STEP 3.5: tmux 運用補足"
 
 log_info "このリポジトリは tmux 専用です"
-log_info "zellij 関連の旧実装は Waste/ に退避済みです"
+log_info "旧 zellij / goza 実装は Waste/ に退避済みです"
 RESULTS+=("multiplexer: tmux only")
 
 # ============================================================
@@ -575,12 +575,6 @@ shell: bash
 # tmux: 現行の唯一サポート対象
 multiplexer:
   default: tmux
-
-# 起動テンプレート
-# shogun_only: 将軍セッションへ直接アタッチ（既定）
-# goza_room:   御座の間ビューを作成して全体を俯瞰
-startup:
-  template: shogun_only
 
 # 起動トポロジ設定
 topology:

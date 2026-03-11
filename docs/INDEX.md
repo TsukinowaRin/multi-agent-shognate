@@ -35,6 +35,7 @@
 
 ## Archive
 - `Waste/zellij_2026-03-11/` - 廃止した zellij 実装、関連テスト、旧ランチャーの退避先。
+- `Waste/tmux_unification_2026-03-11/` - 廃止した `goza*` / `shutsujin_zellij.sh` / 旧 tmux template / 旧 bat ランチャーの退避先。
 
 ## Logs
 - `docs/WORKLOG.md` - 実装途中の詳細ログ（チェックポイント記録）。

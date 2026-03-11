@@ -33,6 +33,8 @@
 - 2026-03-11: `config/settings.yaml` / `scripts/configure_agents.sh` / `first_setup.sh` / `shutsujin_departure.sh` / `scripts/inbox_watcher.sh` / `scripts/watcher_supervisor.sh` を tmux 前提へ更新。
 - 2026-03-11: `README.md` を tmux 専用ガイドへ全面更新。instruction source を tmux 前提へ修正し、generated files を再生成。
 - 2026-03-11: `tests/unit/test_mux_parity*.bats` と `tests/unit/test_configure_agents.bats` を tmux-only 前提へ更新し、残存 unit test を通過。
+- 2026-03-11: `goza*` / `shutsujin_zellij.sh` / `tmux_templates.yaml` / `start_*goza*.bat` を `Waste/tmux_unification_2026-03-11/` へ退避し、現役起動入口を `shutsujin_departure.sh` のみに縮退。
+- 2026-03-11: `startup.template` を `config/settings.yaml` / `first_setup.sh` / `scripts/configure_agents.sh` から削除し、README の起動手順を `shutsujin_departure.sh` へ一本化。
 
 ## Surprises & Discoveries
 - `scripts/goza_no_ma.sh` は `tmux` 表示と `zellij` 表示の両方を持つ巨大な共通 frontend になっており、単純削除では済まない。
@@ -41,9 +43,10 @@
 ## Decision Log
 - `zellij` 名のコマンドは完全削除ではなく、tmux への互換 wrapper とする。
 - `Waste/` は tracked な退避先として扱う。
+- 2026-03-11: 最終判断として `goza*` も現役から外し、wrapper 維持ではなく `Waste/` 退避を採用する。理由は upstream 本線の `shutsujin_departure.sh` と二重導線を持つ意味が薄く、保守負債になるため。
 
 ## Outcomes & Retrospective
 - tmux-only 方針へ切り替える主要変更は完了。
 - 旧 zellij コードは削除せず `Waste/` に退避したため、参照可能性を保ちつつ現役コードから切り離せた。
-- 互換 wrapper を残したことで、古いコマンド名で起動してもユーザーは停止せず tmux 側へ流れる。
-- 残る `zellij` 記述は履歴 docs と退避ファイル、互換 wrapper 名に限定される。
+- 追加で `goza*` と `startup.template` も現役運用から外し、起動導線は `shutsujin_departure.sh` へ一本化した。
+- 残る `zellij` / `goza` 記述は履歴 docs と `Waste/` のみで、現役コード・README・設定 CUI には残さない方針へ整理した。

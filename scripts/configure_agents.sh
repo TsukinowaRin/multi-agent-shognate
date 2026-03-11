@@ -2,7 +2,7 @@
 # Multi Agents Shogunate CUI configurator
 # - topology.active_ashigaru
 # - cli.default / cli.agents
-# - multiplexer.default / startup.template
+# - multiplexer.default
 # - gunshi / Codex reasoning / Gemini thinking
 
 set -euo pipefail
@@ -106,18 +106,6 @@ read_current_multiplexer() {
     }
   ' "$SETTINGS_PATH" 2>/dev/null || true)"
   echo "${v:-tmux}"
-}
-
-read_current_template() {
-  local v
-  v="$(awk '
-    $0 ~ /^startup:[[:space:]]*$/ {in_s=1; next}
-    in_s && $0 ~ /^[^[:space:]]/ {in_s=0}
-    in_s && $0 ~ /^[[:space:]]*template:[[:space:]]*/ {
-      sub(/^[[:space:]]*template:[[:space:]]*/, "", $0); gsub(/"/, "", $0); print $0; exit
-    }
-  ' "$SETTINGS_PATH" 2>/dev/null || true)"
-  echo "${v:-goza_room}"
 }
 
 read_current_ashigaru_count() {
@@ -421,7 +409,6 @@ emit_agent_yaml() {
 default_language="$(read_current_value "language" "ja")"
 default_shell="$(read_current_value "shell" "bash")"
 default_mux="$(read_current_multiplexer)"
-default_template="$(read_current_template)"
 default_cli="$(awk '
   $0 ~ /^cli:[[:space:]]*$/ {in_cli=1; next}
   in_cli && $0 ~ /^[^[:space:]]/ {in_cli=0}
@@ -436,7 +423,6 @@ echo "=== Multi Agents Shogunate 設定 CUI ===" >&2
 echo "設定ファイル: $SETTINGS_PATH" >&2
 
 mux="$(prompt_choice "multiplexer.default を選択（tmux専用）" "tmux" "tmux")"
-template="$(prompt_choice "startup.template を選択" "$default_template" "shogun_only" "goza_room")"
 cli_default="$(prompt_choice "cli.default を選択" "$default_cli" "codex" "gemini" "claude" "localapi" "opencode" "kilo" "kimi" "copilot")"
 
 echo "" >&2
@@ -509,8 +495,6 @@ fi
   echo "shell: $default_shell"
   echo "multiplexer:"
   echo "  default: $mux"
-  echo "startup:"
-  echo "  template: $template"
   echo "topology:"
   echo "  active_ashigaru:"
   for ((i=1; i<=ashigaru_count; i++)); do
@@ -555,4 +539,4 @@ fi
 
 echo "次の確認:"
 echo "  cat config/settings.yaml"
-echo "  bash scripts/goza_tmux.sh -s --no-attach"
+echo "  bash shutsujin_departure.sh -s"

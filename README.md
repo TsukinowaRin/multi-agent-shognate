@@ -2,43 +2,44 @@
 
 このリポジトリは、将軍・軍師・家老・足軽の階層で複数 AI CLI を `tmux` 上で運用するための実行基盤です。
 
-正式対応は `tmux` のみです。  
-旧 zellij 実装は `Waste/zellij_2026-03-11/` に退避済みです。`scripts/goza_zellij.sh` などの旧コマンド名は、互換ラッパーとして tmux 起動へ委譲します。
+現役の起動入口は `shutsujin_departure.sh` のみです。  
+旧 `zellij` / `goza*` 実装は `Waste/` に退避しており、現役運用には含めません。
 
-## 起動コマンド
+## 起動
+
+セットアップのみ:
+```bash
+bash shutsujin_departure.sh -s
+```
 
 通常起動:
 ```bash
-bash scripts/goza_tmux.sh
+bash shutsujin_departure.sh
 ```
 
-御座の間ビュー:
+将軍本陣へ接続:
 ```bash
-bash scripts/goza_tmux.sh --template goza_room
+tmux attach-session -t shogun
 ```
 
-setup-only:
+家老・足軽陣へ接続:
 ```bash
-bash scripts/goza_tmux.sh -s
+tmux attach-session -t multiagent
 ```
 
-旧コマンド互換:
+軍師へ接続:
 ```bash
-bash scripts/goza_zellij.sh
-bash scripts/goza_zellij_pure.sh
-bash scripts/goza_hybrid.sh
+tmux attach-session -t gunshi
 ```
 
 ## 主なスクリプト
 
 - `shutsujin_departure.sh`
-  - 本体。tmux セッションを作成し、各 agent CLI を起動します。
-- `scripts/goza_tmux.sh`
-  - 公式フロントエンド。
-- `scripts/goza_no_ma.sh`
-  - tmux ビュー構築用の共通フロントエンド。
+  - 本体。tmux セッション生成、CLI 起動、watcher 起動を行います。
 - `scripts/configure_agents.sh`
   - `config/settings.yaml` を対話更新します。
+- `scripts/history_book.sh`
+  - 履歴要約（歴史書）を生成します。
 
 ## 設定 CUI
 
@@ -48,7 +49,6 @@ bash scripts/configure_agents.sh
 
 設定対象:
 - `multiplexer.default` (`tmux` 固定)
-- `startup.template`
 - `topology.active_ashigaru`
 - `cli.default`
 - `cli.agents.shogun`
@@ -64,8 +64,6 @@ language: ja
 shell: bash
 multiplexer:
   default: tmux
-startup:
-  template: goza_room
 topology:
   active_ashigaru:
     - ashigaru1
@@ -121,7 +119,7 @@ cli:
 ```bash
 cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate
 bash first_setup.sh
-bash scripts/goza_tmux.sh
+bash shutsujin_departure.sh
 ```
 
 ## 歴史書
@@ -138,8 +136,7 @@ sed -n '1,80p' queue/history/rekishi_book.md
 tmux kill-session -t shogun 2>/dev/null || true
 tmux kill-session -t multiagent 2>/dev/null || true
 tmux kill-session -t gunshi 2>/dev/null || true
-tmux kill-session -t goza-no-ma 2>/dev/null || true
-bash scripts/goza_tmux.sh
+bash shutsujin_departure.sh
 ```
 
 `inbox_watcher` が動かない:

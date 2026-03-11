@@ -69,8 +69,6 @@
 !first_setup.sh
 !setup.sh
 !install.bat
-!start_zellij_goza.bat
-!start_tmux_goza.bat
 
 # Development tooling
 !Makefile
@@ -102,13 +100,7 @@
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh
 !scripts/build_instructions.sh
-!scripts/shutsujin_zellij.sh
 !scripts/localapi_repl.py
-!scripts/goza_no_ma.sh
-!scripts/goza_zellij.sh
-!scripts/goza_zellij_pure.sh
-!scripts/goza_hybrid.sh
-!scripts/goza_tmux.sh
 !scripts/configure_agents.sh
 !scripts/sync_gemini_settings.py
 !scripts/sync_opencode_config.py
@@ -118,6 +110,8 @@
 !scripts/seo_qc.py
 !scripts/slim_yaml.sh
 !scripts/slim_yaml.py
+!Waste/
+!Waste/**
 !scripts/ensure_generated_instructions.sh
 
 

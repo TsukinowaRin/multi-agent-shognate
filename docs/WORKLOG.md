@@ -1995,3 +1995,36 @@
   1. 実機で pure zellij を再起動し、内部 CLI の描画幅が改善したか確認する。
   2. なお狭い場合は CLI ごとに倍率を分けるか、pane 配置と併用して調整する。
 - Links: scripts/interactive_agent_runner.py, scripts/zellij_agent_bootstrap.sh, tests/unit/test_goza_pure_bootstrap.bats
+
+### 2026-03-10 10:33 (JST)
+- Goal: `pure zellij 内部CLI幅補正` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijの内部CLI幅を補正"` → PASS (`c116cef`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - 既存未整理差分 `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は維持する。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で pure zellij を再起動し、内部 CLI 幅を確認する。
+- Links: c116cef
+
+### 2026-03-11 00:03 (JST)
+- Goal: pure `zellij` で内部 CLI の terminal width を 2 倍化した結果、広い pane で描画崩れが起こる問題を是正する。
+- Findings:
+  - `MAS_CLI_COL_MULTIPLIER=2` を既定化すると、実 pane 幅より広い cols を TUI CLI に報告するため、`Codex` / `Gemini` の描画が横方向に破綻した。
+  - この種の TUI は実 terminal width と内部認識 width が一致していることが前提なので、既定での倍率補正は非合理である。
+- Changes (files):
+  - `scripts/zellij_agent_bootstrap.sh` — `MAS_CLI_COL_MULTIPLIER` の既定値を `2` から `1` へ戻し、必要時のみ環境変数 override で有効化する方式へ変更。
+  - `tests/unit/test_goza_pure_bootstrap.bats` — 既定値 `1` と補正機構の存在を確認する回帰テストへ更新。
+- Commands + Results:
+  - `python3 -m py_compile scripts/interactive_agent_runner.py` → PASS
+  - `bash -n scripts/zellij_agent_bootstrap.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats` → `1..9` PASS
+- Decisions / Assumptions:
+  - 既定では実 pane 幅を正本に戻す。理由は、実 terminal と child PTY の cols をずらすと TUI 表示が構造的に壊れるため。
+  - 幅補正機構自体は残し、必要なら `MAS_CLI_COL_MULTIPLIER=2` を手動指定できるようにする。
+- Next:
+  1. 実機で pure zellij を再起動し、描画崩れが消えたことを確認する。
+  2. まだ足軽 pane が狭いなら、幅補正ではなくレイアウト再配置で改善する。
+- Links: scripts/zellij_agent_bootstrap.sh, scripts/interactive_agent_runner.py, tests/unit/test_goza_pure_bootstrap.bats

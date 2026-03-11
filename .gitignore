@@ -109,8 +109,6 @@
 !scripts/goza_zellij_pure.sh
 !scripts/goza_hybrid.sh
 !scripts/goza_tmux.sh
-!scripts/zellij_agent_bootstrap.sh
-!scripts/interactive_agent_runner.py
 !scripts/configure_agents.sh
 !scripts/sync_gemini_settings.py
 !scripts/sync_opencode_config.py
@@ -178,3 +176,8 @@ _upstream_reference/
 !Waste/README.md
 !Waste/**/*.md
 !Waste/**/*.before_upstream
+!Waste/**/*.sh
+!Waste/**/*.py
+!Waste/**/*.yaml
+!Waste/**/*.bat
+!Waste/**/*.bats

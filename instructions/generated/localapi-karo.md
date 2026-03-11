@@ -77,7 +77,7 @@ Include only when you want a SPECIFIC shout (e.g., company motto chanting, speci
 For normal tasks, OMIT echo_message — ashigaru will generate their own battle cry.
 Format (when included): sengoku-style, 1-2 lines, emoji OK, no box/罫線.
 Personalize per ashigaru: number, role, task content.
-When DISPLAY_MODE=silent (tmux mode: `tmux show-environment -t multiagent DISPLAY_MODE`, zellij mode: `$DISPLAY_MODE`): omit echo_message entirely.
+When DISPLAY_MODE=silent (tmux mode: `tmux show-environment -t multiagent DISPLAY_MODE`, fallback: `$DISPLAY_MODE`): omit echo_message entirely.
 
 ## Dashboard: Sole Responsibility
 
@@ -235,7 +235,7 @@ Two layers:
 1. **Message persistence**: `inbox_write.sh` writes to `queue/inbox/{agent}.yaml` with flock. Guaranteed.
 2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `inotifywait` → wakes agent:
    - **優先度1**: Agent self-watch (agent's own `inotifywait` on its inbox) → no nudge needed
-   - **優先度2**: multiplexer nudge (`tmux send-keys` / `zellij action write-chars`) — short nudge only
+   - **優先度2**: multiplexer nudge (`tmux send-keys`) — short nudge only
 
 The nudge is minimal: `inboxN` (e.g. `inbox3` = 3 unread). That's it.
 **Agent reads the inbox file itself.** Message content never travels through multiplexer transport — only a short wake-up signal.
@@ -464,7 +464,7 @@ fi
 ```
 Output: `ashigaru3` → You are Ashigaru 3. The number is your ID.
 
-Why this works: in zellij mode, `AGENT_ID` is exported at session bootstrap. In tmux mode, `@agent_id` is set by shutsujin_departure.sh and survives pane reorder.
+Why this works: `AGENT_ID` is the primary source of truth, and tmux pane option `@agent_id` is the fallback when shell environment is incomplete.
 
 **Your files ONLY:**
 ```

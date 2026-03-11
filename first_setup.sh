@@ -175,22 +175,13 @@ fi
 RESULTS+=("tmux マウス設定: OK")
 
 # ============================================================
-# STEP 3.5: zellij チェック（任意）
+# STEP 3.5: tmux 運用補足
 # ============================================================
-log_step "STEP 3.5: zellij チェック（任意）"
+log_step "STEP 3.5: tmux 運用補足"
 
-if command -v zellij &> /dev/null; then
-    ZELLIJ_VERSION=$(zellij --version 2>/dev/null || echo "unknown")
-    log_success "zellij がインストール済みです ($ZELLIJ_VERSION)"
-    RESULTS+=("zellij: OK ($ZELLIJ_VERSION)")
-else
-    log_info "zellij は未インストールです（tmuxモードでは不要）"
-    log_info "zellijモードを使う場合は手動インストールしてください"
-    log_info "  Ubuntu/WSL: GitHub Releases のバイナリ配置、または cargo install --locked zellij"
-    log_info "  macOS:      brew install zellij"
-    log_info "  補足: 一部Ubuntu/WSL環境では apt に zellij パッケージがありません"
-    RESULTS+=("zellij: optional (not installed)")
-fi
+log_info "このリポジトリは tmux 専用です"
+log_info "zellij 関連の旧実装は Waste/ に退避済みです"
+RESULTS+=("multiplexer: tmux only")
 
 # ============================================================
 # STEP 4: Node.js チェック
@@ -581,10 +572,9 @@ language: ja
 shell: bash
 
 # マルチプレクサ設定
-# tmux: 既存互換モード
-# zellij: zellij移植モード（1エージェント=1セッション）
+# tmux: 現行の唯一サポート対象
 multiplexer:
-  default: zellij
+  default: tmux
 
 # 起動テンプレート
 # shogun_only: 将軍セッションへ直接アタッチ（既定）

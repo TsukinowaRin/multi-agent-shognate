@@ -28,8 +28,8 @@ if [ -f "./config/settings.yaml" ]; then
     SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
 fi
 
-# マルチプレクサ設定（デフォルト: zellij）
-MULTIPLEXER_SETTING="zellij"
+# マルチプレクサ設定（tmux専用）
+MULTIPLEXER_SETTING="tmux"
 if [ -f "./config/settings.yaml" ]; then
     # supports:
     # multiplexer: tmux
@@ -44,18 +44,22 @@ if [ -f "./config/settings.yaml" ]; then
       }
     ' ./config/settings.yaml 2>/dev/null)
     MULTIPLEXER_SETTING=$(printf '%s\n%s\n' "${_mux_inline}" "${_mux_nested}" | sed '/^$/d' | head -n1 | tr -d '\r' | tr -d '"' | tr -d '[:space:]')
-    MULTIPLEXER_SETTING=${MULTIPLEXER_SETTING:-zellij}
+    MULTIPLEXER_SETTING=${MULTIPLEXER_SETTING:-tmux}
 fi
 
 # 環境変数による強制切替（設定ファイルより優先）
-# 例: MAS_MULTIPLEXER=tmux bash shutsujin_departure.sh
+# zellij は廃止済み。指定されても tmux へフォールバックする。
 if [ -n "${MAS_MULTIPLEXER:-}" ]; then
     case "${MAS_MULTIPLEXER}" in
-        tmux|zellij)
+        tmux)
             MULTIPLEXER_SETTING="${MAS_MULTIPLEXER}"
             ;;
+        zellij)
+            echo "[INFO] zellij モードは廃止されました。tmux モードで継続します。" >&2
+            MULTIPLEXER_SETTING="tmux"
+            ;;
         *)
-            echo "[ERROR] Invalid MAS_MULTIPLEXER='${MAS_MULTIPLEXER}'. Use 'tmux' or 'zellij'." >&2
+            echo "[ERROR] Invalid MAS_MULTIPLEXER='${MAS_MULTIPLEXER}'. Use 'tmux'." >&2
             exit 1
             ;;
     esac
@@ -473,9 +477,7 @@ while [[ $# -gt 0 ]]; do
             echo "  -h, --help          このヘルプを表示"
             echo ""
             echo "マルチプレクサ設定:"
-            echo "  config/settings.yaml の multiplexer.default で選択"
-            echo "  - tmux   : 既存互換モード"
-            echo "  - zellij : scripts/shutsujin_zellij.sh に自動委譲"
+            echo "  config/settings.yaml の multiplexer.default は tmux 専用です"
             echo ""
             echo "例:"
             echo "  ./shutsujin_departure.sh              # 前回の状態を維持して出陣"
@@ -532,15 +534,6 @@ fi
 ensure_generated_instructions
 sync_gemini_workspace_settings
 sync_opencode_like_workspace_settings
-
-# zellijモード分岐（tmuxフロー互換を保つため専用スクリプトに委譲）
-if [ "$MULTIPLEXER_SETTING" = "zellij" ]; then
-    if [ -x "$SCRIPT_DIR/scripts/shutsujin_zellij.sh" ]; then
-        exec bash "$SCRIPT_DIR/scripts/shutsujin_zellij.sh" "${ORIGINAL_ARGS[@]}"
-    fi
-    echo "[ERROR] zellij mode requested, but scripts/shutsujin_zellij.sh not found." >&2
-    exit 1
-fi
 
 # 有効化する足軽リスト（デフォルト: ashigaru1）
 ACTIVE_ASHIGARU=("ashigaru1")

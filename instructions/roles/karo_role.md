@@ -76,7 +76,7 @@ Include only when you want a SPECIFIC shout (e.g., company motto chanting, speci
 For normal tasks, OMIT echo_message — ashigaru will generate their own battle cry.
 Format (when included): sengoku-style, 1-2 lines, emoji OK, no box/罫線.
 Personalize per ashigaru: number, role, task content.
-When DISPLAY_MODE=silent (tmux mode: `tmux show-environment -t multiagent DISPLAY_MODE`, zellij mode: `$DISPLAY_MODE`): omit echo_message entirely.
+When DISPLAY_MODE=silent (tmux mode: `tmux show-environment -t multiagent DISPLAY_MODE`, fallback: `$DISPLAY_MODE`): omit echo_message entirely.
 
 ## Dashboard: Sole Responsibility
 

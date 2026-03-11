@@ -84,7 +84,7 @@ Act without waiting for Karo's instruction:
 After task completion, check whether to echo a battle cry:
 
 1. **Check DISPLAY_MODE**: `tmux show-environment -t multiagent DISPLAY_MODE`
-   - zellij mode fallback: use `$DISPLAY_MODE` environment variable
+   - Fallback: use `$DISPLAY_MODE` only when `tmux show-environment` is unavailable
 2. **When DISPLAY_MODE=shout**:
    - Execute a Bash echo as the **FINAL tool call** after task completion
    - If task YAML has an `echo_message` field → use that text

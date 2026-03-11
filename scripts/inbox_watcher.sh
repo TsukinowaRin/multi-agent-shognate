@@ -31,7 +31,7 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
     AGENT_ID="$1"
     PANE_TARGET="$2"
     CLI_TYPE="${3:-claude}"  # CLI種別（claude/codex/copilot/kimi/gemini/localapi）
-    MUX_TYPE="${4:-tmux}"    # multiplexer種別（tmux/zellij）。未指定→tmux（後方互換）
+    MUX_TYPE="tmux"
 
     INBOX="$SCRIPT_DIR/queue/inbox/${AGENT_ID}.yaml"
     LOCKFILE="${INBOX}.lock"
@@ -39,6 +39,10 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
     if [ -z "$AGENT_ID" ] || [ -z "$PANE_TARGET" ]; then
         echo "Usage: inbox_watcher.sh <agent_id> <pane_target> [cli_type]" >&2
         exit 1
+    fi
+
+    if [ "${4:-tmux}" != "tmux" ]; then
+        echo "[$(date)] [INFO] non-tmux watcher mode is deprecated. Falling back to tmux." >&2
     fi
 
     # Initialize inbox if not exists
@@ -142,72 +146,37 @@ is_valid_cli_type() {
     esac
 }
 
-is_tmux_mode() {
-    [ "${MUX_TYPE:-tmux}" = "tmux" ]
-}
-
 mux_send_text() {
     local text="$1"
-    if is_tmux_mode; then
-        timeout 5 tmux send-keys -t "$PANE_TARGET" "$text" 2>/dev/null
-    else
-        timeout 5 zellij -s "$PANE_TARGET" action write-chars "$text" 2>/dev/null
-    fi
+    timeout 5 tmux send-keys -t "$PANE_TARGET" "$text" 2>/dev/null
 }
 
 mux_send_enter() {
-    if is_tmux_mode; then
-        timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
-    else
-        timeout 5 zellij -s "$PANE_TARGET" action write 13 2>/dev/null || \
-        timeout 5 zellij -s "$PANE_TARGET" action write 10 2>/dev/null || \
-        timeout 5 zellij -s "$PANE_TARGET" action write-chars $'\n' 2>/dev/null
-    fi
+    timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
 }
 
 mux_send_ctrl_c() {
-    if is_tmux_mode; then
-        timeout 5 tmux send-keys -t "$PANE_TARGET" C-c 2>/dev/null
-    else
-        timeout 5 zellij -s "$PANE_TARGET" action write 3 2>/dev/null
-    fi
+    timeout 5 tmux send-keys -t "$PANE_TARGET" C-c 2>/dev/null
 }
 
 mux_send_ctrl_u() {
-    if is_tmux_mode; then
-        timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
-    else
-        timeout 2 zellij -s "$PANE_TARGET" action write 21 2>/dev/null
-    fi
+    timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
 }
 
 mux_send_escape_double() {
-    if is_tmux_mode; then
-        timeout 5 tmux send-keys -t "$PANE_TARGET" Escape Escape 2>/dev/null
-    else
-        timeout 5 zellij -s "$PANE_TARGET" action write 27 2>/dev/null
-        sleep 0.1
-        timeout 5 zellij -s "$PANE_TARGET" action write 27 2>/dev/null
-    fi
+    timeout 5 tmux send-keys -t "$PANE_TARGET" Escape Escape 2>/dev/null
 }
 
 mux_capture_pane_tail() {
-    if is_tmux_mode; then
-        timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -5
-    else
-        # zellij has no stable external capture API for a specific pane/session.
-        echo ""
-    fi
+    timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -5
 }
 
 get_effective_cli_type() {
     local pane_cli_raw=""
     local pane_cli=""
 
-    if is_tmux_mode; then
-        pane_cli_raw=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @agent_cli 2>/dev/null || true)
-        pane_cli=$(echo "$pane_cli_raw" | tr -d '\r' | head -n1 | tr -d '[:space:]')
-    fi
+    pane_cli_raw=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @agent_cli 2>/dev/null || true)
+    pane_cli=$(echo "$pane_cli_raw" | tr -d '\r' | head -n1 | tr -d '[:space:]')
 
     if is_valid_cli_type "$pane_cli"; then
         if is_valid_cli_type "${CLI_TYPE:-}" && [ "$pane_cli" != "${CLI_TYPE}" ]; then
@@ -536,11 +505,6 @@ agent_has_self_watch() {
 # Only checks bottom 5 lines — old markers linger in scroll-back.
 agent_is_busy() {
     local pane_tail
-
-    if ! is_tmux_mode; then
-        # zellij mode: external per-pane capture is not available in stable CLI.
-        return 1
-    fi
 
     if declare -F agent_is_busy_check >/dev/null 2>&1; then
         agent_is_busy_check "$PANE_TARGET"

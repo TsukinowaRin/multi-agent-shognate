@@ -105,7 +105,7 @@ read_current_multiplexer() {
       sub(/^[[:space:]]*default:[[:space:]]*/, "", $0); gsub(/"/, "", $0); print $0; exit
     }
   ' "$SETTINGS_PATH" 2>/dev/null || true)"
-  echo "${v:-zellij}"
+  echo "${v:-tmux}"
 }
 
 read_current_template() {
@@ -435,7 +435,7 @@ default_count="$(read_current_ashigaru_count)"
 echo "=== Multi Agents Shogunate 設定 CUI ===" >&2
 echo "設定ファイル: $SETTINGS_PATH" >&2
 
-mux="$(prompt_choice "multiplexer.default を選択" "$default_mux" "zellij" "tmux")"
+mux="$(prompt_choice "multiplexer.default を選択（tmux専用）" "tmux" "tmux")"
 template="$(prompt_choice "startup.template を選択" "$default_template" "shogun_only" "goza_room")"
 cli_default="$(prompt_choice "cli.default を選択" "$default_cli" "codex" "gemini" "claude" "localapi" "opencode" "kilo" "kimi" "copilot")"
 
@@ -555,4 +555,4 @@ fi
 
 echo "次の確認:"
 echo "  cat config/settings.yaml"
-echo "  bash scripts/goza_zellij.sh -s --no-attach"
+echo "  bash scripts/goza_tmux.sh -s --no-attach"

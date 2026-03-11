@@ -46,7 +46,7 @@ fi
 ```
 Output: `ashigaru3` → You are Ashigaru 3. The number is your ID.
 
-Why this works: in zellij mode, `AGENT_ID` is exported at session bootstrap. In tmux mode, `@agent_id` is set by shutsujin_departure.sh and survives pane reorder.
+Why this works: `AGENT_ID` is the primary source of truth, and tmux pane option `@agent_id` is the fallback when shell environment is incomplete.
 
 **Your files ONLY:**
 ```

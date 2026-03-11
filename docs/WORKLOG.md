@@ -2197,3 +2197,24 @@
   1. もしユーザーが merge した内容で実機不具合を疑っているなら、次は `goza_zellij_pure.sh` または `goza_zellij.sh` の実起動 smoke を行う。
   2. commit/push を行う場合は、user/runtime state を分離してから docs-only で行う。
 - Links: docs/REQS.md, docs/WORKLOG.md
+
+### 2026-03-11 15:38 (JST)
+- Goal: zellij 廃止・tmux 一本化をコード/文書/テストまで閉じる。
+- Changes:
+  - `Waste/zellij_2026-03-11/` を作成し、旧 zellij 実装・補助コード・テンプレート・テスト・ランチャーを退避。
+  - `scripts/goza_no_ma.sh` を tmux 専用 frontend に差し替え、`scripts/goza_zellij.sh` / `scripts/goza_zellij_pure.sh` / `scripts/goza_hybrid.sh` / `scripts/shutsujin_zellij.sh` は tmux 互換 wrapper 化。
+  - `README.md` を tmux 専用運用ガイドへ全面更新。
+  - `instructions/common/*.md` / `instructions/roles/*.md` を tmux 前提へ修正し、`bash scripts/build_instructions.sh` で generated / AGENTS / copilot / kimi system を再生成。
+  - `tests/unit/test_mux_parity*.bats` と `tests/unit/test_configure_agents.bats` を tmux-only 前提へ更新。
+- Commands + Results:
+  - `bash scripts/build_instructions.sh` → PASS
+  - `bash -n shutsujin_departure.sh scripts/goza_no_ma.sh scripts/goza_tmux.sh scripts/goza_zellij.sh scripts/goza_zellij_pure.sh scripts/goza_hybrid.sh scripts/configure_agents.sh scripts/inbox_watcher.sh scripts/watcher_supervisor.sh first_setup.sh scripts/mux_parity_smoke.sh` → PASS
+  - `bats tests/unit/test_build_system.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_ntfy_auth.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats` → PASS (`1..207`)
+- Decisions / Assumptions:
+  - 旧 `goza_zellij*` 名は削除せず、tmux へ委譲する wrapper として維持する。理由は既存操作導線を壊さないため。
+  - `zellij` 記述は履歴 docs と退避先に残すが、現役運用コード/README/instructions からは外す。
+  - `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は既存 dirty のため今回の checkpoint から除外する。
+- Next:
+  1. tmux 実機 smoke (`bash scripts/goza_tmux.sh -s`, `bash scripts/goza_tmux.sh --template goza_room`) を確認する。
+  2. 必要なら historical zellij docs も `Waste/` へ追加退避する。
+- Links: README.md, scripts/goza_no_ma.sh, scripts/watcher_supervisor.sh, Waste/zellij_2026-03-11/, docs/EXECPLAN_2026-03-11_tmux_only_consolidation.md

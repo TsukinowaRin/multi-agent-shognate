@@ -1,246 +1,130 @@
-# multi-agent-shogun (運用ガイド)
+# multi-agent-shogun
 
-このリポジトリは、将軍・家老・足軽の階層で複数AI CLIを並列運用するための実行基盤です。  
-現在は次の3モードを用途で使い分けます。  
-- **zellij（既定・安定版）**: backend=tmux, ui=zellij
-- **純正 zellij（experimental）**: backend=zellij, ui=zellij
-- **tmux**: backend=tmux, ui=tmux（従来運用）
-既定テンプレートは `shogun_only`（将軍セッションへ直接アタッチ）です。
+このリポジトリは、将軍・軍師・家老・足軽の階層で複数 AI CLI を `tmux` 上で運用するための実行基盤です。
 
-## いま使う起動コマンド
+正式対応は `tmux` のみです。  
+旧 zellij 実装は `Waste/zellij_2026-03-11/` に退避済みです。`scripts/goza_zellij.sh` などの旧コマンド名は、互換ラッパーとして tmux 起動へ委譲します。
 
-### 1. zellij モードで起動（既定・安定版）
-```bash
-bash scripts/goza_zellij.sh
-```
+## 起動コマンド
 
-### 2. 純正 zellij モードで起動（experimental）
-```bash
-bash scripts/goza_zellij_pure.sh
-```
-
-### 3. tmux モードで起動
+通常起動:
 ```bash
 bash scripts/goza_tmux.sh
 ```
 
-### 4. 単一コマンドでモード指定して起動
+御座の間ビュー:
 ```bash
-bash scripts/goza_no_ma.sh --mux tmux --ui zellij
-# pure zellij を明示opt-inで試す場合のみ
-bash scripts/goza_zellij_pure.sh
-bash scripts/goza_no_ma.sh --mux tmux --ui tmux
-```
-
-### 5. 全体俯瞰テンプレートで起動（御座の間）
-```bash
-bash scripts/goza_zellij.sh --template goza_room
-bash scripts/goza_zellij_pure.sh --template goza_room
 bash scripts/goza_tmux.sh --template goza_room
 ```
 
-## 主要スクリプト
-
-- `scripts/goza_zellij.sh`
-  - `goza_no_ma.sh --mux tmux --ui zellij` のラッパー。
-  - 既定の運用コマンド。zellij UI で操作しつつ、内部起動は tmux backend を使います。
-
-- `scripts/goza_zellij_pure.sh`
-  - `goza_no_ma.sh --mux zellij --ui zellij` のラッパー。
-  - 純正zellij運用（experimental）。
-
-- `scripts/goza_tmux.sh`
-  - `goza_no_ma.sh --mux tmux --ui tmux` のラッパー。
-  - tmux 既存フロー（`shogun` / `multiagent` セッション）で起動します。
-
-- `scripts/goza_no_ma.sh`
-  - 共通フロントエンド。
-  - `--mux`（バックエンド）と `--ui`（表示）を分離して指定できます。
-  - 安定運用は `--mux tmux --ui zellij` を優先します。
-  - `goza_room` の pure zellij は experimental 扱いで、明示opt-in時のみ有効です。
-  - 役職別の色付き罫線演出は `zellij` / `tmux` 側で提供します。
-
-- `shutsujin_departure.sh`
-  - 実際の出陣処理本体。
-  - `config/settings.yaml` の `multiplexer.default` を参照。
-  - 環境変数 `MAS_MULTIPLEXER=tmux|zellij` で設定を一時上書き可能。
-
-## goza_no_ma オプション
-
+setup-only:
 ```bash
-bash scripts/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
+bash scripts/goza_tmux.sh -s
 ```
 
-- `--mux zellij|tmux`
-  - バックエンド起動モードを指定（デフォルト: `zellij`）。
-- `--ui zellij|tmux`
-  - 表示モードを指定（未指定時は `--mux` と同じ）。
-- `-s, --setup-only`
-  - セッションのみ作成（CLI未起動）。
-- `--view-only`
-  - バックエンドを再起動せず、ビュー接続のみ。
-- `--no-attach`
-  - tmuxへ自動attachせず、ビュー作成のみ。
-- `--session <name>`
-  - 御座の間ビュー用の tmux セッション名（デフォルト: `goza-no-ma`）。
-- `--template shogun_only|goza_room`
-  - 表示テンプレートを選択（デフォルト: `shogun_only`）。
-- `TMUX_VIEW_WIDTH` / `TMUX_VIEW_HEIGHT`
-  - 御座の間ビュー作成時の tmux 仮想サイズを上書き（デフォルト: `200x60`）。
+旧コマンド互換:
+```bash
+bash scripts/goza_zellij.sh
+bash scripts/goza_zellij_pure.sh
+bash scripts/goza_hybrid.sh
+```
 
-## 構成CUI（足軽人数・CLI割り当て）
+## 主なスクリプト
 
-`config/settings.yaml` を対話で更新するCUIを用意しています。
+- `shutsujin_departure.sh`
+  - 本体。tmux セッションを作成し、各 agent CLI を起動します。
+- `scripts/goza_tmux.sh`
+  - 公式フロントエンド。
+- `scripts/goza_no_ma.sh`
+  - tmux ビュー構築用の共通フロントエンド。
+- `scripts/configure_agents.sh`
+  - `config/settings.yaml` を対話更新します。
+
+## 設定 CUI
 
 ```bash
 bash scripts/configure_agents.sh
 ```
 
-設定できる内容:
-
-- `topology.active_ashigaru`（足軽人数/配備）
-- `cli.default`
-- `cli.agents`（`shogun` / `karo` / `ashigaruN` ごとの `type` / `model`）
-- `multiplexer.default`
+設定対象:
+- `multiplexer.default` (`tmux` 固定)
 - `startup.template`
+- `topology.active_ashigaru`
+- `cli.default`
+- `cli.agents.shogun`
+- `cli.agents.gunshi`
+- `cli.agents.karo`
+- `cli.agents.ashigaruN`
+- `cli.opencode_like`
 
-## 役職ごとのタブ色（御座の間ビュー）
-
-御座の間ビュー（tmux）では、枠線色を役職別に分けます。本文の文字色は変更しません。
-
-- 将軍: 紫
-- 家老: 紺
-- 足軽: 茶
-
-補足:
-- この配色は `tmux` の御座の間ビュー（`goza_no_ma.sh`）で適用されます。
-- `goza_zellij.sh` 利用時は zellij UI 上で tmux画面を操作するため、役職色は tmux 側の設定が反映されます。
-
-## 操作方法（zellij表示時）
-
-`goza_zellij.sh` は「zellij UI + tmux backend」です。  
-見た目は zellij タブですが、ペイン操作は tmux 側で行います。
-
-- 起動直後のアクティブペイン: 将軍（`shogun`）
-- ペイン切替（推奨）: マウスで将軍ペインをクリック
-- ペイン切替（キーボード）:
-  - `Ctrl+b` → 矢印キー（方向移動）
-  - `Ctrl+b` → `o`（次のペイン）
-
-人間が将軍とだけ会話する運用なら、起動後はそのまま左の将軍ペインに入力すれば動作します。
-
-補足:
-- 既定の `goza_zellij.sh` では tmux操作が必要です。
-- 純正 zellij 操作を試す場合は `goza_zellij_pure.sh` を使ってください。
-
-## クイックスタート
-
-### 前提
-
-- Bash
-- Python 3
-- `tmux`
-- `zellij`（zellijモード時）
-- `inotifywait`（`inbox_watcher` を使う場合。`sudo apt install -y inotify-tools`）
-- 利用する CLI（`codex` / `gemini` / `claude` など）
-
-### 初回
-
-```bash
-bash first_setup.sh
-```
-
-### 日次運用
-
-```bash
-# zellij で運用（既定: shogun_only, stable）
-bash scripts/goza_zellij.sh
-
-# 純正 zellij（experimental）
-bash scripts/goza_zellij_pure.sh
-
-# tmux で直接運用（既定: shogun_only）
-bash scripts/goza_tmux.sh
-
-# 全体俯瞰（御座の間）で運用
-bash scripts/goza_zellij.sh --template goza_room
-bash scripts/goza_zellij_pure.sh --template goza_room
-bash scripts/goza_tmux.sh --template goza_room
-```
-
-`tmux` モードでも `config/settings.yaml` の `topology.active_ashigaru` に追従して、家老+指定足軽人数で起動します。
-起動バナーの「足軽配備人数」表示も `topology.active_ashigaru` の人数に連動します。
-
-## 設定ファイル
-
-`config/settings.yaml` の代表項目:
+## 設定例
 
 ```yaml
 language: ja
 shell: bash
 multiplexer:
-  default: zellij
+  default: tmux
 startup:
-  template: shogun_only
+  template: goza_room
 topology:
   active_ashigaru:
     - ashigaru1
     - ashigaru2
-cli:
-  default: codex
-  agents:
-    ashigaru1:
-      type: gemini
-      model: auto
-    ashigaru2:
-      type: gemini
-      model: auto
-```
-
-## CLI割り当て例（Codex / Gemini / LocalAPI）
-
-役職ごとにCLIを混在できます。以下は将軍・家老を `codex`、足軽を `gemini` と `localapi` に分ける例です。
-
-```yaml
+    - ashigaru3
+    - ashigaru4
 cli:
   default: codex
   agents:
     shogun:
-      type: codex
-    karo:
-      type: codex
-    ashigaru1:
       type: gemini
       model: auto
+    gunshi:
+      type: gemini
+      model: auto
+    karo:
+      type: codex
+      model: auto
+    ashigaru1:
+      type: codex
+      model: auto
     ashigaru2:
-      type: localapi
-      model: qwen2.5-coder
+      type: codex
+      model: auto
+    ashigaru3:
+      type: gemini
+      model: auto
+    ashigaru4:
+      type: gemini
+      model: auto
 ```
 
-`codex` は `--model` を固定せず CLI 側の自動選択（Auto）で起動します。`gemini` は `model: auto` 指定で同様に Auto 運用です。
+## Local AI
 
-`localapi` は `python3 scripts/localapi_repl.py` で起動され、以下の環境変数を参照します。
+`OpenCode` / `Kilo` を使う場合は `config/settings.yaml` の `cli.agents.*` と `cli.opencode_like` を設定します。  
+`scripts/sync_opencode_config.py` が `opencode.json` を生成します。
 
-- `LOCALAPI_BASE_URL`（例: `http://127.0.0.1:11434/v1`）
-- `LOCALAPI_API_KEY`
-- `LOCALAPI_MODEL`
+代表例:
+- `provider: ollama`
+- `base_url: http://127.0.0.1:11434/v1`
+- `provider: lmstudio`
+- `base_url: http://127.0.0.1:1234/v1`
 
-## WSL再起動後の最短手順
+## 前提
+
+- `tmux`
+- `python3`
+- `inotifywait` (`sudo apt install -y inotify-tools`)
+- 使用する CLI (`codex`, `gemini`, `claude`, `opencode`, `kilo` など)
+
+## 最短手順
 
 ```bash
 cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate
-bash scripts/goza_zellij.sh
+bash first_setup.sh
+bash scripts/goza_tmux.sh
 ```
 
-セッション確認は次のコマンドをそのまま実行します（括弧や補足文を付けない）。
-
-```bash
-zellij list-sessions -n
-```
-
-## 歴史書（会話履歴要約）
-
-人間向け要約は `queue/history/rekishi_book.md` に自動生成されます。
+## 歴史書
 
 ```bash
 bash scripts/history_book.sh
@@ -249,67 +133,21 @@ sed -n '1,80p' queue/history/rekishi_book.md
 
 ## トラブルシュート
 
-- タブ色が変わらない
-  - 既存ビューを破棄して再起動（hybrid/tmux）:
-  ```bash
-  tmux kill-session -t goza-no-ma 2>/dev/null || true
-  bash scripts/goza_zellij.sh
-  ```
-  - 反映確認（役職別の色付きヘッダ書式）:
-  ```bash
-  tmux show-options -w -t goza-no-ma:overview | rg '^pane-border-format'
-  ```
+セッションを壊してやり直す:
+```bash
+tmux kill-session -t shogun 2>/dev/null || true
+tmux kill-session -t multiagent 2>/dev/null || true
+tmux kill-session -t gunshi 2>/dev/null || true
+tmux kill-session -t goza-no-ma 2>/dev/null || true
+bash scripts/goza_tmux.sh
+```
 
-- `Claude Code CLI not found` で止まる
-  - 現在は未導入CLIを自動フォールバックします。意図したCLIで固定したい場合は `config/settings.yaml` の `cli.default` / `cli.agents` を明示してください。
+`inbox_watcher` が動かない:
+```bash
+sudo apt install -y inotify-tools
+```
 
-- 枠色/背景色はどこで変えるか
-  - 御座の間（`goza_no_ma.sh`）の枠色は、このリポジトリ側で制御しています（役職別に自動適用）。
-  - `zellij attach` で直接開いた画面の配色は zellij テーマ設定の影響を受けます。こちらはユーザー環境側（`~/.config/zellij/config.kdl` など）で調整する方式です。
-
-- zellij UI モードで起動できない
-  - `zellij --version` を確認。
-  - 代替で tmux モードを使用:
-  ```bash
-  bash scripts/goza_tmux.sh
-  ```
-
-- Gemini が `We are currently experiencing high demand` を出す
-  - API側の混雑です（CLIバグではありません）。
-  - tmux/hybrid起動では `Keep trying` を自動選択するよう対策済みです。
-  - 継続する場合はモデルを軽量に変更してください（例: `gemini-2.5-flash`）。
-
-- `size missing` が出る
-  - 御座の間ビューの仮想サイズ不足が原因です。次で再実行してください。
-  ```bash
-  TMUX_VIEW_WIDTH=220 TMUX_VIEW_HEIGHT=70 bash scripts/goza_zellij.sh --template goza_room
-  ```
-
-- 既存バックエンドを残して再接続したい
-  ```bash
-  bash scripts/goza_no_ma.sh --view-only --mux tmux --ui zellij
-  ```
-
-- Codex/Gemini が起動していないように見える
-  - `-s`（setup-only）を付けていないコマンドで起動しているか確認。
-  - `inotifywait` がないと watcher は起動しません（対話自体は可能ですが、通知連携は無効）。
-  ```bash
-  sudo apt install -y inotify-tools
-  ```
-  - 起動割り当て確認:
-  ```bash
-  cat queue/runtime/agent_cli.tsv
-  ```
-  - watcherログ確認:
-  ```bash
-  tail -n 80 logs/inbox_watcher_shogun.log
-  tail -n 80 logs/inbox_watcher_karo.log
-  ```
-
-## 開発者メモ
-
-- `scripts/goza_zellij.sh` / `scripts/goza_tmux.sh` は運用コマンドとして固定。
-- pure zellij の検証は `scripts/goza_zellij_pure.sh` で行う。
-- `scripts/goza_no_ma.sh` は共通ロジックを持つため、機能追加はここを起点に行う。
-- `shutsujin_departure.sh` 側は `MAS_MULTIPLEXER` によりモードを強制可能。
-- テンプレート定義は `templates/multiplexer/tmux_templates.yaml` と `templates/multiplexer/zellij_templates.yaml`。
+CLI 割当確認:
+```bash
+cat queue/runtime/agent_cli.tsv
+```

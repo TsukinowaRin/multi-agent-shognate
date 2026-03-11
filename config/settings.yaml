@@ -1,7 +1,7 @@
 language: ja
 shell: bash
 multiplexer:
-  default: zellij
+  default: tmux
 startup:
   template: goza_room
 topology:

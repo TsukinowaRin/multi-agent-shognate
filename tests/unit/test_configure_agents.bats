@@ -13,7 +13,7 @@ setup() {
 language: ja
 shell: bash
 multiplexer:
-  default: zellij
+  default: tmux
 startup:
   template: goza_room
 topology:
@@ -44,7 +44,7 @@ teardown() {
 
 @test "configure_agents: opencode_like設定とGemini thinking_levelを正しく保存する" {
   run bash -lc "cd '$TEST_TMP' && printf '%s\n' \
-    'zellij' \
+    'tmux' \
     'goza_room' \
     'opencode' \
     '1' \

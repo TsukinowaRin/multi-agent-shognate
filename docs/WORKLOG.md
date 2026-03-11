@@ -2334,3 +2334,5 @@
 - 観測:
   - この sandbox では `gemini` 未導入のため、`resolve_cli_type_for_agent()` により `codex` fallback となった。実機で `gemini` が PATH 上にあれば fallback は発生しない。
   - fallback 時の表示名は `codex / Gemini` のように設定値ベースで見える箇所が残る。これは UX 修正候補だが、起動可否には影響しない。
+- 2026-03-11 17:47 JST: `git push -u origin codex/auto` は GitHub 認証未設定のため失敗 (`could not read Username for 'https://github.com'`)。コミット `14ce036` までは完了。
+- 2026-03-11 17:55 JST: `get_model_display_name()` を修正し、`claude` 以外では旧 `Opus/Sonnet` 既定値より CLI 種別表示を優先するよう変更。`codex / Opus` や `gemini / Gemini` の不整合を解消。`tests/unit/test_cli_adapter.bats` に表示名回帰テストを追加して PASS 確認。

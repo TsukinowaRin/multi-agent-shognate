@@ -582,6 +582,18 @@ SH
     [ "$result" = "kilo --model lmstudio/codellama-7b.Q4_0.gguf" ]
 }
 
+@test "get_model_display_name: codex は opus/sonnet 既定値ではなく Codex を表示する" {
+    load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
+    result=$(get_model_display_name "shogun")
+    [ "$result" = "Codex" ]
+}
+
+@test "get_model_display_name: gemini は旧Claude系デフォルトではなく Gemini を表示する" {
+    load_adapter_with "${TEST_TMP}/settings_shogun_gemini_default.yaml"
+    result=$(get_model_display_name "shogun")
+    [ "$result" = "Gemini" ]
+}
+
 @test "build_cli_command_with_startup_prompt: codex は positional prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
     result=$(build_cli_command_with_startup_prompt "shogun" "codex" "ready:shogun")

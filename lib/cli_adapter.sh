@@ -662,6 +662,23 @@ get_model_display_name() {
 
     # モデル名 → 短縮表示名
     local short=""
+    if [[ "$cli_type" != "claude" ]]; then
+        case "$cli_type" in
+            codex)   short="Codex" ;;
+            copilot) short="Copilot" ;;
+            kimi)    short="Kimi" ;;
+            gemini)  short="Gemini" ;;
+            localapi) short="Local" ;;
+            opencode) short="OpenCode" ;;
+            kilo)    short="Kilo" ;;
+        esac
+    fi
+
+    if [[ -n "$short" ]]; then
+        echo "$short"
+        return 0
+    fi
+
     case "$model" in
         *spark*)                short="Spark" ;;
         gpt-5.3-codex)          short="Codex5.3" ;;

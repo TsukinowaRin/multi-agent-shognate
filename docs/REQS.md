@@ -8,16 +8,16 @@
 1. `gunshi` へは `csg` で短縮 attach できること。
 2. `tmux` ベースで `shogun / gunshi / multiagent` を一望できる `御座の間` を復活させること。
 3. `御座の間` は `scripts/goza_no_ma.sh` から起動し、`zellij` を再導入しないこと。
-4. `cgo` と通常の `goza_no_ma.sh --view-only` は、既存の `shogun / gunshi / multiagent` session を再利用し、不要な再起動をしないこと。
-5. backend session が不足している時だけ、`goza_no_ma.sh` が `shutsujin_departure.sh` を呼んで補完すること。
+4. `cgo` と通常の `goza_no_ma.sh` は、既存の `shogun / gunshi / multiagent` session を再利用し、不要な再起動をしないこと。
+5. backend 起動は `--ensure-backend` または `-s` 指定時だけ行い、通常の `goza_no_ma.sh` では自動起動しないこと。
 6. `first_setup.sh` / `README` / `shutsujin_departure.sh` の導線は `csg` と `御座の間` を含むこと。
 
 ### 受け入れ条件（観測可能）
-1. コマンド: `bash scripts/goza_no_ma.sh --view-only --no-attach`
+1. コマンド: `bash scripts/goza_no_ma.sh --no-attach`
    - 期待結果: 既存 backend session がある場合、`shutsujin_departure.sh` を再実行せずに `tmux` ベースの `goza-no-ma` session が準備される。
 2. コマンド: `rg -n "alias csg=|alias cgo=" first_setup.sh`
    - 期待結果: `csg` と `cgo` の alias 追加処理が存在する。
-3. コマンド: `rg -n "csg|cgo|goza_no_ma\\.sh --view-only|御座の間" README.md README_ja.md shutsujin_departure.sh first_setup.sh`
+3. コマンド: `rg -n "csg|cgo|goza_no_ma\\.sh|--ensure-backend|御座の間" README.md README_ja.md shutsujin_departure.sh first_setup.sh`
    - 期待結果: ユーザー向け導線に `軍師 attach` と `既存 backend 再利用` 前提の `御座の間` が含まれる。
 4. コマンド: `bash -n scripts/goza_no_ma.sh first_setup.sh shutsujin_departure.sh`
    - 期待結果: `tmux` 専用 `御座の間` 導線に構文エラーがない。

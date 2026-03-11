@@ -2381,3 +2381,24 @@
   - backend 不足時だけ補完起動することで、初回導線と再利用導線を単一スクリプトに保てる。
 - Git:
   - この checkpoint で今回差分のみをコミット予定。
+
+## 2026-03-11 cgo既定を俯瞰専用へ変更
+- 背景:
+  - ユーザーから `cgo` 実行時に再び `shutsujin_departure.sh` が走るのは不自然で、既に出陣済みの `shogun / gunshi / multiagent` をそのまま tmux pane へ並べるべきとの指摘があった。
+- 実施:
+  - `scripts/goza_no_ma.sh` の既定値を `VIEW_ONLY=true` に変更し、`bash scripts/goza_no_ma.sh` 自体を「既存 backend を俯瞰するコマンド」にした。
+  - backend 起動は `--ensure-backend` と `-s` の明示指定時だけ行うように変更した。
+  - backend 未起動時のエラーメッセージを `bash shutsujin_departure.sh` または `bash scripts/goza_no_ma.sh --ensure-backend` に更新した。
+  - `first_setup.sh` の `cgo` alias を `bash .../scripts/goza_no_ma.sh` に戻し、古い alias でも script 既定動作により再出陣しない構造にした。
+  - `README.md` / `README_ja.md` / `shutsujin_departure.sh` の導線を新しい既定動作に合わせて修正し、必要時のみ `--ensure-backend` を使う手順を追記した。
+  - `docs/REQS.md` と `docs/EXECPLAN_2026-03-11_tmux_goza_return.md` を更新し、`cgo` / `goza_no_ma.sh` は通常時に backend を自動起動しないことを明記した。
+  - `tests/unit/test_mux_parity.bats` を更新し、`goza_no_ma.sh` の既定が backend 再利用前提であることを回帰確認した。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh first_setup.sh shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS (`1..11`)
+  - `bash scripts/goza_no_ma.sh --help` → PASS（`--view-only` が default、`--ensure-backend` が明示オプションになっていることを確認）
+- 判断:
+  - `cgo` は起動コマンドではなく俯瞰コマンドとして扱うべきであり、暗黙 backend 起動は UX を悪化させる。
+  - backend 起動が必要なケースは少数なので、明示オプションへ分離する方が運用が明快。
+- Git:
+  - この checkpoint で今回差分をコミットする。

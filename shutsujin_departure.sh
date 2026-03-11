@@ -529,7 +529,7 @@ while [[ $# -gt 0 ]]; do
             echo "  css   → tmux attach-session -t shogun"
             echo "  csg   → tmux attach-session -t gunshi"
             echo "  csm   → tmux attach-session -t multiagent"
-            echo "  cgo   → bash scripts/goza_no_ma.sh --view-only"
+            echo "  cgo   → bash scripts/goza_no_ma.sh"
             echo ""
             exit 0
             ;;
@@ -1497,7 +1497,7 @@ echo "  │  家老・足軽の陣を確認する:                              
 echo "  │     tmux attach-session -t multiagent   (または: csm)    │"
 echo "  │                                                          │"
 echo "  │  既存の全陣を一望する御座の間を開く:                      │"
-echo "  │     bash scripts/goza_no_ma.sh --view-only (または: cgo) │"
+echo "  │     bash scripts/goza_no_ma.sh   (または: cgo)           │"
 echo "  │                                                          │"
 echo "  │  ※ 各エージェントは指示書を読み込み済み。                 │"
 echo "  │    すぐに命令を開始できます。                             │"

@@ -793,7 +793,7 @@ if [ -f "$BASHRC_FILE" ]; then
     fi
 
     # cgo alias (御座の間)
-    EXPECTED_CGO="alias cgo='bash $SCRIPT_DIR/scripts/goza_no_ma.sh --view-only'"
+    EXPECTED_CGO="alias cgo='bash $SCRIPT_DIR/scripts/goza_no_ma.sh'"
     if ! grep -q "alias cgo=" "$BASHRC_FILE" 2>/dev/null; then
         if [ "$ALIAS_ADDED" = false ]; then
             echo "" >> "$BASHRC_FILE"

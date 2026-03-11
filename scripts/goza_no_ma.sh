@@ -8,7 +8,8 @@ VIEW_SESSION="${VIEW_SESSION:-goza-no-ma}"
 VIEW_WIDTH="${VIEW_WIDTH:-220}"
 VIEW_HEIGHT="${VIEW_HEIGHT:-60}"
 SETUP_ONLY=false
-VIEW_ONLY=false
+VIEW_ONLY=true
+ENSURE_BACKEND=false
 NO_ATTACH=false
 PASS_THROUGH=()
 
@@ -28,8 +29,9 @@ Usage:
   bash scripts/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
 
 Options:
-  -s, --setup-only   バックエンドを setup-only で起動（CLI未起動）
-  --view-only        バックエンド起動をスキップし、御座の間だけ開く
+  -s, --setup-only   バックエンドを setup-only で起動してから御座の間を開く
+  --ensure-backend   backend session が無ければ起動してから御座の間を開く
+  --view-only        backend を起動せず、既存 session だけで御座の間を開く（default）
   --no-attach        tmux へ attach せず、ビュー作成だけ行う
   --session NAME     御座の間 session 名（default: goza-no-ma）
   -h, --help         このヘルプ
@@ -38,8 +40,9 @@ USAGE
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -s|--setup-only) SETUP_ONLY=true; shift ;;
-    --view-only) VIEW_ONLY=true; shift ;;
+    -s|--setup-only) SETUP_ONLY=true; ENSURE_BACKEND=true; VIEW_ONLY=false; shift ;;
+    --ensure-backend) ENSURE_BACKEND=true; VIEW_ONLY=false; shift ;;
+    --view-only) VIEW_ONLY=true; ENSURE_BACKEND=false; shift ;;
     --no-attach) NO_ATTACH=true; shift ;;
     --session)
       if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
@@ -64,13 +67,10 @@ if ! command -v tmux >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ "$VIEW_ONLY" != true ]] || ! backend_sessions_ready; then
+if [[ "$ENSURE_BACKEND" = true ]]; then
   START_ARGS=("${PASS_THROUGH[@]}")
   if [[ "$SETUP_ONLY" = true ]]; then
     START_ARGS=("-s" "${START_ARGS[@]}")
-  fi
-  if [[ "$VIEW_ONLY" = true ]]; then
-    echo "[INFO] backend session が不足しているため、shutsujin_departure.sh を起動します"
   fi
   set +e
   bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
@@ -84,7 +84,8 @@ fi
 for session in shogun gunshi multiagent; do
   if ! tmux has-session -t "$session" 2>/dev/null; then
     echo "[ERROR] $session セッションが存在しません。" >&2
-    echo "        先に: bash shutsujin_departure.sh -s" >&2
+    echo "        先に: bash shutsujin_departure.sh" >&2
+    echo "        あるいは: bash scripts/goza_no_ma.sh --ensure-backend" >&2
     exit 1
   fi
 done

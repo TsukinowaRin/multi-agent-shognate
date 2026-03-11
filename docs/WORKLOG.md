@@ -2062,3 +2062,36 @@
   1. 実機で pure zellij を最大化し、`shogun` と `karo` の可読性、`gunshi`/足軽の compact 性を再確認する。
   2. なお wide でも問題が残る場合は、画面幅しきい値で narrow/wide レイアウトを切り替える。
 - Links: scripts/goza_no_ma.sh, tests/unit/test_goza_pure_bootstrap.bats, docs/REQS.md
+
+### 2026-03-11 00:16 (JST)
+- Goal: `pure zellij wide レイアウト再構成` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijのwideレイアウトを再構成"` → PASS (`713a1b1`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - 既存未整理差分 `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は維持する。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で pure zellij を最大化し、wide レイアウトの可読性を確認する。
+- Links: 713a1b1
+
+### 2026-03-11 00:23 (JST)
+- Goal: WSL ウィンドウリサイズ時に pure `zellij` の pane 内 TUI (`Codex` / `Gemini`) も追従するようにする。
+- Findings:
+  - `scripts/interactive_agent_runner.py` は `SIGWINCH` を受けて child PTY の winsize は更新していたが、子プロセス自体へ `SIGWINCH` を伝播していなかった。
+  - tmux 版より pure zellij 版が resize 追従で弱いのは、この nested PTY + signal 伝播不足が主因と判断した。
+- Changes (files):
+  - `scripts/interactive_agent_runner.py` — `copy_winsize()` 実行後、child process group へ `SIGWINCH` を送るよう変更。起動直後にも一度 `SIGWINCH` を送る。
+  - `tests/unit/test_goza_pure_bootstrap.bats` — `SIGWINCH` 伝播の回帰テストを追加。
+  - `docs/REQS.md` — pure zellij resize 追従の要件を追加。
+- Commands + Results:
+  - `python3 -m py_compile scripts/interactive_agent_runner.py` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats` → `1..11` PASS
+- Decisions / Assumptions:
+  - resize 追従は runner 層で完結させる。理由は `zellij` outer shell より child PTY と子プロセス群の整合を取る責務が runner にあるため。
+  - `SIGWINCH` は process group へ送る。理由は `bash -lc <command>` 配下の TUI CLI 本体まで確実に届かせるため。
+- Next:
+  1. 実機で WSL ウィンドウを大小に変更し、`Codex` / `Gemini` pane が崩れず再レイアウトするか確認する。
+  2. なお改善が弱い場合は、pure zellij だけ narrow/wide の layout 切替も併用する。
+- Links: scripts/interactive_agent_runner.py, tests/unit/test_goza_pure_bootstrap.bats, docs/REQS.md

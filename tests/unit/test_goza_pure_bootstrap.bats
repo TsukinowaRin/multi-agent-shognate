@@ -78,3 +78,8 @@ setup_file() {
     run rg -nF 'cols *= get_col_multiplier()' "$PROJECT_ROOT/scripts/interactive_agent_runner.py"
     [ "$status" -eq 0 ]
 }
+
+@test "pure zellij: runner は child PTY resize 後に SIGWINCH を子プロセスへ伝播する" {
+    run rg -nF 'os.killpg(proc.pid, signal.SIGWINCH)' "$PROJECT_ROOT/scripts/interactive_agent_runner.py"
+    [ "$status" -eq 0 ]
+}

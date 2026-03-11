@@ -118,9 +118,15 @@ def main() -> int:
     env = os.environ.copy()
     env.pop("COLUMNS", None)
     env.pop("LINES", None)
+    proc: subprocess.Popen[bytes] | None = None
 
     def on_winch(_signum, _frame):
         copy_winsize(stdin_fd, slave_fd)
+        if proc is not None and proc.poll() is None:
+            try:
+                os.killpg(proc.pid, signal.SIGWINCH)
+            except Exception:
+                pass
 
     if stdin_tty:
         copy_winsize(stdin_fd, slave_fd)
@@ -144,6 +150,12 @@ def main() -> int:
         )
     finally:
         os.close(slave_fd)
+
+    if stdin_tty and proc is not None and proc.poll() is None:
+        try:
+            os.killpg(proc.pid, signal.SIGWINCH)
+        except Exception:
+            pass
 
     buffer = ""
     startup_sent = not bool(startup_prompt)

@@ -18,6 +18,19 @@
 3. コマンド: `rg -n 'zellij_emit_agent_leaf \"            \" \"\\$shogun_agent\" \"focus\" \"\\$left_width\"|zellij_emit_agent_leaf \"                \" \"\\$gunshi_agent\" \"\" \"\\$gunshi_height\"' scripts/goza_no_ma.sh`
    - 期待結果: `shogun` が左 full-height、`gunshi` が右列上段へ配置される実装が存在する。
 
+## 追補（2026-03-11: pure zellij の resize 追従）
+### 要求
+1. WSL ウィンドウサイズ変更に伴う `zellij` pane のリサイズ時、pane 内で動く `Codex` / `Gemini` / 他 TUI CLI も追従すること。
+2. pure `zellij` の nested PTY runner は、child PTY の winsize 更新だけでなく、子プロセスへ `SIGWINCH` を伝播すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `python3 -m py_compile scripts/interactive_agent_runner.py`
+   - 期待結果: resize 伝播ロジック追加後も構文エラーがない。
+2. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats`
+   - 期待結果: `SIGWINCH` 伝播を含む pure zellij runner 回帰テストが PASS する。
+3. コマンド: `rg -n "copy_winsize\\(|os.killpg\\(proc.pid, signal.SIGWINCH\\)" scripts/interactive_agent_runner.py`
+   - 期待結果: child PTY winsize 更新と `SIGWINCH` 伝播の両方が実装されている。
+
 ## 追補（2026-03-09: pure zellij setup-only session 分離）
 ### 要求
 1. `bash scripts/goza_zellij_pure.sh -s` を実行しても、次の `bash scripts/goza_zellij_pure.sh` 通常起動が `setup-only` pane command を再利用しないこと。

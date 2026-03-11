@@ -2276,3 +2276,6 @@
 - 判断:
   - upstream 正本化は全量 merge ではなく、README / first_setup / CLI adapter 周辺を順に寄せる staged migration を継続する。
   - `docs` 内の zellij 記述は履歴資料として残すが、現役運用文書と導線からは外す。
+- Git:
+  - `git commit -m "codex: upstream正本とCLI拡張方針を整理"` → `a59dc75`
+  - `git push -u origin codex/auto` → GitHub 認証未設定で失敗 (`could not read Username for 'https://github.com'`)

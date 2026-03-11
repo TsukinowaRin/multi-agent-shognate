@@ -368,6 +368,31 @@ reporting_chain_directive() {
     esac
 }
 
+fallback_model_display_name() {
+    local agent_id="$1"
+    if [[ "$agent_id" == shogun || "$agent_id" == gunshi || "$agent_id" == karo* ]]; then
+        echo "Opus"
+    elif [ "$KESSEN_MODE" = true ]; then
+        echo "Opus"
+    else
+        echo "Sonnet"
+    fi
+}
+
+resolve_model_display_name() {
+    local agent_id="$1"
+    if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        get_model_display_name "$agent_id" 2>/dev/null && return 0
+    fi
+    fallback_model_display_name "$agent_id"
+}
+
+resolve_cli_summary() {
+    local agent_id="$1"
+    local cli_type="${2:-claude}"
+    printf "%s / %s" "$cli_type" "$(resolve_model_display_name "$agent_id")"
+}
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # プロンプト生成関数（bash/zsh対応）
 # ───────────────────────────────────────────────────────────────────────────────
@@ -453,8 +478,8 @@ while [[ $# -gt 0 ]]; do
             echo "オプション:"
             echo "  -c, --clean         キューとダッシュボードをリセットして起動（クリーンスタート）"
             echo "                      未指定時は前回の状態を維持して起動"
-            echo "  -k, --kessen        決戦の陣（全足軽をOpusで起動）"
-            echo "                      未指定時は平時の陣（足軽1-4=Sonnet, 足軽5-8=Opus）"
+            echo "  -k, --kessen        決戦の陣（Claude系エージェントをOpus優先で起動）"
+            echo "                      未指定時は config/settings.yaml のCLI/モデル設定を使用"
             echo "  -s, --setup-only    セッションのセットアップのみ（CLI起動なし）"
             echo "  -t, --terminal      Windows Terminal で新しいタブを開く"
             echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
@@ -469,24 +494,19 @@ while [[ $# -gt 0 ]]; do
             echo "例:"
             echo "  ./shutsujin_departure.sh              # 前回の状態を維持して出陣"
             echo "  ./shutsujin_departure.sh -c           # クリーンスタート（キューリセット）"
-            echo "  ./shutsujin_departure.sh -s           # セットアップのみ（手動でClaude起動）"
+            echo "  ./shutsujin_departure.sh -s           # セットアップのみ（CLI起動なし）"
             echo "  ./shutsujin_departure.sh -t           # 全エージェント起動 + ターミナルタブ展開"
             echo "  ./shutsujin_departure.sh -shell bash  # bash用プロンプトで起動"
-            echo "  ./shutsujin_departure.sh -k           # 決戦の陣（全足軽Opus）"
+            echo "  ./shutsujin_departure.sh -k           # 決戦の陣（Claude系をOpus優先）"
             echo "  ./shutsujin_departure.sh -c -k         # クリーンスタート＋決戦の陣"
             echo "  ./shutsujin_departure.sh -shell zsh   # zsh用プロンプトで起動"
             echo "  ./shutsujin_departure.sh --shogun-no-thinking  # 将軍のthinkingを無効化（中継特化）"
             echo "  ./shutsujin_departure.sh -S           # サイレントモード（echo表示なし）"
             echo ""
-            echo "モデル構成:"
-            echo "  将軍:      Opus（デフォルト。--shogun-no-thinkingで無効化）"
-            echo "  家老:      Opus"
-            echo "  足軽1-4:   Sonnet"
-            echo "  足軽5-8:   Opus"
-            echo ""
-            echo "陣形:"
-            echo "  平時の陣（デフォルト）: 足軽1-4=Sonnet, 足軽5-8=Opus"
-            echo "  決戦の陣（--kessen）:   全足軽=Opus"
+            echo "CLI/モデル構成:"
+            echo "  config/settings.yaml の cli.default / cli.agents.* を使用"
+            echo "  変更は scripts/configure_agents.sh から行う"
+            echo "  --kessen は Claude 系エージェントのみ Opus 優先に上書き"
             echo ""
             echo "表示モード:"
             echo "  shout（デフォルト）:  タスク完了時に戦国風echo表示"
@@ -1015,51 +1035,8 @@ AGENT_IDS=("${MULTIAGENT_IDS[@]}")
 # モデル名設定（pane-border-format で常時表示するための既定値）
 MODEL_NAMES=()
 for _agent in "${AGENT_IDS[@]}"; do
-    if [[ "$_agent" == karo* ]]; then
-        MODEL_NAMES+=("Opus")
-    elif [ "$KESSEN_MODE" = true ]; then
-        MODEL_NAMES+=("Opus")
-    else
-        _ashi_num="${_agent#ashigaru}"
-        if [ "${_ashi_num:-0}" -le 4 ]; then
-            MODEL_NAMES+=("Sonnet")
-        else
-            MODEL_NAMES+=("Opus")
-        fi
-    fi
+    MODEL_NAMES+=("$(resolve_model_display_name "$_agent")")
 done
-
-# CLI Adapter経由でモデル名を動的に上書き
-if [ "$CLI_ADAPTER_LOADED" = true ]; then
-    for i in "${!AGENT_IDS[@]}"; do
-        _agent="${AGENT_IDS[$i]}"
-        _cli=$(resolve_cli_type_for_agent "$_agent")
-        case "$_cli" in
-            codex)
-                # config.tomlからモデル名と推論レベルを取得
-                _codex_model=$(grep '^model ' ~/.codex/config.toml 2>/dev/null | head -1 | sed 's/.*= *"\(.*\)"/\1/')
-                _codex_effort=$(grep '^model_reasoning_effort' ~/.codex/config.toml 2>/dev/null | head -1 | sed 's/.*= *"\(.*\)"/\1/')
-                _codex_model=${_codex_model:-gpt-5.3-codex}
-                _codex_effort=${_codex_effort:-high}
-                MODEL_NAMES[$i]="${_codex_model}/${_codex_effort}"
-                ;;
-            copilot)
-                MODEL_NAMES[$i]="Copilot"
-                ;;
-            kimi)
-                MODEL_NAMES[$i]="Kimi"
-                ;;
-            gemini)
-                _gemini_model=$(get_agent_model "$_agent" 2>/dev/null || echo "gemini-3-pro")
-                MODEL_NAMES[$i]="${_gemini_model}"
-                ;;
-            localapi)
-                _local_model=$(get_agent_model "$_agent" 2>/dev/null || echo "local-model")
-                MODEL_NAMES[$i]="LocalAPI:${_local_model}"
-                ;;
-        esac
-    done
-fi
 
 for i in "${!AGENT_IDS[@]}"; do
     p=$((PANE_BASE + i))
@@ -1118,11 +1095,13 @@ if [ "$SETUP_ONLY" = false ]; then
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
         tmux send-keys -t shogun:main "MAX_THINKING_TOKENS=0 $_shogun_cmd"
         tmux send-keys -t shogun:main C-m
-        log_info "  └─ 将軍（${_shogun_cli_type} / thinking無効）、召喚完了"
+        tmux set-option -p -t "shogun:main" @model_name "$(resolve_model_display_name "shogun")"
+        log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type") / thinking無効）、召喚完了"
     else
         tmux send-keys -t shogun:main "$_shogun_cmd"
         tmux send-keys -t shogun:main C-m
-        log_info "  └─ 将軍（${_shogun_cli_type}）、召喚完了"
+        tmux set-option -p -t "shogun:main" @model_name "$(resolve_model_display_name "shogun")"
+        log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type")）、召喚完了"
     fi
 
     # 軍師: CLI Adapter経由でコマンド構築
@@ -1137,7 +1116,8 @@ if [ "$SETUP_ONLY" = false ]; then
     printf "gunshi\t%s\n" "$_gunshi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
     tmux send-keys -t gunshi:main "$_gunshi_cmd"
     tmux send-keys -t gunshi:main C-m
-    log_info "  └─ 軍師（${_gunshi_cli_type}）、召喚完了"
+    tmux set-option -p -t "gunshi:main" @model_name "$(resolve_model_display_name "gunshi")"
+    log_info "  └─ 軍師（$(resolve_cli_summary "gunshi" "$_gunshi_cli_type")）、召喚完了"
 
     # 少し待機（安定のため）
     sleep 1
@@ -1184,13 +1164,14 @@ if [ "$SETUP_ONLY" = false ]; then
         tmux send-keys -t "multiagent:agents.${p}" C-m
         printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
         MULTIAGENT_CLI["$_agent"]="$_agent_cli_type"
-        log_info "  └─ ${_agent}（${_agent_cli_type}）、召喚完了"
+        tmux set-option -p -t "multiagent:agents.${p}" @model_name "$(resolve_model_display_name "$_agent")"
+        log_info "  └─ ${_agent}（$(resolve_cli_summary "$_agent" "$_agent_cli_type")）、召喚完了"
     done
     log_info "  └─ 家老（${_karo_launched}名）、召喚完了"
     if [ "$KESSEN_MODE" = true ]; then
-        log_info "  └─ 足軽（決戦の陣: ${_ashigaru_launched}名）"
+        log_info "  └─ 足軽（決戦の陣 / Claude系Opus優先: ${_ashigaru_launched}名）"
     else
-        log_info "  └─ 足軽（平時の陣: ${_ashigaru_launched}名）"
+        log_info "  └─ 足軽（設定どおり: ${_ashigaru_launched}名）"
     fi
 
     # Gemini / Codex の初回プリフライトを自動処理（並列実行）
@@ -1218,9 +1199,9 @@ if [ "$SETUP_ONLY" = false ]; then
     unset _gemini_pids
 
     if [ "$KESSEN_MODE" = true ]; then
-        log_success "✅ 決戦の陣で出陣！全軍Opus！"
+        log_success "✅ 決戦の陣で出陣（Claude系Opus優先）"
     else
-        log_success "✅ 平時の陣で出陣"
+        log_success "✅ 設定どおりの陣容で出陣"
     fi
     echo ""
 
@@ -1444,6 +1425,11 @@ echo ""
 echo "     【shogunセッション】将軍の本陣"
 echo "     ┌─────────────────────────────┐"
 echo "     │  Pane 0: 将軍 (SHOGUN)      │  ← 総大将・プロジェクト統括"
+echo "     └─────────────────────────────┘"
+echo ""
+echo "     【gunshiセッション】軍師の陣"
+echo "     ┌─────────────────────────────┐"
+echo "     │  Pane 0: 軍師 (GUNSHI)      │  ← 戦略・分析・助言"
 echo "     └─────────────────────────────┘"
 echo ""
 echo "     【multiagentセッション】家老・足軽の陣（${MULTIAGENT_COUNT}ペイン）"

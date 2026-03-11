@@ -2293,3 +2293,19 @@
 - 判断:
   - tmux-only 化後の multiplexer 強制分岐は不要なので、上流構造へ戻してよい。
   - `shutsujin_departure.sh` の次段整理対象は、起動メッセージ・モデル説明・CLI ready/bootstrap の役割分離。
+- Git:
+  - `git commit -m "codex: shutsujin上部をupstream本線へ寄せる"` → `0148864`
+  - `git push -u origin codex/auto` → GitHub 認証未設定で失敗 (`could not read Username for 'https://github.com'`)
+## 2026-03-11 (shutsujin display cleanup + cli_adapter python fallback)
+- 要求: shutsujin の固定モデル説明を削り、実際の CLI 設定表示へ寄せる。あわせて cli_adapter が .venv に PyYAML が無い場合でも壊れないようにする。
+- 実施:
+  - `shutsujin_departure.sh` に `resolve_model_display_name` / `resolve_cli_summary` を追加し、起動ログと pane 表示を `cli_adapter` ベースの動的表示へ変更。
+  - `shutsujin_departure.sh -h` の固定説明（Opus/Sonnet 固定、手動Claude起動など）を削除し、`config/settings.yaml` と `scripts/configure_agents.sh` 基準の説明へ更新。
+  - 布陣図に `gunshi` セッションを追加。
+  - `lib/cli_adapter.sh` で `.venv/bin/python3` に `yaml` が無い場合は system `python3` へ自動フォールバックするよう修正。
+- 検証:
+  - `bash -n lib/cli_adapter.sh shutsujin_departure.sh first_setup.sh scripts/configure_agents.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats` → 1..161 PASS
+- 判断:
+  - `cli_adapter` の Python 選択は起動系全体の前提なので、表示改善より優先して修正した。
+  - `docs/UPSTREAM_SYNC_2026-03-05.md` は今回の commit から除外する。

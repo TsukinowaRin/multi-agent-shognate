@@ -18,7 +18,10 @@ CLI_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLI_ADAPTER_PROJECT_ROOT="$(cd "${CLI_ADAPTER_DIR}/.." && pwd)"
 CLI_ADAPTER_SETTINGS="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 CLI_ADAPTER_PYTHON="${CLI_ADAPTER_PROJECT_ROOT}/.venv/bin/python3"
-if [[ ! -x "$CLI_ADAPTER_PYTHON" ]]; then
+if [[ -x "$CLI_ADAPTER_PYTHON" ]] && ! "$CLI_ADAPTER_PYTHON" -c "import yaml" >/dev/null 2>&1; then
+    CLI_ADAPTER_PYTHON=""
+fi
+if [[ -z "$CLI_ADAPTER_PYTHON" || ! -x "$CLI_ADAPTER_PYTHON" ]]; then
     CLI_ADAPTER_PYTHON="$(command -v python3 2>/dev/null || echo python3)"
 fi
 

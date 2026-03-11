@@ -961,9 +961,10 @@ zellij_pure_goza_layout_file() {
   local karo_agents=()
   local ashigaru_agents=()
   local agent
-  local left_width="${GOZA_PURE_LEFT_WIDTH:-38%}"
-  local middle_width="${GOZA_PURE_MIDDLE_WIDTH:-22%}"
-  local right_width="${GOZA_PURE_RIGHT_WIDTH:-40%}"
+  local left_width="${GOZA_PURE_LEFT_WIDTH:-44%}"
+  local middle_width="${GOZA_PURE_MIDDLE_WIDTH:-24%}"
+  local right_width="${GOZA_PURE_RIGHT_WIDTH:-32%}"
+  local gunshi_height="${GOZA_PURE_GUNSHI_HEIGHT:-34%}"
   tab_title_escaped="$(kdl_escape "$tab_title")"
 
   for agent in "${agents[@]}"; do
@@ -985,6 +986,7 @@ zellij_pure_goza_layout_file() {
     local indent="$1"
     local target_agent="$2"
     local focus_attr="${3:-}"
+    local size_attr="${4:-}"
     local pane_name_escaped
     local pane_cmd
     local pane_cmd_escaped
@@ -992,11 +994,14 @@ zellij_pure_goza_layout_file() {
     if [[ -n "$focus_attr" ]]; then
       focus_attr=" focus=true"
     fi
+    if [[ -n "$size_attr" ]]; then
+      size_attr=" size=\"${size_attr}\""
+    fi
     pane_cmd="$(printf 'cd %q && export AGENT_ID=%q && export DISPLAY_MODE=%q && export ZELLIJ_UI_SESSION=%q && export GOZA_SETUP_ONLY=%q && exec bash %q %q %q' \
       "$ROOT_DIR" "$target_agent" "shout" "$ZELLIJ_UI_SESSION" "$SETUP_ONLY" "$ROOT_DIR/scripts/zellij_agent_bootstrap.sh" "$target_agent" "$ZELLIJ_UI_SESSION")"
     pane_cmd_escaped="$(kdl_escape "$pane_cmd")"
     cat <<EOF
-${indent}pane name="${pane_name_escaped}"${focus_attr} command="bash" start_suspended=false {
+${indent}pane name="${pane_name_escaped}"${focus_attr}${size_attr} command="bash" start_suspended=false {
 ${indent}    args "-lc" "${pane_cmd_escaped}";
 ${indent}}
 EOF
@@ -1061,16 +1066,14 @@ EOF
     echo "    }"
     echo "    tab name=\"${tab_title_escaped}\" {"
     echo "        pane split_direction=\"vertical\" {"
-    echo "            pane split_direction=\"horizontal\" size=\"${left_width}\" {"
-    zellij_emit_agent_leaf "                " "$shogun_agent" "focus"
-    if [[ -n "$gunshi_agent" ]]; then
-      zellij_emit_agent_leaf "                " "$gunshi_agent"
-    fi
-    echo "            }"
+    zellij_emit_agent_leaf "            " "$shogun_agent" "focus" "$left_width"
     echo "            pane split_direction=\"horizontal\" size=\"${middle_width}\" {"
     zellij_emit_agent_grid "                " "${karo_agents[@]}"
     echo "            }"
     echo "            pane split_direction=\"horizontal\" size=\"${right_width}\" {"
+    if [[ -n "$gunshi_agent" ]]; then
+      zellij_emit_agent_leaf "                " "$gunshi_agent" "" "$gunshi_height"
+    fi
     zellij_emit_agent_grid "                " "${ashigaru_agents[@]}"
     echo "            }"
     echo "        }"

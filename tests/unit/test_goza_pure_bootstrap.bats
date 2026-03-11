@@ -31,11 +31,20 @@ setup_file() {
 }
 
 @test "pure zellij: 既定レイアウト比率は右列を広めに確保する" {
-    run rg -nF 'GOZA_PURE_LEFT_WIDTH:-38%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    run rg -nF 'GOZA_PURE_LEFT_WIDTH:-44%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
-    run rg -nF 'GOZA_PURE_MIDDLE_WIDTH:-22%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    run rg -nF 'GOZA_PURE_MIDDLE_WIDTH:-24%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
-    run rg -nF 'GOZA_PURE_RIGHT_WIDTH:-40%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    run rg -nF 'GOZA_PURE_RIGHT_WIDTH:-32%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'GOZA_PURE_GUNSHI_HEIGHT:-34%' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "pure zellij: shogun は full-height 左列、gunshi は右列上段へ配置する" {
+    run rg -nF 'zellij_emit_agent_leaf "            " "$shogun_agent" "focus" "$left_width"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+    run rg -nF 'zellij_emit_agent_leaf "                " "$gunshi_agent" "" "$gunshi_height"' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 

@@ -2028,3 +2028,37 @@
   1. 実機で pure zellij を再起動し、描画崩れが消えたことを確認する。
   2. まだ足軽 pane が狭いなら、幅補正ではなくレイアウト再配置で改善する。
 - Links: scripts/zellij_agent_bootstrap.sh, scripts/interactive_agent_runner.py, tests/unit/test_goza_pure_bootstrap.bats
+
+### 2026-03-11 00:04 (JST)
+- Goal: `pure zellij 幅補正既定戻し` checkpoint を push まで完了する。
+- Commands + Results:
+  - `git commit -m "codex: pure zellijの幅補正既定を戻す"` → PASS (`8bb8a34`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - 実装とテストは完了しているため、停止理由は GitHub 認証のみ。
+  - 既存未整理差分 `config/settings.yaml` / `dashboard.md` / `queue/shogun_to_karo.yaml` / `docs/UPSTREAM_SYNC_2026-03-05.md` は維持する。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機で pure zellij を再起動し、描画崩れが解消したか確認する。
+- Links: 8bb8a34
+
+### 2026-03-11 00:14 (JST)
+- Goal: pure `zellij` を wide 画面で最大化した際も、役職配置が読みやすく操作しやすい構造へ寄せる。
+- Findings:
+  - 旧レイアウトは `shogun/gunshi` を左列へ縦積みし、`karo` を中列 full-height、足軽を右列 2x2 にしていた。
+  - この構造は narrow 画面には効くが、wide 画面では `shogun` が full-height にならず、`gunshi` が左列を圧迫し、以前の要求「将軍最大・家老二番手・足軽 compact」にも一致していなかった。
+  - `Codex` の scroll/view 問題は、wide 画面でも中核 pane の縦横比が悪いことが主因で、単なる幅比率調整だけでは不十分だった。
+- Changes (files):
+  - `scripts/goza_no_ma.sh` — pure zellij の wide layout を再構成。`shogun` を full-height 左列、`karo` を full-height 中列、右列を `gunshi` 上段 + `ashigaru` 下段 grid に変更。既定比率は `44 / 24 / 32`、`GOZA_PURE_GUNSHI_HEIGHT` を追加。
+  - `tests/unit/test_goza_pure_bootstrap.bats` — 新しい既定比率と `shogun full-height / gunshi 右列上段` の回帰テストを追加。
+  - `docs/REQS.md` — wide 画面での pure zellij 可用性要件を追記。
+- Commands + Results:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_goza_pure_bootstrap.bats` → `1..10` PASS
+- Decisions / Assumptions:
+  - wide 画面では、以前の役職優先順位に戻す。理由は、将軍と家老の情報密度が最も高く、maximize 時の可用性が最優先だから。
+  - 右列は `gunshi + ashigaru` にまとめる。理由は、軍師は参謀役として常時可視性を保ちつつ、足軽は compact な補助 pane に寄せる方が整合的だから。
+- Next:
+  1. 実機で pure zellij を最大化し、`shogun` と `karo` の可読性、`gunshi`/足軽の compact 性を再確認する。
+  2. なお wide でも問題が残る場合は、画面幅しきい値で narrow/wide レイアウトを切り替える。
+- Links: scripts/goza_no_ma.sh, tests/unit/test_goza_pure_bootstrap.bats, docs/REQS.md

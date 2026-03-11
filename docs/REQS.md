@@ -1,7 +1,22 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-09
+最終更新: 2026-03-11
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-11: pure zellij の wide 画面での可用性改善）
+### 要求
+1. pure `zellij` の `goza_room` は、ウィンドウ最大化時でも `shogun` / `karo` / `gunshi` / `ashigaru` の主要 pane が読みやすい配置であること。
+2. `shogun` は full-height の最大 pane とし、`karo` はその次に大きい full-height pane とすること。
+3. `gunshi` は `shogun` と同列に押し込めず、右列上段へ分離すること。
+4. 足軽 pane は compact に維持しつつも、最大化時に `Codex` / `Gemini` の入力欄や直近ログが横方向に破綻しないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats`
+   - 期待結果: wide layout の既定比率と `shogun full-height / gunshi 右列上段` 構造を含む pure zellij テストが PASS する。
+2. コマンド: `rg -n "GOZA_PURE_LEFT_WIDTH|GOZA_PURE_MIDDLE_WIDTH|GOZA_PURE_RIGHT_WIDTH|GOZA_PURE_GUNSHI_HEIGHT" scripts/goza_no_ma.sh`
+   - 期待結果: wide 画面向けの既定比率と gunshi 高さ設定がコード上に存在する。
+3. コマンド: `rg -n 'zellij_emit_agent_leaf \"            \" \"\\$shogun_agent\" \"focus\" \"\\$left_width\"|zellij_emit_agent_leaf \"                \" \"\\$gunshi_agent\" \"\" \"\\$gunshi_height\"' scripts/goza_no_ma.sh`
+   - 期待結果: `shogun` が左 full-height、`gunshi` が右列上段へ配置される実装が存在する。
 
 ## 追補（2026-03-09: pure zellij setup-only session 分離）
 ### 要求

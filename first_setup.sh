@@ -793,14 +793,14 @@ if [ -f "$BASHRC_FILE" ]; then
     fi
 
     # cgo alias (御座の間)
-    EXPECTED_CGO="alias cgo='bash $SCRIPT_DIR/scripts/goza_no_ma.sh'"
+    EXPECTED_CGO="alias cgo='bash $SCRIPT_DIR/scripts/goza_no_ma.sh --view-only'"
     if ! grep -q "alias cgo=" "$BASHRC_FILE" 2>/dev/null; then
         if [ "$ALIAS_ADDED" = false ]; then
             echo "" >> "$BASHRC_FILE"
             echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
         fi
         echo "$EXPECTED_CGO" >> "$BASHRC_FILE"
-        log_info "alias cgo を追加しました（御座の間の起動）"
+        log_info "alias cgo を追加しました（既存セッションを使う御座の間）"
         ALIAS_ADDED=true
     elif ! grep -qF "$EXPECTED_CGO" "$BASHRC_FILE" 2>/dev/null; then
         if sed -i "s|alias cgo=.*|$EXPECTED_CGO|" "$BASHRC_FILE" 2>/dev/null; then

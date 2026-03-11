@@ -2357,3 +2357,27 @@
   - detached 生成の安定性を優先し、pane attach は `client-attached` hook に遅延させた。
 - Git:
   - 次の checkpoint でまとめて commit する。
+- Git:
+  - `git commit -m "codex: tmux御座の間とcsg導線を追加"` → `36f0bb9`
+  - `git push -u origin codex/auto` → GitHub 認証未設定で失敗 (`could not read Username for 'https://github.com': No such device or address`)
+
+## 2026-03-11 既存backend再利用の御座の間
+- 背景:
+  - ユーザーから `cgo` 実行時に `shutsujin_departure.sh` を毎回再実行するのは無駄であり、既に起動済みの `shogun / gunshi / multiagent` をそのまま俯瞰したいという要望が出た。
+- 実施:
+  - `scripts/goza_no_ma.sh` に `backend_sessions_ready()` を追加し、既存 `shogun / gunshi / multiagent` session が揃っているかを判定するようにした。
+  - `--view-only` かつ backend session が揃っている場合は `shutsujin_departure.sh` を呼ばず、そのまま `goza-no-ma` view だけを作成するよう変更した。
+  - `--view-only` でも backend session が不足している場合のみ、補完のために `shutsujin_departure.sh` を起動するようにした。
+  - `first_setup.sh` の `cgo` alias を `bash .../scripts/goza_no_ma.sh --view-only` に変更した。
+  - `README.md` / `README_ja.md` / `shutsujin_departure.sh` の案内文を、既存 backend 再利用前提の `--view-only` 導線へ更新した。
+  - `docs/REQS.md` と `docs/EXECPLAN_2026-03-11_tmux_goza_return.md` を更新し、`cgo` が既存 backend を再利用し、不足時だけ補完起動することを受け入れ条件へ追加した。
+  - `tests/unit/test_mux_parity.bats` に `御座の間導線は既存backend再利用を優先する` 回帰を追加した。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh first_setup.sh shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS (`1..11`)
+  - sandbox 上の tmux 実行 smoke は `create window failed: fork failed: Permission denied` で失敗。コード不具合ではなく実行環境制約として扱う。
+- 判断:
+  - `cgo` の既定は `--view-only` とし、俯瞰用コマンドとして既存 backend を再利用する方が自然。
+  - backend 不足時だけ補完起動することで、初回導線と再利用導線を単一スクリプトに保てる。
+- Git:
+  - この checkpoint で今回差分のみをコミット予定。

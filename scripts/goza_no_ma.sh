@@ -12,6 +12,16 @@ VIEW_ONLY=false
 NO_ATTACH=false
 PASS_THROUGH=()
 
+backend_sessions_ready() {
+  local session
+  for session in shogun gunshi multiagent; do
+    if ! tmux has-session -t "$session" 2>/dev/null; then
+      return 1
+    fi
+  done
+  return 0
+}
+
 usage() {
   cat <<'USAGE'
 Usage:
@@ -54,10 +64,13 @@ if ! command -v tmux >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ "$VIEW_ONLY" != true ]]; then
+if [[ "$VIEW_ONLY" != true ]] || ! backend_sessions_ready; then
   START_ARGS=("${PASS_THROUGH[@]}")
   if [[ "$SETUP_ONLY" = true ]]; then
     START_ARGS=("-s" "${START_ARGS[@]}")
+  fi
+  if [[ "$VIEW_ONLY" = true ]]; then
+    echo "[INFO] backend session が不足しているため、shutsujin_departure.sh を起動します"
   fi
   set +e
   bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"

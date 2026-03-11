@@ -31,6 +31,7 @@
 - 2026-03-11: `README.md` / `README_ja.md` / `shutsujin_departure.sh` に `軍師 attach` と `御座の間` の導線を追加。
 - 2026-03-11: detached session で `size missing` が出る問題に対し、`bootstrap_goza_view.sh` を追加して `client-attached` hook で pane を本物の session attach へ差し替える構造に変更。
 - 2026-03-11: `tests/unit/test_mux_parity.bats` を更新し、`zellij` 不在・`御座の間` 存在・`csg/cgo` 案内を回帰確認。
+- 2026-03-11: `cgo` と `goza_no_ma.sh --view-only` は既存 `shogun / gunshi / multiagent` session を再利用し、backend 不足時だけ `shutsujin_departure.sh` を起動するよう修正。
 
 ## Surprises & Discoveries
 - 旧 `goza_no_ma.sh` は `zellij` 互換オプション込みの巨大 frontend だったため、そのまま戻す価値は薄い。
@@ -41,9 +42,12 @@
 - `御座の間` は `tmux` 専用で最小再実装する。
 - `gunshi` attach 短縮は `csg` とする。
 - 俯瞰ビュー attach 短縮として `cgo` も追加する。
+- `cgo` の既定挙動は `--view-only` とし、俯瞰のために既存 backend を再利用する。
+- backend session が欠けている時のみ `goza_no_ma.sh` が `shutsujin_departure.sh` を補完起動する。
 
 ## Outcomes & Retrospective
 - `tmux` 本線を崩さず、`御座の間` を俯瞰ビューとして最小再実装できた。
 - `csg` により `gunshi` への attach 導線が `css/csm` と揃った。
 - `cgo` により人間が全陣を一望する入口を `first_setup` の alias と README に統一できた。
+- `cgo` 実行時に backend を毎回再起動しない構造にできたため、通常運用時の無駄な再起動を避けられる。
 - detached smoke と hook 本体の動作確認までは完了。通常の人間 attach 時の俯瞰体験を以後の実機確認対象とする。

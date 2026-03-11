@@ -28,7 +28,7 @@ bash shutsujin_departure.sh
 tmux attach-session -t shogun
 tmux attach-session -t gunshi
 tmux attach-session -t multiagent
-bash scripts/goza_no_ma.sh
+bash scripts/goza_no_ma.sh --view-only
 ```
 
 短縮 alias:
@@ -41,7 +41,7 @@ cgo   # 御座の間
 
 御座の間だけ開く:
 ```bash
-bash scripts/goza_no_ma.sh
+bash scripts/goza_no_ma.sh --view-only
 ```
 
 ## 設定 CUI

@@ -28,7 +28,12 @@ setup_file() {
 }
 
 @test "軍師 attach alias csg と御座の間 alias cgo を案内する" {
-    run rg -n "alias csg=|alias cgo=|または: csg|cgo\\s+→" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "alias csg=|alias cgo='bash .*goza_no_ma\\.sh --view-only'|または: csg|cgo\\s+→.*--view-only" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "御座の間導線は既存backend再利用を優先する" {
+    run rg -n "goza_no_ma\\.sh --view-only|backend session が不足しているため" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/README_ja.md"
     [ "$status" -eq 0 ]
 }
 

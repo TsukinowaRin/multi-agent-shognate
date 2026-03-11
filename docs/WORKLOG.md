@@ -2312,3 +2312,9 @@
 - Git:
   - `git commit -m "codex: shutsujin表示を動的CLI構成へ寄せる"` → `cbc3042`
   - `git push -u origin codex/auto` → GitHub 認証未設定で失敗 (`could not read Username for 'https://github.com': No such device or address`)
+- 追加実施:
+  - `shutsujin_departure.sh` で `-h/--help` 要求時は venv プリフライトをスキップするようにし、ヘルプ表示だけで失敗しないよう修正。
+  - setup-only 案内に `gunshi` と動的CLIコマンド例を追加。
+  - Windows Terminal の `-t` 展開に `gunshi` タブを追加。
+- 追加検証:
+  - `bash shutsujin_departure.sh -h | sed -n "1,140p"` → PASS

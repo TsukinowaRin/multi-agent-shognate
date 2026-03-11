@@ -26,6 +26,16 @@ if [ -f "./config/settings.yaml" ]; then
     SHELL_SETTING=$(grep "^shell:" ./config/settings.yaml 2>/dev/null | awk '{print $2}' || echo "bash")
 fi
 
+EARLY_HELP_REQUESTED=false
+for _arg in "$@"; do
+    case "$_arg" in
+        -h|--help)
+            EARLY_HELP_REQUESTED=true
+            break
+            ;;
+    esac
+done
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Python venv プリフライトチェック
 # ───────────────────────────────────────────────────────────────────────────────
@@ -33,7 +43,7 @@ fi
 # venv が存在しない場合は自動作成する（git pull 後の初回起動対策）。
 # ═══════════════════════════════════════════════════════════════════════════════
 VENV_DIR="$SCRIPT_DIR/.venv"
-if [ ! -f "$VENV_DIR/bin/python3" ] || ! "$VENV_DIR/bin/python3" -c "import yaml" 2>/dev/null; then
+if [ "$EARLY_HELP_REQUESTED" != true ] && { [ ! -f "$VENV_DIR/bin/python3" ] || ! "$VENV_DIR/bin/python3" -c "import yaml" 2>/dev/null; }; then
     echo -e "\033[1;33m【報】\033[0m Python venv をセットアップ中..."
     if command -v python3 &>/dev/null; then
         python3 -m venv "$VENV_DIR" 2>/dev/null || {
@@ -1459,13 +1469,14 @@ if [ "$SETUP_ONLY" = true ]; then
     echo "  ┌──────────────────────────────────────────────────────────┐"
     echo "  │  # 将軍を召喚                                            │"
     echo "  │  tmux send-keys -t shogun:main \\                         │"
-    echo "  │    '<将軍のCLIコマンド>' Enter                            │"
+    echo "  │    '$(build_cli_command_with_type "shogun" "${_shogun_cli_type:-$(resolve_cli_type_for_agent "shogun" 2>/dev/null || echo claude)}")' Enter  │"
     echo "  │                                                          │"
-    echo "  │  # 家老・足軽を一斉召喚                                  │"
-    echo "  │  for p in \$(seq $PANE_BASE $((PANE_BASE+MULTIAGENT_COUNT-1))); do                 │"
-    echo "  │      tmux send-keys -t multiagent:agents.\$p \\            │"
-    echo "  │      '<各ペインのCLIコマンド>' Enter                      │"
-    echo "  │  done                                                    │"
+    echo "  │  # 軍師を召喚                                            │"
+    echo "  │  tmux send-keys -t gunshi:main \\                         │"
+    echo "  │    '$(build_cli_command_with_type "gunshi" "${_gunshi_cli_type:-$(resolve_cli_type_for_agent "gunshi" 2>/dev/null || echo claude)}")' Enter  │"
+    echo "  │                                                          │"
+    echo "  │  # 家老・足軽は settings.yaml に従い個別起動             │"
+    echo "  │  cat queue/runtime/agent_cli.tsv                         │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""
 fi
@@ -1474,6 +1485,9 @@ echo "  次のステップ:"
 echo "  ┌──────────────────────────────────────────────────────────┐"
 echo "  │  将軍の本陣にアタッチして命令を開始:                      │"
 echo "  │     tmux attach-session -t shogun   (または: css)        │"
+echo "  │                                                          │"
+echo "  │  軍師の陣へアタッチする:                                  │"
+echo "  │     tmux attach-session -t gunshi                         │"
 echo "  │                                                          │"
 echo "  │  家老・足軽の陣を確認する:                                │"
 echo "  │     tmux attach-session -t multiagent   (または: csm)    │"
@@ -1495,7 +1509,7 @@ if [ "$OPEN_TERMINAL" = true ]; then
 
     # Windows Terminal が利用可能か確認
     if command -v wt.exe &> /dev/null; then
-        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t shogun" \; new-tab wsl.exe -e bash -c "tmux attach-session -t multiagent"
+        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t shogun" \; new-tab wsl.exe -e bash -c "tmux attach-session -t gunshi" \; new-tab wsl.exe -e bash -c "tmux attach-session -t multiagent"
         log_success "  └─ ターミナルタブ展開完了"
     else
         log_info "  └─ wt.exe が見つかりません。手動でアタッチしてください。"

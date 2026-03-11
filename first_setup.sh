@@ -175,13 +175,14 @@ fi
 RESULTS+=("tmux マウス設定: OK")
 
 # ============================================================
-# STEP 3.5: tmux 運用補足
+# STEP 3.5: 本フォークの方針
 # ============================================================
-log_step "STEP 3.5: tmux 運用補足"
+log_step "STEP 3.5: 本フォークの方針"
 
-log_info "このリポジトリは tmux 専用です"
+log_info "このフォークは upstream の tmux 本線を基準にしています"
+log_info "独自差分は Gemini / OpenCode / Kilo / localapi / local provider 対応です"
 log_info "旧 zellij / goza 実装は Waste/ に退避済みです"
-RESULTS+=("multiplexer: tmux only")
+RESULTS+=("strategy: upstream tmux base + cli extensions")
 
 # ============================================================
 # STEP 4: Node.js チェック

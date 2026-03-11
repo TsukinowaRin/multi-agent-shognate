@@ -2246,3 +2246,33 @@
 - Next:
   1. `bash -n` と `bats` を再実行して、tmux-only 最終形の回帰確認を行う。
   2. 問題が無ければ checkpoint commit を作成する。
+
+### 2026-03-11 16:33 (JST)
+- Goal: `shutsujin_departure.sh` 一本化 checkpoint を commit/push まで完了する。
+- Commands + Results:
+  - `bash -n shutsujin_departure.sh scripts/configure_agents.sh scripts/inbox_watcher.sh scripts/watcher_supervisor.sh first_setup.sh scripts/mux_parity_smoke.sh` → PASS
+  - `bats tests/unit/test_build_system.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_ntfy_auth.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats` → PASS (`1..207`)
+  - `git commit -m "codex: shutsujin_departure一本化でgozaを廃止"` → PASS (`baec4e4`)
+  - `git push -u origin codex/auto` → FAIL (`fatal: could not read Username for 'https://github.com': No such device or address`)
+- Decisions / Assumptions:
+  - `goza*` は tmux-only 化後も別フロントエンドでしかなく、upstream 本線の `shutsujin_departure.sh` と二重導線になるため廃止した。
+  - `docs/UPSTREAM_SYNC_2026-03-05.md` は既存の unrelated dirty file として今回の commit から除外した。
+- Next:
+  1. GitHub 認証後に `git push -u origin codex/auto` を再実行する。
+  2. 実機起動確認は `bash shutsujin_departure.sh -s` と `bash shutsujin_departure.sh` で行う。
+
+## 2026-03-11 (upstream tmux base + CLI-only strategy)
+- 要求: upstream `main` を正本にし、独自差分を tmux 本線上の CLI 拡張へ限定する方針を docs と導線に反映する。
+- 実施:
+  - `docs/REQS.md` に「upstream 正本 + CLI拡張限定」の要求と受け入れ条件を追加。
+  - `docs/UPSTREAM_SYNC_2026-03-11_CLI_ONLY_STRATEGY.md` を新規作成し、保持する独自差分と捨てる差分を整理。
+  - `docs/EXECPLAN_2026-03-11_upstream_cli_only_rebase.md` を新規作成し、README / first_setup / upstream 寄せの段取りを記録。
+  - `docs/INDEX.md` に新しい同期ノートと ExecPlan を登録。
+  - `README.md` / `README_ja.md` を tmux 本線 + 追加 CLI 差分の説明へ更新。
+  - `first_setup.sh` の方針表示を upstream tmux 本線 + CLI 拡張へ更新。
+- 検証:
+  - `bash -n shutsujin_departure.sh first_setup.sh scripts/configure_agents.sh` → PASS
+  - `bats tests/unit/test_build_system.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_ntfy_auth.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats` → 1..207 PASS
+- 判断:
+  - upstream 正本化は全量 merge ではなく、README / first_setup / CLI adapter 周辺を順に寄せる staged migration を継続する。
+  - `docs` 内の zellij 記述は履歴資料として残すが、現役運用文書と導線からは外す。

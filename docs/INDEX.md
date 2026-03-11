@@ -8,6 +8,7 @@
 
 ## Specs
 - `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。
+- `docs/UPSTREAM_SYNC_2026-03-11_CLI_ONLY_STRATEGY.md` - upstream `main` を正本にし、独自差分を tmux 本線の CLI 拡張に限定する再整理方針。
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 - `docs/UPSTREAM_SYNC_2026-02-14.md` - 上流multi-agent-shogunとの差分分析と採用/非採用判断。
 - `docs/UPSTREAM_SYNC_2026-02-21.md` - 上流最新（cbad684時点）との差分確認と反映内容（Codex `--search` / watcher抑止条件 / zellij起動補正）。
@@ -31,6 +32,7 @@
 - `docs/EXECPLAN_2026-03-06_zellij_gemini_upstream_sync.md` - 上流同期を zellij / Gemini スコープに絞って bootstrap と preflight を修正する実行計画。
 - `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` - 上流基盤へ戻しつつ zellij / Gemini を再実装する再出発の実行計画。
 - `docs/EXECPLAN_2026-03-11_tmux_only_consolidation.md` - zellij 廃止と tmux 一本化、Waste 退避の実行計画。
+- `docs/EXECPLAN_2026-03-11_upstream_cli_only_rebase.md` - upstream `main` 正本化と CLI 拡張差分の再整理計画。
 - `docs/EXECPLAN_TEMPLATE.md` - ExecPlanテンプレート。
 
 ## Archive

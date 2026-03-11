@@ -3,6 +3,30 @@
 最終更新: 2026-03-11
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-11: upstream 正本 + CLI拡張限定）
+### 要求
+1. 今後の現役実装は `upstream/main` の `tmux` 本線を正本とし、このフォーク独自の差分は CLI 拡張に限定すること。
+2. `zellij` / `goza` / hybrid multiplexer の再導入は行わず、起動入口は `shutsujin_departure.sh` を維持すること。
+3. 独自機能として維持・再実装する対象は、少なくとも以下に限定すること。
+   - `Gemini CLI`
+   - `OpenCode`
+   - `Kilo`
+   - `localapi`
+   - `Ollama` / `LM Studio` 向け provider 設定
+   - `gunshi` を含む役職別 CLI / model / thinking 設定
+4. `README.md` / `README_ja.md` / `first_setup.sh` / `docs` は、上流との差分が「tmux 本線 + 追加 CLI」に収束していると人間が判断できる形へ整理すること。
+5. `Waste/` は廃止 multiplexer 実装の退避先として維持し、現役運用手順からは参照させないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "zellij|goza|hybrid" README.md README_ja.md first_setup.sh docs -g '!Waste/**'`
+   - 期待結果: 現役運用としての `zellij/goza/hybrid` 手順は出現せず、履歴文書または廃止記録に限定される。
+2. コマンド: `rg -n "gemini|opencode|kilo|localapi|ollama|lmstudio|gunshi" README.md README_ja.md first_setup.sh scripts/configure_agents.sh lib/cli_adapter.sh`
+   - 期待結果: このフォーク独自の現役差分が CLI 拡張に集中していることを確認できる。
+3. コマンド: `bash -n shutsujin_departure.sh first_setup.sh scripts/configure_agents.sh`
+   - 期待結果: upstream 正本ベースへ寄せた後も主要導線に構文エラーがない。
+4. コマンド: `bats tests/unit/test_build_system.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_ntfy_auth.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats`
+   - 期待結果: tmux 本線 + CLI 拡張の回帰テストが PASS する。
+
 ## 追補（2026-03-11: shutsujin_departure 一本化・goza 廃止）
 ### 要求
 1. このリポジトリのマルチプレクサ対応は `tmux` のみに一本化すること。

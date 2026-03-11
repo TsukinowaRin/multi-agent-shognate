@@ -3,6 +3,23 @@
 最終更新: 2026-03-11
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-11: tmux 実機テスト導線の安定化）
+### 要求
+1. `shutsujin_departure.sh` は `.venv` や `requirements.txt` が無くても、`python3 + PyYAML` が利用可能なら起動を継続できること。
+2. `lib/cli_adapter.sh` は `.venv/bin/python3` を固定参照せず、利用可能な Python 実行系へフォールバックすること。
+3. `shutsujin_departure.sh -s` は tmux セッション生成まで通り、通常起動 `bash shutsujin_departure.sh` は CLI 起動・初動命令配信・watcher 起動・完了メッセージまで返ること。
+4. `Codex` が起動直後に `Working` へ遷移しても ready 判定で待ち続けないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n shutsujin_departure.sh lib/cli_adapter.sh`
+   - 期待結果: Python 導線修正後も構文エラーがない。
+2. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats`
+   - 期待結果: Python フォールバックと ready 判定変更後も関連回帰テストが PASS する。
+3. コマンド: `bash shutsujin_departure.sh -s`
+   - 期待結果: `gunshi` / `multiagent` / `shogun` の tmux セッションが作成され、セットアップのみモードの完了メッセージが返る。
+4. コマンド: `bash shutsujin_departure.sh`
+   - 期待結果: `CLI起動確認` が `Codex` の `Working` 状態を ready とみなし、初動命令配信・watcher 起動・完了メッセージまで返る。
+
 ## 追補（2026-03-11: upstream 正本 + CLI拡張限定）
 ### 要求
 1. 今後の現役実装は `upstream/main` の `tmux` 本線を正本とし、このフォーク独自の差分は CLI 拡張に限定すること。

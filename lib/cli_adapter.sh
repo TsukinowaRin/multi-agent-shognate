@@ -740,7 +740,7 @@ get_capability_tier() {
     fi
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
@@ -780,7 +780,7 @@ get_cost_group() {
     fi
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
@@ -814,7 +814,7 @@ get_available_cost_groups() {
     local settings="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${settings}') as f:
@@ -864,7 +864,7 @@ get_recommended_model() {
 
     # Python: stdout=モデル名, stderr=警告（呼び出し側のstderrにパススルー）
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 
 def parse_bloom_range(key):
@@ -987,7 +987,7 @@ needs_model_switch() {
 
     # capability_tiersセクション不在チェック（全モデルが6を返す場合）
     local has_tiers
-    has_tiers=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    has_tiers=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
@@ -1075,7 +1075,7 @@ get_bloom_routing() {
     local settings="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
     local raw
-    raw=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    raw=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${settings}') as f:
@@ -1115,7 +1115,7 @@ validate_gunshi_analysis() {
     fi
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 
 try:
@@ -1222,7 +1222,7 @@ append_model_performance() {
     local qc_result="$6"
     local qc_score="$7"
 
-    "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    "$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys, os
 from datetime import datetime, timezone
 
@@ -1265,7 +1265,7 @@ get_model_performance_summary() {
     local task_type="$2"
     local bloom_level="$3"
 
-    "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    "$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys, os
 
 yaml_path = '${yaml_path}'
@@ -1315,7 +1315,7 @@ validate_subscription_coverage() {
     local settings="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 
 try:
@@ -1404,7 +1404,7 @@ find_agent_for_model() {
 
     # settings.yaml の cli.agents から recommended_model を使用する足軽を抽出
     local candidates
-    candidates=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    candidates=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 
 try:
@@ -1476,7 +1476,7 @@ except Exception:
     # 殿の方針: 「Codex 5.3が欲しくて Claude Code しか空いていなければ Claude Code で可」
     # kill/restart は絶対しない。アイドルペインを再利用する。
     local all_agents
-    all_agents=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    all_agents=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml
 
 try:
@@ -1528,7 +1528,7 @@ except Exception:
 get_ashigaru_ids() {
     local settings="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml
 try:
     with open('${settings}') as f:

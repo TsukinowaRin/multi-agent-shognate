@@ -37,29 +37,31 @@ for _arg in "$@"; do
 done
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Python venv プリフライトチェック
+# Python / PyYAML プリフライトチェック
 # ───────────────────────────────────────────────────────────────────────────────
-# inbox_write.sh, inbox_watcher.sh, cli_adapter.sh が .venv/bin/python3 に依存。
-# venv が存在しない場合は自動作成する（git pull 後の初回起動対策）。
+# 現役コードは system python3 + PyYAML で動作可能とする。
+# .venv が存在しても、それに yaml が無ければ system python3 を優先する。
+# requirements.txt は現行 tmux 本線では必須にしない。
 # ═══════════════════════════════════════════════════════════════════════════════
-VENV_DIR="$SCRIPT_DIR/.venv"
-if [ "$EARLY_HELP_REQUESTED" != true ] && { [ ! -f "$VENV_DIR/bin/python3" ] || ! "$VENV_DIR/bin/python3" -c "import yaml" 2>/dev/null; }; then
-    echo -e "\033[1;33m【報】\033[0m Python venv をセットアップ中..."
-    if command -v python3 &>/dev/null; then
-        python3 -m venv "$VENV_DIR" 2>/dev/null || {
-            echo -e "\033[1;31m【ERROR】\033[0m python3 -m venv に失敗しました。python3-venv パッケージが必要かもしれません。"
-            echo "  Ubuntu/Debian: sudo apt-get install python3-venv"
-            exit 1
-        }
-        "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt" -q 2>/dev/null || {
-            echo -e "\033[1;31m【ERROR】\033[0m pip install に失敗しました。"
-            exit 1
-        }
-        echo -e "\033[1;32m【成】\033[0m Python venv セットアップ完了"
-    else
-        echo -e "\033[1;31m【ERROR】\033[0m python3 が見つかりません。first_setup.sh を実行してください。"
-        exit 1
-    fi
+RUNTIME_PYTHON=""
+if [ -x "$SCRIPT_DIR/.venv/bin/python3" ] && "$SCRIPT_DIR/.venv/bin/python3" -c "import yaml" >/dev/null 2>&1; then
+    RUNTIME_PYTHON="$SCRIPT_DIR/.venv/bin/python3"
+elif command -v python3 >/dev/null 2>&1 && python3 -c "import yaml" >/dev/null 2>&1; then
+    RUNTIME_PYTHON="$(command -v python3)"
+fi
+
+if [ "$EARLY_HELP_REQUESTED" != true ] && [ -z "$RUNTIME_PYTHON" ]; then
+    echo -e "\033[1;31m【ERROR】\033[0m Python 実行環境が不足しています。"
+    echo "  必要条件:"
+    echo "    - python3"
+    echo "    - PyYAML (python3 -c 'import yaml' が成功すること)"
+    echo ""
+    echo "  まず次を実行してください:"
+    echo "    bash first_setup.sh"
+    echo ""
+    echo "  あるいは Ubuntu/Debian なら:"
+    echo "    sudo apt-get install -y python3 python3-yaml inotify-tools"
+    exit 1
 fi
 
 # CLI Adapter読み込み（Multi-CLI Support）
@@ -249,8 +251,8 @@ wait_for_cli_ready_tmux() {
 
     case "$cli_type" in
         claude)  ready_pattern='(claude code|Claude Code|╰|/model|for shortcuts)' ;;
-        codex)   ready_pattern='(openai codex|Codex|context left|/model|for shortcuts|Press Ctrl)' ;;
-        gemini)  ready_pattern='(gemini|Gemini|type your message|Tips to get|yolo mode)' ;;
+        codex)   ready_pattern='(openai codex|Codex|context left|/model|for shortcuts|Press Ctrl|Working|esc to interrupt|% left)' ;;
+        gemini)  ready_pattern='(gemini|Gemini|type your message|Tips to get|yolo mode|Working|esc to interrupt|Initializing the Agent)' ;;
         copilot) ready_pattern='(copilot|GitHub Copilot|/model)' ;;
         kimi)    ready_pattern='(kimi|moonshot|/model)' ;;
         localapi) ready_pattern='(localapi|LocalAPI|ready:|\$)' ;;

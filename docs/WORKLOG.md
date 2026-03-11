@@ -2318,3 +2318,19 @@
   - Windows Terminal の `-t` 展開に `gunshi` タブを追加。
 - 追加検証:
   - `bash shutsujin_departure.sh -h | sed -n "1,140p"` → PASS
+- Git:
+  - `git commit -m "codex: shutsujinの案内とヘルプ導線を整理"` → `b252b8a`
+  - `git push -u origin codex/auto` → GitHub 認証未設定で失敗 (`could not read Username for 'https://github.com': No such device or address`)
+
+## 2026-03-11 17:45 JST — tmux 実機テスト導線の安定化
+- `shutsujin_departure.sh` の venv プリフライトを整理し、`.venv` / `requirements.txt` 必須前提を削除。`python3 + PyYAML` が使えれば起動継続とした。
+- `lib/cli_adapter.sh` の `.venv/bin/python3` 直参照 13 箇所を `CLI_ADAPTER_PYTHON` へ統一。system `python3` fallback が全関数で効くようにした。
+- `wait_for_cli_ready_tmux()` の `codex` / `gemini` ready 判定へ `Working` / `esc to interrupt` 系を追加し、起動直後に待ち続ける問題を解消。
+- 検証:
+  - `bash -n shutsujin_departure.sh lib/cli_adapter.sh` PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_topology_adapter.bats` PASS (`1..153`)
+  - `bash shutsujin_departure.sh -s` を tmux 実起動 smoke で確認。`shogun/gunshi/multiagent` セッション生成まで成功。
+  - `bash shutsujin_departure.sh` を tmux 実起動 smoke で確認。CLI ready 判定、初動命令配信、watcher 起動、完了メッセージまで成功。
+- 観測:
+  - この sandbox では `gemini` 未導入のため、`resolve_cli_type_for_agent()` により `codex` fallback となった。実機で `gemini` が PATH 上にあれば fallback は発生しない。
+  - fallback 時の表示名は `codex / Gemini` のように設定値ベースで見える箇所が残る。これは UX 修正候補だが、起動可否には影響しない。

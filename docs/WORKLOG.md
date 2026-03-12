@@ -2503,3 +2503,21 @@
   - `type` は構成の正本であり、runtime 自動同期で変更してはいけない。live 同期はあくまで pane 内でユーザーが調整した `model/reasoning/thinking` の保存に限定する。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 multiagent pane 固定番号参照の修正
+- 背景:
+  - 実機で `deliver_bootstrap_tmux` 実行時に `[WARN] pane 'multiagent:agents.0' not found, skipping bootstrap for karo` が発生した。
+  - 原因は、起動後フェーズ（ready判定 / bootstrap / watcher起動 / watcher_supervisor）が `multiagent:agents.${p}` の固定 pane 番号参照を使っており、実際の tmux pane index とズレたため。
+- 実施:
+  - `shutsujin_departure.sh` に `resolve_multiagent_pane_target()` を追加し、`tmux list-panes -t multiagent:agents -F '#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}'` から `@agent_id` で live pane target を解決するようにした。
+  - 初回プリフライト、CLI ready 判定、初動命令配信、inbox_watcher 起動をすべてこの helper 経由へ切り替えた。
+  - `scripts/watcher_supervisor.sh` も同様に `@agent_id` ベース解決へ変更し、`shogun` は `shogun:main` を直接使うよう整理した。
+  - `pane_exists()` は固定 pane 一覧比較ではなく `tmux display-message -p -t <target> '#{pane_id}'` で確認するように変更した。
+  - `tests/unit/test_mux_parity.bats` に、tmux bootstrap / watcher が `@agent_id` ベース解決を使う静的回帰テストを追加した。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/watcher_supervisor.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_cli_adapter.bats` → PASS (`1..116`)
+- 判断:
+  - tmux pane index は runtime 条件でズレうるため、起動後フェーズでの固定番号参照は不適切。`@agent_id` を正本にして live pane target を解決する方が堅牢。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

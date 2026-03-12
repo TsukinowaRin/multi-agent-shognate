@@ -122,7 +122,13 @@ agent_in_karo_list() {
 
 pane_exists() {
     local pane="$1"
-    tmux list-panes -a -F "#{session_name}:#{window_name}.#{pane_index}" 2>/dev/null | grep -qx "$pane"
+    tmux display-message -p -t "$pane" "#{pane_id}" >/dev/null 2>&1
+}
+
+resolve_multiagent_pane_target() {
+    local agent="$1"
+    tmux list-panes -t "multiagent:agents" -F "#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}" 2>/dev/null \
+        | awk -F '\t' -v target="$agent" '$2 == target { print $1; exit }'
 }
 
 resolve_cli_type() {
@@ -201,18 +207,16 @@ while true; do
     refresh_karo_agents
     cleanup_stale_watchers
 
-    PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
-    start_watcher_if_missing "shogun" "shogun:main.${PANE_BASE}" "logs/inbox_watcher_shogun.log"
-    for i in "${!KARO_AGENTS[@]}"; do
-        karo_agent="${KARO_AGENTS[$i]}"
-        pane=$((PANE_BASE + i))
-        start_watcher_if_missing "$karo_agent" "multiagent:agents.${pane}" "logs/inbox_watcher_${karo_agent}.log"
+    start_watcher_if_missing "shogun" "shogun:main" "logs/inbox_watcher_shogun.log"
+    for karo_agent in "${KARO_AGENTS[@]}"; do
+        pane="$(resolve_multiagent_pane_target "$karo_agent")"
+        [ -n "$pane" ] || continue
+        start_watcher_if_missing "$karo_agent" "$pane" "logs/inbox_watcher_${karo_agent}.log"
     done
-    karo_count=${#KARO_AGENTS[@]}
-    for i in "${!ACTIVE_ASHIGARU[@]}"; do
-        agent="${ACTIVE_ASHIGARU[$i]}"
-        pane=$((PANE_BASE + karo_count + i))
-        start_watcher_if_missing "$agent" "multiagent:agents.${pane}" "logs/inbox_watcher_${agent}.log"
+    for agent in "${ACTIVE_ASHIGARU[@]}"; do
+        pane="$(resolve_multiagent_pane_target "$agent")"
+        [ -n "$pane" ] || continue
+        start_watcher_if_missing "$agent" "$pane" "logs/inbox_watcher_${agent}.log"
     done
     sleep 5
 done

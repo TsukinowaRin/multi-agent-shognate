@@ -309,6 +309,12 @@ deliver_bootstrap_tmux() {
     tmux send-keys -t "$pane_target" Enter
 }
 
+resolve_multiagent_pane_target() {
+    local agent_id="$1"
+    tmux list-panes -t "multiagent:agents" -F "#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}" 2>/dev/null \
+        | awk -F '\t' -v agent="$agent_id" '$2 == agent { print $1; exit }'
+}
+
 ensure_generated_instructions() {
     local ensure_script="$SCRIPT_DIR/scripts/ensure_generated_instructions.sh"
     if [ ! -x "$ensure_script" ]; then
@@ -1212,9 +1218,10 @@ if [ "$SETUP_ONLY" = false ]; then
     _gemini_pids+=($!)
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
-        p=$((PANE_BASE + _idx))
-        _pane_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
-        _cli_gate_handler "multiagent:agents.${p}" "$_agent" "$_pane_cli" &
+        _pane_target="$(resolve_multiagent_pane_target "$_agent")"
+        [ -n "$_pane_target" ] || continue
+        _pane_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
+        _cli_gate_handler "$_pane_target" "$_agent" "$_pane_cli" &
         _gemini_pids+=($!)
     done
     for _pid in "${_gemini_pids[@]}"; do
@@ -1323,8 +1330,9 @@ NINJA_EOF
 
         # 家老 + 足軽
         for _idx in "${!MULTIAGENT_IDS[@]}"; do
-            p=$((PANE_BASE + _idx))
-            _pane_target="multiagent:agents.${p}"
+            _agent="${MULTIAGENT_IDS[$_idx]}"
+            _pane_target="$(resolve_multiagent_pane_target "$_agent")"
+            [ -n "$_pane_target" ] || continue
             _expected_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
             _total_count=$((_total_count + 1))
             if wait_for_cli_ready_tmux "$_pane_target" "$_expected_cli" 0 2>/dev/null; then
@@ -1350,9 +1358,13 @@ NINJA_EOF
     log_info "📜 初動命令をエージェント毎に個別配信中（CLI ready確認つき）"
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
-        p=$((PANE_BASE + _idx))
         _agent_cli_type="${MULTIAGENT_CLI[$_agent]:-claude}"
-        deliver_bootstrap_tmux "multiagent:agents.${p}" "$_agent" "$_agent_cli_type"
+        _pane_target="$(resolve_multiagent_pane_target "$_agent")"
+        if [ -z "$_pane_target" ]; then
+            echo "[WARN] pane target unresolved for $_agent, skipping bootstrap" >&2
+            continue
+        fi
+        deliver_bootstrap_tmux "$_pane_target" "$_agent" "$_agent_cli_type"
     done
     deliver_bootstrap_tmux "gunshi:main" "gunshi" "$_gunshi_cli_type"
     deliver_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
@@ -1394,10 +1406,11 @@ NINJA_EOF
         # 家老 + 足軽 watcher
         for _idx in "${!MULTIAGENT_IDS[@]}"; do
             _agent="${MULTIAGENT_IDS[$_idx]}"
-            p=$((PANE_BASE + _idx))
-            _agent_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
+            _pane_target="$(resolve_multiagent_pane_target "$_agent")"
+            [ -n "$_pane_target" ] || continue
+            _agent_watcher_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
             nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-                MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$_agent" "multiagent:agents.${p}" "$_agent_watcher_cli" "tmux" \
+                MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$_agent" "$_pane_target" "$_agent_watcher_cli" "tmux" \
                 >> "$SCRIPT_DIR/logs/inbox_watcher_${_agent}.log" 2>&1 &
             disown
         done

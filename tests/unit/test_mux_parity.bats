@@ -47,6 +47,12 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux bootstrap と watcher は multiagent pane を agent_id から解決する" {
+    run rg -n "resolve_multiagent_pane_target|list-panes -t \"multiagent:agents\" -F .*@agent_id" \
+        "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "役職判定は複数家老IDに対応" {
     run rg -n "karo\\|karo\\[1-9\\]\\*\\|karo_gashira" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

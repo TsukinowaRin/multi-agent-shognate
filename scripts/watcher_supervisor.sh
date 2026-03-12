@@ -127,8 +127,17 @@ pane_exists() {
 
 resolve_multiagent_pane_target() {
     local agent="$1"
-    tmux list-panes -t "multiagent:agents" -F "#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}" 2>/dev/null \
-        | awk -F '\t' -v target="$agent" '$2 == target { print $1; exit }'
+    local pane
+    local pane_agent
+    while IFS= read -r pane; do
+        [ -n "$pane" ] || continue
+        pane_agent="$(tmux show-options -p -t "$pane" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)"
+        if [ "$pane_agent" = "$agent" ]; then
+            printf '%s\n' "$pane"
+            return 0
+        fi
+    done < <(tmux list-panes -t "multiagent:agents" -F "#{session_name}:#{window_name}.#{pane_index}" 2>/dev/null || true)
+    return 1
 }
 
 resolve_cli_type() {

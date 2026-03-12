@@ -311,8 +311,17 @@ deliver_bootstrap_tmux() {
 
 resolve_multiagent_pane_target() {
     local agent_id="$1"
-    tmux list-panes -t "multiagent:agents" -F "#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}" 2>/dev/null \
-        | awk -F '\t' -v agent="$agent_id" '$2 == agent { print $1; exit }'
+    local pane_target
+    local pane_agent_id
+    while IFS= read -r pane_target; do
+        [ -n "$pane_target" ] || continue
+        pane_agent_id="$(tmux show-options -p -t "$pane_target" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)"
+        if [ "$pane_agent_id" = "$agent_id" ]; then
+            printf '%s\n' "$pane_target"
+            return 0
+        fi
+    done < <(tmux list-panes -t "multiagent:agents" -F "#{session_name}:#{window_name}.#{pane_index}" 2>/dev/null || true)
+    return 1
 }
 
 ensure_generated_instructions() {

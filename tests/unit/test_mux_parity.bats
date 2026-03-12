@@ -48,7 +48,7 @@ setup_file() {
 }
 
 @test "tmux bootstrap と watcher は multiagent pane を agent_id から解決する" {
-    run rg -n "resolve_multiagent_pane_target|list-panes -t \"multiagent:agents\" -F .*@agent_id" \
+    run rg -n "resolve_multiagent_pane_target|list-panes -t \"multiagent:agents\" -F .*pane_index|show-options -p -t .*@agent_id" \
         "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
     [ "$status" -eq 0 ]
 }

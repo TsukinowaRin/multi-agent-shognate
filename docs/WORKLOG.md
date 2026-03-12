@@ -2521,3 +2521,18 @@
   - tmux pane index は runtime 条件でズレうるため、起動後フェーズでの固定番号参照は不適切。`@agent_id` を正本にして live pane target を解決する方が堅牢。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 multiagent pane 解決ロジックの再修正
+- 背景:
+  - `pane target unresolved for karo` が継続し、前回の `list-panes -F '#{...}\t#{@agent_id}'` 方式では pane user option を安定取得できていなかった。
+- 実施:
+  - `shutsujin_departure.sh` と `scripts/watcher_supervisor.sh` の `resolve_multiagent_pane_target()` を再修正した。
+  - まず `tmux list-panes -t multiagent:agents -F '#{session_name}:#{window_name}.#{pane_index}'` で pane target 一覧を取得し、各 pane に対して `tmux show-options -p -t <pane> -v @agent_id` を当てて一致するものを返す方式へ変更した。
+  - `tests/unit/test_mux_parity.bats` の静的回帰もこの実装へ合わせて更新した。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/watcher_supervisor.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS (`1..13`)
+- 判断:
+  - pane user option は format 展開より `show-options -p` の実読を正本にする方が堅牢。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

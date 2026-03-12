@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 VIEW_SESSION="${VIEW_SESSION:-goza-no-ma}"
 VIEW_WIDTH="${VIEW_WIDTH:-220}"
 VIEW_HEIGHT="${VIEW_HEIGHT:-60}"
+GOZA_LAYOUT_FILE="${GOZA_LAYOUT_FILE:-$ROOT_DIR/queue/runtime/goza_layout.tsv}"
 SETUP_ONLY=false
 VIEW_ONLY=true
 ENSURE_BACKEND=false
@@ -121,6 +122,33 @@ mirror_cmd() {
     "$ROOT_DIR" "$ROOT_DIR/scripts/goza_mirror_pane.sh" "$target" "$label"
 }
 
+save_goza_layout() {
+  local session="$1"
+  local window_target="${session}:overview"
+  local pane_count layout
+
+  tmux has-session -t "$session" 2>/dev/null || return 0
+  pane_count="$(tmux list-panes -t "$window_target" 2>/dev/null | wc -l | tr -d '[:space:]')"
+  layout="$(tmux display-message -p -t "$window_target" "#{window_layout}" 2>/dev/null || true)"
+  if [[ -n "$pane_count" && -n "$layout" ]]; then
+    mkdir -p "$(dirname "$GOZA_LAYOUT_FILE")"
+    printf '%s\t%s\n' "$pane_count" "$layout" > "$GOZA_LAYOUT_FILE"
+  fi
+}
+
+restore_goza_layout_if_available() {
+  local session="$1"
+  local window_target="${session}:overview"
+  local current_count saved_count saved_layout
+
+  [[ -f "$GOZA_LAYOUT_FILE" ]] || return 0
+  current_count="$(tmux list-panes -t "$window_target" 2>/dev/null | wc -l | tr -d '[:space:]')"
+  IFS=$'\t' read -r saved_count saved_layout < "$GOZA_LAYOUT_FILE" || return 0
+  [[ -n "$saved_count" && -n "$saved_layout" ]] || return 0
+  [[ "$saved_count" = "$current_count" ]] || return 0
+  tmux select-layout -t "$window_target" "$saved_layout" >/dev/null 2>&1 || true
+}
+
 create_goza_session() {
   local session="$1"
   local karo_target=""
@@ -180,9 +208,11 @@ create_goza_session() {
   tmux select-pane -t "$session":overview.0 -T "shogun" >/dev/null 2>&1 || true
   tmux select-pane -t "$session":overview.1 -T "karo" >/dev/null 2>&1 || true
   tmux select-pane -t "$session":overview.2 -T "gunshi" >/dev/null 2>&1 || true
+  restore_goza_layout_if_available "$session"
 }
 
 if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
+  save_goza_layout "$VIEW_SESSION"
   tmux kill-session -t "$VIEW_SESSION" >/dev/null 2>&1 || true
 fi
 create_goza_session "$VIEW_SESSION"

@@ -42,6 +42,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "御座の間は手動リサイズ後の tmux window_layout を保存して次回復元する" {
+    run rg -n "GOZA_LAYOUT_FILE|save_goza_layout|restore_goza_layout_if_available|window_layout|select-layout -t .*saved_layout" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "agent収集は shutsujin_departure が topology_adapter を利用する" {
     run rg -n "topology_adapter\\.sh|topology_load_active_ashigaru|topology_resolve_karo_agents" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

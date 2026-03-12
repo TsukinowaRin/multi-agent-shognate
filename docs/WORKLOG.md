@@ -2556,3 +2556,22 @@
   - detached な俯瞰ビューは `%` 分割ではなく固定サイズ分割を使う方が堅牢。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 御座の間レイアウトの永続化
+- 背景:
+  - ユーザー要望として、`cgo` で開いた御座の間を手動リサイズした後、その比率を次回以降も再利用したいという要求があった。
+- 実施:
+  - `scripts/goza_no_ma.sh` に `GOZA_LAYOUT_FILE`（既定: `queue/runtime/goza_layout.tsv`）を追加した。
+  - 既存 `goza-no-ma` session を kill する前に `save_goza_layout()` で `#{window_layout}` と pane 数を保存するようにした。
+  - 新規作成後に `restore_goza_layout_if_available()` を実行し、pane 数が一致する場合のみ `tmux select-layout -t <session>:overview "$saved_layout"` で復元するようにした。
+  - `discover_karo_target()` / `discover_ashigaru_targets()` は `show-options -p -t <pane> -v @agent_id` ベースへ統一した。
+  - `tests/unit/test_mux_parity.bats` にレイアウト永続化の静的回帰を追加した。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh scripts/goza_mirror_pane.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS (`1..14`)
+  - `bash scripts/goza_no_ma.sh --view-only --no-attach` → PASS
+  - `tmux select-layout -t goza-no-ma:overview tiled` 後に再度 `bash scripts/goza_no_ma.sh --view-only --no-attach` を実行し、`queue/runtime/goza_layout.tsv` に保存された `window_layout` が書き出されることを確認した。
+- 判断:
+  - 御座の間の再生成時に layout を保存・復元する方式なら、tmux の手動リサイズ結果を安全に次回へ持ち越せる。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

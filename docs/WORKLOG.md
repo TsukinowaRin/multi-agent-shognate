@@ -2485,3 +2485,21 @@
   - 起動表示は live CLI 種別と矛盾しないことが最優先であり、`claude` に他CLI由来の model 値が混入しても `Claude` 表示へ丸める方が安全。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 Gemini指定がclaudeへ化ける不具合の修正
+- 背景:
+  - ユーザー設定では `shogun/gunshi = gemini` のはずなのに、起動時に `claude` と表示されていた。
+  - 調査の結果、`scripts/sync_runtime_cli_preferences.py` が live pane から読んだ `cli_type` を `config/settings.yaml` へ自動反映しており、過去の `claude` pane 状態で `type` まで上書きしていた。
+- 実施:
+  - `scripts/sync_runtime_cli_preferences.py` から `type` の自動上書きを削除し、同期対象を `model / reasoning / thinking` に限定した。
+  - `configured_type` と live pane の `running-cli` が異なる場合は `queue/runtime/runtime_cli_prefs.tsv` の warning 列へ記録するだけに変更した。
+  - `config/settings.yaml` をユーザー意図どおり `shogun = gemini`, `gunshi = gemini`, `karo/ashigaru1-4 = codex` へ戻した。
+  - `tests/unit/test_sync_runtime_cli_preferences.bats` に、live pane が `claude` でも `settings.yaml` の `type=gemini` を維持する回帰テストを追加した。
+- 検証:
+  - `python3 -m py_compile scripts/sync_runtime_cli_preferences.py` → PASS
+  - `bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_cli_adapter.bats` → PASS (`1..106`)
+  - `source lib/cli_adapter.sh; get_cli_type shogun; get_cli_type gunshi` → `gemini`, `gemini`
+- 判断:
+  - `type` は構成の正本であり、runtime 自動同期で変更してはいけない。live 同期はあくまで pane 内でユーザーが調整した `model/reasoning/thinking` の保存に限定する。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

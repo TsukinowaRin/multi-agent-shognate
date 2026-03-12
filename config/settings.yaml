@@ -4,24 +4,36 @@ multiplexer:
   default: tmux
 topology:
   active_ashigaru:
-    - ashigaru1
-    - ashigaru2
-    - ashigaru3
-    - ashigaru4
+  - ashigaru1
+  - ashigaru2
+  - ashigaru3
+  - ashigaru4
 cli:
   default: gemini
   agents:
     shogun:
       type: gemini
+      model: auto
     gunshi:
       type: gemini
+      model: auto
     karo:
       type: codex
+      model: gpt-5.4
+      reasoning_effort: high
     ashigaru1:
       type: codex
+      model: gpt-5.4
+      reasoning_effort: high
     ashigaru2:
       type: codex
+      model: gpt-5.4
+      reasoning_effort: high
     ashigaru3:
-      type: gemini
+      type: codex
+      model: gpt-5.4
+      reasoning_effort: high
     ashigaru4:
-      type: gemini
+      type: codex
+      model: gpt-5.4
+      reasoning_effort: high

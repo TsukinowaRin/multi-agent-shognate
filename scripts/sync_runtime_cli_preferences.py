@@ -214,15 +214,15 @@ def main() -> int:
     for target, agent_id, cli_type in targets:
         text = capture_joined(target)
         agent_cfg = ensure_agent_cfg(cfg, agent_id)
-        if cli_type and agent_cfg.get("type") != cli_type:
-            agent_cfg["type"] = cli_type
-            changed_any = True
 
         model = ""
         effort = ""
         level = ""
         budget = ""
         warning = ""
+        configured_type = str(agent_cfg.get("type", "") or "").strip().lower()
+        if configured_type and cli_type and configured_type != cli_type:
+            warning = f"configured-type={configured_type}, running-cli={cli_type}"
 
         if cli_type == "codex":
             state = parse_codex_state(text)
@@ -232,14 +232,16 @@ def main() -> int:
             effort = state.get("reasoning_effort", "")
         elif cli_type == "gemini":
             state = parse_gemini_state(text)
-            changed, warning = apply_gemini(agent_cfg, state, alias_map)
+            changed, gemini_warning = apply_gemini(agent_cfg, state, alias_map)
             if changed:
                 changed_any = True
             model = state.get("model", "")
             level = str(agent_cfg.get("thinking_level", "") or "")
             budget = str(agent_cfg.get("thinking_budget", "") or "")
+            if gemini_warning:
+                warning = f"{warning}; {gemini_warning}".strip("; ")
         else:
-            warning = "unsupported-cli-runtime-sync"
+            warning = f"{warning}; unsupported-cli-runtime-sync".strip("; ")
 
         rows.append("\t".join([agent_id, cli_type, model, effort, level, budget, warning]))
 

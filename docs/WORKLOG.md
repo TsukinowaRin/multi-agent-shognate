@@ -2446,3 +2446,27 @@
   - 常時監視対象は現時点で `Codex` / `Gemini` に限定する。他 CLI は live state の安定抽出方式が固まってから拡張する。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 御座の間の役職優先レイアウト化
+- 背景:
+  - ユーザー要求として、御座の間の pane 優先度を `shogun > karo > gunshi > ashigaru` にし、将軍を最大、家老を次点、軍師を三番目、足軽をそれ以下の compact pane にする必要があった。
+  - 既存実装は `shogun / gunshi / multiagent` の nested attach 3枚で、家老を独立して二番目に大きく扱えなかった。
+- 実施:
+  - `scripts/bootstrap_goza_view.sh` を削除し、`scripts/goza_mirror_pane.sh` を新規追加した。
+  - `scripts/goza_no_ma.sh` を role 別 live mirror 方式へ変更した。
+    - `shogun:main` を最大 pane
+    - `multiagent` 内の `karo*` pane を二番目
+    - `gunshi:main` を三番目
+    - `ashigaru*` を右側の compact grid
+  - `goza_no_ma.sh` は `discover_karo_target` / `discover_ashigaru_targets` で live target を見つけ、view session は毎回再生成する方式にした。
+  - `README.md` / `README_ja.md` / `docs/REQS.md` / `docs/EXECPLAN_2026-03-11_tmux_goza_return.md` を、御座の間が read-only live mirror である前提に更新した。
+  - `tests/unit/test_mux_parity.bats` に `将軍 > 家老 > 軍師 > 足軽` の mirror 構成を回帰追加した。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh scripts/goza_mirror_pane.sh` → PASS
+  - `bash scripts/goza_no_ma.sh --help` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS (`1..12`)
+- 判断:
+  - 御座の間は interactive attach を重ねるより、backend pane の live mirror にした方が役職ごとのサイズ制御がしやすい。
+  - `multiagent` session 全体を1枚で見せる方式では家老を二番目に大きくできないため、`karo` pane の独立 mirror が必要だった。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

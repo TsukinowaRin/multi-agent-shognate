@@ -32,11 +32,13 @@
 - 2026-03-11: detached session で `size missing` が出る問題に対し、`bootstrap_goza_view.sh` を追加して `client-attached` hook で pane を本物の session attach へ差し替える構造に変更。
 - 2026-03-11: `tests/unit/test_mux_parity.bats` を更新し、`zellij` 不在・`御座の間` 存在・`csg/cgo` 案内を回帰確認。
 - 2026-03-11: `cgo` と通常の `goza_no_ma.sh` は既存 `shogun / gunshi / multiagent` session を再利用し、backend 起動は `--ensure-backend` または `-s` 指定時だけ行うよう修正。
+- 2026-03-12: `御座の間` を nested attach 3枚から役職別 live mirror 方式へ変更し、`shogun > karo > gunshi > ashigaru` の優先度レイアウトへ再編成。
 
 ## Surprises & Discoveries
 - 旧 `goza_no_ma.sh` は `zellij` 互換オプション込みの巨大 frontend だったため、そのまま戻す価値は薄い。
 - detached 状態の `tmux split-window -p` は `size missing` を起こすため、`-l` の固定サイズ指定へ切り替える必要があった。
 - detached 状態で nested `tmux attach-session` を即実行すると不安定なため、`client-attached` hook で後から respawn する方が安全だった。
+- `karo` を二番目に大きく見せるには、`multiagent` session 全体の attach ではなく `karo` pane を独立 mirror 化する必要がある。
 
 ## Decision Log
 - `御座の間` は `tmux` 専用で最小再実装する。
@@ -44,10 +46,12 @@
 - 俯瞰ビュー attach 短縮として `cgo` も追加する。
 - `cgo` の既定挙動は通常の `goza_no_ma.sh` と同じく「既存 backend 再利用」とする。
 - backend 起動は暗黙では行わず、必要なら `--ensure-backend` または `-s` を明示する。
+- `御座の間` は interactive attach ではなく、backend pane の live mirror を read-only で並べる。
+- pane 優先度は `shogun > karo > gunshi > ashigaru` とする。
 
 ## Outcomes & Retrospective
 - `tmux` 本線を崩さず、`御座の間` を俯瞰ビューとして最小再実装できた。
 - `csg` により `gunshi` への attach 導線が `css/csm` と揃った。
 - `cgo` により人間が全陣を一望する入口を `first_setup` の alias と README に統一できた。
 - `cgo` / `goza_no_ma.sh` 実行時に backend を毎回再起動しない構造にできたため、通常運用時の無駄な再起動を避けられる。
-- detached smoke と hook 本体の動作確認までは完了。通常の人間 attach 時の俯瞰体験を以後の実機確認対象とする。
+- role 別 mirror 方式に変えたことで、将軍・家老・軍師・足軽のサイズ優先度を個別に制御できるようになった。

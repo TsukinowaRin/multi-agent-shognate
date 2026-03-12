@@ -23,7 +23,7 @@ setup_file() {
 }
 
 @test "御座の間スクリプトが現役で存在する" {
-    run rg -n "goza_no_ma\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "goza_no_ma\\.sh|goza_mirror_pane\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_mirror_pane.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -34,6 +34,11 @@ setup_file() {
 
 @test "御座の間導線は既存backend再利用を優先する" {
     run rg -n "VIEW_ONLY=true|--ensure-backend|goza_no_ma\\.sh|既存 session だけで御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/README_ja.md"
+    [ "$status" -eq 0 ]
+}
+
+@test "御座の間は将軍 > 家老 > 軍師 > 足軽の順で独立mirror paneを作る" {
+    run rg -n "mirror_cmd .*shogun:main|mirror_cmd .*gunshi:main|discover_karo_target|discover_ashigaru_targets|split-window -h -p 54|split-window -v -p 36|split-window -h -p 44" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 

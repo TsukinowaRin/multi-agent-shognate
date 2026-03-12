@@ -5,6 +5,7 @@
 現役運用は `tmux` のみです。  
 起動入口の本体は `shutsujin_departure.sh` です。  
 俯瞰ビューとして `scripts/goza_no_ma.sh` による `御座の間` を使えます。  
+`御座の間` は `shogun / karo / gunshi / ashigaru` の live mirror を並べる read-only 俯瞰です。  
 `zellij` は廃止済みで、履歴が必要なら `Waste/` を参照します。
 
 ## このフォーク独自の差分
@@ -137,7 +138,7 @@ cli:
 - `shutsujin_departure.sh`
   - 本体。tmux セッション生成、CLI 起動、watcher 起動を行います。
 - `scripts/goza_no_ma.sh`
-  - `shogun / gunshi / multiagent` を一望する `tmux` 俯瞰ビューです。
+  - `shogun / karo / gunshi / ashigaru` を優先度付きで一望する `tmux` 俯瞰ビューです。
 - `scripts/configure_agents.sh`
   - `config/settings.yaml` を対話更新します。
 - `scripts/build_instructions.sh`

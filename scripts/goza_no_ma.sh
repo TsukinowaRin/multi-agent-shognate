@@ -23,6 +23,26 @@ backend_sessions_ready() {
   return 0
 }
 
+discover_karo_target() {
+  local line target agent_id
+  while IFS=$'\t' read -r target agent_id; do
+    if [[ "$agent_id" =~ ^karo([0-9]+)?$ || "$agent_id" == "karo_gashira" ]]; then
+      printf '%s\n' "$target"
+      return 0
+    fi
+  done < <(tmux list-panes -t multiagent:agents -F '#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}' 2>/dev/null || true)
+  return 1
+}
+
+discover_ashigaru_targets() {
+  local line target agent_id
+  while IFS=$'\t' read -r target agent_id; do
+    if [[ "$agent_id" =~ ^ashigaru[0-9]+$ ]]; then
+      printf '%s\t%s\n' "$target" "$agent_id"
+    fi
+  done < <(tmux list-panes -t multiagent:agents -F '#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}' 2>/dev/null || true)
+}
+
 usage() {
   cat <<'USAGE'
 Usage:
@@ -90,52 +110,63 @@ for session in shogun gunshi multiagent; do
   fi
 done
 
-tmux_attach_session_cmd() {
-  local session="$1"
-  printf 'cd %q && while ! stty size >/dev/null 2>&1; do sleep 0.1; done && TMUX= tmux attach-session -t %q || (echo %q; exec bash)' \
-    "$ROOT_DIR" "$session" "[WARN] attach失敗: $session"
-}
-
-placeholder_cmd() {
-  printf 'cd %q && printf %q && exec bash' \
-    "$ROOT_DIR" "[INFO] attach後に御座の間を初期化します\n"
+mirror_cmd() {
+  local target="$1"
+  local label="$2"
+  printf 'cd %q && bash %q %q %q' \
+    "$ROOT_DIR" "$ROOT_DIR/scripts/goza_mirror_pane.sh" "$target" "$label"
 }
 
 create_goza_session() {
   local session="$1"
-  local placeholder bootstrap_cmd right_cols lower_rows
-  placeholder="$(placeholder_cmd)"
-  bootstrap_cmd="$(printf 'bash %q %q %q' "$ROOT_DIR/scripts/bootstrap_goza_view.sh" "$session" "$ROOT_DIR")"
-  right_cols=$(( VIEW_WIDTH * 36 / 100 ))
-  if [[ "$right_cols" -lt 40 ]]; then
-    right_cols=40
-  fi
-  lower_rows=$(( VIEW_HEIGHT * 58 / 100 ))
-  if [[ "$lower_rows" -lt 12 ]]; then
-    lower_rows=12
+  local karo_target=""
+  local ashigaru_targets=()
+  local ashigaru_ids=()
+  local line target agent_id
+
+  karo_target="$(discover_karo_target || true)"
+  while IFS=$'\t' read -r target agent_id; do
+    [[ -n "$target" && -n "$agent_id" ]] || continue
+    ashigaru_targets+=("$target")
+    ashigaru_ids+=("$agent_id")
+  done < <(discover_ashigaru_targets)
+
+  tmux new-session -d -x "$VIEW_WIDTH" -y "$VIEW_HEIGHT" -s "$session" -n overview "$(mirror_cmd "shogun:main" "shogun")"
+  tmux split-window -h -p 54 -t "$session":overview "$(mirror_cmd "${karo_target:-multiagent:agents.0}" "karo")"
+  tmux split-window -v -p 36 -t "$session":overview.1 "$(mirror_cmd "gunshi:main" "gunshi")"
+
+  if (( ${#ashigaru_targets[@]} > 0 )); then
+    tmux split-window -h -p 44 -t "$session":overview.2 "$(mirror_cmd "${ashigaru_targets[0]}" "${ashigaru_ids[0]}")"
+    tmux select-pane -t "$session":overview.3 -T "${ashigaru_ids[0]}" >/dev/null 2>&1 || true
+
+    if (( ${#ashigaru_targets[@]} > 1 )); then
+      tmux split-window -v -p 50 -t "$session":overview.3 "$(mirror_cmd "${ashigaru_targets[1]}" "${ashigaru_ids[1]}")"
+      tmux select-pane -t "$session":overview.4 -T "${ashigaru_ids[1]}" >/dev/null 2>&1 || true
+    fi
+
+    if (( ${#ashigaru_targets[@]} > 2 )); then
+      tmux split-window -h -p 50 -t "$session":overview.3 "$(mirror_cmd "${ashigaru_targets[2]}" "${ashigaru_ids[2]}")"
+      tmux select-pane -t "$session":overview.5 -T "${ashigaru_ids[2]}" >/dev/null 2>&1 || true
+    fi
+
+    if (( ${#ashigaru_targets[@]} > 3 )); then
+      tmux split-window -h -p 50 -t "$session":overview.4 "$(mirror_cmd "${ashigaru_targets[3]}" "${ashigaru_ids[3]}")"
+      tmux select-pane -t "$session":overview.6 -T "${ashigaru_ids[3]}" >/dev/null 2>&1 || true
+    fi
   fi
 
-  tmux new-session -d -x "$VIEW_WIDTH" -y "$VIEW_HEIGHT" -s "$session" -n overview "$placeholder"
-  tmux split-window -h -l "$right_cols" -t "$session":overview "$placeholder"
-  tmux split-window -v -l "$lower_rows" -t "$session":overview.1 "$placeholder"
-  tmux select-layout -t "$session":overview main-vertical >/dev/null 2>&1 || true
-  tmux set-window-option -t "$session":overview main-pane-width 64% >/dev/null 2>&1 || true
-  tmux select-pane -t "$session":overview.0 -T "shogun" >/dev/null 2>&1 || true
-  tmux select-pane -t "$session":overview.1 -T "gunshi" >/dev/null 2>&1 || true
-  tmux select-pane -t "$session":overview.2 -T "multiagent" >/dev/null 2>&1 || true
   tmux set-window-option -t "$session":overview synchronize-panes off >/dev/null 2>&1 || true
   tmux set-option -t "$session":overview mouse on >/dev/null 2>&1 || true
-  tmux set-option -t "$session" @goza_bootstrapped 0 >/dev/null 2>&1 || true
-  tmux set-hook -t "$session" client-attached "run-shell '$bootstrap_cmd'" >/dev/null 2>&1 || true
   tmux select-pane -t "$session":overview.0 >/dev/null 2>&1 || true
+  tmux select-pane -t "$session":overview.0 -T "shogun" >/dev/null 2>&1 || true
+  tmux select-pane -t "$session":overview.1 -T "karo" >/dev/null 2>&1 || true
+  tmux select-pane -t "$session":overview.2 -T "gunshi" >/dev/null 2>&1 || true
 }
 
-if ! tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
-  create_goza_session "$VIEW_SESSION"
-else
-  tmux select-window -t "$VIEW_SESSION":overview >/dev/null 2>&1 || true
-  tmux select-pane -t "$VIEW_SESSION":overview.0 >/dev/null 2>&1 || true
+if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
+  tmux kill-session -t "$VIEW_SESSION" >/dev/null 2>&1 || true
 fi
+create_goza_session "$VIEW_SESSION"
 
 if [[ "$NO_ATTACH" = true ]]; then
   echo "[INFO] 御座の間 session ready: $VIEW_SESSION"

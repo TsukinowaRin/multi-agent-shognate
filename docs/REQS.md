@@ -26,6 +26,7 @@
 4. `cgo` と通常の `goza_no_ma.sh` は、既存の `shogun / gunshi / multiagent` session を再利用し、不要な再起動をしないこと。
 5. backend 起動は `--ensure-backend` または `-s` 指定時だけ行い、通常の `goza_no_ma.sh` では自動起動しないこと。
 6. `first_setup.sh` / `README` / `shutsujin_departure.sh` の導線は `csg` と `御座の間` を含むこと。
+7. `御座の間` の pane 優先度は `shogun > karo > gunshi > ashigaru` とし、将軍が最大、家老が次点、軍師が三番目、足軽はそれ以下の compact pane とすること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/goza_no_ma.sh --no-attach`
@@ -36,6 +37,8 @@
    - 期待結果: ユーザー向け導線に `軍師 attach` と `既存 backend 再利用` 前提の `御座の間` が含まれる。
 4. コマンド: `bash -n scripts/goza_no_ma.sh first_setup.sh shutsujin_departure.sh`
    - 期待結果: `tmux` 専用 `御座の間` 導線に構文エラーがない。
+5. コマンド: `rg -n "discover_karo_target|discover_ashigaru_targets|goza_mirror_pane\\.sh|split-window -h -p 54|split-window -v -p 36|split-window -h -p 44" scripts/goza_no_ma.sh`
+   - 期待結果: `御座の間` が `shogun > karo > gunshi > ashigaru` の優先度で独立 mirror pane を構成している。
 
 ## 追補（2026-03-11: tmux 実機テスト導線の安定化）
 ### 要求

@@ -315,6 +315,38 @@ GOZA_LAYOUT_FILE="${GOZA_LAYOUT_FILE:-$SCRIPT_DIR/queue/runtime/goza_layout.tsv}
 GOZA_VIEW_WIDTH="${GOZA_VIEW_WIDTH:-220}"
 GOZA_VIEW_HEIGHT="${GOZA_VIEW_HEIGHT:-60}"
 
+declare -a ASHIGARU_PANES=()
+
+build_ashigaru_grid() {
+    local pane_target="$1"
+    local start_index="$2"
+    local pane_count="$3"
+    local depth="${4:-0}"
+    local split_pane="" first_count=0 second_count=0
+
+    if [ "$pane_count" -le 1 ]; then
+        ASHIGARU_PANES["$start_index"]="$pane_target"
+        return 0
+    fi
+
+    first_count=$(( (pane_count + 1) / 2 ))
+    second_count=$(( pane_count - first_count ))
+
+    if [ "$second_count" -le 0 ]; then
+        ASHIGARU_PANES["$start_index"]="$pane_target"
+        return 0
+    fi
+
+    if [ $(( depth % 2 )) -eq 0 ]; then
+        split_pane="$(tmux split-window -v -t "$pane_target" -P -F '#{pane_id}')"
+    else
+        split_pane="$(tmux split-window -h -t "$pane_target" -P -F '#{pane_id}')"
+    fi
+
+    build_ashigaru_grid "$pane_target" "$start_index" "$first_count" $((depth + 1))
+    build_ashigaru_grid "$split_pane" $((start_index + first_count)) "$second_count" $((depth + 1))
+}
+
 start_goza_layout_autosave() {
     local session="$1"
     local autosave_script="$SCRIPT_DIR/scripts/goza_layout_autosave.sh"
@@ -1115,35 +1147,9 @@ if [ "${#KARO_AGENTS[@]}" -gt 0 ]; then
     AGENT_PANES["${KARO_AGENTS[0]}"]="$KARO_PANE"
 fi
 
-ASHIGARU_PANES=("$ASH_ROOT_PANE")
-if [ "$ACTIVE_ASHIGARU_COUNT" -ge 2 ]; then
-    ASH_RIGHT_TOP_PANE="$(tmux split-window -h -t "$ASH_ROOT_PANE" -P -F '#{pane_id}')"
-    ASHIGARU_PANES+=("$ASH_RIGHT_TOP_PANE")
-fi
-if [ "$ACTIVE_ASHIGARU_COUNT" -ge 3 ]; then
-    ASH_LEFT_BOTTOM_PANE="$(tmux split-window -v -t "$ASH_ROOT_PANE" -P -F '#{pane_id}')"
-    ASHIGARU_PANES[0]="$ASH_ROOT_PANE"
-    ASHIGARU_PANES+=("$ASH_LEFT_BOTTOM_PANE")
-fi
-if [ "$ACTIVE_ASHIGARU_COUNT" -ge 4 ]; then
-    ASH_RIGHT_BOTTOM_PANE="$(tmux split-window -v -t "$ASH_RIGHT_TOP_PANE" -P -F '#{pane_id}')"
-    ASHIGARU_PANES[1]="$ASH_RIGHT_TOP_PANE"
-    ASHIGARU_PANES+=("$ASH_RIGHT_BOTTOM_PANE")
-fi
-
-if [ "$ACTIVE_ASHIGARU_COUNT" -gt 4 ]; then
-    tmux new-window -t "$GOZA_SESSION_NAME" -n retainers
-    EXTRA_WINDOW="${GOZA_SESSION_NAME}:retainers"
-    EXTRA_ROOT="$(tmux display-message -p -t "$EXTRA_WINDOW" "#{pane_id}")"
-    EXTRA_ASHIGARU=("${ACTIVE_ASHIGARU[@]:4}")
-    EXTRA_PANES=("$EXTRA_ROOT")
-    for (( _i=1; _i<${#EXTRA_ASHIGARU[@]}; _i++ )); do
-        EXTRA_PANES+=("$(tmux split-window -v -t "$EXTRA_WINDOW" -P -F '#{pane_id}')")
-        tmux select-layout -t "$EXTRA_WINDOW" tiled >/dev/null 2>&1 || true
-    done
-    for _i in "${!EXTRA_ASHIGARU[@]}"; do
-        AGENT_PANES["${EXTRA_ASHIGARU[$_i]}"]="${EXTRA_PANES[$_i]}"
-    done
+ASHIGARU_PANES=()
+if [ "$ACTIVE_ASHIGARU_COUNT" -gt 0 ]; then
+    build_ashigaru_grid "$ASH_ROOT_PANE" 0 "$ACTIVE_ASHIGARU_COUNT" 0
 fi
 
 for _idx in "${!ACTIVE_ASHIGARU[@]}"; do
@@ -1582,9 +1588,6 @@ echo "     │  Pane: gunshi   ← 戦略・分析・助言                     
 for _agent in "${ACTIVE_ASHIGARU[@]}"; do
     echo "     │  Pane: ${_agent}  ← 足軽                                 │"
 done
-if [ "$ACTIVE_ASHIGARU_COUNT" -gt 4 ]; then
-    echo "     │  Window: retainers  ← 追加の足軽                         │"
-fi
 echo "     └────────────────────────────────────────────────────────────┘"
 echo ""
 

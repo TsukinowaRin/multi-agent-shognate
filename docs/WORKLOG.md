@@ -2685,3 +2685,15 @@
 - 検証:
   - `rg -n "goza_dispatch|goza_focus_target|goza_mirror_pane|bootstrap_goza_view" README.md README_ja.md docs scripts tests .gitignore` で現役参照が `.gitignore` と `Waste/` 以外に残っていないことを確認。
   - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` を再実行して tmux 御座の間導線が回帰していないことを確認予定。
+- `git push -u origin codex/auto` は今回も認証未設定で失敗: `fatal: could not read Username for 'https://github.com': No such device or address`
+## 2026-03-12 21:55 JST — 御座の間を単一 window に統一
+- ユーザー報告: `cgo` 時に全エージェントが 1 つの view に入っておらず、足軽5人目以降が別 window へ逃げていた。
+- 原因: `shutsujin_departure.sh` の STEP 5 が `ACTIVE_ASHIGARU_COUNT > 4` の時に `retainers` window を追加生成していた。
+- 実施:
+  - `build_ashigaru_grid()` を追加し、右下の足軽領域を再帰分割して `ashigaruN` を 1 window 内へ収めるよう変更。
+  - `retainers` window 生成を削除。
+  - `README.md` / `README_ja.md` / `docs/REQS.md` / `tests/unit/test_mux_parity.bats` を 1 window 前提へ更新。
+- 検証:
+  - `bash -n shutsujin_departure.sh` PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_topology_adapter.bats` PASS
+  - 実機相当 smoke: `bash shutsujin_departure.sh -s` を sandbox 外で実行し、`tmux list-windows -t goza-no-ma` が `0:overview` のみ、`tmux list-panes -t goza-no-ma:overview` が `shogun/karo/gunshi/ashigaru1..8` を返すことを確認。

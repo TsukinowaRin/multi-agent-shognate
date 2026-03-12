@@ -38,8 +38,14 @@ setup_file() {
 }
 
 @test "出陣本体は御座の間 session に実 pane を構築する" {
-    run rg -n "GOZA_SESSION_NAME|GOZA_WINDOW_NAME|new-session -d -x .* -s .*goza-no-ma|split-window -h -l|split-window -v -l|AGENT_PANES|restore_goza_layout_if_available|start_goza_layout_autosave" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "GOZA_SESSION_NAME|GOZA_WINDOW_NAME|new-session -d -x .* -s .*goza-no-ma|split-window -h -l|split-window -v -l|AGENT_PANES|build_ashigaru_grid|restore_goza_layout_if_available|start_goza_layout_autosave" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
+}
+
+@test "御座の間は追加の足軽も同一 overview window に収める" {
+    run rg -n "build_ashigaru_grid|ACTIVE_ASHIGARU_COUNT|retainers" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"new-window -t \"\$GOZA_SESSION_NAME\" -n retainers"* ]]
 }
 
 @test "focus helper で御座の間内の agent pane へ移動できる" {

@@ -7,6 +7,7 @@
 ### 要求
 1. `御座の間` は read-only mirror ではなく、`tmux` の実 pane を持つ本体 session であること。
 2. `shutsujin_departure.sh` は `goza-no-ma` を正本 session として構築し、`shogun` を最大、`karo` を二番手、`gunshi` を三番手、`ashigaru` を残り領域の compact pane として配置すること。
+2.1. 追加の足軽がいても別 window (`retainers` 等) へ逃がさず、`goza-no-ma:overview` の 1 window に全エージェントを収めること。
 3. `cgo` は `goza-no-ma` を開く wrapper とし、既存の御座の間がある場合はそれを再利用すること。
 4. `css` / `csg` / `csm` は `goza-no-ma` 内の該当 pane にフォーカス移動すること。
 5. 御座の間では選択した pane に直接入力して、そのまま実エージェントへ命令できること。
@@ -23,6 +24,8 @@
    - 期待結果: `goza-no-ma` の実 pane へ CLI が起動し、bootstrap / watcher / runtime sync が `@agent_id` ベースで動作する。
 5. コマンド: `tmux list-panes -s -t goza-no-ma -F '#{pane_id}\t#{@agent_id}\t#{@agent_cli}\t#{pane_title}'`
    - 期待結果: `shogun` / `karo` / `gunshi` / `ashigaruN` の pane が `goza-no-ma` に存在し、role ごとの `@agent_id` / `@agent_cli` が付与されている。
+6. コマンド: `tmux list-windows -t goza-no-ma -F '#{window_name}'`
+   - 期待結果: `overview` のみが存在し、`retainers` 等の追加 window は存在しない。
 6. コマンド: `bash scripts/focus_agent_pane.sh shogun`
    - 期待結果: `goza-no-ma` の `shogun` pane へフォーカス移動できる。
 

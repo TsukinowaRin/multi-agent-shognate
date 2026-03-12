@@ -6,6 +6,7 @@
 起動入口の本体は `shutsujin_departure.sh` です。  
 俯瞰ビューとして `scripts/goza_no_ma.sh` による `御座の間` を使えます。  
 現在は `御座の間` 自体が本体 session です。  
+全エージェントは `goza-no-ma:overview` の 1 window に収まり、別 window へ逃がしません。  
 `shogun` が最大、`karo` が二番手、`gunshi` が三番手、`ashigaru` が残り領域へ compact に配置されます。  
 `cgo` で開いた pane は実エージェントなので、選択した pane にそのまま直接入力できます。
 `zellij` は廃止済みで、履歴が必要なら `Waste/` を参照します。

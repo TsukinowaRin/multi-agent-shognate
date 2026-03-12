@@ -309,7 +309,71 @@ deliver_bootstrap_tmux() {
     tmux send-keys -t "$pane_target" Enter
 }
 
+GOZA_SESSION_NAME="${GOZA_SESSION_NAME:-goza-no-ma}"
+GOZA_WINDOW_NAME="${GOZA_WINDOW_NAME:-overview}"
+GOZA_LAYOUT_FILE="${GOZA_LAYOUT_FILE:-$SCRIPT_DIR/queue/runtime/goza_layout.tsv}"
+GOZA_VIEW_WIDTH="${GOZA_VIEW_WIDTH:-220}"
+GOZA_VIEW_HEIGHT="${GOZA_VIEW_HEIGHT:-60}"
+
+start_goza_layout_autosave() {
+    local session="$1"
+    local autosave_script="$SCRIPT_DIR/scripts/goza_layout_autosave.sh"
+    [ -x "$autosave_script" ] || return 0
+    mkdir -p "$SCRIPT_DIR/logs"
+    pkill -f "scripts/goza_layout_autosave.sh ${session} " >/dev/null 2>&1 || true
+    nohup bash "$autosave_script" "$session" "$GOZA_LAYOUT_FILE" \
+        >> "$SCRIPT_DIR/logs/goza_layout_autosave.log" 2>&1 &
+    disown
+}
+
+save_goza_layout() {
+    local session="$1"
+    local window_target="${session}:${GOZA_WINDOW_NAME}"
+    local pane_count layout
+
+    tmux has-session -t "$session" 2>/dev/null || return 0
+    pane_count="$(tmux list-panes -t "$window_target" 2>/dev/null | wc -l | tr -d '[:space:]')"
+    layout="$(tmux display-message -p -t "$window_target" "#{window_layout}" 2>/dev/null || true)"
+    if [[ -n "$pane_count" && -n "$layout" ]]; then
+        mkdir -p "$(dirname "$GOZA_LAYOUT_FILE")"
+        printf '%s\t%s\n' "$pane_count" "$layout" > "$GOZA_LAYOUT_FILE"
+    fi
+}
+
+restore_goza_layout_if_available() {
+    local session="$1"
+    local window_target="${session}:${GOZA_WINDOW_NAME}"
+    local current_count saved_count saved_layout
+
+    [[ -f "$GOZA_LAYOUT_FILE" ]] || return 0
+    current_count="$(tmux list-panes -t "$window_target" 2>/dev/null | wc -l | tr -d '[:space:]')"
+    IFS=$'\t' read -r saved_count saved_layout < "$GOZA_LAYOUT_FILE" || return 0
+    [[ -n "$saved_count" && -n "$saved_layout" ]] || return 0
+    [[ "$saved_count" = "$current_count" ]] || return 0
+    tmux select-layout -t "$window_target" "$saved_layout" >/dev/null 2>&1 || true
+}
+
 resolve_multiagent_pane_target() {
+    resolve_agent_pane_target "$1"
+}
+
+list_backend_pane_targets() {
+    if tmux has-session -t "$GOZA_SESSION_NAME" 2>/dev/null; then
+        tmux list-panes -s -t "$GOZA_SESSION_NAME" -F "#{pane_id}" 2>/dev/null || true
+        return 0
+    fi
+    if tmux has-session -t "shogun" 2>/dev/null; then
+        tmux list-panes -t "shogun:main" -F "#{pane_id}" 2>/dev/null || true
+    fi
+    if tmux has-session -t "gunshi" 2>/dev/null; then
+        tmux list-panes -t "gunshi:main" -F "#{pane_id}" 2>/dev/null || true
+    fi
+    if tmux has-session -t "multiagent" 2>/dev/null; then
+        tmux list-panes -t "multiagent:agents" -F "#{pane_id}" 2>/dev/null || true
+    fi
+}
+
+resolve_agent_pane_target() {
     local agent_id="$1"
     local pane_target
     local pane_agent_id
@@ -320,7 +384,7 @@ resolve_multiagent_pane_target() {
             printf '%s\n' "$pane_target"
             return 0
         fi
-    done < <(tmux list-panes -t "multiagent:agents" -F "#{session_name}:#{window_name}.#{pane_index}" 2>/dev/null || true)
+    done < <(list_backend_pane_targets)
     return 1
 }
 
@@ -541,9 +605,9 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "エイリアス:"
             echo "  csst  → cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh"
-            echo "  css   → tmux attach-session -t shogun"
-            echo "  csg   → tmux attach-session -t gunshi"
-            echo "  csm   → tmux attach-session -t multiagent"
+            echo "  css   → bash scripts/focus_agent_pane.sh shogun"
+            echo "  csg   → bash scripts/focus_agent_pane.sh gunshi"
+            echo "  csm   → bash scripts/focus_agent_pane.sh karo"
             echo "  cgo   → bash scripts/goza_no_ma.sh"
             echo ""
             exit 0
@@ -762,7 +826,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════
 log_info "🧹 既存の陣を撤収中..."
 if [ -f "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" ]; then
-    if tmux has-session -t shogun 2>/dev/null || tmux has-session -t gunshi 2>/dev/null || tmux has-session -t multiagent 2>/dev/null; then
+    if tmux has-session -t "$GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t shogun 2>/dev/null || tmux has-session -t gunshi 2>/dev/null || tmux has-session -t multiagent 2>/dev/null; then
         log_info "💾 前回CLI設定を同期中..."
         if python3 "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" >/tmp/mas_runtime_cli_sync.log 2>&1; then
             tail -n 1 /tmp/mas_runtime_cli_sync.log 2>/dev/null || true
@@ -771,8 +835,12 @@ if [ -f "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" ]; then
         fi
     fi
 fi
+save_goza_layout "$GOZA_SESSION_NAME"
+pkill -f "scripts/goza_layout_autosave.sh ${GOZA_SESSION_NAME} " >/dev/null 2>&1 || true
+tmux kill-session -t "$GOZA_SESSION_NAME" 2>/dev/null && log_info "  └─ 御座の間、撤収完了" || log_info "  └─ 御座の間は存在せず"
 tmux kill-session -t multiagent 2>/dev/null && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
 tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
+tmux kill-session -t gunshi 2>/dev/null && log_info "  └─ gunshi陣、撤収完了" || log_info "  └─ gunshi陣は存在せず"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 1.5: 前回記録のバックアップ（--clean時のみ、内容がある場合）
@@ -979,119 +1047,141 @@ if ! command -v tmux &> /dev/null; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STEP 5: shogun セッション作成（1ペイン・window 0 を必ず確保）
+# STEP 5: 御座の間セッション構築（tmux 本体）
 # ═══════════════════════════════════════════════════════════════════════════════
-log_war "👑 将軍の本陣を構築中..."
-
-# shogun セッションがなければ作る（-s 時もここで必ず shogun が存在するようにする）
-# window 0 のみ作成し -n main で名前付け（第二 window にするとアタッチ時に空ペインが開くため 1 window に限定）
-if ! tmux has-session -t shogun 2>/dev/null; then
-    tmux new-session -d -s shogun -n main
-fi
-
-# 将軍ペインはウィンドウ名 "main" で指定（base-index 1 環境でも動く）
-SHOGUN_PROMPT=$(generate_prompt "将軍" "magenta" "$SHELL_SETTING")
-tmux send-keys -t shogun:main "cd \"$(pwd)\" && export PS1='${SHOGUN_PROMPT}' && clear" Enter
-tmux select-pane -t shogun:main -P 'bg=#002b36'  # 将軍の Solarized Dark
-tmux set-option -p -t shogun:main @agent_id "shogun"
-
-log_success "  └─ 将軍の本陣、構築完了"
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# STEP 5.0.5: gunshi（軍師）セッション構築
-# ═══════════════════════════════════════════════════════════════════════════════
-log_war "🧠 軍師の陣営を構築中..."
-
-if ! tmux has-session -t gunshi 2>/dev/null; then
-    tmux new-session -d -s gunshi -n main
-fi
-
-GUNSHI_PROMPT=$(generate_prompt "軍師" "cyan" "$SHELL_SETTING")
-tmux send-keys -t gunshi:main "cd \"$(pwd)\" && export PS1='${GUNSHI_PROMPT}' && clear" C-m
-tmux select-pane -t gunshi:main -P 'bg=#002b36'
-tmux set-option -p -t gunshi:main @agent_id "gunshi"
-
-log_success "  └─ 軍師の陣営、構築完了"
-echo ""
-
-# pane-base-index を取得（1 の環境ではペインは 1,2,... になる）
-PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
-
 MULTIAGENT_IDS=("${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}")
 MULTIAGENT_COUNT=${#MULTIAGENT_IDS[@]}
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# STEP 5.1: multiagent セッション作成（karo + active_ashigaru）
-# ═══════════════════════════════════════════════════════════════════════════════
-log_war "⚔️ 家老・足軽の陣を構築中（${MULTIAGENT_COUNT}名配備）..."
+log_war "🏯 御座の間を構築中（将軍・家老・軍師・足軽 ${ACTIVE_ASHIGARU_COUNT}名）..."
 
-# 最初のペイン作成
-if ! tmux new-session -d -s multiagent -n "agents" 2>/dev/null; then
-    echo ""
-    echo "  ╔════════════════════════════════════════════════════════════╗"
-    echo "  ║  [ERROR] Failed to create tmux session 'multiagent'      ║"
-    echo "  ║  tmux セッション 'multiagent' の作成に失敗しました       ║"
-    echo "  ╠════════════════════════════════════════════════════════════╣"
-    echo "  ║  An existing session may be running.                     ║"
-    echo "  ║  既存セッションが残っている可能性があります              ║"
-    echo "  ║                                                          ║"
-    echo "  ║  Check: tmux ls                                          ║"
-    echo "  ║  Kill:  tmux kill-session -t multiagent                  ║"
-    echo "  ╚════════════════════════════════════════════════════════════╝"
-    echo ""
+if ! tmux new-session -d -x "$GOZA_VIEW_WIDTH" -y "$GOZA_VIEW_HEIGHT" -s "$GOZA_SESSION_NAME" -n "$GOZA_WINDOW_NAME" 2>/dev/null; then
+    echo "[ERROR] tmux session '$GOZA_SESSION_NAME' の作成に失敗しました" >&2
     exit 1
 fi
 
-# DISPLAY_MODE: shout (default) or silent (--silent flag)
 if [ "$SILENT_MODE" = true ]; then
-    tmux set-environment -t multiagent DISPLAY_MODE "silent"
+    tmux set-environment -t "$GOZA_SESSION_NAME" DISPLAY_MODE "silent"
     echo "  📢 表示モード: サイレント（echo表示なし）"
 else
-    tmux set-environment -t multiagent DISPLAY_MODE "shout"
+    tmux set-environment -t "$GOZA_SESSION_NAME" DISPLAY_MODE "shout"
 fi
 
-# タイル分割作成（合計: karo + active_ashigaru）
-for ((i=1; i<MULTIAGENT_COUNT; i++)); do
-    tmux split-window -v -t "multiagent:agents"
-    tmux select-layout -t "multiagent:agents" tiled >/dev/null 2>&1 || true
-done
+declare -A AGENT_PANES=()
+declare -A AGENT_PROMPT_LABELS=()
+declare -A AGENT_PROMPT_COLORS=()
 
-# ペインラベル設定（プロンプト用）
-PANE_LABELS=("${MULTIAGENT_IDS[@]}")
-PANE_TITLES=("${MULTIAGENT_IDS[@]}")
-PANE_COLORS=()
+AGENT_PROMPT_LABELS["shogun"]="将軍"
+AGENT_PROMPT_COLORS["shogun"]="magenta"
+AGENT_PROMPT_LABELS["gunshi"]="軍師"
+AGENT_PROMPT_COLORS["gunshi"]="cyan"
+
 for _agent in "${MULTIAGENT_IDS[@]}"; do
     if [[ "$_agent" == karo* ]]; then
-        PANE_COLORS+=("red")
+        AGENT_PROMPT_LABELS["$_agent"]="$_agent"
+        AGENT_PROMPT_COLORS["$_agent"]="red"
     else
-        PANE_COLORS+=("blue")
+        AGENT_PROMPT_LABELS["$_agent"]="$_agent"
+        AGENT_PROMPT_COLORS["$_agent"]="blue"
     fi
 done
 
-AGENT_IDS=("${MULTIAGENT_IDS[@]}")
+SHOGUN_WIDTH=$(( GOZA_VIEW_WIDTH * 44 / 100 ))
+(( SHOGUN_WIDTH < 70 )) && SHOGUN_WIDTH=70
+RIGHT_WIDTH=$(( GOZA_VIEW_WIDTH - SHOGUN_WIDTH ))
+(( RIGHT_WIDTH < 100 )) && RIGHT_WIDTH=100
 
-# モデル名設定（pane-border-format で常時表示するための既定値）
-MODEL_NAMES=()
-for _agent in "${AGENT_IDS[@]}"; do
-    MODEL_NAMES+=("$(resolve_model_display_name "$_agent")")
+KARO_WIDTH=$(( GOZA_VIEW_WIDTH * 24 / 100 ))
+(( KARO_WIDTH < 36 )) && KARO_WIDTH=36
+(( KARO_WIDTH > RIGHT_WIDTH - 48 )) && KARO_WIDTH=$(( RIGHT_WIDTH - 48 ))
+
+RIGHT_COLUMN_WIDTH=$(( RIGHT_WIDTH - KARO_WIDTH ))
+(( RIGHT_COLUMN_WIDTH < 44 )) && RIGHT_COLUMN_WIDTH=44
+
+ASH_HEIGHT=$(( GOZA_VIEW_HEIGHT * 58 / 100 ))
+(( ASH_HEIGHT < 12 )) && ASH_HEIGHT=12
+
+ROOT_WINDOW="${GOZA_SESSION_NAME}:${GOZA_WINDOW_NAME}"
+SHOGUN_PANE="$(tmux display-message -p -t "$ROOT_WINDOW" "#{pane_id}")"
+KARO_PANE="$SHOGUN_PANE"
+RIGHT_COLUMN_PANE="$(tmux split-window -h -l "$RIGHT_WIDTH" -t "$SHOGUN_PANE" -P -F '#{pane_id}')"
+KARO_PANE="$RIGHT_COLUMN_PANE"
+GUNSHI_PANE="$(tmux split-window -h -l "$RIGHT_COLUMN_WIDTH" -t "$KARO_PANE" -P -F '#{pane_id}')"
+ASH_ROOT_PANE="$(tmux split-window -v -l "$ASH_HEIGHT" -t "$GUNSHI_PANE" -P -F '#{pane_id}')"
+
+AGENT_PANES["shogun"]="$SHOGUN_PANE"
+AGENT_PANES["gunshi"]="$GUNSHI_PANE"
+
+if [ "${#KARO_AGENTS[@]}" -gt 0 ]; then
+    AGENT_PANES["${KARO_AGENTS[0]}"]="$KARO_PANE"
+fi
+
+ASHIGARU_PANES=("$ASH_ROOT_PANE")
+if [ "$ACTIVE_ASHIGARU_COUNT" -ge 2 ]; then
+    ASH_RIGHT_TOP_PANE="$(tmux split-window -h -t "$ASH_ROOT_PANE" -P -F '#{pane_id}')"
+    ASHIGARU_PANES+=("$ASH_RIGHT_TOP_PANE")
+fi
+if [ "$ACTIVE_ASHIGARU_COUNT" -ge 3 ]; then
+    ASH_LEFT_BOTTOM_PANE="$(tmux split-window -v -t "$ASH_ROOT_PANE" -P -F '#{pane_id}')"
+    ASHIGARU_PANES[0]="$ASH_ROOT_PANE"
+    ASHIGARU_PANES+=("$ASH_LEFT_BOTTOM_PANE")
+fi
+if [ "$ACTIVE_ASHIGARU_COUNT" -ge 4 ]; then
+    ASH_RIGHT_BOTTOM_PANE="$(tmux split-window -v -t "$ASH_RIGHT_TOP_PANE" -P -F '#{pane_id}')"
+    ASHIGARU_PANES[1]="$ASH_RIGHT_TOP_PANE"
+    ASHIGARU_PANES+=("$ASH_RIGHT_BOTTOM_PANE")
+fi
+
+if [ "$ACTIVE_ASHIGARU_COUNT" -gt 4 ]; then
+    tmux new-window -t "$GOZA_SESSION_NAME" -n retainers
+    EXTRA_WINDOW="${GOZA_SESSION_NAME}:retainers"
+    EXTRA_ROOT="$(tmux display-message -p -t "$EXTRA_WINDOW" "#{pane_id}")"
+    EXTRA_ASHIGARU=("${ACTIVE_ASHIGARU[@]:4}")
+    EXTRA_PANES=("$EXTRA_ROOT")
+    for (( _i=1; _i<${#EXTRA_ASHIGARU[@]}; _i++ )); do
+        EXTRA_PANES+=("$(tmux split-window -v -t "$EXTRA_WINDOW" -P -F '#{pane_id}')")
+        tmux select-layout -t "$EXTRA_WINDOW" tiled >/dev/null 2>&1 || true
+    done
+    for _i in "${!EXTRA_ASHIGARU[@]}"; do
+        AGENT_PANES["${EXTRA_ASHIGARU[$_i]}"]="${EXTRA_PANES[$_i]}"
+    done
+fi
+
+for _idx in "${!ACTIVE_ASHIGARU[@]}"; do
+    if [ "$_idx" -lt "${#ASHIGARU_PANES[@]}" ]; then
+        AGENT_PANES["${ACTIVE_ASHIGARU[$_idx]}"]="${ASHIGARU_PANES[$_idx]}"
+    fi
 done
 
-for i in "${!AGENT_IDS[@]}"; do
-    p=$((PANE_BASE + i))
-    tmux select-pane -t "multiagent:agents.${p}" -T "${PANE_TITLES[$i]}"
-    tmux set-option -p -t "multiagent:agents.${p}" @agent_id "${AGENT_IDS[$i]}"
-    tmux set-option -p -t "multiagent:agents.${p}" @model_name "${MODEL_NAMES[$i]}"
-    tmux set-option -p -t "multiagent:agents.${p}" @current_task ""
-    PROMPT_STR=$(generate_prompt "${PANE_LABELS[$i]}" "${PANE_COLORS[$i]}" "$SHELL_SETTING")
-    tmux send-keys -t "multiagent:agents.${p}" "cd \"$(pwd)\" && export PS1='${PROMPT_STR}' && clear" Enter
+BACKEND_AGENT_IDS=("shogun")
+if [ "${#KARO_AGENTS[@]}" -gt 0 ]; then
+    BACKEND_AGENT_IDS+=("${KARO_AGENTS[0]}")
+fi
+BACKEND_AGENT_IDS+=("gunshi")
+BACKEND_AGENT_IDS+=("${ACTIVE_ASHIGARU[@]}")
+
+for _agent in "${BACKEND_AGENT_IDS[@]}"; do
+    _pane="${AGENT_PANES[$_agent]:-}"
+    [ -n "$_pane" ] || continue
+    _label="${AGENT_PROMPT_LABELS[$_agent]:-$_agent}"
+    _color="${AGENT_PROMPT_COLORS[$_agent]:-white}"
+    _prompt="$(generate_prompt "$_label" "$_color" "$SHELL_SETTING")"
+    tmux set-option -p -t "$_pane" @agent_id "$_agent"
+    tmux set-option -p -t "$_pane" @model_name "$(resolve_model_display_name "$_agent")"
+    tmux set-option -p -t "$_pane" @current_task ""
+    tmux select-pane -t "$_pane" -T "$_agent" >/dev/null 2>&1 || true
+    tmux send-keys -t "$_pane" "cd \"$(pwd)\" && export PS1='${_prompt}' && clear" Enter
 done
 
-# pane-border-format でモデル名を常時表示
-tmux set-option -t multiagent -w pane-border-status top
-tmux set-option -t multiagent -w pane-border-format '#{?pane_active,#[reverse],}#[bold]#{@agent_id}#[default] (#{@model_name}) #{@current_task}'
+tmux set-option -t "$GOZA_SESSION_NAME" -w pane-border-status top
+tmux set-option -t "$GOZA_SESSION_NAME" -w pane-border-format '#{?pane_active,#[reverse],}#[bold]#{@agent_id}#[default] (#{@model_name}) #{@current_task}'
+restore_goza_layout_if_available "$GOZA_SESSION_NAME"
+start_goza_layout_autosave "$GOZA_SESSION_NAME"
 
-log_success "  └─ 家老・足軽の陣、構築完了"
+SHOGUN_TARGET="${AGENT_PANES[shogun]}"
+GUNSHI_TARGET="${AGENT_PANES[gunshi]}"
+KARO_TARGET="${AGENT_PANES[${KARO_AGENTS[0]:-karo}]}"
+
+log_success "  └─ 御座の間、構築完了"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1128,18 +1218,18 @@ if [ "$SETUP_ONLY" = false ]; then
         _shogun_cli_type=$(resolve_cli_type_for_agent "shogun")
         _shogun_cmd=$(build_cli_command_with_type "shogun" "$_shogun_cli_type")
     fi
-    tmux set-option -p -t "shogun:main" @agent_cli "$_shogun_cli_type"
+    tmux set-option -p -t "$SHOGUN_TARGET" @agent_cli "$_shogun_cli_type"
     generate_bootstrap_file "shogun" "$_shogun_cli_type"
     printf "shogun\t%s\n" "$_shogun_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
-        tmux send-keys -t shogun:main "MAX_THINKING_TOKENS=0 $_shogun_cmd"
-        tmux send-keys -t shogun:main C-m
-        tmux set-option -p -t "shogun:main" @model_name "$(resolve_model_display_name "shogun")"
+        tmux send-keys -t "$SHOGUN_TARGET" "MAX_THINKING_TOKENS=0 $_shogun_cmd"
+        tmux send-keys -t "$SHOGUN_TARGET" C-m
+        tmux set-option -p -t "$SHOGUN_TARGET" @model_name "$(resolve_model_display_name "shogun")"
         log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type") / thinking無効）、召喚完了"
     else
-        tmux send-keys -t shogun:main "$_shogun_cmd"
-        tmux send-keys -t shogun:main C-m
-        tmux set-option -p -t "shogun:main" @model_name "$(resolve_model_display_name "shogun")"
+        tmux send-keys -t "$SHOGUN_TARGET" "$_shogun_cmd"
+        tmux send-keys -t "$SHOGUN_TARGET" C-m
+        tmux set-option -p -t "$SHOGUN_TARGET" @model_name "$(resolve_model_display_name "shogun")"
         log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type")）、召喚完了"
     fi
 
@@ -1150,12 +1240,12 @@ if [ "$SETUP_ONLY" = false ]; then
         _gunshi_cli_type=$(resolve_cli_type_for_agent "gunshi")
         _gunshi_cmd=$(build_cli_command_with_type "gunshi" "$_gunshi_cli_type")
     fi
-    tmux set-option -p -t "gunshi:main" @agent_cli "$_gunshi_cli_type"
+    tmux set-option -p -t "$GUNSHI_TARGET" @agent_cli "$_gunshi_cli_type"
     generate_bootstrap_file "gunshi" "$_gunshi_cli_type"
     printf "gunshi\t%s\n" "$_gunshi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
-    tmux send-keys -t gunshi:main "$_gunshi_cmd"
-    tmux send-keys -t gunshi:main C-m
-    tmux set-option -p -t "gunshi:main" @model_name "$(resolve_model_display_name "gunshi")"
+    tmux send-keys -t "$GUNSHI_TARGET" "$_gunshi_cmd"
+    tmux send-keys -t "$GUNSHI_TARGET" C-m
+    tmux set-option -p -t "$GUNSHI_TARGET" @model_name "$(resolve_model_display_name "gunshi")"
     log_info "  └─ 軍師（$(resolve_cli_summary "gunshi" "$_gunshi_cli_type")）、召喚完了"
 
     # 少し待機（安定のため）
@@ -1166,8 +1256,6 @@ if [ "$SETUP_ONLY" = false ]; then
     _ashigaru_launched=0
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
-        p=$((PANE_BASE + _idx))
-
         if [[ "$_agent" == karo* ]]; then
             _agent_cli_type="claude"
             _agent_cmd="claude --model opus --dangerously-skip-permissions"
@@ -1197,13 +1285,15 @@ if [ "$SETUP_ONLY" = false ]; then
             _ashigaru_launched=$((_ashigaru_launched + 1))
         fi
 
-        tmux set-option -p -t "multiagent:agents.${p}" @agent_cli "$_agent_cli_type"
+        _pane_target="${AGENT_PANES[$_agent]:-}"
+        [ -n "$_pane_target" ] || continue
+        tmux set-option -p -t "$_pane_target" @agent_cli "$_agent_cli_type"
         generate_bootstrap_file "$_agent" "$_agent_cli_type"
-        tmux send-keys -t "multiagent:agents.${p}" "$_agent_cmd"
-        tmux send-keys -t "multiagent:agents.${p}" C-m
+        tmux send-keys -t "$_pane_target" "$_agent_cmd"
+        tmux send-keys -t "$_pane_target" C-m
         printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
         MULTIAGENT_CLI["$_agent"]="$_agent_cli_type"
-        tmux set-option -p -t "multiagent:agents.${p}" @model_name "$(resolve_model_display_name "$_agent")"
+        tmux set-option -p -t "$_pane_target" @model_name "$(resolve_model_display_name "$_agent")"
         log_info "  └─ ${_agent}（$(resolve_cli_summary "$_agent" "$_agent_cli_type")）、召喚完了"
     done
     log_info "  └─ 家老（${_karo_launched}名）、召喚完了"
@@ -1221,13 +1311,13 @@ if [ "$SETUP_ONLY" = false ]; then
         auto_accept_gemini_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_retry_gemini_busy_tmux "$_pane" "$_agent" "$_cli"
     }
-    _cli_gate_handler "shogun:main" "shogun" "$_shogun_cli_type" &
+    _cli_gate_handler "$SHOGUN_TARGET" "shogun" "$_shogun_cli_type" &
     _gemini_pids+=($!)
-    _cli_gate_handler "gunshi:main" "gunshi" "$_gunshi_cli_type" &
+    _cli_gate_handler "$GUNSHI_TARGET" "gunshi" "$_gunshi_cli_type" &
     _gemini_pids+=($!)
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
-        _pane_target="$(resolve_multiagent_pane_target "$_agent")"
+        _pane_target="${AGENT_PANES[$_agent]:-}"
         [ -n "$_pane_target" ] || continue
         _pane_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
         _cli_gate_handler "$_pane_target" "$_agent" "$_pane_cli" &
@@ -1331,16 +1421,22 @@ NINJA_EOF
         _total_count=0
 
         # 将軍
-        _shogun_cli=$(tmux show-options -p -t "shogun:main" -v @agent_cli 2>/dev/null || echo "claude")
+        _shogun_cli=$(tmux show-options -p -t "$SHOGUN_TARGET" -v @agent_cli 2>/dev/null || echo "claude")
         _total_count=$((_total_count + 1))
-        if wait_for_cli_ready_tmux "shogun:main" "$_shogun_cli" 0 2>/dev/null; then
+        if wait_for_cli_ready_tmux "$SHOGUN_TARGET" "$_shogun_cli" 0 2>/dev/null; then
+            _ready_count=$((_ready_count + 1))
+        fi
+
+        _gunshi_cli=$(tmux show-options -p -t "$GUNSHI_TARGET" -v @agent_cli 2>/dev/null || echo "claude")
+        _total_count=$((_total_count + 1))
+        if wait_for_cli_ready_tmux "$GUNSHI_TARGET" "$_gunshi_cli" 0 2>/dev/null; then
             _ready_count=$((_ready_count + 1))
         fi
 
         # 家老 + 足軽
         for _idx in "${!MULTIAGENT_IDS[@]}"; do
             _agent="${MULTIAGENT_IDS[$_idx]}"
-            _pane_target="$(resolve_multiagent_pane_target "$_agent")"
+            _pane_target="${AGENT_PANES[$_agent]:-}"
             [ -n "$_pane_target" ] || continue
             _expected_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
             _total_count=$((_total_count + 1))
@@ -1368,16 +1464,16 @@ NINJA_EOF
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
         _agent_cli_type="${MULTIAGENT_CLI[$_agent]:-claude}"
-        _pane_target="$(resolve_multiagent_pane_target "$_agent")"
+        _pane_target="${AGENT_PANES[$_agent]:-}"
         if [ -z "$_pane_target" ]; then
             echo "[WARN] pane target unresolved for $_agent, skipping bootstrap" >&2
             continue
         fi
         deliver_bootstrap_tmux "$_pane_target" "$_agent" "$_agent_cli_type"
     done
-    deliver_bootstrap_tmux "gunshi:main" "gunshi" "$_gunshi_cli_type"
-    deliver_bootstrap_tmux "shogun:main" "shogun" "$_shogun_cli_type"
-    tmux select-pane -t shogun:main >/dev/null 2>&1 || true
+    deliver_bootstrap_tmux "$GUNSHI_TARGET" "gunshi" "$_gunshi_cli_type"
+    deliver_bootstrap_tmux "$SHOGUN_TARGET" "shogun" "$_shogun_cli_type"
+    tmux select-pane -t "$SHOGUN_TARGET" >/dev/null 2>&1 || true
     log_info "📜 初動命令の配信完了"
 
     # ═══════════════════════════════════════════════════════════════════
@@ -1399,23 +1495,23 @@ NINJA_EOF
     if command -v inotifywait >/dev/null 2>&1; then
         # 将軍のwatcher（ntfy受信の自動起床に必要）
         # 安全モード: phase2/phase3エスカレーションは無効、timeout周期処理も無効（event-drivenのみ）
-        _shogun_watcher_cli=$(tmux show-options -p -t "shogun:main" -v @agent_cli 2>/dev/null || echo "claude")
+        _shogun_watcher_cli=$(tmux show-options -p -t "$SHOGUN_TARGET" -v @agent_cli 2>/dev/null || echo "claude")
         nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" shogun "shogun:main" "$_shogun_watcher_cli" "tmux" \
+            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" shogun "$SHOGUN_TARGET" "$_shogun_watcher_cli" "tmux" \
             >> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" 2>&1 &
         disown
 
         # 軍師 watcher
-        _gunshi_watcher_cli=$(tmux show-options -p -t "gunshi:main" -v @agent_cli 2>/dev/null || echo "claude")
+        _gunshi_watcher_cli=$(tmux show-options -p -t "$GUNSHI_TARGET" -v @agent_cli 2>/dev/null || echo "claude")
         nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" gunshi "gunshi:main" "$_gunshi_watcher_cli" "tmux" \
+            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" gunshi "$GUNSHI_TARGET" "$_gunshi_watcher_cli" "tmux" \
             >> "$SCRIPT_DIR/logs/inbox_watcher_gunshi.log" 2>&1 &
         disown
 
         # 家老 + 足軽 watcher
         for _idx in "${!MULTIAGENT_IDS[@]}"; do
             _agent="${MULTIAGENT_IDS[$_idx]}"
-            _pane_target="$(resolve_multiagent_pane_target "$_agent")"
+            _pane_target="${AGENT_PANES[$_agent]:-}"
             [ -n "$_pane_target" ] || continue
             _agent_watcher_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
             nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
@@ -1478,28 +1574,18 @@ echo "  ┌───────────────────────
 echo "  │  📋 布陣図 (Formation)                                   │"
 echo "  └──────────────────────────────────────────────────────────┘"
 echo ""
-echo "     【shogunセッション】将軍の本陣"
-echo "     ┌─────────────────────────────┐"
-echo "     │  Pane 0: 将軍 (SHOGUN)      │  ← 総大将・プロジェクト統括"
-echo "     └─────────────────────────────┘"
-echo ""
-echo "     【gunshiセッション】軍師の陣"
-echo "     ┌─────────────────────────────┐"
-echo "     │  Pane 0: 軍師 (GUNSHI)      │  ← 戦略・分析・助言"
-echo "     └─────────────────────────────┘"
-echo ""
-echo "     【multiagentセッション】家老・足軽の陣（${MULTIAGENT_COUNT}ペイン）"
-echo "     ┌─────────────────────────────────────────────┐"
-for i in "${!MULTIAGENT_IDS[@]}"; do
-    _pane=$((PANE_BASE + i))
-    _agent="${MULTIAGENT_IDS[$i]}"
-    if [[ "$_agent" == karo* ]]; then
-        echo "     │  Pane ${_pane}: ${_agent} (家老)             │"
-    else
-        echo "     │  Pane ${_pane}: ${_agent} (足軽)             │"
-    fi
+echo "     【goza-no-ma セッション】御座の間（本陣）"
+echo "     ┌────────────────────────────────────────────────────────────┐"
+echo "     │  Pane: shogun   ← 総大将・プロジェクト統括               │"
+echo "     │  Pane: ${KARO_AGENTS[0]:-karo}     ← 家老・タスク統制                  │"
+echo "     │  Pane: gunshi   ← 戦略・分析・助言                      │"
+for _agent in "${ACTIVE_ASHIGARU[@]}"; do
+    echo "     │  Pane: ${_agent}  ← 足軽                                 │"
 done
-echo "     └─────────────────────────────────────────────┘"
+if [ "$ACTIVE_ASHIGARU_COUNT" -gt 4 ]; then
+    echo "     │  Window: retainers  ← 追加の足軽                         │"
+fi
+echo "     └────────────────────────────────────────────────────────────┘"
 echo ""
 
 echo ""
@@ -1514,14 +1600,14 @@ if [ "$SETUP_ONLY" = true ]; then
     echo "  手動でCLIを起動するには:"
     echo "  ┌──────────────────────────────────────────────────────────┐"
     echo "  │  # 将軍を召喚                                            │"
-    echo "  │  tmux send-keys -t shogun:main \\                         │"
+    echo "  │  tmux send-keys -t ${SHOGUN_TARGET:-goza-no-ma:overview} \\                         │"
     echo "  │    '$(build_cli_command_with_type "shogun" "${_shogun_cli_type:-$(resolve_cli_type_for_agent "shogun" 2>/dev/null || echo claude)}")' Enter  │"
     echo "  │                                                          │"
     echo "  │  # 軍師を召喚                                            │"
-    echo "  │  tmux send-keys -t gunshi:main \\                         │"
+    echo "  │  tmux send-keys -t ${GUNSHI_TARGET:-goza-no-ma:overview} \\                         │"
     echo "  │    '$(build_cli_command_with_type "gunshi" "${_gunshi_cli_type:-$(resolve_cli_type_for_agent "gunshi" 2>/dev/null || echo claude)}")' Enter  │"
     echo "  │                                                          │"
-    echo "  │  # 家老・足軽は settings.yaml に従い個別起動             │"
+    echo "  │  # 家老・足軽は settings.yaml に従い pane 単位で起動      │"
     echo "  │  cat queue/runtime/agent_cli.tsv                         │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""
@@ -1529,17 +1615,17 @@ fi
 
 echo "  次のステップ:"
 echo "  ┌──────────────────────────────────────────────────────────┐"
-echo "  │  将軍の本陣にアタッチして命令を開始:                      │"
-echo "  │     tmux attach-session -t shogun   (または: css)        │"
+echo "  │  御座の間にアタッチして命令を開始:                        │"
+echo "  │     tmux attach-session -t ${GOZA_SESSION_NAME}   (または: cgo)   │"
 echo "  │                                                          │"
-echo "  │  軍師の陣へアタッチする:                                  │"
-echo "  │     tmux attach-session -t gunshi   (または: csg)        │"
+echo "  │  将軍 pane へ移動:                                        │"
+echo "  │     bash scripts/focus_agent_pane.sh shogun   (または: css) │"
 echo "  │                                                          │"
-echo "  │  家老・足軽の陣を確認する:                                │"
-echo "  │     tmux attach-session -t multiagent   (または: csm)    │"
+echo "  │  軍師 pane へ移動:                                        │"
+echo "  │     bash scripts/focus_agent_pane.sh gunshi   (または: csg) │"
 echo "  │                                                          │"
-echo "  │  既存の全陣を一望する御座の間を開く:                      │"
-echo "  │     bash scripts/goza_no_ma.sh   (または: cgo)           │"
+echo "  │  家老 pane へ移動:                                        │"
+echo "  │     bash scripts/focus_agent_pane.sh karo   (または: csm) │"
 echo "  │                                                          │"
 echo "  │  ※ 各エージェントは指示書を読み込み済み。                 │"
 echo "  │    すぐに命令を開始できます。                             │"
@@ -1558,7 +1644,7 @@ if [ "$OPEN_TERMINAL" = true ]; then
 
     # Windows Terminal が利用可能か確認
     if command -v wt.exe &> /dev/null; then
-        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t shogun" \; new-tab wsl.exe -e bash -c "tmux attach-session -t gunshi" \; new-tab wsl.exe -e bash -c "tmux attach-session -t multiagent"
+        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t ${GOZA_SESSION_NAME}" \; new-tab wsl.exe -e bash -c "bash scripts/focus_agent_pane.sh shogun" \; new-tab wsl.exe -e bash -c "bash scripts/focus_agent_pane.sh gunshi"
         log_success "  └─ ターミナルタブ展開完了"
     else
         log_info "  └─ wt.exe が見つかりません。手動でアタッチしてください。"

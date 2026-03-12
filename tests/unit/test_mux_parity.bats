@@ -23,33 +23,33 @@ setup_file() {
 }
 
 @test "御座の間スクリプトが現役で存在する" {
-    run rg -n "goza_no_ma\\.sh|goza_mirror_pane\\.sh|goza_layout_autosave\\.sh|goza_dispatcher\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_mirror_pane.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh" "$PROJECT_ROOT/scripts/goza_dispatcher.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "goza_no_ma\\.sh|goza_layout_autosave\\.sh|focus_agent_pane\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh" "$PROJECT_ROOT/scripts/focus_agent_pane.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "軍師 attach alias csg と御座の間 alias cgo を案内する" {
-    run rg -n "alias csg=|alias cgo='bash .*goza_no_ma\\.sh'|または: csg|cgo\\s+→" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "alias csg='bash .*focus_agent_pane\\.sh gunshi'|alias cgo='bash .*goza_no_ma\\.sh'|または: csg|cgo\\s+→" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "御座の間導線は既存backend再利用を優先する" {
-    run rg -n "VIEW_ONLY=true|--ensure-backend|--refresh|既存の御座の間 session を再利用|既存 session だけで御座の間|switch-client -t" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/README_ja.md"
+    run rg -n -- "--ensure-backend|--refresh|switch-client -t|attach-session -t \\$GOZA_SESSION|attach-session -t \\$GOZA_SESSION_NAME|focus_agent_pane" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/README_ja.md" "$PROJECT_ROOT/first_setup.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "御座の間は将軍 > 家老 > 軍師 > 足軽の順で独立mirror paneを作る" {
-    run rg -n "dispatcher_cmd|mirror_cmd .*shogun:main|mirror_cmd .*gunshi:main|discover_karo_target|discover_ashigaru_targets|placeholder_cmd|split-window -h -l|split-window -v -l|show-options -p -t .*@agent_id" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+@test "出陣本体は御座の間 session に実 pane を構築する" {
+    run rg -n "GOZA_SESSION_NAME|GOZA_WINDOW_NAME|new-session -d -x .* -s .*goza-no-ma|split-window -h -l|split-window -v -l|AGENT_PANES|restore_goza_layout_if_available|start_goza_layout_autosave" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "御座の間には使者ペインがあり backend へ送信できる" {
-    run rg -n "goza_dispatcher\\.sh|/target <agent_id>|<agent_id>: <message>|send-keys -t .* -l --|goza_active_target|goza_target|goza_focus_target\\.sh" \
-      "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_dispatcher.sh" "$PROJECT_ROOT/scripts/goza_focus_target.sh"
+@test "focus helper で御座の間内の agent pane へ移動できる" {
+    run rg -n "focus_agent_pane\\.sh|switch-client -t|attach-session -t \\$SESSION|show-options -p -t .*@agent_id" \
+      "$PROJECT_ROOT/scripts/focus_agent_pane.sh" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "御座の間は手動リサイズ後の tmux window_layout を保存して次回復元する" {
-    run rg -n "GOZA_LAYOUT_FILE|save_goza_layout|restore_goza_layout_if_available|start_goza_layout_autosave|goza_layout_autosave\\.sh|window_layout|select-layout -t .*saved_layout" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh"
+    run rg -n "GOZA_LAYOUT_FILE|save_goza_layout|restore_goza_layout_if_available|start_goza_layout_autosave|goza_layout_autosave\\.sh|window_layout|select-layout -t .*saved_layout" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -58,8 +58,8 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "tmux bootstrap と watcher は multiagent pane を agent_id から解決する" {
-    run rg -n "resolve_multiagent_pane_target|list-panes -t \"multiagent:agents\" -F .*pane_index|show-options -p -t .*@agent_id" \
+@test "tmux bootstrap と watcher は backend pane を agent_id から解決する" {
+    run rg -n "resolve_agent_pane_target|list_backend_pane_targets|show-options -p -t .*@agent_id" \
         "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
     [ "$status" -eq 0 ]
 }

@@ -37,12 +37,15 @@ case "$cmd" in
     ;;
   show-options)
     target="$3"
-    if [[ "$target" == "shogun:main" ]]; then
-      printf 'gemini\n'
-    fi
+    option="${5:-}"
+    case "$target:$option" in
+      shogun:main:@agent_cli) printf 'gemini\n' ;;
+      multiagent:agents.0:@agent_id) printf 'karo\n' ;;
+      multiagent:agents.0:@agent_cli) printf 'codex\n' ;;
+    esac
     ;;
   list-panes)
-    printf 'multiagent:agents.0\tkaro\tcodex\n'
+    printf 'multiagent:agents.0\n'
     ;;
   capture-pane)
     target="$4"

@@ -1,22 +1,45 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-11
+最終更新: 2026-03-12
 出典: 直近ユーザープロンプト
 
-## 追補（2026-03-12: 御座の間の選択pane追従送信）
+## 追補（2026-03-12: 御座の間本体化）
 ### 要求
-1. `御座の間` は単なる閲覧画面ではなく、pane を選んだ対象へそのまま指示できる運用導線を持つこと。
-2. `goza-dispatch` は `/target` を毎回手入力しなくても、最後に選択した `shogun / karo / gunshi / ashigaruN` を現在の送信先として自動追従すること。
-3. `御座の間` の role pane はそれぞれ `@goza_target` を持ち、送信先の正本は `goza-no-ma:overview` window option `@goza_active_target` とすること。
-4. `cgo` 後も nested attach を行わず、御座の間から backend 実エージェントへ `tmux send-keys` で配信できること。
+1. `御座の間` は read-only mirror ではなく、`tmux` の実 pane を持つ本体 session であること。
+2. `shutsujin_departure.sh` は `goza-no-ma` を正本 session として構築し、`shogun` を最大、`karo` を二番手、`gunshi` を三番手、`ashigaru` を残り領域の compact pane として配置すること。
+3. `cgo` は `goza-no-ma` を開く wrapper とし、既存の御座の間がある場合はそれを再利用すること。
+4. `css` / `csg` / `csm` は `goza-no-ma` 内の該当 pane にフォーカス移動すること。
+5. 御座の間では選択した pane に直接入力して、そのまま実エージェントへ命令できること。
+6. `watcher` / `bootstrap` / runtime CLI 同期は、旧 `shogun:main` / `gunshi:main` / `multiagent:agents` 固定ではなく、`goza-no-ma` の `@agent_id` / `@agent_cli` を正本にすること。
 
 ### 受け入れ条件（観測可能）
-1. コマンド: `bash -n scripts/goza_no_ma.sh scripts/goza_dispatcher.sh scripts/goza_focus_target.sh`
-   - 期待結果: 選択pane追従送信の導線に構文エラーがない。
+1. コマンド: `bash -n shutsujin_departure.sh scripts/goza_no_ma.sh scripts/focus_agent_pane.sh scripts/watcher_supervisor.sh scripts/sync_runtime_cli_preferences.py`
+   - 期待結果: 御座の間本体化後の主要導線に構文エラーがない。
+2. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_topology_adapter.bats`
+   - 期待結果: `goza-no-ma` 本体前提の回帰が PASS する。
+3. コマンド: `bash shutsujin_departure.sh -s`
+   - 期待結果: `goza-no-ma` session と pane 群が作成され、setup-only 完了メッセージが返る。
+4. コマンド: `bash shutsujin_departure.sh`
+   - 期待結果: `goza-no-ma` の実 pane へ CLI が起動し、bootstrap / watcher / runtime sync が `@agent_id` ベースで動作する。
+5. コマンド: `tmux list-panes -s -t goza-no-ma -F '#{pane_id}\t#{@agent_id}\t#{@agent_cli}\t#{pane_title}'`
+   - 期待結果: `shogun` / `karo` / `gunshi` / `ashigaruN` の pane が `goza-no-ma` に存在し、role ごとの `@agent_id` / `@agent_cli` が付与されている。
+6. コマンド: `bash scripts/focus_agent_pane.sh shogun`
+   - 期待結果: `goza-no-ma` の `shogun` pane へフォーカス移動できる。
+
+## 追補（2026-03-12: 御座の間からの直接入力）
+### 要求
+1. `御座の間` は read-only mirror ではなく、pane 自体が backend 実エージェントであること。
+2. `cgo` で開いた pane を選択して、そのまま直接入力できること。
+3. tmux 内から `cgo` しても nested attach を行わず、入力不能状態を作らないこと。
+4. `css` / `csg` / `csm` は `goza-no-ma` 内の該当 pane にフォーカス移動すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/goza_no_ma.sh scripts/focus_agent_pane.sh`
+   - 期待結果: `cgo` と pane focus 導線に構文エラーがない。
 2. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats`
-   - 期待結果: 御座の間の dispatch 導線と `goza_active_target` 更新を含む回帰が PASS する。
-3. コマンド: `rg -n "@goza_target|@goza_active_target|goza_focus_target\\.sh|/target <agent_id>" scripts/goza_no_ma.sh scripts/goza_dispatcher.sh scripts/goza_focus_target.sh`
-   - 期待結果: pane 選択と送信先追従の実装が確認できる。
+   - 期待結果: 御座の間本体化と pane focus 導線の回帰が PASS する。
+3. コマンド: `rg -n "switch-client -t|attach-session -t \\$GOZA_SESSION|focus_agent_pane\\.sh|goza-no-ma" scripts/goza_no_ma.sh scripts/focus_agent_pane.sh shutsujin_departure.sh`
+   - 期待結果: `cgo` が既存 session を開き、`css/csg/csm` が pane focus する実装が確認できる。
 
 ## 追補（2026-03-11: live CLI設定の次回起動反映）
 ### 要求

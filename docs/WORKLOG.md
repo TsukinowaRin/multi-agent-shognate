@@ -2663,3 +2663,15 @@
 - 実用性を優先し、`goza-dispatch` が最後に選択した pane の agent へ自動追従する導線を追加。
 - `scripts/goza_no_ma.sh` で各 mirror pane に `@goza_target` を付与し、`scripts/goza_focus_target.sh --watch` で `@goza_active_target` を window option に同期するよう変更。
 - `scripts/goza_dispatcher.sh` は prompt 表示前に `@goza_active_target` を読み、`/target` 手入力なしで選択paneへ送信できるよう変更。
+## 2026-03-12 18:15 JST — 御座の間本体化の整合仕上げ
+- `goza-no-ma` が複数 window (`overview`, `retainers`) を持つ前提で、pane 解決を current window 依存から session 全体探索へ修正。
+- `scripts/focus_agent_pane.sh`、`shutsujin_departure.sh`、`scripts/watcher_supervisor.sh`、`scripts/sync_runtime_cli_preferences.py` の `tmux list-panes` を `-s -t goza-no-ma` ベースへ統一。
+- `tests/unit/test_sync_runtime_cli_preferences.bats` の tmux fixture を、新しい pane 解決ロジックに合わせて修正。
+- `docs/REQS.md` の旧 mirror / dispatch 前提を、御座の間本体 session + 直接入力前提へ更新。
+- `docs/EXECPLAN_2026-03-11_tmux_goza_return.md` を current state に同期。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/goza_no_ma.sh scripts/focus_agent_pane.sh scripts/watcher_supervisor.sh scripts/sync_runtime_cli_preferences.py first_setup.sh` PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_topology_adapter.bats` PASS (`1..168`)
+  - `bash shutsujin_departure.sh -s` PASS
+  - `bash shutsujin_departure.sh` PASS
+  - `tmux list-panes -s -t goza-no-ma -F '#{pane_id}\t#{@agent_id}\t#{@agent_cli}\t#{pane_title}'` で role pane を確認

@@ -5,8 +5,9 @@
 現役運用は `tmux` のみです。  
 起動入口の本体は `shutsujin_departure.sh` です。  
 俯瞰ビューとして `scripts/goza_no_ma.sh` による `御座の間` を使えます。  
-`御座の間` は `shogun / karo / gunshi / ashigaru` の live mirror を並べる read-only 俯瞰です。  
-下段の `goza-dispatch` pane から、`shogun: ...` や `/target karo` で backend の実エージェントへ指示を送れます。御座の間で pane を選ぶと送信先も自動追従します。
+現在は `御座の間` 自体が本体 session です。  
+`shogun` が最大、`karo` が二番手、`gunshi` が三番手、`ashigaru` が残り領域へ compact に配置されます。  
+`cgo` で開いた pane は実エージェントなので、選択した pane にそのまま直接入力できます。
 `zellij` は廃止済みで、履歴が必要なら `Waste/` を参照します。
 
 ## このフォーク独自の対応
@@ -27,17 +28,17 @@ bash shutsujin_departure.sh
 
 接続:
 ```bash
-tmux attach-session -t shogun
-tmux attach-session -t gunshi
-tmux attach-session -t multiagent
-bash scripts/goza_no_ma.sh
+tmux attach-session -t goza-no-ma
+bash scripts/focus_agent_pane.sh shogun
+bash scripts/focus_agent_pane.sh gunshi
+bash scripts/focus_agent_pane.sh karo
 ```
 
 短縮 alias:
 ```bash
 css   # 将軍
 csg   # 軍師
-csm   # 家老・足軽
+csm   # 家老
 cgo   # 御座の間
 ```
 
@@ -49,14 +50,6 @@ bash scripts/goza_no_ma.sh
 既存の御座の間を壊さず再利用します。再生成したい時だけ:
 ```bash
 bash scripts/goza_no_ma.sh --refresh
-```
-
-御座の間から指示する:
-```text
-/target shogun
-進捗を報告せよ
-
-ashigaru1: queue を確認せよ
 ```
 
 backend が未起動なら明示:
@@ -139,9 +132,11 @@ cli:
 
 ## 主なファイル
 - `shutsujin_departure.sh`
-  - tmux セッションを立ち上げ、CLI と watcher を起動する本体です。
+  - `goza-no-ma` session を立ち上げ、実 pane 上で CLI と watcher を起動する本体です。
 - `scripts/goza_no_ma.sh`
-  - `shogun / karo / gunshi / ashigaru` を優先度付きで一望する `tmux` 俯瞰ビューです。
+  - 既存の `goza-no-ma` session を開く wrapper です。通常は再生成せず、そのまま再利用します。
+- `scripts/focus_agent_pane.sh`
+  - 御座の間の `shogun / gunshi / karo` pane へ直接フォーカス移動します。
 - `lib/cli_adapter.sh`
   - 対応 CLI の抽象化レイヤーです。
 - `scripts/configure_agents.sh`
@@ -162,9 +157,7 @@ cli:
 ## トラブルシュート
 セッションをやり直す:
 ```bash
-tmux kill-session -t shogun 2>/dev/null || true
-tmux kill-session -t gunshi 2>/dev/null || true
-tmux kill-session -t multiagent 2>/dev/null || true
+tmux kill-session -t goza-no-ma 2>/dev/null || true
 bash shutsujin_departure.sh
 ```
 

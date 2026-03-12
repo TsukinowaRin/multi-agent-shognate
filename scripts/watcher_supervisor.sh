@@ -125,7 +125,23 @@ pane_exists() {
     tmux display-message -p -t "$pane" "#{pane_id}" >/dev/null 2>&1
 }
 
-resolve_multiagent_pane_target() {
+list_backend_pane_targets() {
+    if tmux has-session -t "goza-no-ma" 2>/dev/null; then
+        tmux list-panes -s -t "goza-no-ma" -F "#{pane_id}" 2>/dev/null || true
+        return 0
+    fi
+    if tmux has-session -t "shogun" 2>/dev/null; then
+        tmux list-panes -t "shogun:main" -F "#{pane_id}" 2>/dev/null || true
+    fi
+    if tmux has-session -t "gunshi" 2>/dev/null; then
+        tmux list-panes -t "gunshi:main" -F "#{pane_id}" 2>/dev/null || true
+    fi
+    if tmux has-session -t "multiagent" 2>/dev/null; then
+        tmux list-panes -t "multiagent:agents" -F "#{pane_id}" 2>/dev/null || true
+    fi
+}
+
+resolve_agent_pane_target() {
     local agent="$1"
     local pane
     local pane_agent
@@ -136,7 +152,7 @@ resolve_multiagent_pane_target() {
             printf '%s\n' "$pane"
             return 0
         fi
-    done < <(tmux list-panes -t "multiagent:agents" -F "#{session_name}:#{window_name}.#{pane_index}" 2>/dev/null || true)
+    done < <(list_backend_pane_targets)
     return 1
 }
 
@@ -216,14 +232,17 @@ while true; do
     refresh_karo_agents
     cleanup_stale_watchers
 
-    start_watcher_if_missing "shogun" "shogun:main" "logs/inbox_watcher_shogun.log"
+    pane="$(resolve_agent_pane_target "shogun")"
+    [ -n "$pane" ] && start_watcher_if_missing "shogun" "$pane" "logs/inbox_watcher_shogun.log"
+    pane="$(resolve_agent_pane_target "gunshi")"
+    [ -n "$pane" ] && start_watcher_if_missing "gunshi" "$pane" "logs/inbox_watcher_gunshi.log"
     for karo_agent in "${KARO_AGENTS[@]}"; do
-        pane="$(resolve_multiagent_pane_target "$karo_agent")"
+        pane="$(resolve_agent_pane_target "$karo_agent")"
         [ -n "$pane" ] || continue
         start_watcher_if_missing "$karo_agent" "$pane" "logs/inbox_watcher_${karo_agent}.log"
     done
     for agent in "${ACTIVE_ASHIGARU[@]}"; do
-        pane="$(resolve_multiagent_pane_target "$agent")"
+        pane="$(resolve_agent_pane_target "$agent")"
         [ -n "$pane" ] || continue
         start_watcher_if_missing "$agent" "$pane" "logs/inbox_watcher_${agent}.log"
     done

@@ -728,15 +728,15 @@ BASHRC_FILE="$HOME/.bashrc"
 # aliasが既に存在するかチェックし、なければ追加
 ALIAS_ADDED=false
 
-# css alias (将軍ウィンドウの起動)
+# css alias (将軍 pane に移動)
 if [ -f "$BASHRC_FILE" ]; then
-    EXPECTED_CSS="alias css='tmux attach-session -t shogun'"
+    EXPECTED_CSS="alias css='bash $SCRIPT_DIR/scripts/focus_agent_pane.sh shogun'"
     if ! grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
         # alias が存在しない → 新規追加
         echo "" >> "$BASHRC_FILE"
         echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
         echo "$EXPECTED_CSS" >> "$BASHRC_FILE"
-        log_info "alias css を追加しました（将軍ウィンドウの起動）"
+        log_info "alias css を追加しました（将軍 pane へ移動）"
         ALIAS_ADDED=true
     elif ! grep -qF "$EXPECTED_CSS" "$BASHRC_FILE" 2>/dev/null; then
         # alias は存在するがパスが異なる → 更新
@@ -750,15 +750,15 @@ if [ -f "$BASHRC_FILE" ]; then
         log_info "alias css は既に正しく設定されています"
     fi
 
-    # csg alias (軍師ウィンドウの起動)
-    EXPECTED_CSG="alias csg='tmux attach-session -t gunshi'"
+    # csg alias (軍師 pane に移動)
+    EXPECTED_CSG="alias csg='bash $SCRIPT_DIR/scripts/focus_agent_pane.sh gunshi'"
     if ! grep -q "alias csg=" "$BASHRC_FILE" 2>/dev/null; then
         if [ "$ALIAS_ADDED" = false ]; then
             echo "" >> "$BASHRC_FILE"
             echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
         fi
         echo "$EXPECTED_CSG" >> "$BASHRC_FILE"
-        log_info "alias csg を追加しました（軍師ウィンドウの起動）"
+        log_info "alias csg を追加しました（軍師 pane へ移動）"
         ALIAS_ADDED=true
     elif ! grep -qF "$EXPECTED_CSG" "$BASHRC_FILE" 2>/dev/null; then
         if sed -i "s|alias csg=.*|$EXPECTED_CSG|" "$BASHRC_FILE" 2>/dev/null; then
@@ -771,15 +771,15 @@ if [ -f "$BASHRC_FILE" ]; then
         log_info "alias csg は既に正しく設定されています"
     fi
 
-    # csm alias (家老・足軽ウィンドウの起動)
-    EXPECTED_CSM="alias csm='tmux attach-session -t multiagent'"
+    # csm alias (家老 pane に移動)
+    EXPECTED_CSM="alias csm='bash $SCRIPT_DIR/scripts/focus_agent_pane.sh karo'"
     if ! grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
         if [ "$ALIAS_ADDED" = false ]; then
             echo "" >> "$BASHRC_FILE"
             echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
         fi
         echo "$EXPECTED_CSM" >> "$BASHRC_FILE"
-        log_info "alias csm を追加しました（家老・足軽ウィンドウの起動）"
+        log_info "alias csm を追加しました（家老 pane へ移動）"
         ALIAS_ADDED=true
     elif ! grep -qF "$EXPECTED_CSM" "$BASHRC_FILE" 2>/dev/null; then
         if sed -i "s|alias csm=.*|$EXPECTED_CSM|" "$BASHRC_FILE" 2>/dev/null; then

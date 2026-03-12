@@ -78,7 +78,20 @@ def ensure_agent_cfg(cfg: dict, agent_id: str) -> dict:
     return new_cfg
 
 
-def list_multiagent_targets() -> list[tuple[str, str, str]]:
+def list_backend_targets() -> list[tuple[str, str, str]]:
+    if tmux_ok("has-session", "-t", "goza-no-ma"):
+        out = tmux_output("list-panes", "-s", "-t", "goza-no-ma", "-F", "#{pane_id}")
+        targets: list[tuple[str, str, str]] = []
+        for pane_id in out.splitlines():
+            pane_id = pane_id.strip()
+            if not pane_id:
+                continue
+            agent_id = tmux_output("show-options", "-p", "-t", pane_id, "-v", "@agent_id").strip()
+            cli_type = tmux_output("show-options", "-p", "-t", pane_id, "-v", "@agent_cli").strip().lower()
+            if agent_id:
+                targets.append((pane_id, agent_id, cli_type))
+        return targets
+
     out = tmux_output("list-panes", "-t", "multiagent:agents", "-F", "#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}\t#{@agent_cli}")
     targets: list[tuple[str, str, str]] = []
     for line in out.splitlines():
@@ -92,6 +105,9 @@ def list_multiagent_targets() -> list[tuple[str, str, str]]:
 
 
 def gather_targets() -> list[tuple[str, str, str]]:
+    if tmux_ok("has-session", "-t", "goza-no-ma"):
+        return list_backend_targets()
+
     targets: list[tuple[str, str, str]] = []
     if tmux_ok("has-session", "-t", "shogun"):
         cli_type = tmux_output("show-options", "-p", "-t", "shogun:main", "-v", "@agent_cli").strip().lower() or "claude"
@@ -100,7 +116,15 @@ def gather_targets() -> list[tuple[str, str, str]]:
         cli_type = tmux_output("show-options", "-p", "-t", "gunshi:main", "-v", "@agent_cli").strip().lower() or "claude"
         targets.append(("gunshi:main", "gunshi", cli_type))
     if tmux_ok("has-session", "-t", "multiagent"):
-        targets.extend(list_multiagent_targets())
+        out = tmux_output("list-panes", "-t", "multiagent:agents", "-F", "#{session_name}:#{window_name}.#{pane_index}")
+        for target in out.splitlines():
+            target = target.strip()
+            if not target:
+                continue
+            agent_id = tmux_output("show-options", "-p", "-t", target, "-v", "@agent_id").strip()
+            cli_type = tmux_output("show-options", "-p", "-t", target, "-v", "@agent_cli").strip().lower()
+            if agent_id:
+                targets.append((target, agent_id, cli_type))
     return targets
 
 

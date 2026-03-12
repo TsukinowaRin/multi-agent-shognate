@@ -109,6 +109,7 @@
 !scripts/sync_runtime_cli_preferences.py
 !scripts/runtime_cli_pref_daemon.sh
 !scripts/goza_mirror_pane.sh
+!scripts/goza_layout_autosave.sh
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh
 !scripts/seo_qc.sh

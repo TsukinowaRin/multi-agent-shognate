@@ -23,7 +23,7 @@ setup_file() {
 }
 
 @test "御座の間スクリプトが現役で存在する" {
-    run rg -n "goza_no_ma\\.sh|goza_mirror_pane\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_mirror_pane.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "goza_no_ma\\.sh|goza_mirror_pane\\.sh|goza_layout_autosave\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_mirror_pane.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -43,7 +43,7 @@ setup_file() {
 }
 
 @test "御座の間は手動リサイズ後の tmux window_layout を保存して次回復元する" {
-    run rg -n "GOZA_LAYOUT_FILE|save_goza_layout|restore_goza_layout_if_available|window_layout|select-layout -t .*saved_layout" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    run rg -n "GOZA_LAYOUT_FILE|save_goza_layout|restore_goza_layout_if_available|start_goza_layout_autosave|goza_layout_autosave\\.sh|window_layout|select-layout -t .*saved_layout" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh"
     [ "$status" -eq 0 ]
 }
 

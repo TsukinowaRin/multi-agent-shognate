@@ -2575,3 +2575,22 @@
   - 御座の間の再生成時に layout を保存・復元する方式なら、tmux の手動リサイズ結果を安全に次回へ持ち越せる。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 御座の間レイアウトの即時 autosave 化
+- 背景:
+  - ユーザー要望は「閉じる直前保存」ではなく、御座の間で手動リサイズした瞬間に次回用レイアウトを記憶することだった。
+  - 既存実装は `goza-no-ma` session kill 前にしか `goza_layout.tsv` を更新しておらず、期待に合っていなかった。
+- 実施:
+  - `scripts/goza_layout_autosave.sh` を追加し、`goza-no-ma:overview` の `#{window_layout}` と pane 数を1秒間隔で監視して変化時のみ `queue/runtime/goza_layout.tsv` へ保存する daemon を実装した。
+  - `scripts/goza_no_ma.sh` に `start_goza_layout_autosave()` を追加し、view session 作成後に autosave daemon を自動起動するようにした。
+  - 既存 view session を kill する前には従来どおり `save_goza_layout()` も残し、daemon と併用で安全側にした。
+  - `tests/unit/test_mux_parity.bats` を更新し、`goza_layout_autosave.sh` と `start_goza_layout_autosave` の存在を静的回帰で確認するようにした。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh scripts/goza_mirror_pane.sh scripts/goza_layout_autosave.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS (`1..14`)
+  - `bash scripts/goza_no_ma.sh --view-only --no-attach` → PASS
+  - その後 `tmux select-layout -t goza-no-ma:overview tiled` を実行し、数秒待機後に `queue/runtime/goza_layout.tsv` が更新されることを確認した。
+- 判断:
+  - tmux hook に依存するより、軽量 daemon で `window_layout` を監視して差分保存する方が実装・運用ともに安定する。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

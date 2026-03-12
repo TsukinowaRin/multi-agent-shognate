@@ -122,6 +122,15 @@ mirror_cmd() {
     "$ROOT_DIR" "$ROOT_DIR/scripts/goza_mirror_pane.sh" "$target" "$label"
 }
 
+start_goza_layout_autosave() {
+  local session="$1"
+  mkdir -p "$ROOT_DIR/logs"
+  pkill -f "scripts/goza_layout_autosave.sh ${session} " >/dev/null 2>&1 || true
+  nohup bash "$ROOT_DIR/scripts/goza_layout_autosave.sh" "$session" "$GOZA_LAYOUT_FILE" \
+    >> "$ROOT_DIR/logs/goza_layout_autosave.log" 2>&1 &
+  disown
+}
+
 save_goza_layout() {
   local session="$1"
   local window_target="${session}:overview"
@@ -213,9 +222,11 @@ create_goza_session() {
 
 if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
   save_goza_layout "$VIEW_SESSION"
+  pkill -f "scripts/goza_layout_autosave.sh ${VIEW_SESSION} " >/dev/null 2>&1 || true
   tmux kill-session -t "$VIEW_SESSION" >/dev/null 2>&1 || true
 fi
 create_goza_session "$VIEW_SESSION"
+start_goza_layout_autosave "$VIEW_SESSION"
 
 if [[ "$NO_ATTACH" = true ]]; then
   echo "[INFO] 御座の間 session ready: $VIEW_SESSION"

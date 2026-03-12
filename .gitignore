@@ -111,6 +111,7 @@
 !scripts/goza_mirror_pane.sh
 !scripts/goza_layout_autosave.sh
 !scripts/goza_dispatcher.sh
+!scripts/goza_focus_target.sh
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh
 !scripts/seo_qc.sh

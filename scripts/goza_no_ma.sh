@@ -28,6 +28,15 @@ dispatcher_cmd() {
     "$ROOT_DIR" "$ROOT_DIR/scripts/goza_dispatcher.sh" "$session"
 }
 
+start_goza_focus_watch() {
+  local session="$1"
+  mkdir -p "$ROOT_DIR/logs"
+  pkill -f "scripts/goza_focus_target.sh ${session} --watch" >/dev/null 2>&1 || true
+  nohup bash "$ROOT_DIR/scripts/goza_focus_target.sh" "$session" --watch \
+    >> "$ROOT_DIR/logs/goza_focus_target.log" 2>&1 &
+  disown
+}
+
 attach_or_switch_session() {
   local session="$1"
   if [[ -n "${TMUX:-}" ]]; then
@@ -151,6 +160,8 @@ for session in shogun gunshi multiagent; do
 done
 
 if tmux has-session -t "$VIEW_SESSION" 2>/dev/null && [[ "$REFRESH_VIEW" != true ]]; then
+  start_goza_layout_autosave "$VIEW_SESSION"
+  start_goza_focus_watch "$VIEW_SESSION"
   if [[ "$NO_ATTACH" = true ]]; then
     echo "[INFO] 既存の御座の間 session を再利用します: $VIEW_SESSION"
     echo "       attach: tmux attach -t $VIEW_SESSION"
@@ -269,26 +280,40 @@ create_goza_session() {
     if (( ${#ashigaru_targets[@]} > 2 )); then
       local ash_top_right
       ash_top_right="$(tmux split-window -h -l "$ashigaru_half_width" -t "$ash_root" -P -F '#{pane_id}' "$(mirror_cmd "${ashigaru_targets[2]}" "${ashigaru_ids[2]}")")"
+      tmux set-option -p -t "$ash_top_right" @goza_target "${ashigaru_ids[2]}" >/dev/null 2>&1 || true
       tmux select-pane -t "$ash_top_right" -T "${ashigaru_ids[2]}" >/dev/null 2>&1 || true
     fi
 
     if (( ${#ashigaru_targets[@]} > 3 )); then
       local ash_bottom_right
       ash_bottom_right="$(tmux split-window -h -l "$ashigaru_half_width" -t "$ash_bottom" -P -F '#{pane_id}' "$(mirror_cmd "${ashigaru_targets[3]}" "${ashigaru_ids[3]}")")"
+      tmux set-option -p -t "$ash_bottom_right" @goza_target "${ashigaru_ids[3]}" >/dev/null 2>&1 || true
       tmux select-pane -t "$ash_bottom_right" -T "${ashigaru_ids[3]}" >/dev/null 2>&1 || true
     fi
   fi
 
   tmux set-window-option -t "$session":overview synchronize-panes off >/dev/null 2>&1 || true
   tmux set-option -t "$session":overview mouse on >/dev/null 2>&1 || true
+  tmux set-option -w -t "$session:overview" @goza_active_target "shogun" >/dev/null 2>&1 || true
+  tmux set-option -p -t "$top_root" @goza_target "shogun" >/dev/null 2>&1 || true
   tmux select-pane -t "$top_root" >/dev/null 2>&1 || true
   tmux select-pane -t "$top_root" -T "shogun" >/dev/null 2>&1 || true
+  if [[ -n "$karo_target" ]]; then
+    tmux set-option -p -t "$karo_pane" @goza_target "$(tmux show-options -p -t "$karo_target" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)" >/dev/null 2>&1 || true
+  else
+    tmux set-option -p -t "$karo_pane" @goza_target "karo" >/dev/null 2>&1 || true
+  fi
   tmux select-pane -t "$karo_pane" -T "karo" >/dev/null 2>&1 || true
+  tmux set-option -p -t "$gunshi_pane" @goza_target "gunshi" >/dev/null 2>&1 || true
   tmux select-pane -t "$gunshi_pane" -T "gunshi" >/dev/null 2>&1 || true
   if (( ${#ashigaru_ids[@]} > 0 )); then
+    tmux set-option -p -t "$ash_root" @goza_target "${ashigaru_ids[0]}" >/dev/null 2>&1 || true
     tmux select-pane -t "$ash_root" -T "${ashigaru_ids[0]}" >/dev/null 2>&1 || true
   else
     tmux select-pane -t "$ash_root" -T "ashigaru" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${ash_bottom:-}" ]] && (( ${#ashigaru_ids[@]} > 1 )); then
+    tmux set-option -p -t "$ash_bottom" @goza_target "${ashigaru_ids[1]}" >/dev/null 2>&1 || true
   fi
   tmux select-pane -t "$dispatcher_pane" -T "goza-dispatch" >/dev/null 2>&1 || true
   restore_goza_layout_if_available "$session"
@@ -302,6 +327,7 @@ if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then
 fi
 create_goza_session "$VIEW_SESSION"
 start_goza_layout_autosave "$VIEW_SESSION"
+start_goza_focus_watch "$VIEW_SESSION"
 
 if [[ "$NO_ATTACH" = true ]]; then
   echo "[INFO] 御座の間 session ready: $VIEW_SESSION"

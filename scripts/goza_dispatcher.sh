@@ -37,6 +37,19 @@ resolve_target() {
   esac
 }
 
+read_session_target() {
+  local target
+  target="$(tmux show-options -w -t "${GOZA_SESSION}:overview" -v @goza_active_target 2>/dev/null | tr -d '\r' | head -n1 || true)"
+  if [[ -n "$target" ]]; then
+    CURRENT_TARGET="$target"
+  fi
+}
+
+persist_session_target() {
+  local target="$1"
+  tmux set-option -w -t "${GOZA_SESSION}:overview" @goza_active_target "$target" >/dev/null 2>&1 || true
+}
+
 print_help() {
   cat <<'EOF'
 [御座の間 使者]
@@ -82,9 +95,11 @@ send_line_to_target() {
 }
 
 print_help
+read_session_target
 printf '[INFO] 現在の送信先: %s\n' "$CURRENT_TARGET"
 
 while true; do
+  read_session_target
   printf '[%s] > ' "$CURRENT_TARGET"
   if ! IFS= read -r line; then
     printf '\n[INFO] 使者を終了します\n'
@@ -99,6 +114,7 @@ while true; do
       continue
       ;;
     /show)
+      read_session_target
       printf '[INFO] 現在の送信先: %s\n' "$CURRENT_TARGET"
       continue
       ;;
@@ -110,6 +126,7 @@ while true; do
       candidate="${line#"/target "}"
       if resolve_target "$candidate" >/dev/null 2>&1; then
         CURRENT_TARGET="$candidate"
+        persist_session_target "$CURRENT_TARGET"
         printf '[INFO] 送信先を変更: %s\n' "$CURRENT_TARGET"
       else
         printf '[WARN] target unresolved: %s\n' "$candidate"
@@ -119,6 +136,7 @@ while true; do
   esac
 
   if [[ "$line" =~ ^([a-zA-Z0-9_]+):[[:space:]]*(.+)$ ]]; then
+    persist_session_target "${BASH_REMATCH[1]}"
     send_line_to_target "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" || true
     continue
   fi

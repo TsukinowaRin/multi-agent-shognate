@@ -2658,3 +2658,8 @@
   - 御座の間は pane 自体を interactive attach にするより、mirror + 使者 pane の方が役職俯瞰を維持しつつ backend へ安全に送信できる。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+## 2026-03-12 14:50 JST
+- 御座の間は mirror pane のため、元リポジトリのように pane 自体へ直接入力する構造ではないことを再確認。
+- 実用性を優先し、`goza-dispatch` が最後に選択した pane の agent へ自動追従する導線を追加。
+- `scripts/goza_no_ma.sh` で各 mirror pane に `@goza_target` を付与し、`scripts/goza_focus_target.sh --watch` で `@goza_active_target` を window option に同期するよう変更。
+- `scripts/goza_dispatcher.sh` は prompt 表示前に `@goza_active_target` を読み、`/target` 手入力なしで選択paneへ送信できるよう変更。

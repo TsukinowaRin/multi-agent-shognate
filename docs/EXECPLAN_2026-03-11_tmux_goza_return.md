@@ -33,6 +33,7 @@
 - 2026-03-11: `tests/unit/test_mux_parity.bats` を更新し、`zellij` 不在・`御座の間` 存在・`csg/cgo` 案内を回帰確認。
 - 2026-03-11: `cgo` と通常の `goza_no_ma.sh` は既存 `shogun / gunshi / multiagent` session を再利用し、backend 起動は `--ensure-backend` または `-s` 指定時だけ行うよう修正。
 - 2026-03-12: `御座の間` を nested attach 3枚から役職別 live mirror 方式へ変更し、`shogun > karo > gunshi > ashigaru` の優先度レイアウトへ再編成。
+- 2026-03-12: `goza-dispatch` と `goza_focus_target.sh` を接続し、御座の間で最後に選択した pane の agent を送信先へ自動追従させた。
 
 ## Surprises & Discoveries
 - 旧 `goza_no_ma.sh` は `zellij` 互換オプション込みの巨大 frontend だったため、そのまま戻す価値は薄い。
@@ -48,6 +49,7 @@
 - backend 起動は暗黙では行わず、必要なら `--ensure-backend` または `-s` を明示する。
 - `御座の間` は interactive attach ではなく、backend pane の live mirror を read-only で並べる。
 - pane 優先度は `shogun > karo > gunshi > ashigaru` とする。
+- mirror pane 自体へ直接入力するのではなく、選択中 pane を `goza-dispatch` の送信先に同期する。
 
 ## Outcomes & Retrospective
 - `tmux` 本線を崩さず、`御座の間` を俯瞰ビューとして最小再実装できた。

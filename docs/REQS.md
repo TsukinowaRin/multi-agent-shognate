@@ -3,6 +3,21 @@
 最終更新: 2026-03-11
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-12: 御座の間の選択pane追従送信）
+### 要求
+1. `御座の間` は単なる閲覧画面ではなく、pane を選んだ対象へそのまま指示できる運用導線を持つこと。
+2. `goza-dispatch` は `/target` を毎回手入力しなくても、最後に選択した `shogun / karo / gunshi / ashigaruN` を現在の送信先として自動追従すること。
+3. `御座の間` の role pane はそれぞれ `@goza_target` を持ち、送信先の正本は `goza-no-ma:overview` window option `@goza_active_target` とすること。
+4. `cgo` 後も nested attach を行わず、御座の間から backend 実エージェントへ `tmux send-keys` で配信できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/goza_no_ma.sh scripts/goza_dispatcher.sh scripts/goza_focus_target.sh`
+   - 期待結果: 選択pane追従送信の導線に構文エラーがない。
+2. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats`
+   - 期待結果: 御座の間の dispatch 導線と `goza_active_target` 更新を含む回帰が PASS する。
+3. コマンド: `rg -n "@goza_target|@goza_active_target|goza_focus_target\\.sh|/target <agent_id>" scripts/goza_no_ma.sh scripts/goza_dispatcher.sh scripts/goza_focus_target.sh`
+   - 期待結果: pane 選択と送信先追従の実装が確認できる。
+
 ## 追補（2026-03-11: live CLI設定の次回起動反映）
 ### 要求
 1. 各 pane 内で変更した `model` や `reasoning/thinking` のうち、判別可能なものは起動中に約1秒以内で `config/settings.yaml` へ同期すること。

@@ -43,8 +43,8 @@ setup_file() {
 }
 
 @test "御座の間には使者ペインがあり backend へ送信できる" {
-    run rg -n "goza_dispatcher\\.sh|/target <agent_id>|<agent_id>: <message>|send-keys -t .* -l --" \
-      "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_dispatcher.sh"
+    run rg -n "goza_dispatcher\\.sh|/target <agent_id>|<agent_id>: <message>|send-keys -t .* -l --|goza_active_target|goza_target|goza_focus_target\\.sh" \
+      "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_dispatcher.sh" "$PROJECT_ROOT/scripts/goza_focus_target.sh"
     [ "$status" -eq 0 ]
 }
 

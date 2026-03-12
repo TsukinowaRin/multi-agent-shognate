@@ -33,7 +33,7 @@ setup_file() {
 }
 
 @test "御座の間導線は既存backend再利用を優先する" {
-    run rg -n "VIEW_ONLY=true|--ensure-backend|goza_no_ma\\.sh|既存 session だけで御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/README_ja.md"
+    run rg -n "VIEW_ONLY=true|--ensure-backend|--refresh|既存の御座の間 session を再利用|既存 session だけで御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/README_ja.md"
     [ "$status" -eq 0 ]
 }
 

@@ -11,6 +11,7 @@ GOZA_LAYOUT_FILE="${GOZA_LAYOUT_FILE:-$ROOT_DIR/queue/runtime/goza_layout.tsv}"
 SETUP_ONLY=false
 VIEW_ONLY=true
 ENSURE_BACKEND=false
+REFRESH_VIEW=false
 NO_ATTACH=false
 PASS_THROUGH=()
 
@@ -57,6 +58,7 @@ Options:
   -s, --setup-only   バックエンドを setup-only で起動してから御座の間を開く
   --ensure-backend   backend session が無ければ起動してから御座の間を開く
   --view-only        backend を起動せず、既存 session だけで御座の間を開く（default）
+  --refresh          既存の御座の間を破棄して再生成する
   --no-attach        tmux へ attach せず、ビュー作成だけ行う
   --session NAME     御座の間 session 名（default: goza-no-ma）
   -h, --help         このヘルプ
@@ -68,6 +70,7 @@ while [[ $# -gt 0 ]]; do
     -s|--setup-only) SETUP_ONLY=true; ENSURE_BACKEND=true; VIEW_ONLY=false; shift ;;
     --ensure-backend) ENSURE_BACKEND=true; VIEW_ONLY=false; shift ;;
     --view-only) VIEW_ONLY=true; ENSURE_BACKEND=false; shift ;;
+    --refresh) REFRESH_VIEW=true; shift ;;
     --no-attach) NO_ATTACH=true; shift ;;
     --session)
       if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
@@ -114,6 +117,16 @@ for session in shogun gunshi multiagent; do
     exit 1
   fi
 done
+
+if tmux has-session -t "$VIEW_SESSION" 2>/dev/null && [[ "$REFRESH_VIEW" != true ]]; then
+  if [[ "$NO_ATTACH" = true ]]; then
+    echo "[INFO] 既存の御座の間 session を再利用します: $VIEW_SESSION"
+    echo "       attach: tmux attach -t $VIEW_SESSION"
+    exit 0
+  fi
+  TMUX= tmux attach -t "$VIEW_SESSION"
+  exit 0
+fi
 
 mirror_cmd() {
   local target="$1"

@@ -56,6 +56,11 @@ bash shutsujin_departure.sh
 bash scripts/goza_no_ma.sh
 ```
 
+既存の御座の間を壊さず再利用します。再生成したい時だけ:
+```bash
+bash scripts/goza_no_ma.sh --refresh
+```
+
 backend が未起動なら明示:
 ```bash
 bash scripts/goza_no_ma.sh --ensure-backend

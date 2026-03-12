@@ -2594,3 +2594,22 @@
   - tmux hook に依存するより、軽量 daemon で `window_layout` を監視して差分保存する方が実装・運用ともに安定する。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 cgo の既存御座の間 session 再利用
+- 背景:
+  - ユーザー報告として、御座の間を手動リサイズしても `cgo` をやり直すと変更前の比率に戻る問題があった。
+  - tmux 実 smoke では `queue/runtime/goza_layout.tsv` の保存・復元自体は通っていたため、根本問題は `cgo` が毎回 `goza-no-ma` session を kill して再生成していることだと判断した。
+- 実施:
+  - `scripts/goza_no_ma.sh` に `--refresh` を追加した。
+  - 既定動作では、`goza-no-ma` session が既に存在する場合は kill せずそのまま再利用し、`tmux attach -t <session>` するよう変更した。
+  - `--no-attach` 時は既存 session 再利用メッセージだけを返すようにした。
+  - session を作り直すのは `--refresh` 明示時だけに限定した。
+  - `README.md` / `README_ja.md` に `--refresh` の案内を追記した。
+  - `tests/unit/test_mux_parity.bats` の御座の間導線回帰を `--refresh` と既存 session 再利用前提に更新した。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS
+- 判断:
+  - この要件では「保存して復元」よりも「既存 session を再利用して壊さない」方が正しい。復元機構は `--refresh` した時の安全網として残す。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

@@ -2536,3 +2536,23 @@
   - pane user option は format 展開より `show-options -p` の実読を正本にする方が堅牢。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 cgo の size missing 修正
+- 背景:
+  - `cgo` 実行時に `size missing` が発生し、`goza-no-ma` session を detached 作成できなかった。
+  - 原因は `scripts/goza_no_ma.sh` が detached session 上で `tmux split-window -p <percent>` を使っていたため。tmux は attach されていないクライアント幅では `%` 分割に失敗する。
+  - あわせて `discover_karo_target()` / `discover_ashigaru_targets()` も `list-panes -F '#{@agent_id}'` 依存で不安定だった。
+- 実施:
+  - `scripts/goza_no_ma.sh` の pane 分割をすべて固定サイズ (`-l`) ベースへ変更した。
+  - `VIEW_WIDTH` / `VIEW_HEIGHT` から `right_width`, `gunshi_height`, `ashigaru_top_height`, `half_width` を計算し、detached でも確定サイズで分割するようにした。
+  - `discover_karo_target()` / `discover_ashigaru_targets()` は pane 一覧取得後、各 pane に `tmux show-options -p -t <pane> -v @agent_id` を当てて役職判定する方式へ変更した。
+  - `tests/unit/test_mux_parity.bats` を固定サイズ分割前提へ更新した。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh scripts/goza_mirror_pane.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS (`1..13`)
+  - `bash scripts/goza_no_ma.sh --view-only --no-attach` → PASS
+  - `tmux list-panes -t goza-no-ma:overview` で detached session 上の pane 作成を確認
+- 判断:
+  - detached な俯瞰ビューは `%` 分割ではなく固定サイズ分割を使う方が堅牢。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

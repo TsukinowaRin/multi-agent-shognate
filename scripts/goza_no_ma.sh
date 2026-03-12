@@ -24,23 +24,27 @@ backend_sessions_ready() {
 }
 
 discover_karo_target() {
-  local line target agent_id
-  while IFS=$'\t' read -r target agent_id; do
+  local target agent_id
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    agent_id="$(tmux show-options -p -t "$target" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)"
     if [[ "$agent_id" =~ ^karo([0-9]+)?$ || "$agent_id" == "karo_gashira" ]]; then
       printf '%s\n' "$target"
       return 0
     fi
-  done < <(tmux list-panes -t multiagent:agents -F '#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}' 2>/dev/null || true)
+  done < <(tmux list-panes -t multiagent:agents -F '#{session_name}:#{window_name}.#{pane_index}' 2>/dev/null || true)
   return 1
 }
 
 discover_ashigaru_targets() {
-  local line target agent_id
-  while IFS=$'\t' read -r target agent_id; do
+  local target agent_id
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    agent_id="$(tmux show-options -p -t "$target" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)"
     if [[ "$agent_id" =~ ^ashigaru[0-9]+$ ]]; then
       printf '%s\t%s\n' "$target" "$agent_id"
     fi
-  done < <(tmux list-panes -t multiagent:agents -F '#{session_name}:#{window_name}.#{pane_index}\t#{@agent_id}' 2>/dev/null || true)
+  done < <(tmux list-panes -t multiagent:agents -F '#{session_name}:#{window_name}.#{pane_index}' 2>/dev/null || true)
 }
 
 usage() {
@@ -123,6 +127,21 @@ create_goza_session() {
   local ashigaru_targets=()
   local ashigaru_ids=()
   local line target agent_id
+  local right_width gunshi_height ashigaru_top_height half_width
+
+  right_width=$(( VIEW_WIDTH * 54 / 100 ))
+  (( right_width < 60 )) && right_width=60
+  (( right_width > VIEW_WIDTH - 40 )) && right_width=$(( VIEW_WIDTH - 40 ))
+
+  gunshi_height=$(( VIEW_HEIGHT * 36 / 100 ))
+  (( gunshi_height < 12 )) && gunshi_height=12
+  (( gunshi_height > VIEW_HEIGHT - 12 )) && gunshi_height=$(( VIEW_HEIGHT - 12 ))
+
+  ashigaru_top_height=$(( (VIEW_HEIGHT - gunshi_height) / 2 ))
+  (( ashigaru_top_height < 8 )) && ashigaru_top_height=8
+
+  half_width=$(( right_width / 2 ))
+  (( half_width < 24 )) && half_width=24
 
   karo_target="$(discover_karo_target || true)"
   while IFS=$'\t' read -r target agent_id; do
@@ -132,25 +151,25 @@ create_goza_session() {
   done < <(discover_ashigaru_targets)
 
   tmux new-session -d -x "$VIEW_WIDTH" -y "$VIEW_HEIGHT" -s "$session" -n overview "$(mirror_cmd "shogun:main" "shogun")"
-  tmux split-window -h -p 54 -t "$session":overview "$(mirror_cmd "${karo_target:-multiagent:agents.0}" "karo")"
-  tmux split-window -v -p 36 -t "$session":overview.1 "$(mirror_cmd "gunshi:main" "gunshi")"
+  tmux split-window -h -l "$right_width" -t "$session":overview "$(mirror_cmd "${karo_target:-multiagent:agents.0}" "karo")"
+  tmux split-window -v -l "$gunshi_height" -t "$session":overview.1 "$(mirror_cmd "gunshi:main" "gunshi")"
 
   if (( ${#ashigaru_targets[@]} > 0 )); then
-    tmux split-window -h -p 44 -t "$session":overview.2 "$(mirror_cmd "${ashigaru_targets[0]}" "${ashigaru_ids[0]}")"
+    tmux split-window -h -l "$half_width" -t "$session":overview.2 "$(mirror_cmd "${ashigaru_targets[0]}" "${ashigaru_ids[0]}")"
     tmux select-pane -t "$session":overview.3 -T "${ashigaru_ids[0]}" >/dev/null 2>&1 || true
 
     if (( ${#ashigaru_targets[@]} > 1 )); then
-      tmux split-window -v -p 50 -t "$session":overview.3 "$(mirror_cmd "${ashigaru_targets[1]}" "${ashigaru_ids[1]}")"
+      tmux split-window -v -l "$ashigaru_top_height" -t "$session":overview.3 "$(mirror_cmd "${ashigaru_targets[1]}" "${ashigaru_ids[1]}")"
       tmux select-pane -t "$session":overview.4 -T "${ashigaru_ids[1]}" >/dev/null 2>&1 || true
     fi
 
     if (( ${#ashigaru_targets[@]} > 2 )); then
-      tmux split-window -h -p 50 -t "$session":overview.3 "$(mirror_cmd "${ashigaru_targets[2]}" "${ashigaru_ids[2]}")"
+      tmux split-window -h -l "$half_width" -t "$session":overview.3 "$(mirror_cmd "${ashigaru_targets[2]}" "${ashigaru_ids[2]}")"
       tmux select-pane -t "$session":overview.5 -T "${ashigaru_ids[2]}" >/dev/null 2>&1 || true
     fi
 
     if (( ${#ashigaru_targets[@]} > 3 )); then
-      tmux split-window -h -p 50 -t "$session":overview.4 "$(mirror_cmd "${ashigaru_targets[3]}" "${ashigaru_ids[3]}")"
+      tmux split-window -h -l "$half_width" -t "$session":overview.4 "$(mirror_cmd "${ashigaru_targets[3]}" "${ashigaru_ids[3]}")"
       tmux select-pane -t "$session":overview.6 -T "${ashigaru_ids[3]}" >/dev/null 2>&1 || true
     fi
   fi

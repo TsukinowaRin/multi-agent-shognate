@@ -38,7 +38,7 @@ setup_file() {
 }
 
 @test "御座の間は将軍 > 家老 > 軍師 > 足軽の順で独立mirror paneを作る" {
-    run rg -n "mirror_cmd .*shogun:main|mirror_cmd .*gunshi:main|discover_karo_target|discover_ashigaru_targets|split-window -h -p 54|split-window -v -p 36|split-window -h -p 44" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    run rg -n "mirror_cmd .*shogun:main|mirror_cmd .*gunshi:main|discover_karo_target|discover_ashigaru_targets|split-window -h -l|split-window -v -l|show-options -p -t .*@agent_id" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 

@@ -2677,3 +2677,11 @@
   - `tmux list-panes -s -t goza-no-ma -F '#{pane_id}\t#{@agent_id}\t#{@agent_cli}\t#{pane_title}'` で role pane を確認
 - チェックポイントコミット: `617f306` `codex: 御座の間本体化のtmux導線を仕上げる`
 - `git push -u origin codex/auto` は認証未設定で失敗: `fatal: could not read Username for 'https://github.com': No such device or address`
+## 2026-03-12 18:40 JST — 旧 goza 残骸の整理
+- `goza-no-ma` 本体化後に未使用となった旧資産を整理。
+- `scripts/goza_dispatcher.sh` / `scripts/goza_focus_target.sh` / `scripts/goza_mirror_pane.sh` を `Waste/tmux_unification_2026-03-11/scripts/` へ退避。
+- `.gitignore` の旧例外 (`bootstrap_goza_view.sh`, `goza_dispatcher.sh`, `goza_focus_target.sh`, `goza_mirror_pane.sh`) を削除。
+- `docs/INDEX.md` の Archive 説明を更新し、mirror/dispatch 残骸も退避対象であることを明記。
+- 検証:
+  - `rg -n "goza_dispatch|goza_focus_target|goza_mirror_pane|bootstrap_goza_view" README.md README_ja.md docs scripts tests .gitignore` で現役参照が `.gitignore` と `Waste/` 以外に残っていないことを確認。
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` を再実行して tmux 御座の間導線が回帰していないことを確認予定。

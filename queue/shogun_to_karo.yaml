@@ -47,12 +47,41 @@
   purpose: "家老自身の生存確認、および足軽一号・二号の動静（生存・稼働状態）を確認して報告する。"
   acceptance_criteria:
     - "家老が自らの現在時刻をdashboard.mdに記し、応答性を証明する。"
-    - "足軽一号（ashigaru1）と足軽二号（ashigaru2）の最新報告時刻と稼働状態（active/idle/offline等）がdashboard.mdに記録される。"
+    - "足軽一号（ashigaru1）と足軽二号（ashigaru2）の最新報告時刻と稼働状態（active/idle/offline 等）がdashboard.mdに記録される。"
     - "足軽らが応答せぬ場合、その旨をdashboardへ記載する。"
   command: |
     家老自身の生存を示すとともに、足軽一号および二号に点呼を取れ。
-    現在、家老の画面にてCLI更新の問い（Update prompt）が出ている場合は、それをスキップして速やかに任務に当たれ。
+    現在、家老の画面にてCLI更新の問い（Update prompt）が出ている場合は、それをスキップして速やか に任務に当たれ。
     結果はdashboard.mdにまとめ、将軍へ報告せよ。
   project: multi-agent-shogun
   priority: high
   status: done
+
+- id: cmd_112
+  timestamp: "2026-03-11T23:14:04+09:00"
+  purpose: "家老が全軍（自身および足軽1〜8号）の点呼を行い、現在の動静を一覧化して報告する。"
+  acceptance_criteria:
+    - "家老の現在時刻がdashboard.mdに記録され、生存が確認できる。"
+    - "足軽（ashigaru1〜ashigaru8）全員の最新報告時刻と稼働状態（active/idle/offline等）がdashboard.mdに記録されている。"
+    - "未応答の者がいる場合、その旨と状況をdashboard.mdに記載する。"
+  command: |
+    全軍に点呼を取れ。家老自身、および足軽1号から8号までの全員の稼働状況を確認せよ。
+    結果をdashboard.mdへまとめ、将軍へ報告せよ。
+  project: multi-agent-shogun
+  priority: high
+  status: in_progress
+
+- id: cmd_113
+  timestamp: "2026-03-12T14:19:37+09:00"
+  purpose: "家老が現時点で全員への点呼を再実施し、家老自身および足軽1号から8号までの最新動静を一覧化して報告できる状態にする。"
+  acceptance_criteria:
+    - "家老の現在時刻がdashboard.mdに記録され、生存が確認できる。"
+    - "足軽 ashigaru1〜ashigaru8 それぞれについて、点呼時刻・応答有無・稼働状態（active/idle/offline/unknown 等）がdashboard.mdに記録されている。"
+    - "担当範囲外または未応答の者がいる場合、その理由と次の対処がdashboard.mdに記載されている。"
+  command: |
+    全員への点呼を今あらためて実施せよ。家老自身の生存確認に加え、足軽1号から8号までの最新の応答有無と稼働状態を取りまとめよ。
+    もし担当割当や active 設定の制約により直接確認できぬ者があれば、その制約内容を明記したうえで、現時点の扱い（未応答・状況不明等）と次の対処を dashboard.md に記せ。
+    進捗および最終結果は dashboard.md に反映し、将軍が即座に要約できる形でまとめよ。
+  project: multi-agent-shogun
+  priority: high
+  status: pending

@@ -8,12 +8,17 @@ topology:
   - ashigaru2
   - ashigaru3
   - ashigaru4
+  - ashigaru5
+  - ashigaru6
+  - ashigaru7
+  - ashigaru8
 cli:
   default: gemini
   agents:
     shogun:
       type: gemini
-      model: auto
+      model: gpt-5.4
+      reasoning_effort: high
     gunshi:
       type: gemini
       model: auto
@@ -35,5 +40,17 @@ cli:
       reasoning_effort: high
     ashigaru4:
       type: codex
+      model: gpt-5.4
+      reasoning_effort: high
+    ashigaru5:
+      model: gpt-5.4
+      reasoning_effort: high
+    ashigaru6:
+      model: gpt-5.4
+      reasoning_effort: high
+    ashigaru7:
+      model: gpt-5.4
+      reasoning_effort: high
+    ashigaru8:
       model: gpt-5.4
       reasoning_effort: high

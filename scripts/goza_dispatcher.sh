@@ -15,6 +15,17 @@ fi
 resolve_multiagent_agent() {
   local wanted="$1"
   local pane_target agent_id
+  if tmux has-session -t "$GOZA_SESSION" 2>/dev/null; then
+    while IFS= read -r pane_target; do
+      [ -n "$pane_target" ] || continue
+      agent_id="$(tmux show-options -p -t "$pane_target" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)"
+      if [[ "$agent_id" == "$wanted" ]]; then
+        printf '%s\n' "$pane_target"
+        return 0
+      fi
+    done < <(tmux list-panes -t "$GOZA_SESSION" -F '#{pane_id}' 2>/dev/null || true)
+    return 1
+  fi
   while IFS= read -r pane_target; do
     [ -n "$pane_target" ] || continue
     agent_id="$(tmux show-options -p -t "$pane_target" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)"
@@ -29,10 +40,7 @@ resolve_multiagent_agent() {
 resolve_target() {
   local wanted="$1"
   case "$wanted" in
-    shogun) printf '%s\n' "shogun:main.0" ;;
-    gunshi) printf '%s\n' "gunshi:main.0" ;;
-    karo|karo_gashira|karo[0-9]*) resolve_multiagent_agent "$wanted" ;;
-    ashigaru[0-9]*) resolve_multiagent_agent "$wanted" ;;
+    shogun|gunshi|karo|karo_gashira|karo[0-9]*|ashigaru[0-9]*) resolve_multiagent_agent "$wanted" ;;
     *) return 1 ;;
   esac
 }
@@ -70,7 +78,17 @@ EOF
 
 list_agents() {
   local pane_target agent_id
-  printf '送信可能: shogun gunshi'
+  printf '送信可能:'
+  if tmux has-session -t "$GOZA_SESSION" 2>/dev/null; then
+    while IFS= read -r pane_target; do
+      [ -n "$pane_target" ] || continue
+      agent_id="$(tmux show-options -p -t "$pane_target" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)"
+      [[ -n "$agent_id" ]] || continue
+      printf ' %s' "$agent_id"
+    done < <(tmux list-panes -t "$GOZA_SESSION" -F '#{pane_id}' 2>/dev/null || true)
+    printf '\n'
+    return 0
+  fi
   while IFS= read -r pane_target; do
     [ -n "$pane_target" ] || continue
     agent_id="$(tmux show-options -p -t "$pane_target" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)"

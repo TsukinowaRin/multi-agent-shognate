@@ -73,15 +73,32 @@
 
 - id: cmd_113
   timestamp: "2026-03-12T14:19:37+09:00"
-  purpose: "家老が現時点で全員への点呼を再実施し、家老自身および足軽1号から8号までの最新動静を一覧化して報告できる状態にする。"
+  purpose: "家老が全軍（1〜8号）を掌握するため、設定を更新したうえで全軍点呼を実施し、最新動静を報告できる状態にする。"
   acceptance_criteria:
-    - "家老の現在時刻がdashboard.mdに記録され、生存が確認できる。"
-    - "足軽 ashigaru1〜ashigaru8 それぞれについて、点呼時刻・応答有無・稼働状態（active/idle/offline/unknown 等）がdashboard.mdに記録されている。"
-    - "担当範囲外または未応答の者がいる場合、その理由と次の対処がdashboard.mdに記載されている。"
+    - "config/settings.yaml の active_ashigaru が ashigaru1〜ashigaru8 全てを含むように更新されている。"
+    - "queue/runtime/ashigaru_owner.tsv にて、全八名の担当が karo に割り当てられている。"
+    - "家老および全足軽（1〜8号）の点呼結果（時刻・状態）が dashboard.md に記録されている。"
   command: |
-    全員への点呼を今あらためて実施せよ。家老自身の生存確認に加え、足軽1号から8号までの最新の応答有無と稼働状態を取りまとめよ。
-    もし担当割当や active 設定の制約により直接確認できぬ者があれば、その制約内容を明記したうえで、現時点の扱い（未応答・状況不明等）と次の対処を dashboard.md に記せ。
-    進捗および最終結果は dashboard.md に反映し、将軍が即座に要約できる形でまとめよ。
+    全軍掌握のため、まず config/settings.yaml の active_ashigaru に ashigaru1〜ashigaru8 を追加せよ。
+    さらに queue/runtime/ashigaru_owner.tsv において全八名の担当を karo に設定せよ。
+    そのうえで、全軍に点呼を取り、最新の稼働状態を dashboard.md にまとめよ。
+    不備があれば dashboard の「🚨 要対応」にて報告せよ。
+  project: multi-agent-shogun
+  priority: high
+  status: in_progress
+
+- id: cmd_114
+  timestamp: "2026-03-12T18:05:47+09:00"
+  purpose: "家老が滞留した全軍点呼の集約を立て直し、全軍の最新動静と指揮系統の不整合を報告できる状態にする。"
+  acceptance_criteria:
+    - "dashboard.md に、家老および ashigaru1〜ashigaru8 の最新時刻・稼働状態が記録されている。"
+    - "queue/inbox/karo.yaml の未読報告が処理され、未処理が残る場合は dashboard.md の「🚨 要対応」に理由と次アクションが記載されている。"
+    - "queue/runtime/ashigaru_owner.tsv における ashigaru1〜ashigaru8 の担当が各一行で karo に正規化され、その結果が dashboard.md に記録されている。"
+  command: |
+    cmd_113 の集約が停滞しておる。既着の足軽報告を確認し、家老自身を含む全軍の最新動静を dashboard.md へ時刻付きで整理せよ。
+    併せて queue/inbox/karo.yaml に滞留している未読報告を処理し、未処理が残るなら理由と次手を dashboard.md の「🚨 要対応」に明記せよ。
+    また queue/runtime/ashigaru_owner.tsv に重複が見えるゆえ、ashigaru1〜ashigaru8 の担当が各一行で karo となるよう整え、反映結果を報告せよ。
+    もし multiagent 側の実行基盤に不具合があるなら、その旨と復旧条件を dashboard.md に記せ。
   project: multi-agent-shogun
   priority: high
   status: pending

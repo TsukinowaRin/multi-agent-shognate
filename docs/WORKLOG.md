@@ -2675,3 +2675,5 @@
   - `bash shutsujin_departure.sh -s` PASS
   - `bash shutsujin_departure.sh` PASS
   - `tmux list-panes -s -t goza-no-ma -F '#{pane_id}\t#{@agent_id}\t#{@agent_cli}\t#{pane_title}'` で role pane を確認
+- チェックポイントコミット: `617f306` `codex: 御座の間本体化のtmux導線を仕上げる`
+- `git push -u origin codex/auto` は認証未設定で失敗: `fatal: could not read Username for 'https://github.com': No such device or address`

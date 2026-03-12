@@ -6,6 +6,7 @@
 起動入口の本体は `shutsujin_departure.sh` です。  
 俯瞰ビューとして `scripts/goza_no_ma.sh` による `御座の間` を使えます。  
 `御座の間` は `shogun / karo / gunshi / ashigaru` の live mirror を並べる read-only 俯瞰です。  
+下段の `goza-dispatch` pane から、`shogun: ...` や `/target karo` で backend の実エージェントへ指示を送れます。
 `zellij` は廃止済みで、履歴が必要なら `Waste/` を参照します。
 
 ## このフォーク独自の対応
@@ -48,6 +49,14 @@ bash scripts/goza_no_ma.sh
 既存の御座の間を壊さず再利用します。再生成したい時だけ:
 ```bash
 bash scripts/goza_no_ma.sh --refresh
+```
+
+御座の間から指示する:
+```text
+/target shogun
+進捗を報告せよ
+
+ashigaru1: queue を確認せよ
 ```
 
 backend が未起動なら明示:

@@ -8,6 +8,7 @@ VIEW_SESSION="${VIEW_SESSION:-goza-no-ma}"
 VIEW_WIDTH="${VIEW_WIDTH:-220}"
 VIEW_HEIGHT="${VIEW_HEIGHT:-60}"
 GOZA_LAYOUT_FILE="${GOZA_LAYOUT_FILE:-$ROOT_DIR/queue/runtime/goza_layout.tsv}"
+GOZA_DISPATCHER_HEIGHT="${GOZA_DISPATCHER_HEIGHT:-8}"
 SETUP_ONLY=false
 VIEW_ONLY=true
 ENSURE_BACKEND=false
@@ -19,6 +20,12 @@ placeholder_cmd() {
   local label="$1"
   printf 'cd %q && printf %q && exec bash' \
     "$ROOT_DIR" "[INFO] ${label} を待機中...\n"
+}
+
+dispatcher_cmd() {
+  local session="$1"
+  printf 'cd %q && bash %q %q' \
+    "$ROOT_DIR" "$ROOT_DIR/scripts/goza_dispatcher.sh" "$session"
 }
 
 attach_or_switch_session() {
@@ -76,6 +83,7 @@ Options:
   --refresh          既存の御座の間を破棄して再生成する
   --no-attach        tmux へ attach せず、ビュー作成だけ行う
   --session NAME     御座の間 session 名（default: goza-no-ma）
+  --dispatcher-height N  下段の使者ペイン高さ（default: 8）
   -h, --help         このヘルプ
 USAGE
 }
@@ -93,6 +101,15 @@ while [[ $# -gt 0 ]]; do
         shift 2
       else
         echo "[ERROR] --session には名前を指定してください" >&2
+        exit 1
+      fi
+      ;;
+    --dispatcher-height)
+      if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+        GOZA_DISPATCHER_HEIGHT="$2"
+        shift 2
+      else
+        echo "[ERROR] --dispatcher-height には数値を指定してください" >&2
         exit 1
       fi
       ;;
@@ -194,7 +211,7 @@ create_goza_session() {
   local target agent_id
   local shogun_width right_width ashigaru_width gunshi_width karo_width
   local ashigaru_top_height ashigaru_half_width
-  local karo_pane gunshi_pane ash_root ash_bottom
+  local root_pane dispatcher_pane top_root karo_pane gunshi_pane ash_root ash_bottom
 
   shogun_width=$(( VIEW_WIDTH * 40 / 100 ))
   (( shogun_width < 70 )) && shogun_width=70
@@ -214,7 +231,10 @@ create_goza_session() {
   karo_width=$(( right_width - ashigaru_width - gunshi_width ))
   (( karo_width < 32 )) && karo_width=32
 
-  ashigaru_top_height=$(( VIEW_HEIGHT / 2 ))
+  (( GOZA_DISPATCHER_HEIGHT < 4 )) && GOZA_DISPATCHER_HEIGHT=4
+  (( GOZA_DISPATCHER_HEIGHT > VIEW_HEIGHT - 12 )) && GOZA_DISPATCHER_HEIGHT=$(( VIEW_HEIGHT - 12 ))
+
+  ashigaru_top_height=$(( (VIEW_HEIGHT - GOZA_DISPATCHER_HEIGHT) / 2 ))
   (( ashigaru_top_height < 10 )) && ashigaru_top_height=10
 
   ashigaru_half_width=$(( ashigaru_width / 2 ))
@@ -228,7 +248,11 @@ create_goza_session() {
   done < <(discover_ashigaru_targets)
 
   tmux new-session -d -x "$VIEW_WIDTH" -y "$VIEW_HEIGHT" -s "$session" -n overview "$(mirror_cmd "shogun:main" "shogun")"
-  karo_pane="$(tmux split-window -h -l "$right_width" -t "$session":overview -P -F '#{pane_id}' "$(mirror_cmd "${karo_target:-multiagent:agents.0}" "karo")")"
+  root_pane="$(tmux display-message -p -t "$session":overview.0 "#{pane_id}")"
+  dispatcher_pane="$(tmux split-window -v -l "$GOZA_DISPATCHER_HEIGHT" -t "$root_pane" -P -F '#{pane_id}' "$(dispatcher_cmd "$session")")"
+  top_root="$root_pane"
+
+  karo_pane="$(tmux split-window -h -l "$right_width" -t "$top_root" -P -F '#{pane_id}' "$(mirror_cmd "${karo_target:-multiagent:agents.0}" "karo")")"
   ash_root="$(tmux split-window -h -l "$ashigaru_width" -t "$karo_pane" -P -F '#{pane_id}' "$(
     if (( ${#ashigaru_targets[@]} > 0 )); then
       mirror_cmd "${ashigaru_targets[0]}" "${ashigaru_ids[0]}"
@@ -257,8 +281,8 @@ create_goza_session() {
 
   tmux set-window-option -t "$session":overview synchronize-panes off >/dev/null 2>&1 || true
   tmux set-option -t "$session":overview mouse on >/dev/null 2>&1 || true
-  tmux select-pane -t "$session":overview.0 >/dev/null 2>&1 || true
-  tmux select-pane -t "$session":overview.0 -T "shogun" >/dev/null 2>&1 || true
+  tmux select-pane -t "$top_root" >/dev/null 2>&1 || true
+  tmux select-pane -t "$top_root" -T "shogun" >/dev/null 2>&1 || true
   tmux select-pane -t "$karo_pane" -T "karo" >/dev/null 2>&1 || true
   tmux select-pane -t "$gunshi_pane" -T "gunshi" >/dev/null 2>&1 || true
   if (( ${#ashigaru_ids[@]} > 0 )); then
@@ -266,7 +290,9 @@ create_goza_session() {
   else
     tmux select-pane -t "$ash_root" -T "ashigaru" >/dev/null 2>&1 || true
   fi
+  tmux select-pane -t "$dispatcher_pane" -T "goza-dispatch" >/dev/null 2>&1 || true
   restore_goza_layout_if_available "$session"
+  tmux select-pane -t "$top_root" >/dev/null 2>&1 || true
 }
 
 if tmux has-session -t "$VIEW_SESSION" 2>/dev/null; then

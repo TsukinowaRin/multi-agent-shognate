@@ -2634,3 +2634,27 @@
   - 手動レイアウト保存は既存 session 再利用で自然に維持され、`--refresh` 時だけ保存/復元が効けばよい。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+- 追記:
+  - `git push` は今回も `fatal: could not read Username for 'https://github.com': No such device or address` で失敗した。リモート反映はユーザー側の認証環境で実施が必要。
+
+## 2026-03-12 御座の間に使者ペインを追加して backend へ指示可能化
+- 背景:
+  - ユーザー要望として、御座の間から実際のエージェントへ指示できるようにしたいという要求があった。
+  - 現状の御座の間は read-only mirror だけで、backend pane へ入力する手段が無かった。
+  - あわせて、`cgo` 後に入力が壊れる問題は nested attach が原因だったため、tmux 内では `switch-client` を使う方針は維持する必要があった。
+- 実施:
+  - `scripts/goza_dispatcher.sh` を追加し、御座の間下段の `goza-dispatch` pane から backend の実エージェントへ `tmux send-keys` で送信できるようにした。
+  - 送信構文は `/target <agent_id>` による既定送信先変更、および `<agent_id>: <message>` の都度指定に対応した。
+  - `scripts/goza_no_ma.sh` に `dispatcher_cmd()` を追加し、御座の間作成時に下段 full-width の使者 pane を配置するよう変更した。
+  - 御座の間の既定レイアウトを、上段で `shogun > karo > gunshi > ashigaru` の優先度になるよう再構成した。
+  - `attach_or_switch_session()` は維持し、tmux 内からの `cgo` では nested attach せず `switch-client` を使うようにした。
+  - `README.md` / `README_ja.md` に、御座の間からの指示方法を追記した。
+  - `tests/unit/test_mux_parity.bats` に、使者 pane の存在と送信実装の静的回帰を追加した。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh scripts/goza_mirror_pane.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS
+  - `bash scripts/goza_no_ma.sh --view-only --no-attach` を2回実行し、2回目は既存 session 再利用となることを確認した。
+- 判断:
+  - 御座の間は pane 自体を interactive attach にするより、mirror + 使者 pane の方が役職俯瞰を維持しつつ backend へ安全に送信できる。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

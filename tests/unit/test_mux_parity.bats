@@ -23,7 +23,7 @@ setup_file() {
 }
 
 @test "御座の間スクリプトが現役で存在する" {
-    run rg -n "goza_no_ma\\.sh|goza_mirror_pane\\.sh|goza_layout_autosave\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_mirror_pane.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "goza_no_ma\\.sh|goza_mirror_pane\\.sh|goza_layout_autosave\\.sh|goza_dispatcher\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_mirror_pane.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh" "$PROJECT_ROOT/scripts/goza_dispatcher.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -38,7 +38,13 @@ setup_file() {
 }
 
 @test "御座の間は将軍 > 家老 > 軍師 > 足軽の順で独立mirror paneを作る" {
-    run rg -n "mirror_cmd .*shogun:main|mirror_cmd .*gunshi:main|discover_karo_target|discover_ashigaru_targets|placeholder_cmd|split-window -h -l|split-window -v -l|show-options -p -t .*@agent_id" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    run rg -n "dispatcher_cmd|mirror_cmd .*shogun:main|mirror_cmd .*gunshi:main|discover_karo_target|discover_ashigaru_targets|placeholder_cmd|split-window -h -l|split-window -v -l|show-options -p -t .*@agent_id" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "御座の間には使者ペインがあり backend へ送信できる" {
+    run rg -n "goza_dispatcher\\.sh|/target <agent_id>|<agent_id>: <message>|send-keys -t .* -l --" \
+      "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_dispatcher.sh"
     [ "$status" -eq 0 ]
 }
 

@@ -1121,3 +1121,19 @@
    - 期待結果: tmux 内では `switch-client` を使い、再生成は `--refresh` 明示時だけであることが確認できる。
 3. コマンド: `rg -n "placeholder_cmd|mirror_cmd .*shogun:main|mirror_cmd .*gunshi:main|split-window -h -l|split-window -v -l" scripts/goza_no_ma.sh`
    - 期待結果: 役職優先レイアウトの構成要素が存在する。
+
+## 追補（2026-03-12: 御座の間から backend エージェントへ指示できること）
+### 要求
+1. `cgo` / `bash scripts/goza_no_ma.sh` で開く御座の間から、backend の実エージェントへ直接指示を送れること。
+2. 御座の間は `shogun` 最大、`karo` 二番手、`gunshi` 三番手、`ashigaru` compact で表示すること。
+3. tmux 内から `cgo` しても nested attach せず、入力が壊れないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "goza_dispatcher\.sh|dispatcher_cmd|goza-dispatch" scripts/goza_no_ma.sh scripts/goza_dispatcher.sh`
+   - 期待結果: 御座の間に指示用 pane が存在する。
+2. コマンド: `rg -n "/target <agent_id>|<agent_id>: <message>|send-keys -t .* -l --" scripts/goza_dispatcher.sh`
+   - 期待結果: 使者 pane から実エージェントへ送信する実装が存在する。
+3. コマンド: `rg -n "switch-client -t|attach_or_switch_session" scripts/goza_no_ma.sh`
+   - 期待結果: tmux 内では nested attach せず `switch-client` を使う。
+4. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats`
+   - 期待結果: PASS。

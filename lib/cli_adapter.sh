@@ -705,6 +705,17 @@ get_model_display_name() {
             ;;
     esac
 
+    if [[ "$cli_type" == "claude" ]]; then
+        case "$model" in
+            ""|auto|gpt-*|gemini*|ollama/*|lmstudio/*|openai/*|openai-compatible/*|local*|qwen*|codex*)
+                short="Claude"
+                ;;
+        esac
+        if [[ -z "$short" || "$short" == "$model" ]]; then
+            short="Claude"
+        fi
+    fi
+
     # Thinking表示: Claude系はデフォルトONなので、falseの時だけ非表示
     # Claude: thinking: false → なし, それ以外(true/未設定) → "+T"
     # Codex等: Thinkingなし → 常になし

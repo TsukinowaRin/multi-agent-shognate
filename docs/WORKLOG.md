@@ -2470,3 +2470,18 @@
   - `multiagent` session 全体を1枚で見せる方式では家老を二番目に大きくできないため、`karo` pane の独立 mirror が必要だった。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 起動表示のCLI/モデル名整合修正
+- 背景:
+  - 実機起動ログで `将軍（claude / gpt-5.4+T）`、`軍師（claude / auto+T）` のような矛盾した表示が出た。
+  - 原因は `get_model_display_name()` が `cli_type=claude` でも `config/settings.yaml` 内の生の `model` 値をそのまま表示に使っていたため。
+- 実施:
+  - `lib/cli_adapter.sh` の `get_model_display_name()` を修正し、`claude` の場合は `gpt-*` / `auto` / `gemini*` / `ollama/*` / `lmstudio/*` など非Claude系モデル名を `Claude` 表示へ丸めるようにした。
+  - `tests/unit/test_cli_adapter.bats` に、`claude + gpt-5.4` と `claude + auto` がどちらも `Claude+T` へ正規化される回帰テストを追加した。
+- 検証:
+  - `bash -n lib/cli_adapter.sh shutsujin_departure.sh` → PASS
+  - `bats tests/unit/test_cli_adapter.bats` → PASS (`1..103`)
+- 判断:
+  - 起動表示は live CLI 種別と矛盾しないことが最優先であり、`claude` に他CLI由来の model 値が混入しても `Claude` 表示へ丸める方が安全。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

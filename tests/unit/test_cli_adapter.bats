@@ -224,6 +224,18 @@ cli:
       model: opus
 YAML
 
+    cat > "${TEST_TMP}/settings_claude_invalid_model.yaml" << 'YAML'
+cli:
+  default: claude
+  agents:
+    shogun:
+      type: claude
+      model: gpt-5.4
+    gunshi:
+      type: claude
+      model: auto
+YAML
+
     # localapi settings
     cat > "${TEST_TMP}/settings_localapi.yaml" << 'YAML'
 cli:
@@ -592,6 +604,18 @@ SH
     load_adapter_with "${TEST_TMP}/settings_shogun_gemini_default.yaml"
     result=$(get_model_display_name "shogun")
     [ "$result" = "Gemini" ]
+}
+
+@test "get_model_display_name: claude で gpt系が混入しても Claude 表示へ丸める" {
+    load_adapter_with "${TEST_TMP}/settings_claude_invalid_model.yaml"
+    result=$(get_model_display_name "shogun")
+    [ "$result" = "Claude+T" ]
+}
+
+@test "get_model_display_name: claude で auto は auto+T ではなく Claude+T を表示する" {
+    load_adapter_with "${TEST_TMP}/settings_claude_invalid_model.yaml"
+    result=$(get_model_display_name "gunshi")
+    [ "$result" = "Claude+T" ]
 }
 
 @test "build_cli_command_with_startup_prompt: codex は positional prompt を付与する" {

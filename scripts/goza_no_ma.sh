@@ -15,6 +15,21 @@ REFRESH_VIEW=false
 NO_ATTACH=false
 PASS_THROUGH=()
 
+placeholder_cmd() {
+  local label="$1"
+  printf 'cd %q && printf %q && exec bash' \
+    "$ROOT_DIR" "[INFO] ${label} を待機中...\n"
+}
+
+attach_or_switch_session() {
+  local session="$1"
+  if [[ -n "${TMUX:-}" ]]; then
+    tmux switch-client -t "$session"
+  else
+    TMUX= tmux attach -t "$session"
+  fi
+}
+
 backend_sessions_ready() {
   local session
   for session in shogun gunshi multiagent; do
@@ -124,7 +139,7 @@ if tmux has-session -t "$VIEW_SESSION" 2>/dev/null && [[ "$REFRESH_VIEW" != true
     echo "       attach: tmux attach -t $VIEW_SESSION"
     exit 0
   fi
-  TMUX= tmux attach -t "$VIEW_SESSION"
+  attach_or_switch_session "$VIEW_SESSION"
   exit 0
 fi
 
@@ -176,22 +191,34 @@ create_goza_session() {
   local karo_target=""
   local ashigaru_targets=()
   local ashigaru_ids=()
-  local line target agent_id
-  local right_width gunshi_height ashigaru_top_height half_width
+  local target agent_id
+  local shogun_width right_width ashigaru_width gunshi_width karo_width
+  local ashigaru_top_height ashigaru_half_width
+  local karo_pane gunshi_pane ash_root ash_bottom
 
-  right_width=$(( VIEW_WIDTH * 54 / 100 ))
-  (( right_width < 60 )) && right_width=60
-  (( right_width > VIEW_WIDTH - 40 )) && right_width=$(( VIEW_WIDTH - 40 ))
+  shogun_width=$(( VIEW_WIDTH * 40 / 100 ))
+  (( shogun_width < 70 )) && shogun_width=70
+  (( shogun_width > VIEW_WIDTH - 120 )) && shogun_width=$(( VIEW_WIDTH - 120 ))
 
-  gunshi_height=$(( VIEW_HEIGHT * 36 / 100 ))
-  (( gunshi_height < 12 )) && gunshi_height=12
-  (( gunshi_height > VIEW_HEIGHT - 12 )) && gunshi_height=$(( VIEW_HEIGHT - 12 ))
+  right_width=$(( VIEW_WIDTH - shogun_width ))
+  (( right_width < 90 )) && right_width=90
 
-  ashigaru_top_height=$(( (VIEW_HEIGHT - gunshi_height) / 2 ))
-  (( ashigaru_top_height < 8 )) && ashigaru_top_height=8
+  ashigaru_width=$(( VIEW_WIDTH * 24 / 100 ))
+  (( ashigaru_width < 40 )) && ashigaru_width=40
+  (( ashigaru_width > right_width - 40 )) && ashigaru_width=$(( right_width - 40 ))
 
-  half_width=$(( right_width / 2 ))
-  (( half_width < 24 )) && half_width=24
+  gunshi_width=$(( VIEW_WIDTH * 16 / 100 ))
+  (( gunshi_width < 28 )) && gunshi_width=28
+  (( gunshi_width > right_width - ashigaru_width - 24 )) && gunshi_width=$(( right_width - ashigaru_width - 24 ))
+
+  karo_width=$(( right_width - ashigaru_width - gunshi_width ))
+  (( karo_width < 32 )) && karo_width=32
+
+  ashigaru_top_height=$(( VIEW_HEIGHT / 2 ))
+  (( ashigaru_top_height < 10 )) && ashigaru_top_height=10
+
+  ashigaru_half_width=$(( ashigaru_width / 2 ))
+  (( ashigaru_half_width < 20 )) && ashigaru_half_width=20
 
   karo_target="$(discover_karo_target || true)"
   while IFS=$'\t' read -r target agent_id; do
@@ -201,26 +228,30 @@ create_goza_session() {
   done < <(discover_ashigaru_targets)
 
   tmux new-session -d -x "$VIEW_WIDTH" -y "$VIEW_HEIGHT" -s "$session" -n overview "$(mirror_cmd "shogun:main" "shogun")"
-  tmux split-window -h -l "$right_width" -t "$session":overview "$(mirror_cmd "${karo_target:-multiagent:agents.0}" "karo")"
-  tmux split-window -v -l "$gunshi_height" -t "$session":overview.1 "$(mirror_cmd "gunshi:main" "gunshi")"
-
-  if (( ${#ashigaru_targets[@]} > 0 )); then
-    tmux split-window -h -l "$half_width" -t "$session":overview.2 "$(mirror_cmd "${ashigaru_targets[0]}" "${ashigaru_ids[0]}")"
-    tmux select-pane -t "$session":overview.3 -T "${ashigaru_ids[0]}" >/dev/null 2>&1 || true
-
-    if (( ${#ashigaru_targets[@]} > 1 )); then
-      tmux split-window -v -l "$ashigaru_top_height" -t "$session":overview.3 "$(mirror_cmd "${ashigaru_targets[1]}" "${ashigaru_ids[1]}")"
-      tmux select-pane -t "$session":overview.4 -T "${ashigaru_ids[1]}" >/dev/null 2>&1 || true
+  karo_pane="$(tmux split-window -h -l "$right_width" -t "$session":overview -P -F '#{pane_id}' "$(mirror_cmd "${karo_target:-multiagent:agents.0}" "karo")")"
+  ash_root="$(tmux split-window -h -l "$ashigaru_width" -t "$karo_pane" -P -F '#{pane_id}' "$(
+    if (( ${#ashigaru_targets[@]} > 0 )); then
+      mirror_cmd "${ashigaru_targets[0]}" "${ashigaru_ids[0]}"
+    else
+      placeholder_cmd "ashigaru"
     fi
+  )")"
+  gunshi_pane="$(tmux split-window -h -l "$gunshi_width" -t "$karo_pane" -P -F '#{pane_id}' "$(mirror_cmd "gunshi:main" "gunshi")")"
+
+  if (( ${#ashigaru_targets[@]} > 1 )); then
+    ash_bottom="$(tmux split-window -v -l "$ashigaru_top_height" -t "$ash_root" -P -F '#{pane_id}' "$(mirror_cmd "${ashigaru_targets[1]}" "${ashigaru_ids[1]}")")"
+    tmux select-pane -t "$ash_bottom" -T "${ashigaru_ids[1]}" >/dev/null 2>&1 || true
 
     if (( ${#ashigaru_targets[@]} > 2 )); then
-      tmux split-window -h -l "$half_width" -t "$session":overview.3 "$(mirror_cmd "${ashigaru_targets[2]}" "${ashigaru_ids[2]}")"
-      tmux select-pane -t "$session":overview.5 -T "${ashigaru_ids[2]}" >/dev/null 2>&1 || true
+      local ash_top_right
+      ash_top_right="$(tmux split-window -h -l "$ashigaru_half_width" -t "$ash_root" -P -F '#{pane_id}' "$(mirror_cmd "${ashigaru_targets[2]}" "${ashigaru_ids[2]}")")"
+      tmux select-pane -t "$ash_top_right" -T "${ashigaru_ids[2]}" >/dev/null 2>&1 || true
     fi
 
     if (( ${#ashigaru_targets[@]} > 3 )); then
-      tmux split-window -h -l "$half_width" -t "$session":overview.4 "$(mirror_cmd "${ashigaru_targets[3]}" "${ashigaru_ids[3]}")"
-      tmux select-pane -t "$session":overview.6 -T "${ashigaru_ids[3]}" >/dev/null 2>&1 || true
+      local ash_bottom_right
+      ash_bottom_right="$(tmux split-window -h -l "$ashigaru_half_width" -t "$ash_bottom" -P -F '#{pane_id}' "$(mirror_cmd "${ashigaru_targets[3]}" "${ashigaru_ids[3]}")")"
+      tmux select-pane -t "$ash_bottom_right" -T "${ashigaru_ids[3]}" >/dev/null 2>&1 || true
     fi
   fi
 
@@ -228,8 +259,13 @@ create_goza_session() {
   tmux set-option -t "$session":overview mouse on >/dev/null 2>&1 || true
   tmux select-pane -t "$session":overview.0 >/dev/null 2>&1 || true
   tmux select-pane -t "$session":overview.0 -T "shogun" >/dev/null 2>&1 || true
-  tmux select-pane -t "$session":overview.1 -T "karo" >/dev/null 2>&1 || true
-  tmux select-pane -t "$session":overview.2 -T "gunshi" >/dev/null 2>&1 || true
+  tmux select-pane -t "$karo_pane" -T "karo" >/dev/null 2>&1 || true
+  tmux select-pane -t "$gunshi_pane" -T "gunshi" >/dev/null 2>&1 || true
+  if (( ${#ashigaru_ids[@]} > 0 )); then
+    tmux select-pane -t "$ash_root" -T "${ashigaru_ids[0]}" >/dev/null 2>&1 || true
+  else
+    tmux select-pane -t "$ash_root" -T "ashigaru" >/dev/null 2>&1 || true
+  fi
   restore_goza_layout_if_available "$session"
 }
 
@@ -247,4 +283,4 @@ if [[ "$NO_ATTACH" = true ]]; then
   exit 0
 fi
 
-TMUX= tmux attach -t "$VIEW_SESSION"
+attach_or_switch_session "$VIEW_SESSION"

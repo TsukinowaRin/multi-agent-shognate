@@ -1107,3 +1107,17 @@
    - 期待結果: Codex updater 抑止と preflight 処理が実装されている。
 3. コマンド: `bats tests/unit/test_goza_pure_bootstrap.bats tests/unit/test_goza_wrapper_modes.bats`
    - 期待結果: PASS。
+
+## 追補（2026-03-12: cgo の既存session再利用と nested attach 廃止）
+### 要求
+1. `cgo` / `bash scripts/goza_no_ma.sh` は、既存の `goza-no-ma` session がある場合、それを壊さず再利用すること。
+2. tmux 内から `cgo` した時は nested attach を行わず、`switch-client` で御座の間へ切り替えること。
+3. 御座の間の既定レイアウトは `shogun` を最大、`karo` を次点、`gunshi` を三番手、`ashigaru` を残り領域へ compact 配置すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/goza_no_ma.sh --no-attach` を2回続けて実行する。
+   - 期待結果: 2回目は `既存の御座の間 session を再利用します` と表示され、再生成しない。
+2. コマンド: `rg -n "switch-client -t|attach_or_switch_session|--refresh" scripts/goza_no_ma.sh`
+   - 期待結果: tmux 内では `switch-client` を使い、再生成は `--refresh` 明示時だけであることが確認できる。
+3. コマンド: `rg -n "placeholder_cmd|mirror_cmd .*shogun:main|mirror_cmd .*gunshi:main|split-window -h -l|split-window -v -l" scripts/goza_no_ma.sh`
+   - 期待結果: 役職優先レイアウトの構成要素が存在する。

@@ -2613,3 +2613,24 @@
   - この要件では「保存して復元」よりも「既存 session を再利用して壊さない」方が正しい。復元機構は `--refresh` した時の安全網として残す。
 - Git:
   - この checkpoint で今回差分のみをコミットする。
+
+## 2026-03-12 cgo の nested attach 廃止と役職優先レイアウト再構成
+- 背景:
+  - ユーザー報告として、`cgo` 後に元のエージェント CUI へ入力できず、再読み込みしないと復帰しない不具合があった。
+  - 原因は `scripts/goza_no_ma.sh` が tmux 内からでも `TMUX= tmux attach -t goza-no-ma` を行い、nested attach していたこと。
+  - あわせて、御座の間レイアウトを「将軍最大、家老二番手、軍師三番手、足軽は残りへ compact」にしたい要求があった。
+- 実施:
+  - `scripts/goza_no_ma.sh` に `attach_or_switch_session()` を追加し、tmux 内では `tmux switch-client -t <session>`、tmux 外では `tmux attach -t <session>` を使うよう変更した。
+  - `cgo` の既存 session 再利用時も同じ helper を使うようにした。
+  - `create_goza_session()` を再構成し、列優先度を `shogun > karo > gunshi > ashigaru` に変更した。
+  - 右側は `karo` 列、`gunshi` 列、`ashigaru` compact 領域に分割し、足軽が不足する場合は placeholder pane を入れるようにした。
+  - `tests/unit/test_mux_parity.bats` を更新し、`switch-client` と新レイアウト構成要素を静的回帰で確認するようにした。
+  - `docs/REQS.md` に `cgo` の nested attach 廃止・既存 session 再利用・役職優先レイアウトを受け入れ条件として追記した。
+- 検証:
+  - `bash -n scripts/goza_no_ma.sh` → PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats` → PASS
+- 判断:
+  - 御座の間は read-only mirror のまま維持するが、tmux client 自体は nested attach せず `switch-client` で遷移させる方が入力破綻を避けられる。
+  - 手動レイアウト保存は既存 session 再利用で自然に維持され、`--refresh` 時だけ保存/復元が効けばよい。
+- Git:
+  - この checkpoint で今回差分のみをコミットする。

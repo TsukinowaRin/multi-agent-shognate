@@ -75,6 +75,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "watcher supervisor は timeout fallback を有効にして inbox watcher を起動する" {
+    run rg -n "ASW_PROCESS_TIMEOUT=1" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "役職判定は複数家老IDに対応" {
     run rg -n "karo\\|karo\\[1-9\\]\\*\\|karo_gashira" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

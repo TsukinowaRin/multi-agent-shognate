@@ -203,7 +203,9 @@ start_watcher_if_missing() {
     fi
 
     cli=$(resolve_cli_type "$agent" "$pane")
-    nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
+    # WSL の /mnt/* 配下では inotify を取りこぼすことがあるため、
+    # timeout tick でも unread を処理する安全網を有効にして起動する。
+    nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=1 ASW_DISABLE_NORMAL_NUDGE=0 \
         bash scripts/inbox_watcher.sh "$agent" "$pane" "$cli" "tmux" >> "$log_file" 2>&1 &
 }
 

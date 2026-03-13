@@ -1002,8 +1002,8 @@
 ### 受け入れ条件（観測可能）
 1. コマンド: `rg -n "ashigaru\\[1-9\\]\\[0-9\\]\\*|i >= 1|x >= 1" shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/configure_agents.sh`
    - 期待結果: 足軽番号の上限固定（1..8）が撤廃されている。
-2. コマンド: `rg -n "ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0|scripts/inbox_watcher.sh \\$\\{agent\\} \\$\\{pane\\}" scripts/watcher_supervisor.sh`
-   - 期待結果: supervisor 起動 watcher に安全フラグが付き、pane不一致時に再同期する実装がある。
+2. コマンド: `rg -n "ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=1 ASW_DISABLE_NORMAL_NUDGE=0|scripts/inbox_watcher.sh \\$\\{agent\\} \\$\\{pane\\}" scripts/watcher_supervisor.sh`
+   - 期待結果: supervisor 起動 watcher に安全フラグが付き、WSL の missed event を timeout fallback で補完しつつ pane不一致時に再同期する実装がある。
 3. コマンド: `bash -n shutsujin_departure.sh scripts/shutsujin_zellij.sh scripts/goza_no_ma.sh scripts/configure_agents.sh scripts/watcher_supervisor.sh`
    - 期待結果: 構文エラーなし。
 

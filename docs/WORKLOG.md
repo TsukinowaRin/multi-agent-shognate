@@ -2834,3 +2834,23 @@
   - `noop\talready_sent=cmd_xxx`
   - `noop\tno_pending`
 - `tests/unit/test_shogun_to_karo_bridge.bats` に `already_notified` / `already_sent` の回帰を追加。
+## 2026-03-13 20:48 JST — bridge診断表示改善 checkpoint
+- コミット: `b86e757` (`codex: bridge診断表示を明確化する`)
+- 追加検証:
+  - `bats tests/unit/test_shogun_to_karo_bridge.bats` PASS (`1..3`)
+  - `python3 scripts/shogun_to_karo_bridge.py` → `noop	no_pending`
+- 補足:
+  - ユーザー貼付時点の `cmd_115` は、`queue/inbox/karo.yaml` では既読になっており、家老 pane でも足軽への `task_assigned` 配布が確認できた。
+  - したがって、その時点の停止は「未伝達」ではなく、bridge log の `noop` 表示が粗すぎて状況判別できなかったことにある。
+- `git push -u origin codex/auto` は GitHub 認証未設定のため失敗。
+## 2026-03-13 22:04 JST — 点呼停滞の実原因を watcher timeout に修正
+- ユーザー提供ログを再確認した結果、`queue/inbox/karo.yaml` には `cmd_115` が `cmd_new` として既読で存在し、`tmux capture-pane -pt %1` でも家老が `subtask_115a` 〜 `subtask_115h` を `ashigaru1..8` に配布済みと確認した。将軍→家老の伝達経路は正常。
+- 実際に止まっていたのは足軽 watcher 側で、`scripts/watcher_supervisor.sh` が `ASW_PROCESS_TIMEOUT=0` を固定していたため、WSL の `/mnt/d` 上で inotify イベントを取りこぼした時に unread inbox を timeout tick で拾えなかった。
+- `scripts/watcher_supervisor.sh` の watcher 起動フラグを `ASW_PROCESS_TIMEOUT=1` に変更し、event-driven を維持しつつ timeout fallback を有効化した。これで missed event 時も 30 秒 tick で unread を処理できる。
+- `tests/unit/test_mux_parity.bats` に `ASW_PROCESS_TIMEOUT=1` を静的回帰として追加。
+- 検証:
+  - `bash -n scripts/watcher_supervisor.sh shutsujin_departure.sh` PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_cli_adapter.bats` PASS (`1..129`)
+- 判断:
+  - 今回の `cmd_115` 停滞は bridge 不備ではなく watcher の event-only 固定が原因。
+  - WSL `/mnt/d` 前提では polling fallback を殺してはいけない。

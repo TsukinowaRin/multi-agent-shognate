@@ -2817,3 +2817,20 @@
 - 判断:
   - モデル側プロンプトだけに「家老へ通知せよ」と書いても再発する。`queue/shogun_to_karo.yaml` から `karo` inbox への橋渡しは system 層で保証すべき。
   - `karo` が起きない問題は bridge と watcher の二重経路で潰すのが妥当。
+## 2026-03-13 15:20 JST — 伝達経路自己修復 checkpoint
+- `scripts/shogun_to_karo_bridge.py` / `scripts/shogun_to_karo_bridge_daemon.sh` を checkpoint としてコミットした。
+- コミット: `47febe9` (`codex: 将軍から家老への伝達経路を自己修復する`)
+- 追加検証:
+  - `bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_mux_parity.bats tests/unit/test_cli_adapter.bats` PASS (`1..125`)
+  - `git push -u origin codex/auto` は GitHub 認証未設定のため失敗。
+- 残課題:
+  - 実機で `bash shutsujin_departure.sh` を起動し、Gemini 将軍からの点呼命令で `karo` が `queue/inbox/karo.yaml` の `cmd_new` を受け取り反応するかを確認する。
+## 2026-03-13 20:40 JST — 伝達済みケースの診断表示を明確化
+- ユーザー貼付ログを確認したところ、`queue/inbox/karo.yaml` には `cmd_115` の `cmd_new` が既にあり `read: true`、さらに `tmux capture-pane -pt %1` では家老が `cmd_115` を `in_progress` にし、足軽へ `task_assigned` を配っていた。
+- つまり現時点の問題は「将軍→家老に届いていない」ではなく、「bridge log が `noop` しか出ず、既通知と未送信の区別が付かない」ことだった。
+- `scripts/shogun_to_karo_bridge.py` を改善し、結果を以下で返すようにした。
+  - `sent\tcmd_xxx`
+  - `noop\talready_notified=cmd_xxx`
+  - `noop\talready_sent=cmd_xxx`
+  - `noop\tno_pending`
+- `tests/unit/test_shogun_to_karo_bridge.bats` に `already_notified` / `already_sent` の回帰を追加。

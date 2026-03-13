@@ -73,6 +73,9 @@ def main() -> int:
 
     state = load_state(state_file)
     newly_sent = []
+    already_sent = []
+    already_notified = []
+    skipped_nonpending = []
 
     for cmd in cmds:
         if not isinstance(cmd, dict):
@@ -82,11 +85,14 @@ def main() -> int:
             continue
         status = str(cmd.get("status", "")).strip().lower()
         if status not in {"pending", "assigned"}:
+            skipped_nonpending.append(cmd_id)
             continue
         if cmd_id in state:
+            already_sent.append(cmd_id)
             continue
         if inbox_already_mentions(inbox_file, cmd_id):
             state.add(cmd_id)
+            already_notified.append(cmd_id)
             continue
 
         content = (
@@ -105,8 +111,14 @@ def main() -> int:
 
     if newly_sent:
         print("sent\t" + ",".join(newly_sent))
+    elif already_notified:
+        print("noop\talready_notified=" + ",".join(already_notified))
+    elif already_sent:
+        print("noop\talready_sent=" + ",".join(already_sent))
+    elif skipped_nonpending:
+        print("noop\tno_pending")
     else:
-        print("noop")
+        print("noop\tempty")
     return 0
 
 

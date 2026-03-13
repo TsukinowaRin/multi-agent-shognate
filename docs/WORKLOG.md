@@ -2785,3 +2785,35 @@
 - 判断:
   - これで「Gemini 実体があるのに fallback してしまう」経路はさらに狭まった。
   - 本当に fallback するのは、`gemini` が `.nvm` も含めて見つからない時だけになる。
+## 2026-03-13 14:35 JST — 将軍→家老 伝達経路の自己修復を固定
+- ユーザー報告:
+  - 現在構成 (`shogun=gemini`, `karo=codex`) で、将軍に「全員に点呼を取って」と命じると、Gemini 将軍は反応して `queue/shogun_to_karo.yaml` へ書いたように見えるが、家老が受信せず、将軍システム全体が止まる。
+  - 要件: upstream 最新を取り込む方向は維持しつつ、まずこの伝達経路を止めないこと。
+- 調査:
+  - `queue/shogun_to_karo.yaml` に `pending` の `cmd_115` が残っていた。
+  - `queue/inbox/karo.yaml` にも `cmd_new` が残っていたため、モデル忘れだけでなく watcher/supervisor の生存性も怪しかった。
+  - `tmux capture-pane` では Gemini 将軍が `queue/shogun_to_karo.yaml` を更新していた一方、`bash scripts/inbox_write.sh karo ...` の痕跡は見えなかった。
+- 実施:
+  - `scripts/shogun_to_karo_bridge.py` を追加。
+    - `queue/shogun_to_karo.yaml` の `pending/assigned` 命令を走査し、`karo` inbox に未通知なら `cmd_new` を自動投入。
+    - 送信済み `cmd_id` は runtime state (`queue/runtime/shogun_to_karo_bridge.tsv`) で重複抑止。
+  - `scripts/shogun_to_karo_bridge_daemon.sh` を追加。
+    - 約2秒間隔で bridge を実行し続ける。
+  - `shutsujin_departure.sh`
+    - watcher 起動時に `watcher_supervisor.sh` と `shogun_to_karo_bridge_daemon.sh` を常駐起動するよう変更。
+  - `.gitignore`
+    - 新規 bridge script を追跡対象へ追加。
+  - `tests/unit/test_shogun_to_karo_bridge.bats`
+    - `pending` 命令の橋渡し
+    - 既通知 `cmd_id` の重複抑止
+    を検証する回帰テストを追加。
+  - `docs/REQS.md`
+    - 「Gemini 将軍が `inbox_write` を忘れても、システム側が `karo` へ橋渡しする」要件を追加。
+- 検証:
+  - `python3 -m py_compile scripts/shogun_to_karo_bridge.py` PASS
+  - `bash -n shutsujin_departure.sh scripts/watcher_supervisor.sh scripts/shogun_to_karo_bridge_daemon.sh` PASS
+  - `python3 scripts/shogun_to_karo_bridge.py` → `noop`
+  - `bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_mux_parity.bats tests/unit/test_cli_adapter.bats` PASS (`1..125`)
+- 判断:
+  - モデル側プロンプトだけに「家老へ通知せよ」と書いても再発する。`queue/shogun_to_karo.yaml` から `karo` inbox への橋渡しは system 層で保証すべき。
+  - `karo` が起きない問題は bridge と watcher の二重経路で潰すのが妥当。

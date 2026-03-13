@@ -1524,7 +1524,7 @@ NINJA_EOF
     log_info "📜 初動命令の配信完了"
 
     # ═══════════════════════════════════════════════════════════════════
-    # STEP 6.6: inbox_watcher起動（全エージェント）
+    # STEP 6.6: inbox_watcher / bridge 起動（全エージェント）
     # ═══════════════════════════════════════════════════════════════════
     log_info "📬 メールボックス監視を起動中..."
 
@@ -1534,43 +1534,31 @@ NINJA_EOF
         [ -f "$SCRIPT_DIR/queue/inbox/${agent}.yaml" ] || echo "messages: []" > "$SCRIPT_DIR/queue/inbox/${agent}.yaml"
     done
 
-    # 既存のwatcherと孤児inotifywaitをkill
+    # 既存のwatcher/supervisor/bridgeと孤児inotifywaitをkill
     pkill -f "inbox_watcher.sh" 2>/dev/null || true
+    pkill -f "watcher_supervisor.sh" 2>/dev/null || true
+    pkill -f "shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "inotifywait.*queue/inbox" 2>/dev/null || true
     sleep 1
 
     if command -v inotifywait >/dev/null 2>&1; then
-        # 将軍のwatcher（ntfy受信の自動起床に必要）
-        # 安全モード: phase2/phase3エスカレーションは無効、timeout周期処理も無効（event-drivenのみ）
-        _shogun_watcher_cli=$(tmux show-options -p -t "$SHOGUN_TARGET" -v @agent_cli 2>/dev/null || echo "claude")
-        nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" shogun "$SHOGUN_TARGET" "$_shogun_watcher_cli" "tmux" \
-            >> "$SCRIPT_DIR/logs/inbox_watcher_shogun.log" 2>&1 &
+        nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
+            >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 &
         disown
-
-        # 軍師 watcher
-        _gunshi_watcher_cli=$(tmux show-options -p -t "$GUNSHI_TARGET" -v @agent_cli 2>/dev/null || echo "claude")
-        nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-            MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" gunshi "$GUNSHI_TARGET" "$_gunshi_watcher_cli" "tmux" \
-            >> "$SCRIPT_DIR/logs/inbox_watcher_gunshi.log" 2>&1 &
-        disown
-
-        # 家老 + 足軽 watcher
-        for _idx in "${!MULTIAGENT_IDS[@]}"; do
-            _agent="${MULTIAGENT_IDS[$_idx]}"
-            _pane_target="${AGENT_PANES[$_agent]:-}"
-            [ -n "$_pane_target" ] || continue
-            _agent_watcher_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
-            nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-                MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$_agent" "$_pane_target" "$_agent_watcher_cli" "tmux" \
-                >> "$SCRIPT_DIR/logs/inbox_watcher_${_agent}.log" 2>&1 &
-            disown
-        done
-
         _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
+        log_success "  └─ watcher_supervisor 起動完了"
     else
         log_info "⚠️  inotifywait 未導入のため inbox_watcher はスキップ（sudo apt install -y inotify-tools）"
+    fi
+
+    if [ -x "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" ]; then
+        nohup env MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL="${MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL:-2}" \
+            bash "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" \
+            >> "$SCRIPT_DIR/logs/shogun_to_karo_bridge.log" 2>&1 &
+        disown
+        log_info "📨 将軍→家老 命令ブリッジを起動中..."
+        log_success "  └─ shogun_to_karo_bridge_daemon 起動完了"
     fi
 
     if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then

@@ -17,40 +17,40 @@ cli:
   agents:
     shogun:
       type: gemini
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high
     gunshi:
       type: gemini
       model: auto
     karo:
       type: codex
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high
     ashigaru1:
       type: codex
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high
     ashigaru2:
       type: codex
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high
     ashigaru3:
       type: codex
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high
     ashigaru4:
       type: codex
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high
     ashigaru5:
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high
     ashigaru6:
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high
     ashigaru7:
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high
     ashigaru8:
-      model: gpt-5.4
+      model: auto
       reasoning_effort: high

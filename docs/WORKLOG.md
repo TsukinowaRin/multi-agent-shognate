@@ -2730,3 +2730,11 @@
 - 判断:
   - ここで言う「デフォルトAuto」は、「設定未指定時は CLI 側の既定モデル選択に任せる」という意味で統一した。
   - 既存の `config/settings.yaml` に明示モデルが入っている agent はそのまま維持し、今回の変更は未指定時の既定値だけに限定した。
+## 2026-03-13 11:05 JST — 現行 settings の明示 model も auto へ寄せる
+- ユーザー指示: 既定値統一に続けて、現行 `config/settings.yaml` に残っている明示 model も `auto` へ寄せ、そのうえで実機起動確認する。
+- 実施:
+  - `config/settings.yaml` の `karo`, `ashigaru1..4` の `model: gpt-5.4` を `model: auto` に変更。
+  - `shogun`, `gunshi`, `ashigaru5..8` は既に `auto` だったため維持。
+- 判断:
+  - これで現在の active 構成では、全 agent が `model: auto` ベースになる。
+  - `reasoning_effort` や `thinking_level` は今回の指示対象外なので変更していない。

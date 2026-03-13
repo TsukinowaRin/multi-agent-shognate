@@ -1194,9 +1194,12 @@
 ### 要求
 1. モデル未指定時の既定値は CLI 種別にかかわらず `auto` とする。
 2. `auto` は `claude` / `kimi` を含め、CLI 実行時に明示 `--model auto` を渡さない意味で扱う。
+3. `config/settings.yaml` に残っている既存の明示 model も、ユーザーが一括で `auto` へ寄せたい場合にそのまま反映できること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats`
    - 期待結果: `auto` 既定値と `--model auto` 非送出の回帰テストを含めPASSする。
 2. コマンド: `rg -n "get_agent_model: .*auto \\(デフォルト\\)|claude \\+ model auto|kimi \\(モデル指定なし\\)" tests/unit/test_cli_adapter.bats`
    - 期待結果: デフォルト `auto` の回帰テストが存在する。
+3. コマンド: `rg -n "model: auto" config/settings.yaml`
+   - 期待結果: 明示 model を維持したい agent を除き、現在の agent 設定が `auto` に寄っている。

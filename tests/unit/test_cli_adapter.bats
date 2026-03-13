@@ -536,37 +536,43 @@ SH
 
 @test "build_cli_command: gemini + model auto → gemini --yolo" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
-    result=$(build_cli_command "ashigaru2")
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
     [ "$result" = "gemini --yolo" ]
 }
 
 @test "build_cli_command: gemini 3 pro + thinking_level → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
-    result=$(build_cli_command "gunshi")
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "gunshi")
     [ "$result" = "gemini --yolo --model mas-gunshi" ]
 }
 
 @test "build_cli_command: gemini 3 flash + thinking_level minimal → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
-    result=$(build_cli_command "ashigaru1")
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru1")
     [ "$result" = "gemini --yolo --model mas-ashigaru1" ]
 }
 
 @test "build_cli_command: gemini 2.5 + thinking_budget → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
-    result=$(build_cli_command "ashigaru2")
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
     [ "$result" = "gemini --yolo --model mas-ashigaru2" ]
 }
 
 @test "build_cli_command: gemini auto + thinking_level → inferred alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
-    result=$(build_cli_command "ashigaru3")
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru3")
     [ "$result" = "gemini --yolo --model mas-ashigaru3" ]
 }
 
 @test "build_cli_command: shogun gemini は未設定なら alias を使わない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_gemini_default.yaml"
-    result=$(build_cli_command "shogun")
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "shogun")
     [ "$result" = "gemini --yolo" ]
 }
 
@@ -580,7 +586,8 @@ cli:
       model: gpt-5.4
 YAML
     load_adapter_with "${TEST_TMP}/settings_gemini_invalid_model.yaml"
-    result=$(build_cli_command "shogun")
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "shogun")
     [ "$result" = "gemini --yolo" ]
 }
 
@@ -598,7 +605,8 @@ YAML
 exit 0
 SH
     chmod +x "${TEST_TMP}/bin/gemini-cli"
-    PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
     [ "$result" = "${TEST_TMP}/bin/gemini-cli --yolo" ]
 }
 
@@ -660,7 +668,8 @@ SH
 
 @test "build_cli_command_with_startup_prompt: gemini は interactive prompt フラグを付与する" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
-    result=$(build_cli_command_with_startup_prompt "ashigaru2" "gemini" "ready:ashigaru2")
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command_with_startup_prompt "ashigaru2" "gemini" "ready:ashigaru2")
     [ "$result" = "gemini --yolo -i ready:ashigaru2" ]
 }
 
@@ -899,6 +908,16 @@ SH
     [ "$output" = "${TEST_TMP}/home/.local/bin/gemini" ]
 }
 
+@test "_cli_adapter_pick_executable: PATH外の ~/.nvm 配下も検出する" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    mkdir -p "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin"
+    echo '#!/bin/bash' > "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/gemini"
+    chmod +x "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/gemini"
+    HOME="${TEST_TMP}/home" PATH="/usr/bin:/bin" run _cli_adapter_pick_executable "gemini" "gemini-cli"
+    [ "$status" -eq 0 ]
+    [ "$output" = "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/gemini" ]
+}
+
 @test "validate_cli_availability: localapi python3あり → 0" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     run validate_cli_availability "localapi"
@@ -926,35 +945,40 @@ SH
 @test "validate_cli_availability: codex未インストール → 1 + エラーメッセージ" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     # PATHからcodexを除外（空PATHは危険なのでminimal PATHを設定）
-    PATH="/usr/bin:/bin" run validate_cli_availability "codex"
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" run validate_cli_availability "codex"
     [ "$status" -eq 1 ]
     [[ "$output" == *"Codex CLI not found"* ]]
 }
 
 @test "validate_cli_availability: kimi未インストール → 1 + エラーメッセージ" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
-    PATH="/usr/bin:/bin" run validate_cli_availability "kimi"
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" run validate_cli_availability "kimi"
     [ "$status" -eq 1 ]
     [[ "$output" == *"Kimi CLI not found"* ]]
 }
 
 @test "validate_cli_availability: gemini未インストール → 1 + エラーメッセージ" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
-    PATH="/usr/bin:/bin" run validate_cli_availability "gemini"
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" run validate_cli_availability "gemini"
     [ "$status" -eq 1 ]
     [[ "$output" == *"Gemini CLI not found"* ]]
 }
 
 @test "validate_cli_availability: opencode未インストール → 1 + エラーメッセージ" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
-    PATH="/usr/bin:/bin" run validate_cli_availability "opencode"
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" run validate_cli_availability "opencode"
     [ "$status" -eq 1 ]
     [[ "$output" == *"OpenCode CLI not found"* ]]
 }
 
 @test "validate_cli_availability: kilo未インストール → 1 + エラーメッセージ" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
-    PATH="/usr/bin:/bin" run validate_cli_availability "kilo"
+    mkdir -p "${TEST_TMP}/home-empty"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" run validate_cli_availability "kilo"
     [ "$status" -eq 1 ]
     [[ "$output" == *"Kilo CLI not found"* ]]
 }

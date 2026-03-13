@@ -67,6 +67,7 @@ _cli_adapter_find_executable() {
     local name="$1"
     local resolved=""
     local dir=""
+    local candidate=""
 
     if resolved="$(command -v "$name" 2>/dev/null)"; then
         printf '%s\n' "$resolved"
@@ -78,6 +79,7 @@ _cli_adapter_find_executable() {
         "${HOME:-}/.npm/bin" \
         "${HOME:-}/.npm-global/bin" \
         "${HOME:-}/bin" \
+        "${NVM_BIN:-}" \
         "${PNPM_HOME:-}"
     do
         [ -n "$dir" ] || continue
@@ -85,6 +87,12 @@ _cli_adapter_find_executable() {
             printf '%s\n' "$dir/$name"
             return 0
         fi
+    done
+
+    for candidate in "${HOME:-}"/.nvm/versions/node/*/bin/"$name"; do
+        [ -x "$candidate" ] || continue
+        printf '%s\n' "$candidate"
+        return 0
     done
 
     return 1

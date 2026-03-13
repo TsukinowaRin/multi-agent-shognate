@@ -2768,3 +2768,20 @@
 - 判断:
   - この修正で、Gemini が PATH 外の user-local install でも見つかれば fallback せずに起動できる見込み。
   - `goza-no-ma` は人数・構成が同じ限り既存 session と保存済み layout を維持し、CLI 種別変更だけでは作り直さない設計になった。
+## 2026-03-13 12:35 JST — Gemini fallback 前検出を .nvm 配下まで拡張
+- ユーザー提供情報: `command -v gemini` は `/home/muro/.nvm/versions/node/v22.22.0/bin/gemini` を返す。
+- 調査:
+  - 直前の `_cli_adapter_find_executable()` は `~/.local/bin`, `~/.npm/bin`, `~/.npm-global/bin`, `~/bin`, `${PNPM_HOME}` までしか見ておらず、`.nvm` 配下は探索していなかった。
+  - そのため、非対話 shell で `PATH` が痩せる環境では「Gemini 実体はあるのに見逃して fallback」する余地が残っていた。
+- 実施:
+  - `lib/cli_adapter.sh`
+    - `_cli_adapter_find_executable()` に `${NVM_BIN}` と `${HOME}/.nvm/versions/node/*/bin/<name>` の探索を追加。
+  - `tests/unit/test_cli_adapter.bats`
+    - `~/.nvm/versions/node/v22.22.0/bin/gemini` を拾う回帰テストを追加。
+    - 逆に実機の `~/.nvm` をテストが誤検出しないよう、Gemini/Kimi の一部テストは `HOME=${TEST_TMP}/home-empty`, `PATH=/usr/bin:/bin` で隔離。
+- 検証:
+  - `bash -n lib/cli_adapter.sh` PASS
+  - `bats tests/unit/test_cli_adapter.bats` PASS (`1..108`)
+- 判断:
+  - これで「Gemini 実体があるのに fallback してしまう」経路はさらに狭まった。
+  - 本当に fallback するのは、`gemini` が `.nvm` も含めて見つからない時だけになる。

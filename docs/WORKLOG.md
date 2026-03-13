@@ -2709,3 +2709,24 @@
 - 判断:
   - 現在の実装では、ここで Gemini model を直せば `config/settings.yaml` に保存され、次回以降の起動にも反映される。
   - 逆に `gpt-*` のような不正値が残っても、コード側が `auto` へ丸めるため、次回起動を壊さない。
+## 2026-03-13 10:45 JST — 全CLIの既定modelを auto に統一
+- ユーザー要望: 「全てのモデルはデフォルトAutoにしてほしい」。
+- 調査:
+  - `lib/cli_adapter.sh` の `get_agent_model()` は未指定時に `claude=opus/sonnet`, `kimi=k2.5`, `localapi=local-model` を返していた。
+  - `scripts/configure_agents.sh` の `default_model_for_cli()` も `kimi=k2.5`, `localapi=local-model`, それ以外は空文字のままで、既定値がCLIごとに不統一だった。
+  - `build_cli_command()` は `claude` / `kimi` で `auto` を未指定扱いにしていなかったため、単純に既定値を `auto` に変えるだけでは `--model auto` を送って壊れる。
+- 実施:
+  - `lib/cli_adapter.sh`
+    - `get_agent_model()` の未指定既定を全CLIで `auto` に統一。
+    - `build_cli_command()` の `claude` / `kimi` で `auto|default` を model 未指定扱いに変更。
+  - `scripts/configure_agents.sh`
+    - `default_model_for_cli()` を全CLI `auto` 基準へ統一。
+  - `tests/unit/test_cli_adapter.bats`
+    - `claude + model auto → --model を付けない`
+    - `kimi (モデル指定なし) → kimi --yolo`
+    - 各CLIの `get_agent_model ... → auto (デフォルト)` 回帰を追加・更新。
+- 検証:
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats` PASS (`1..107`)
+- 判断:
+  - ここで言う「デフォルトAuto」は、「設定未指定時は CLI 側の既定モデル選択に任せる」という意味で統一した。
+  - 既存の `config/settings.yaml` に明示モデルが入っている agent はそのまま維持し、今回の変更は未指定時の既定値だけに限定した。

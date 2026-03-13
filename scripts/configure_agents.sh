@@ -226,10 +226,10 @@ default_model_for_cli() {
   local cli="$1"
   case "$cli" in
     gemini) echo "auto" ;;
-    kimi) echo "k2.5" ;;
-    localapi) echo "local-model" ;;
+    kimi) echo "auto" ;;
+    localapi) echo "auto" ;;
     opencode|kilo) echo "auto" ;;
-    *) echo "" ;;
+    *) echo "auto" ;;
   esac
 }
 

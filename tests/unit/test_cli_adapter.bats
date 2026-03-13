@@ -448,6 +448,20 @@ load_adapter_with() {
     [ "$result" = "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions" ]
 }
 
+@test "build_cli_command: claude + model auto → --model を付けない" {
+    cat > "${TEST_TMP}/settings_claude_auto.yaml" << 'YAML'
+cli:
+  default: claude
+  agents:
+    shogun:
+      type: claude
+      model: auto
+YAML
+    load_adapter_with "${TEST_TMP}/settings_claude_auto.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "MAX_THINKING_TOKENS=0 claude --dangerously-skip-permissions" ]
+}
+
 @test "build_cli_command: codex → NO_UPDATE_NOTIFIER=1 付きで起動" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru5")
@@ -514,10 +528,10 @@ SH
     [ "$result" = "kimi-cli --yolo --model k2.5" ]
 }
 
-@test "build_cli_command: kimi (モデル指定なし) → kimi --yolo --model k2.5" {
+@test "build_cli_command: kimi (モデル指定なし) → kimi --yolo" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(build_cli_command "ashigaru4")
-    [ "$result" = "kimi --yolo --model k2.5" ]
+    [ "$result" = "kimi --yolo" ]
 }
 
 @test "build_cli_command: gemini + model auto → gemini --yolo" {
@@ -939,28 +953,28 @@ SH
 # get_agent_model テスト
 # =============================================================================
 
-@test "get_agent_model: cliセクションなし shogun → opus (デフォルト)" {
+@test "get_agent_model: cliセクションなし shogun → auto (デフォルト)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "shogun")
-    [ "$result" = "opus" ]
+    [ "$result" = "auto" ]
 }
 
-@test "get_agent_model: cliセクションなし karo → opus (デフォルト)" {
+@test "get_agent_model: cliセクションなし karo → auto (デフォルト)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "karo")
-    [ "$result" = "opus" ]
+    [ "$result" = "auto" ]
 }
 
-@test "get_agent_model: cliセクションなし ashigaru1 → sonnet (デフォルト)" {
+@test "get_agent_model: cliセクションなし ashigaru1 → auto (デフォルト)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "ashigaru1")
-    [ "$result" = "sonnet" ]
+    [ "$result" = "auto" ]
 }
 
-@test "get_agent_model: cliセクションなし ashigaru5 → opus (デフォルト)" {
+@test "get_agent_model: cliセクションなし ashigaru5 → auto (デフォルト)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "ashigaru5")
-    [ "$result" = "opus" ]
+    [ "$result" = "auto" ]
 }
 
 @test "get_agent_model: YAML指定 ashigaru1 → haiku (オーバーライド)" {
@@ -981,10 +995,10 @@ SH
     [ "$result" = "gpt-5" ]
 }
 
-@test "get_agent_model: 未知agent → sonnet (デフォルト)" {
+@test "get_agent_model: 未知agent → auto (デフォルト)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "unknown_agent")
-    [ "$result" = "sonnet" ]
+    [ "$result" = "auto" ]
 }
 
 @test "get_agent_model: kimi CLI ashigaru3 → k2.5 (YAML指定)" {
@@ -993,22 +1007,22 @@ SH
     [ "$result" = "k2.5" ]
 }
 
-@test "get_agent_model: kimi CLI ashigaru4 → k2.5 (デフォルト)" {
+@test "get_agent_model: kimi CLI ashigaru4 → auto (デフォルト)" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(get_agent_model "ashigaru4")
-    [ "$result" = "k2.5" ]
+    [ "$result" = "auto" ]
 }
 
-@test "get_agent_model: kimi CLI shogun → k2.5 (デフォルト)" {
+@test "get_agent_model: kimi CLI shogun → auto (デフォルト)" {
     load_adapter_with "${TEST_TMP}/settings_kimi_default.yaml"
     result=$(get_agent_model "shogun")
-    [ "$result" = "k2.5" ]
+    [ "$result" = "auto" ]
 }
 
-@test "get_agent_model: kimi CLI karo → k2.5 (デフォルト)" {
+@test "get_agent_model: kimi CLI karo → auto (デフォルト)" {
     load_adapter_with "${TEST_TMP}/settings_kimi_default.yaml"
     result=$(get_agent_model "karo")
-    [ "$result" = "k2.5" ]
+    [ "$result" = "auto" ]
 }
 
 @test "get_agent_model: gemini CLI ashigaru2 → auto (YAML指定)" {

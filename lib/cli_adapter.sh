@@ -313,7 +313,7 @@ build_cli_command_with_type() {
     case "$cli_type" in
         claude)
             local cmd="claude"
-            if [[ -n "$model" ]]; then
+            if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
                 cmd="$cmd --model $model"
             fi
             cmd="$cmd --dangerously-skip-permissions"
@@ -337,7 +337,7 @@ build_cli_command_with_type() {
             local kimi_bin
             kimi_bin=$(_cli_adapter_pick_executable "kimi" "kimi-cli")
             local cmd="${kimi_bin} --yolo"
-            if [[ -n "$model" ]]; then
+            if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
                 cmd="$cmd --model $model"
             fi
             echo "$cmd"
@@ -627,38 +627,19 @@ get_agent_model() {
 
     case "$cli_type" in
         kimi)
-            # Kimi CLI用デフォルトモデル
-            case "$agent_id" in
-                shogun|karo|karo[1-9]*|karo_gashira) echo "k2.5" ;;
-                ashigaru*) echo "k2.5" ;;
-                *) echo "k2.5" ;;
-            esac
+            echo "auto"
             ;;
         gemini)
-            case "$agent_id" in
-                shogun|karo|karo[1-9]*|karo_gashira) echo "auto" ;;
-                ashigaru*) echo "auto" ;;
-                *) echo "auto" ;;
-            esac
+            echo "auto"
             ;;
         localapi)
-            case "$agent_id" in
-                shogun|karo|karo[1-9]*|karo_gashira) echo "local-model" ;;
-                ashigaru*) echo "local-model" ;;
-                *) echo "local-model" ;;
-            esac
+            echo "auto"
             ;;
         opencode|kilo)
             echo "auto"
             ;;
         *)
-            # Claude Code/Codex/Copilot用デフォルトモデル
-            case "$agent_id" in
-                shogun|gunshi|karo|karo[1-9]*|karo_gashira) echo "opus" ;;
-                ashigaru[1-4]) echo "sonnet" ;;
-                ashigaru[5-8]) echo "opus" ;;
-                *) echo "sonnet" ;;
-            esac
+            echo "auto"
             ;;
     esac
 }

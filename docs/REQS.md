@@ -1189,3 +1189,14 @@
    - 期待結果: `gemini` に `gpt-*` が入っていても `auto` へ丸める回帰テストを含めPASSする。
 2. コマンド: `rg -n "_cli_adapter_is_valid_gemini_model|invalid-gemini-model-reset" lib/cli_adapter.sh scripts/sync_runtime_cli_preferences.py`
    - 期待結果: 起動時と runtime 同期の両方で Gemini model 正規化が実装されている。
+
+## 追補（2026-03-13: 全CLIの既定modelを auto に統一）
+### 要求
+1. モデル未指定時の既定値は CLI 種別にかかわらず `auto` とする。
+2. `auto` は `claude` / `kimi` を含め、CLI 実行時に明示 `--model auto` を渡さない意味で扱う。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats`
+   - 期待結果: `auto` 既定値と `--model auto` 非送出の回帰テストを含めPASSする。
+2. コマンド: `rg -n "get_agent_model: .*auto \\(デフォルト\\)|claude \\+ model auto|kimi \\(モデル指定なし\\)" tests/unit/test_cli_adapter.bats`
+   - 期待結果: デフォルト `auto` の回帰テストが存在する。

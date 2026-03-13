@@ -2697,3 +2697,15 @@
   - `bash -n shutsujin_departure.sh` PASS
   - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_topology_adapter.bats` PASS
   - 実機相当 smoke: `bash shutsujin_departure.sh -s` を sandbox 外で実行し、`tmux list-windows -t goza-no-ma` が `0:overview` のみ、`tmux list-panes -t goza-no-ma:overview` が `shogun/karo/gunshi/ashigaru1..8` を返すことを確認。
+- `git push -u origin codex/auto` は今回も認証未設定で失敗: `fatal: could not read Username for 'https://github.com': No such device or address`
+## 2026-03-13 10:20 JST — Gemini に不正な gpt 系 model が残るバグを正規化
+- ユーザー報告: `type: gemini` のはずの将軍側で `GPT-5.4` が指定されているように見え、次回起動へ持ち越されるか不明だった。
+- 調査:
+  - `config/settings.yaml` に `type: gemini` だが `model: gpt-5.4` のような不整合が残り得ることを確認。
+  - `lib/cli_adapter.sh` の `get_agent_model()` / `get_agent_gemini_runtime_model()` は修正済みだったが、runtime 同期側の回帰テストが不足していた。
+- 実施:
+  - `tests/unit/test_sync_runtime_cli_preferences.bats` に、`type: gemini, model: gpt-5.4` を `auto` へ矯正する回帰テストを追加。
+  - `docs/REQS.md` に、Gemini へ不正 model が残っても起動時・runtime 同期時に `auto` へ正規化する要件を追記。
+- 判断:
+  - 現在の実装では、ここで Gemini model を直せば `config/settings.yaml` に保存され、次回以降の起動にも反映される。
+  - 逆に `gpt-*` のような不正値が残っても、コード側が `auto` へ丸めるため、次回起動を壊さない。

@@ -556,6 +556,20 @@ SH
     [ "$result" = "gemini --yolo" ]
 }
 
+@test "build_cli_command: gemini に gpt 系 model が入っていても auto に丸める" {
+    cat > "${TEST_TMP}/settings_gemini_invalid_model.yaml" << 'YAML'
+cli:
+  default: gemini
+  agents:
+    shogun:
+      type: gemini
+      model: gpt-5.4
+YAML
+    load_adapter_with "${TEST_TMP}/settings_gemini_invalid_model.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "gemini --yolo" ]
+}
+
 @test "build_cli_command: shogun claude は未設定でも thinking無効を既定適用" {
     load_adapter_with "${TEST_TMP}/settings_shogun_claude_default.yaml"
     result=$(build_cli_command "shogun")
@@ -1000,6 +1014,20 @@ SH
 @test "get_agent_model: gemini CLI ashigaru2 → auto (YAML指定)" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     result=$(get_agent_model "ashigaru2")
+    [ "$result" = "auto" ]
+}
+
+@test "get_agent_model: gemini CLI に gpt 系 model が入っていても auto に丸める" {
+    cat > "${TEST_TMP}/settings_gemini_invalid_model2.yaml" << 'YAML'
+cli:
+  default: gemini
+  agents:
+    shogun:
+      type: gemini
+      model: gpt-5.4
+YAML
+    load_adapter_with "${TEST_TMP}/settings_gemini_invalid_model2.yaml"
+    result=$(get_agent_model "shogun")
     [ "$result" = "auto" ]
 }
 

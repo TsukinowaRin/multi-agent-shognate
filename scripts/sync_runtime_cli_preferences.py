@@ -146,6 +146,11 @@ def normalize_gemini_label(label: str) -> str:
     return ""
 
 
+def is_valid_gemini_model(model: str) -> bool:
+    value = (model or "").strip().lower()
+    return value in {"", "auto", "default"} or value.startswith("gemini") or value.startswith("mas-")
+
+
 def parse_codex_state(text: str) -> dict[str, str]:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     for line in reversed(lines[-40:]):
@@ -255,6 +260,11 @@ def main() -> int:
             model = state.get("model", "")
             effort = state.get("reasoning_effort", "")
         elif cli_type == "gemini":
+            current_model = str(agent_cfg.get("model", "") or "")
+            if current_model and not is_valid_gemini_model(current_model):
+                agent_cfg["model"] = "auto"
+                changed_any = True
+                warning = f"{warning}; invalid-gemini-model-reset={current_model}".strip("; ")
             state = parse_gemini_state(text)
             changed, gemini_warning = apply_gemini(agent_cfg, state, alias_map)
             if changed:

@@ -1178,3 +1178,14 @@
    - 期待結果: tmux 内では nested attach せず `switch-client` を使う。
 4. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats`
    - 期待結果: PASS。
+
+## 追補（2026-03-13: Gemini に不正な gpt 系 model が保存されても自動で矯正する）
+### 要求
+1. `type: gemini` の agent に `model: gpt-5.4` など Gemini 以外の model が残っていても、次回起動時に壊れないこと。
+2. runtime 同期でも `type: gemini` の agent に不正な model があれば `auto` に直して保存すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_runtime_cli_preferences.bats`
+   - 期待結果: `gemini` に `gpt-*` が入っていても `auto` へ丸める回帰テストを含めPASSする。
+2. コマンド: `rg -n "_cli_adapter_is_valid_gemini_model|invalid-gemini-model-reset" lib/cli_adapter.sh scripts/sync_runtime_cli_preferences.py`
+   - 期待結果: 起動時と runtime 同期の両方で Gemini model 正規化が実装されている。

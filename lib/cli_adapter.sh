@@ -125,6 +125,15 @@ _cli_adapter_default_gemini_thinking_budget() {
     echo ""
 }
 
+_cli_adapter_is_valid_gemini_model() {
+    local model
+    model="$(_cli_adapter_normalize_lower "${1:-}")"
+    case "$model" in
+        ""|auto|default|gemini*|mas-*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 _cli_adapter_read_raw_gemini_thinking_level() {
     local agent_id="$1"
     _cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_level" "")"
@@ -170,6 +179,9 @@ get_agent_gemini_runtime_model() {
     local agent_id="$1"
     local configured_model
     configured_model="$(_cli_adapter_get_configured_model "$agent_id")"
+    if ! _cli_adapter_is_valid_gemini_model "$configured_model"; then
+        configured_model=""
+    fi
     local thinking_level
     thinking_level="$(get_agent_gemini_thinking_level "$agent_id")"
     local thinking_budget
@@ -592,6 +604,10 @@ get_agent_model() {
     model_from_yaml=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.model" "")
 
     if [[ -n "$model_from_yaml" ]]; then
+        if [[ "$(get_cli_type "$agent_id")" == "gemini" ]] && ! _cli_adapter_is_valid_gemini_model "$model_from_yaml"; then
+            echo "auto"
+            return 0
+        fi
         echo "$model_from_yaml"
         return 0
     fi

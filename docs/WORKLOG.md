@@ -1,5 +1,17 @@
 # Worklog
 
+## 2026-03-13 23:10 JST — 家老完了を将軍へ relay する
+- 事実確認:
+  - 殿の提示ログでは `cmd_115` は `queue/inbox/karo.yaml` に `type: cmd_new` として届き、`read: true` だった。
+  - `tmux capture-pane -pt %1` でも、家老は `subtask_115a..h` を各足軽へ配布していた。
+  - つまり止まっていたのは「将軍→家老」ではなく、「家老完了後に将軍が殿へ自発報告する経路」だった。
+- 原因:
+  - 現行 protocol が `Karo -> Shogun/Lord = dashboard.md update only` で止まっており、完了時の system relay が存在しなかった。
+- 対策:
+  - `scripts/karo_done_to_shogun_bridge.py` / `scripts/karo_done_to_shogun_bridge_daemon.sh` を本線へ組み込み。
+  - `queue/shogun_to_karo.yaml` の `done/completed/closed` を監視し、未通知の `cmd_xxx` を `queue/inbox/shogun.yaml` へ `type: cmd_done` で relay。
+  - `instructions/common/protocol.md` と `instructions/roles/shogun_role.md` に、`cmd_done` 受信時は `dashboard.md` を再読し、殿へ即上申する規則を追加。
+
 ## 2026-02-23 (bootstrap injection 根本修正) [Claude Sonnet 4.6]
 - Goal: 「起動はするがプロンプトが注入されない」問題の根本原因特定と修正。
 - Root Causes:

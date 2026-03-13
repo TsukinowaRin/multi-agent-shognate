@@ -235,13 +235,26 @@ When Karo determines a task needs to be redone:
 
 Race condition is eliminated: `/clear` wipes old context. Agent re-reads YAML with new task_id.
 
-## Report Flow (interrupt prevention)
+## Report Flow (interrupt prevention + completion relay)
 
 | Direction | Method | Reason |
 |-----------|--------|--------|
 | Ashigaru → Karo | Report YAML + inbox_write | File-based notification |
-| Karo → Shogun/Lord | dashboard.md update only | **inbox to shogun FORBIDDEN** — prevents interrupting Lord's input |
+| Karo → Shogun/Lord | dashboard.md update only | Karo itself does not inbox the Shogun directly |
 | Top → Down | YAML + inbox_write | Standard wake-up |
+
+### System Completion Relay
+
+To avoid losing completion reports on long-running cmds:
+
+- Karo remains responsible for updating `dashboard.md` and closing the cmd in `queue/shogun_to_karo.yaml`
+- Infrastructure may then emit `type: cmd_done` into `queue/inbox/shogun.yaml`
+- This `cmd_done` is a **system-generated relay**, not direct Karo chatter
+
+Therefore:
+
+- **Karo still must not manually inbox the Shogun for normal completion**
+- **Shogun must treat `cmd_done` as the signal to read `dashboard.md` and report to the Lord immediately**
 
 ## File Operation Rule
 

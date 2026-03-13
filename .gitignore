@@ -110,6 +110,8 @@
 !scripts/goza_layout_autosave.sh
 !scripts/shogun_to_karo_bridge.py
 !scripts/shogun_to_karo_bridge_daemon.sh
+!scripts/karo_done_to_shogun_bridge.py
+!scripts/karo_done_to_shogun_bridge_daemon.sh
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh
 !scripts/seo_qc.sh

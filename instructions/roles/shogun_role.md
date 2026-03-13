@@ -62,6 +62,7 @@ command: "Improve karo pipeline"
 5. **Screenshots**: See `config/settings.yaml` → `screenshot.path`
 6. **Skill candidates**: Ashigaru reports include `skill_candidate:`. Karo collects → dashboard. Shogun approves → creates design doc.
 7. **Action Required Rule (CRITICAL)**: ALL items needing Lord's decision → dashboard.md 🚨要対応 section. ALWAYS. Even if also written elsewhere. Forgetting = Lord gets angry.
+8. **Completion Relay Rule (CRITICAL)**: When `queue/inbox/shogun.yaml` receives `type: cmd_done`, immediately read `dashboard.md`, verify the referenced `cmd_xxx` result, and report the completed outcome to the Lord before returning to standby.
 
 ## ntfy Input Handling
 

@@ -1538,6 +1538,7 @@ NINJA_EOF
     pkill -f "inbox_watcher.sh" 2>/dev/null || true
     pkill -f "watcher_supervisor.sh" 2>/dev/null || true
     pkill -f "shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
+    pkill -f "karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "inotifywait.*queue/inbox" 2>/dev/null || true
     sleep 1
 
@@ -1559,6 +1560,15 @@ NINJA_EOF
         disown
         log_info "📨 将軍→家老 命令ブリッジを起動中..."
         log_success "  └─ shogun_to_karo_bridge_daemon 起動完了"
+    fi
+
+    if [ -x "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" ]; then
+        nohup env MAS_KARO_DONE_TO_SHOGUN_INTERVAL="${MAS_KARO_DONE_TO_SHOGUN_INTERVAL:-2}" \
+            bash "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" \
+            >> "$SCRIPT_DIR/logs/karo_done_to_shogun_bridge.log" 2>&1 &
+        disown
+        log_info "📨 家老→将軍 完了報告ブリッジを起動中..."
+        log_success "  └─ karo_done_to_shogun_bridge_daemon 起動完了"
     fi
 
     if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then

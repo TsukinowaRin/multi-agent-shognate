@@ -2738,3 +2738,33 @@
 - 判断:
   - これで現在の active 構成では、全 agent が `model: auto` ベースになる。
   - `reasoning_effort` や `thinking_level` は今回の指示対象外なので変更していない。
+## 2026-03-13 12:20 JST — 御座の間の再生成条件と Gemini 検出を修正
+- ユーザー要望: 御座の間は人数・構成が変わった時だけ再生成し、CLI 種別や model 変更だけでは既存 pane 構成を維持すること。あわせて、起動時に Gemini pane が崩壊し、Gemini 自体が立ち上がらない症状を直すこと。
+- 原因調査:
+  - `goza-no-ma` の再利用判定が session 存在有無だけで、agent 構成差分を見ていなかった。
+  - 保存済みレイアウトも `pane_count + layout` のみで、同人数・別構成を区別できなかった。
+  - `Gemini CLI` 検出は `command -v` 依存で、非対話 shell では user-local install (`~/.local/bin`, `~/.npm/bin` など) を拾えない場合があった。
+- 実施:
+  - `lib/cli_adapter.sh`
+    - `_cli_adapter_find_executable()` を追加し、`command -v` に加えて `~/.local/bin`, `~/.npm/bin`, `~/.npm-global/bin`, `~/bin`, `${PNPM_HOME}` を探索するよう変更。
+    - `get_first_available_cli()` / `validate_cli_availability()` / `_cli_adapter_pick_executable()` をこの探索関数ベースへ統一。
+  - `shutsujin_departure.sh`
+    - `GOZA_SIGNATURE_FILE` を追加。
+    - `compose_goza_signature_from_agents()` / `collect_goza_session_signature()` / `write_goza_signature_file()` を追加。
+    - `save_goza_layout()` は `pane_count<TAB>signature<TAB>layout` を保存するよう変更。
+    - `restore_goza_layout_if_available()` は pane 数だけでなく構成シグネチャ一致時のみ復元するよう変更。
+  - `scripts/goza_layout_autosave.sh`
+    - autosave でも構成シグネチャを保存するよう変更。
+  - `scripts/goza_no_ma.sh`
+    - `desired_goza_signature()` / `current_goza_signature()` を追加。
+    - 既存 `goza-no-ma` があっても、人数・agent 集合シグネチャが変わった時だけ `--refresh` 相当で再生成するよう変更。
+    - `cli.type` や `model` の変更だけではシグネチャが変わらないよう、判定対象は `shogun/gunshi/karo*/ashigaru*` の集合に限定。
+  - `tests/unit/test_cli_adapter.bats`
+    - user-local executable 検出に伴い、`kimi-cli` / `gemini-cli` の期待値を絶対 path 前提へ更新。
+- 検証:
+  - `bash -n lib/cli_adapter.sh shutsujin_departure.sh scripts/goza_no_ma.sh scripts/goza_layout_autosave.sh` PASS
+  - `bats tests/unit/test_cli_adapter.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_sync_runtime_cli_preferences.bats` を実行中に `kimi-cli` / `gemini-cli` の期待値が古く落ちたため修正。
+  - 修正後に同コマンドを再実行し、`1..128` PASS を確認。
+- 判断:
+  - この修正で、Gemini が PATH 外の user-local install でも見つかれば fallback せずに起動できる見込み。
+  - `goza-no-ma` は人数・構成が同じ限り既存 session と保存済み layout を維持し、CLI 種別変更だけでは作り直さない設計になった。

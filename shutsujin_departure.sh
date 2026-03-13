@@ -312,6 +312,7 @@ deliver_bootstrap_tmux() {
 GOZA_SESSION_NAME="${GOZA_SESSION_NAME:-goza-no-ma}"
 GOZA_WINDOW_NAME="${GOZA_WINDOW_NAME:-overview}"
 GOZA_LAYOUT_FILE="${GOZA_LAYOUT_FILE:-$SCRIPT_DIR/queue/runtime/goza_layout.tsv}"
+GOZA_SIGNATURE_FILE="${GOZA_SIGNATURE_FILE:-$SCRIPT_DIR/queue/runtime/goza_signature.tsv}"
 GOZA_VIEW_WIDTH="${GOZA_VIEW_WIDTH:-220}"
 GOZA_VIEW_HEIGHT="${GOZA_VIEW_HEIGHT:-60}"
 
@@ -353,35 +354,73 @@ start_goza_layout_autosave() {
     [ -x "$autosave_script" ] || return 0
     mkdir -p "$SCRIPT_DIR/logs"
     pkill -f "scripts/goza_layout_autosave.sh ${session} " >/dev/null 2>&1 || true
-    nohup bash "$autosave_script" "$session" "$GOZA_LAYOUT_FILE" \
+    nohup env GOZA_SIGNATURE_FILE="$GOZA_SIGNATURE_FILE" bash "$autosave_script" "$session" "$GOZA_LAYOUT_FILE" \
         >> "$SCRIPT_DIR/logs/goza_layout_autosave.log" 2>&1 &
     disown
+}
+
+compose_goza_signature_from_agents() {
+    if [ "$#" -eq 0 ]; then
+        return 0
+    fi
+    printf '%s\n' "$@" | awk 'NF' | sort -V | paste -sd, -
+}
+
+collect_goza_session_signature() {
+    local session="$1"
+    local pane_id=""
+    local agent_id=""
+    local agents=()
+
+    tmux has-session -t "$session" 2>/dev/null || return 0
+    while IFS= read -r pane_id; do
+        [ -n "$pane_id" ] || continue
+        agent_id="$(tmux show-options -p -t "$pane_id" -v @agent_id 2>/dev/null | tr -d '\r' | head -n1)"
+        [ -n "$agent_id" ] || continue
+        agents+=("$agent_id")
+    done < <(tmux list-panes -s -t "$session" -F "#{pane_id}" 2>/dev/null || true)
+
+    compose_goza_signature_from_agents "${agents[@]}"
+}
+
+write_goza_signature_file() {
+    local signature="$1"
+    mkdir -p "$(dirname "$GOZA_SIGNATURE_FILE")"
+    printf '%s\n' "$signature" > "$GOZA_SIGNATURE_FILE"
 }
 
 save_goza_layout() {
     local session="$1"
     local window_target="${session}:${GOZA_WINDOW_NAME}"
-    local pane_count layout
+    local pane_count layout signature
 
     tmux has-session -t "$session" 2>/dev/null || return 0
     pane_count="$(tmux list-panes -t "$window_target" 2>/dev/null | wc -l | tr -d '[:space:]')"
     layout="$(tmux display-message -p -t "$window_target" "#{window_layout}" 2>/dev/null || true)"
+    signature="$(collect_goza_session_signature "$session")"
     if [[ -n "$pane_count" && -n "$layout" ]]; then
         mkdir -p "$(dirname "$GOZA_LAYOUT_FILE")"
-        printf '%s\t%s\n' "$pane_count" "$layout" > "$GOZA_LAYOUT_FILE"
+        printf '%s\t%s\t%s\n' "$pane_count" "$signature" "$layout" > "$GOZA_LAYOUT_FILE"
+    fi
+    if [[ -n "$signature" ]]; then
+        write_goza_signature_file "$signature"
     fi
 }
 
 restore_goza_layout_if_available() {
     local session="$1"
+    local expected_signature="$2"
     local window_target="${session}:${GOZA_WINDOW_NAME}"
-    local current_count saved_count saved_layout
+    local current_count saved_count saved_signature saved_layout
 
     [[ -f "$GOZA_LAYOUT_FILE" ]] || return 0
     current_count="$(tmux list-panes -t "$window_target" 2>/dev/null | wc -l | tr -d '[:space:]')"
-    IFS=$'\t' read -r saved_count saved_layout < "$GOZA_LAYOUT_FILE" || return 0
+    IFS=$'\t' read -r saved_count saved_signature saved_layout < "$GOZA_LAYOUT_FILE" || return 0
     [[ -n "$saved_count" && -n "$saved_layout" ]] || return 0
     [[ "$saved_count" = "$current_count" ]] || return 0
+    if [[ -n "$expected_signature" && -n "$saved_signature" && "$saved_signature" != "$expected_signature" ]]; then
+        return 0
+    fi
     tmux select-layout -t "$window_target" "$saved_layout" >/dev/null 2>&1 || true
 }
 
@@ -1164,6 +1203,7 @@ if [ "${#KARO_AGENTS[@]}" -gt 0 ]; then
 fi
 BACKEND_AGENT_IDS+=("gunshi")
 BACKEND_AGENT_IDS+=("${ACTIVE_ASHIGARU[@]}")
+GOZA_COMPOSITION_SIGNATURE="$(compose_goza_signature_from_agents "${BACKEND_AGENT_IDS[@]}")"
 
 for _agent in "${BACKEND_AGENT_IDS[@]}"; do
     _pane="${AGENT_PANES[$_agent]:-}"
@@ -1180,7 +1220,8 @@ done
 
 tmux set-option -t "$GOZA_SESSION_NAME" -w pane-border-status top
 tmux set-option -t "$GOZA_SESSION_NAME" -w pane-border-format '#{?pane_active,#[reverse],}#[bold]#{@agent_id}#[default] (#{@model_name}) #{@current_task}'
-restore_goza_layout_if_available "$GOZA_SESSION_NAME"
+restore_goza_layout_if_available "$GOZA_SESSION_NAME" "$GOZA_COMPOSITION_SIGNATURE"
+write_goza_signature_file "$GOZA_COMPOSITION_SIGNATURE"
 start_goza_layout_autosave "$GOZA_SESSION_NAME"
 
 SHOGUN_TARGET="${AGENT_PANES[shogun]}"

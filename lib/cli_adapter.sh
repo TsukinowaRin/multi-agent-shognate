@@ -63,18 +63,46 @@ except Exception:
     fi
 }
 
+_cli_adapter_find_executable() {
+    local name="$1"
+    local resolved=""
+    local dir=""
+
+    if resolved="$(command -v "$name" 2>/dev/null)"; then
+        printf '%s\n' "$resolved"
+        return 0
+    fi
+
+    for dir in \
+        "${HOME:-}/.local/bin" \
+        "${HOME:-}/.npm/bin" \
+        "${HOME:-}/.npm-global/bin" \
+        "${HOME:-}/bin" \
+        "${PNPM_HOME:-}"
+    do
+        [ -n "$dir" ] || continue
+        if [ -x "$dir/$name" ]; then
+            printf '%s\n' "$dir/$name"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 # _cli_adapter_pick_executable primary fallback
 # primary が存在しなければ fallback を返す（どちらも無い場合は primary）
 _cli_adapter_pick_executable() {
     local primary="$1"
     local fallback="$2"
+    local resolved=""
 
-    if command -v "$primary" >/dev/null 2>&1; then
-        echo "$primary"
+    if resolved="$(_cli_adapter_find_executable "$primary" 2>/dev/null)"; then
+        printf '%s\n' "$resolved"
         return 0
     fi
-    if command -v "$fallback" >/dev/null 2>&1; then
-        echo "$fallback"
+    if resolved="$(_cli_adapter_find_executable "$fallback" 2>/dev/null)"; then
+        printf '%s\n' "$resolved"
         return 0
     fi
     echo "$primary"
@@ -430,28 +458,28 @@ get_first_available_cli() {
     for cli_type in codex gemini opencode kilo localapi claude copilot kimi; do
         case "$cli_type" in
             claude)
-                command -v claude >/dev/null 2>&1 && { echo "claude"; return 0; }
+                _cli_adapter_find_executable claude >/dev/null 2>&1 && { echo "claude"; return 0; }
                 ;;
             codex)
-                command -v codex >/dev/null 2>&1 && { echo "codex"; return 0; }
+                _cli_adapter_find_executable codex >/dev/null 2>&1 && { echo "codex"; return 0; }
                 ;;
             copilot)
-                command -v copilot >/dev/null 2>&1 && { echo "copilot"; return 0; }
+                _cli_adapter_find_executable copilot >/dev/null 2>&1 && { echo "copilot"; return 0; }
                 ;;
             kimi)
-                (command -v kimi >/dev/null 2>&1 || command -v kimi-cli >/dev/null 2>&1) && { echo "kimi"; return 0; }
+                (_cli_adapter_find_executable kimi >/dev/null 2>&1 || _cli_adapter_find_executable kimi-cli >/dev/null 2>&1) && { echo "kimi"; return 0; }
                 ;;
             gemini)
-                (command -v gemini >/dev/null 2>&1 || command -v gemini-cli >/dev/null 2>&1) && { echo "gemini"; return 0; }
+                (_cli_adapter_find_executable gemini >/dev/null 2>&1 || _cli_adapter_find_executable gemini-cli >/dev/null 2>&1) && { echo "gemini"; return 0; }
                 ;;
             localapi)
                 command -v python3 >/dev/null 2>&1 && { echo "localapi"; return 0; }
                 ;;
             opencode)
-                command -v opencode >/dev/null 2>&1 && { echo "opencode"; return 0; }
+                _cli_adapter_find_executable opencode >/dev/null 2>&1 && { echo "opencode"; return 0; }
                 ;;
             kilo)
-                command -v kilo >/dev/null 2>&1 && { echo "kilo"; return 0; }
+                _cli_adapter_find_executable kilo >/dev/null 2>&1 && { echo "kilo"; return 0; }
                 ;;
         esac
     done
@@ -539,31 +567,31 @@ validate_cli_availability() {
     local cli_type="$1"
     case "$cli_type" in
         claude)
-            command -v claude &>/dev/null || {
+            _cli_adapter_find_executable claude &>/dev/null || {
                 echo "[ERROR] Claude Code CLI not found. Install from https://claude.ai/download" >&2
                 return 1
             }
             ;;
         codex)
-            command -v codex &>/dev/null || {
+            _cli_adapter_find_executable codex &>/dev/null || {
                 echo "[ERROR] OpenAI Codex CLI not found. Install with: npm install -g @openai/codex" >&2
                 return 1
             }
             ;;
         copilot)
-            command -v copilot &>/dev/null || {
+            _cli_adapter_find_executable copilot &>/dev/null || {
                 echo "[ERROR] GitHub Copilot CLI not found. Install with: brew install copilot-cli" >&2
                 return 1
             }
             ;;
         kimi)
-            if ! command -v kimi-cli &>/dev/null && ! command -v kimi &>/dev/null; then
+            if ! _cli_adapter_find_executable kimi-cli &>/dev/null && ! _cli_adapter_find_executable kimi &>/dev/null; then
                 echo "[ERROR] Kimi CLI not found. Install from https://platform.moonshot.cn/" >&2
                 return 1
             fi
             ;;
         gemini)
-            if ! command -v gemini &>/dev/null && ! command -v gemini-cli &>/dev/null; then
+            if ! _cli_adapter_find_executable gemini &>/dev/null && ! _cli_adapter_find_executable gemini-cli &>/dev/null; then
                 echo "[ERROR] Gemini CLI not found. Install Gemini CLI and ensure 'gemini' or 'gemini-cli' is in PATH." >&2
                 return 1
             fi
@@ -575,13 +603,13 @@ validate_cli_availability() {
             fi
             ;;
         opencode)
-            command -v opencode &>/dev/null || {
+            _cli_adapter_find_executable opencode &>/dev/null || {
                 echo "[ERROR] OpenCode CLI not found. Install with: npm install -g opencode-ai" >&2
                 return 1
             }
             ;;
         kilo)
-            command -v kilo &>/dev/null || {
+            _cli_adapter_find_executable kilo &>/dev/null || {
                 echo "[ERROR] Kilo CLI not found. Install with: npm install -g @kilocode/cli" >&2
                 return 1
             }

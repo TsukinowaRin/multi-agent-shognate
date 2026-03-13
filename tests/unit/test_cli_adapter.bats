@@ -525,7 +525,7 @@ exit 0
 SH
     chmod +x "${TEST_TMP}/bin/kimi-cli"
     PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru3")
-    [ "$result" = "kimi-cli --yolo --model k2.5" ]
+    [ "$result" = "${TEST_TMP}/bin/kimi-cli --yolo --model k2.5" ]
 }
 
 @test "build_cli_command: kimi (モデル指定なし) → kimi --yolo" {
@@ -599,7 +599,7 @@ exit 0
 SH
     chmod +x "${TEST_TMP}/bin/gemini-cli"
     PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
-    [ "$result" = "gemini-cli --yolo" ]
+    [ "$result" = "${TEST_TMP}/bin/gemini-cli --yolo" ]
 }
 
 @test "build_cli_command: localapi → python3 scripts/localapi_repl.py" {
@@ -887,6 +887,16 @@ SH
     chmod +x "${TEST_TMP}/bin/gemini"
     PATH="${TEST_TMP}/bin:$PATH" run validate_cli_availability "gemini"
     [ "$status" -eq 0 ]
+}
+
+@test "_cli_adapter_pick_executable: PATH外の ~/.local/bin も検出する" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    mkdir -p "${TEST_TMP}/home/.local/bin"
+    echo '#!/bin/bash' > "${TEST_TMP}/home/.local/bin/gemini"
+    chmod +x "${TEST_TMP}/home/.local/bin/gemini"
+    HOME="${TEST_TMP}/home" PATH="/usr/bin:/bin" run _cli_adapter_pick_executable "gemini" "gemini-cli"
+    [ "$status" -eq 0 ]
+    [ "$output" = "${TEST_TMP}/home/.local/bin/gemini" ]
 }
 
 @test "validate_cli_availability: localapi python3あり → 0" {

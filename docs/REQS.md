@@ -1,7 +1,27 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-12
+最終更新: 2026-03-13
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-13: 御座の間の構成追従とGemini起動安定化）
+### 要求
+1. `goza-no-ma` は、エージェント構成が変わった時だけ再生成すること。
+1.1. ここでいう「構成が変わった」とは、`shogun` / `gunshi` / `karo*` / `ashigaru*` の人数や集合が変わることを指し、`cli.type` や `model` の変更だけでは再生成しないこと。
+2. `goza-no-ma` のレイアウト復元は、pane 数だけでなく構成シグネチャも一致した時だけ適用すること。
+3. `Gemini CLI` は `PATH` だけでなく、一般的な user-local install 先からも検出できること。
+4. `type: gemini` の agent は、`gemini` 実行ファイルが user-local install 先に存在する場合、`codex` や `claude` へ不必要に fallback しないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n lib/cli_adapter.sh shutsujin_departure.sh scripts/goza_no_ma.sh scripts/goza_layout_autosave.sh`
+   - 期待結果: Gemini 検出強化と御座の間シグネチャ管理を入れても構文エラーがない。
+2. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_sync_runtime_cli_preferences.bats`
+   - 期待結果: 実行ファイル検出、構成シグネチャ、runtime 同期の回帰が PASS する。
+3. コマンド: `bash shutsujin_departure.sh -s`
+   - 期待結果: `queue/runtime/agent_cli.tsv` が current settings に従って生成され、利用可能な `Gemini CLI` があれば `shogun/gunshi` は `gemini` のまま保持される。
+4. コマンド: `bash scripts/goza_no_ma.sh`
+   - 期待結果: 既存の `goza-no-ma` があり、かつ人数構成シグネチャが同一なら再生成せず再利用する。
+5. コマンド: `cat queue/runtime/goza_layout.tsv`
+   - 期待結果: `pane_count<TAB>signature<TAB>layout` 形式で保存される。
 
 ## 追補（2026-03-12: 御座の間本体化）
 ### 要求

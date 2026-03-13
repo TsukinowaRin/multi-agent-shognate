@@ -33,7 +33,7 @@ setup_file() {
 }
 
 @test "御座の間導線は既存backend再利用を優先する" {
-    run rg -n -- "--ensure-backend|--refresh|switch-client -t|attach-session -t \\$GOZA_SESSION|attach-session -t \\$GOZA_SESSION_NAME|focus_agent_pane" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/README_ja.md" "$PROJECT_ROOT/first_setup.sh"
+    run rg -n -- "--ensure-backend|--refresh|switch-client -t|attach-session -t \\$GOZA_SESSION|attach-session -t \\$GOZA_SESSION_NAME|focus_agent_pane|エージェント構成が変化したため、御座の間を再生成します" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/README_ja.md" "$PROJECT_ROOT/first_setup.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -55,7 +55,12 @@ setup_file() {
 }
 
 @test "御座の間は手動リサイズ後の tmux window_layout を保存して次回復元する" {
-    run rg -n "GOZA_LAYOUT_FILE|save_goza_layout|restore_goza_layout_if_available|start_goza_layout_autosave|goza_layout_autosave\\.sh|window_layout|select-layout -t .*saved_layout" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh"
+    run rg -n "GOZA_LAYOUT_FILE|GOZA_SIGNATURE_FILE|save_goza_layout|restore_goza_layout_if_available|start_goza_layout_autosave|goza_layout_autosave\\.sh|window_layout|select-layout -t .*saved_layout|compose_goza_signature_from_agents" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "御座の間は agent人数が変わった時だけ再生成し、CLI種別変更では再生成条件に含めない" {
+    run rg -n "desired_goza_signature|current_goza_signature|compose_goza_signature|topology_load_active_ashigaru|topology_resolve_karo_agents" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 

@@ -69,7 +69,7 @@
     結果をdashboard.mdへまとめ、将軍へ報告せよ。
   project: multi-agent-shogun
   priority: high
-  status: in_progress
+  status: done
 
 - id: cmd_113
   timestamp: "2026-03-12T14:19:37+09:00"
@@ -85,7 +85,7 @@
     不備があれば dashboard の「🚨 要対応」にて報告せよ。
   project: multi-agent-shogun
   priority: high
-  status: in_progress
+  status: done
 
 - id: cmd_114
   timestamp: "2026-03-12T18:05:47+09:00"
@@ -101,4 +101,4 @@
     もし multiagent 側の実行基盤に不具合があるなら、その旨と復旧条件を dashboard.md に記せ。
   project: multi-agent-shogun
   priority: high
-  status: pending
+  status: done

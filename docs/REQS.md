@@ -3,6 +3,18 @@
 最終更新: 2026-03-13
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-14: 将軍 cmd_done 起床メッセージ強化）
+### 要求
+1. `queue/inbox/shogun.yaml` に未読 `cmd_done` がある時、`inbox_watcher.sh` は単なる `inboxN` ではなく、`dashboard.md` を確認して殿へ完了報告する明示メッセージで将軍を起こすこと。
+2. この明示メッセージは通常 nudge と Phase 2 (`Escape×2 + nudge`) の両方で使われること。
+3. `cmd_done` が無い通常 unread では、従来どおり `inboxN` を使うこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/inbox_watcher.sh`
+   - 期待結果: `cmd_done` 明示起床を追加しても構文エラーがない。
+2. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: `shogun + cmd_done unread` の通常 nudge / Phase 2 nudge が明示文へ変わる回帰が PASS する。
+
 ## 追補（2026-03-13: 家老完了を将軍へ自動報告）
 ### 要求
 1. 将軍起点の `cmd_xxx` が家老側で `done/completed/closed` になったら、将軍が殿へ自発的に完了報告できること。

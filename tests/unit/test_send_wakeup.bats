@@ -256,6 +256,27 @@ MOCK
     grep -q "send-keys.*inbox7" "$MOCK_LOG"
 }
 
+@test "T-SW-010b: shogun cmd_done unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: karo
+    type: cmd_done
+    content: "cmd_200 が完了した。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="shogun"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
 # --- T-SW-011: functions exist in inbox_watcher.sh ---
 
 @test "T-SW-011: inbox_watcher.sh uses send-keys with required functions" {
@@ -333,6 +354,28 @@ MOCK
     grep -q "send-keys.*Escape" "$MOCK_LOG"
     # Nudge was also sent
     grep -q "send-keys.*inbox3" "$MOCK_LOG"
+}
+
+@test "T-ESC-003c: shogun cmd_done unread uses explicit wake-up text in phase2" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: karo
+    type: cmd_done
+    content: "cmd_200 が完了した。"
+    read: false
+YAML
+
+    run bash -c '
+        MOCK_PANE_CLI=codex
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="shogun"
+        send_wakeup_with_escape 1
+    '
+    [ "$status" -eq 0 ]
+    grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
 @test "T-ESC-003b: claudeはPhase2でEscapeを送らず通常nudgeにフォールバック" {

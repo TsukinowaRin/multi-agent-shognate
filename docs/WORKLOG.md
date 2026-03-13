@@ -2866,3 +2866,8 @@
 - 判断:
   - 今回の `cmd_115` 停滞は bridge 不備ではなく watcher の event-only 固定が原因。
   - WSL `/mnt/d` 前提では polling fallback を殺してはいけない。
+# 2026-03-14
+- 事象: 将軍 (`gemini`) が `cmd_done` を受けても自発報告しないケースを実機ログで確認。`queue/inbox/shogun.yaml` には `cmd_done` が未読で存在し、`karo_done_to_shogun_bridge.log` でも relay 済みだったため、伝達そのものではなく `inbox_watcher.sh` の起床メッセージが弱いと判断した。
+- 対応: `scripts/inbox_watcher.sh` に `get_wakeup_text()` を追加。`AGENT_ID=shogun` かつ unread に `type: cmd_done` がある時は、`inboxN` ではなく `queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。` を送るよう変更。Phase 2 (`send_wakeup_with_escape`) でも同じメッセージを使う。
+- テスト: `tests/unit/test_send_wakeup.bats` に `T-SW-010b` と `T-ESC-003c` を追加し、通常 nudge / Phase 2 の両方で `cmd_done` 明示起床へ変わることを確認する回帰を追加。
+- 備考: これは `cmd_done` unread を Gemini 将軍が会話タスクとして拾いやすくする修正であり、API 利用制限そのものは別問題。quota 枯渇時は別途 UI 側で止まる。

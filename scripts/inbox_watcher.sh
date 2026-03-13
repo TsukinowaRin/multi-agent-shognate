@@ -355,6 +355,42 @@ PY
     ) 200>"$LOCKFILE" 2>/dev/null
 }
 
+get_wakeup_text() {
+    local unread_count="$1"
+    local default_nudge="inbox${unread_count}"
+
+    # 将軍への cmd_done は、単なる inboxN よりも明示的な指示で起こす。
+    if [[ "${AGENT_ID:-}" != "shogun" ]]; then
+        echo "$default_nudge"
+        return 0
+    fi
+
+    local decision
+    decision=$(INBOX_PATH="$INBOX" python3 - << 'PY'
+import os
+import yaml
+
+inbox = os.environ.get("INBOX_PATH", "")
+try:
+    with open(inbox, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    messages = data.get("messages", []) or []
+    unread = [m for m in messages if not m.get("read", False)]
+    has_cmd_done = any((m.get("type") or "") == "cmd_done" for m in unread)
+    print("cmd_done" if has_cmd_done else "default")
+except Exception:
+    print("default")
+PY
+)
+
+    if [[ "$decision" == "cmd_done" ]]; then
+        echo "queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。"
+        return 0
+    fi
+
+    echo "$default_nudge"
+}
+
 # ─── Send CLI command via pty direct write ───
 # For /clear and /model only. These are CLI commands, not conversation messages.
 # CLI_TYPE別分岐: claude→そのまま, codex→/clear対応・/modelスキップ,
@@ -544,7 +580,8 @@ agent_is_busy() {
 #   3. tmux send-keys (短いnudgeのみ、timeout 5s)
 send_wakeup() {
     local unread_count="$1"
-    local nudge="inbox${unread_count}"
+    local nudge
+    nudge=$(get_wakeup_text "$unread_count")
 
     if [ "${FINAL_ESCALATION_ONLY:-0}" = "1" ]; then
         echo "[$(date)] [SKIP] FINAL_ESCALATION_ONLY=1, suppressing normal nudge for $AGENT_ID" >&2
@@ -587,7 +624,8 @@ send_wakeup() {
 # Addresses the "echo last tool call" cursor position bug and stale input.
 send_wakeup_with_escape() {
     local unread_count="$1"
-    local nudge="inbox${unread_count}"
+    local nudge
+    nudge=$(get_wakeup_text "$unread_count")
     local effective_cli
     effective_cli=$(get_effective_cli_type)
     local c_ctrl_state="skipped"

@@ -4,11 +4,14 @@
 
 現役運用は `tmux` のみです。  
 起動入口の本体は `shutsujin_departure.sh` です。  
+実 runtime は upstream Android アプリ互換の split session です。
+
+- `shogun:main`
+- `gunshi:main`
+- `multiagent:agents` (`multiagent:0` としても参照可)
+
 俯瞰ビューとして `scripts/goza_no_ma.sh` による `御座の間` を使えます。  
-現在は `御座の間` 自体が本体 session です。  
-全エージェントは `goza-no-ma:overview` の 1 window に収まり、別 window へ逃がしません。  
-`shogun` が最大、`karo` が二番手、`gunshi` が三番手、`ashigaru` が残り領域へ compact に配置されます。  
-`cgo` で開いた pane は実エージェントなので、選択した pane にそのまま直接入力できます。
+`御座の間` は本体ではなく、既存 session を見やすく開く補助ビューです。  
 `zellij` は廃止済みで、履歴が必要なら `Waste/` を参照します。
 
 ## このフォーク独自の対応
@@ -29,7 +32,13 @@ bash shutsujin_departure.sh
 
 接続:
 ```bash
-tmux attach-session -t goza-no-ma
+tmux attach-session -t shogun
+tmux attach-session -t gunshi
+tmux attach-session -t multiagent
+```
+
+個別移動:
+```bash
 bash scripts/focus_agent_pane.sh shogun
 bash scripts/focus_agent_pane.sh gunshi
 bash scripts/focus_agent_pane.sh karo
@@ -43,20 +52,29 @@ csm   # 家老
 cgo   # 御座の間
 ```
 
-御座の間だけ開く:
+御座の間を開く:
 ```bash
 bash scripts/goza_no_ma.sh
-```
-
-既存の御座の間を壊さず再利用します。再生成したい時だけ:
-```bash
-bash scripts/goza_no_ma.sh --refresh
 ```
 
 backend が未起動なら明示:
 ```bash
 bash scripts/goza_no_ma.sh --ensure-backend
 ```
+
+御座の間を作り直す:
+```bash
+bash scripts/goza_no_ma.sh --refresh
+```
+
+## Android アプリ互換
+upstream Android アプリはそのまま次の tmux target を前提に動きます。
+
+- 将軍タブ: `shogun:main`
+- エージェントタブ: `multiagent:0`
+- ダッシュボード: `dashboard.md`
+
+このフォークもそれに合わせています。
 
 ## 設定 CUI
 ```bash
@@ -125,11 +143,11 @@ cli:
 
 ## 主なファイル
 - `shutsujin_departure.sh`
-  - `goza-no-ma` session を立ち上げ、実 pane 上で CLI と watcher を起動する本体です。
+  - `shogun` / `gunshi` / `multiagent` の split session に CLI と watcher を起動する本体です。
 - `scripts/goza_no_ma.sh`
-  - 既存の `goza-no-ma` session を開く wrapper です。通常は再生成せず、そのまま再利用します。
+  - split session を俯瞰する view session を開く wrapper です。
 - `scripts/focus_agent_pane.sh`
-  - 御座の間の `shogun / gunshi / karo` pane へ直接フォーカス移動します。
+  - `shogun` / `gunshi` / `multiagent` の実 pane へ直接移動します。
 - `lib/cli_adapter.sh`
   - 対応 CLI の抽象化レイヤーです。
 - `scripts/configure_agents.sh`
@@ -151,6 +169,9 @@ cli:
 セッションをやり直す:
 ```bash
 tmux kill-session -t goza-no-ma 2>/dev/null || true
+tmux kill-session -t shogun 2>/dev/null || true
+tmux kill-session -t gunshi 2>/dev/null || true
+tmux kill-session -t multiagent 2>/dev/null || true
 bash shutsujin_departure.sh
 ```
 

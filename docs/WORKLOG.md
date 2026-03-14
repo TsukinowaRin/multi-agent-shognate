@@ -2889,3 +2889,18 @@
 - 現フォークは `goza-no-ma` 単一 session / `overview` 単一 window に実 pane を集約しており、`shogun:main` と `multiagent:0` を前提にした upstream Android app とは直接互換ではない。
 - `dashboard.md` 読取は今のフォークでも成立するが、将軍 tab / エージェント tab の interactive target は不一致。
 - 対応案は `docs/EXECPLAN_2026-03-14_android_compat.md` に整理した。推奨は「Android compatibility mode を追加する」か「Android app 側を goza-no-ma + @agent_id に対応させる」であり、現時点では互換と断言しない。
+
+## 2026-03-14 13:45 JST — Android 互換のため split tmux runtime へ復帰
+- ユーザー要求に従い、upstream Android アプリがそのまま使えることを優先し、実 runtime を `goza-no-ma` 単一 session から `shogun` / `gunshi` / `multiagent` の split session へ戻した。
+- `shutsujin_departure.sh` の Step 5 を差し替え、`shogun:main`, `gunshi:main`, `multiagent:agents` を構築するよう変更。各 pane には `@agent_id`, `@model_name`, `@current_task` を再付与した。
+- `scripts/goza_no_ma.sh` は本体 session ではなく view session として再実装した。`goza-no-ma` は `shogun`, `multiagent`, `gunshi` を nested attach で俯瞰する。detached でも壊れないよう固定サイズ分割を採用した。
+- `scripts/focus_agent_pane.sh` は `shogun` / `gunshi` / `multiagent` の実 pane へ直接移動するよう変更。`karo` と `ashigaruN` は `multiagent:agents` から `@agent_id` で引く。
+- `scripts/watcher_supervisor.sh` と `scripts/sync_runtime_cli_preferences.py` は `goza-no-ma` より split session を優先して pane 解決するよう更新した。
+- `README.md` / `README_ja.md` / `docs/REQS.md` / `docs/EXECPLAN_2026-03-14_android_compat.md` を split runtime 前提へ更新。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/goza_no_ma.sh scripts/focus_agent_pane.sh scripts/watcher_supervisor.sh` PASS
+  - `python3 -m py_compile scripts/sync_runtime_cli_preferences.py` PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_send_wakeup.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/unit/test_topology_adapter.bats` PASS (`1..183`)
+  - `bash shutsujin_departure.sh -s` 実行で `shogun`, `gunshi`, `multiagent` の 3 session が生成されることを確認
+  - `tmux list-panes -t shogun:main` と `tmux list-panes -t multiagent:agents` で Android アプリが前提にする target が存在することを確認
+  - `bash scripts/goza_no_ma.sh --no-attach` 実行で `goza-no-ma:overview` に `shogun`, `multiagent`, `gunshi` の 3 pane が立つことを確認

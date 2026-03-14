@@ -1,14 +1,17 @@
 # multi-agent-shogun
 
-このフォークは `yohey-w/multi-agent-shogun` の `tmux` 本線を基準に、CLI 対応を拡張した実行基盤です。
+このフォークは `yohey-w/multi-agent-shogun` の `tmux` 本線を基準に、CLI 対応だけを拡張した版です。
 
 現役運用は `tmux` のみです。  
 起動入口の本体は `shutsujin_departure.sh` です。  
+実 runtime は upstream Android アプリ互換の split session です。
+
+- `shogun:main`
+- `gunshi:main`
+- `multiagent:agents` (`multiagent:0` としても参照可)
+
 俯瞰ビューとして `scripts/goza_no_ma.sh` による `御座の間` を使えます。  
-現在は `御座の間` 自体が本体 session です。  
-全エージェントは `goza-no-ma:overview` の 1 window に収まり、別 window へ逃がしません。  
-`shogun` が最大、`karo` が二番手、`gunshi` が三番手、`ashigaru` が残り領域へ compact に配置されます。  
-`cgo` で開いた pane は実エージェントなので、選択した pane にそのまま直接入力できます。
+`御座の間` は本体ではなく、既存 session を見やすく開く補助ビューです。  
 `zellij` は廃止済みで、履歴が必要なら `Waste/` を参照します。
 
 ## このフォーク独自の差分
@@ -32,7 +35,13 @@ bash shutsujin_departure.sh
 
 接続:
 ```bash
-tmux attach-session -t goza-no-ma
+tmux attach-session -t shogun
+tmux attach-session -t gunshi
+tmux attach-session -t multiagent
+```
+
+個別移動:
+```bash
 bash scripts/focus_agent_pane.sh shogun
 bash scripts/focus_agent_pane.sh gunshi
 bash scripts/focus_agent_pane.sh karo
@@ -54,20 +63,29 @@ bash scripts/configure_agents.sh
 bash shutsujin_departure.sh
 ```
 
-御座の間だけ開く:
+御座の間を開く:
 ```bash
 bash scripts/goza_no_ma.sh
-```
-
-既存の御座の間を壊さず再利用します。再生成したい時だけ:
-```bash
-bash scripts/goza_no_ma.sh --refresh
 ```
 
 backend が未起動なら明示:
 ```bash
 bash scripts/goza_no_ma.sh --ensure-backend
 ```
+
+御座の間を作り直す:
+```bash
+bash scripts/goza_no_ma.sh --refresh
+```
+
+## Android アプリ互換
+upstream Android アプリはそのまま次の tmux target を前提に動きます。
+
+- 将軍タブ: `shogun:main`
+- エージェントタブ: `multiagent:0`
+- ダッシュボード: `dashboard.md`
+
+このフォークもそれに合わせています。
 
 ## 設定 CUI
 ```bash
@@ -82,11 +100,11 @@ bash scripts/configure_agents.sh
 - `cli.agents.gunshi`
 - `cli.agents.karo`
 - `cli.agents.ashigaruN`
+- `cli.opencode_like`
 
 補足:
 - `Codex` / `Gemini` は、pane 内で変更した live の `model` / `reasoning` / 一部 `thinking` を、起動中に daemon が約1秒ごとに `config/settings.yaml` へ同期します。
 - 即時同期の対象は現時点で `Codex` / `Gemini` のみです。
-- `cli.opencode_like`
 
 ## 設定例
 ```yaml
@@ -136,11 +154,11 @@ cli:
 
 ## 主なスクリプト
 - `shutsujin_departure.sh`
-  - 本体。`goza-no-ma` session を作り、実 pane 上で CLI と watcher を起動します。
+  - 本体。`shogun` / `gunshi` / `multiagent` の split session に CLI と watcher を起動します。
 - `scripts/goza_no_ma.sh`
-  - 既存の `goza-no-ma` session を開く wrapper です。通常は再生成せず、そのまま再利用します。
+  - split session を俯瞰する view session を開く wrapper です。
 - `scripts/focus_agent_pane.sh`
-  - 御座の間の `shogun / gunshi / karo` pane へ直接フォーカス移動します。
+  - `shogun` / `gunshi` / `multiagent` の実 pane へ直接移動します。
 - `scripts/configure_agents.sh`
   - `config/settings.yaml` を対話更新します。
 - `scripts/build_instructions.sh`
@@ -162,6 +180,9 @@ cli:
 セッションを壊してやり直す:
 ```bash
 tmux kill-session -t goza-no-ma 2>/dev/null || true
+tmux kill-session -t shogun 2>/dev/null || true
+tmux kill-session -t gunshi 2>/dev/null || true
+tmux kill-session -t multiagent 2>/dev/null || true
 bash shutsujin_departure.sh
 ```
 

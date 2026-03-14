@@ -126,10 +126,6 @@ pane_exists() {
 }
 
 list_backend_pane_targets() {
-    if tmux has-session -t "goza-no-ma" 2>/dev/null; then
-        tmux list-panes -s -t "goza-no-ma" -F "#{pane_id}" 2>/dev/null || true
-        return 0
-    fi
     if tmux has-session -t "shogun" 2>/dev/null; then
         tmux list-panes -t "shogun:main" -F "#{pane_id}" 2>/dev/null || true
     fi
@@ -138,6 +134,9 @@ list_backend_pane_targets() {
     fi
     if tmux has-session -t "multiagent" 2>/dev/null; then
         tmux list-panes -t "multiagent:agents" -F "#{pane_id}" 2>/dev/null || true
+    fi
+    if tmux has-session -t "goza-no-ma" 2>/dev/null; then
+        tmux list-panes -s -t "goza-no-ma" -F "#{pane_id}" 2>/dev/null || true
     fi
 }
 

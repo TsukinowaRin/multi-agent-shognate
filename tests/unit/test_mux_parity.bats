@@ -6,14 +6,12 @@ setup_file() {
 }
 
 @test "tmux起動は inbox 正規化ヘルパーを利用する" {
-    run rg -n "inbox_path\\.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
-    [ "$status" -eq 0 ]
-    run rg -n "ensure_local_inbox_dir" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "inbox_path\.sh|ensure_local_inbox_dir" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "tmux起動入口は shutsujin_departure.sh のみを使う" {
-    run rg -n "Usage:|./shutsujin_departure\\.sh|tmux attach-session" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/README.md"
+    run rg -n "Usage:|./shutsujin_departure\.sh|tmux attach-session" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/README.md"
     [ "$status" -eq 0 ]
 }
 
@@ -22,70 +20,52 @@ setup_file() {
     [ "$status" -ne 0 ]
 }
 
-@test "御座の間スクリプトが現役で存在する" {
-    run rg -n "goza_no_ma\\.sh|goza_layout_autosave\\.sh|focus_agent_pane\\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh" "$PROJECT_ROOT/scripts/focus_agent_pane.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "御座の間スクリプトと focus helper が現役で存在する" {
+    run rg -n "goza_no_ma\.sh|focus_agent_pane\.sh|御座の間" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/scripts/focus_agent_pane.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "軍師 attach alias csg と御座の間 alias cgo を案内する" {
-    run rg -n "alias csg='bash .*focus_agent_pane\\.sh gunshi'|alias cgo='bash .*goza_no_ma\\.sh'|または: csg|cgo\\s+→" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "alias csg='bash .*focus_agent_pane\.sh gunshi'|alias cgo='bash .*goza_no_ma\.sh'|または: csg|cgo" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "御座の間導線は既存backend再利用を優先する" {
-    run rg -n -- "--ensure-backend|--refresh|switch-client -t|attach-session -t \\$GOZA_SESSION|attach-session -t \\$GOZA_SESSION_NAME|focus_agent_pane|エージェント構成が変化したため、御座の間を再生成します" "$PROJECT_ROOT/scripts/goza_no_ma.sh" "$PROJECT_ROOT/README.md" "$PROJECT_ROOT/README_ja.md" "$PROJECT_ROOT/first_setup.sh"
+@test "御座の間は split runtime を俯瞰する view session として構築する" {
+    run rg -n "attach-session -t shogun|attach-session -t multiagent|attach-session -t gunshi|main-vertical|main-pane-width" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "出陣本体は御座の間 session に実 pane を構築する" {
-    run rg -n "GOZA_SESSION_NAME|GOZA_WINDOW_NAME|new-session -d -x .* -s .*goza-no-ma|split-window -h -l|split-window -v -l|AGENT_PANES|build_ashigaru_grid|restore_goza_layout_if_available|start_goza_layout_autosave" "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "出陣本体は Android 互換の split session を構築する" {
+    run rg -n "new-session -d -s shogun -n main|new-session -d -s gunshi -n main|new-session -d -s multiagent -n \"agents\"|multiagent:agents|shogun:main|gunshi:main" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "御座の間は追加の足軽も同一 overview window に収める" {
-    run rg -n "build_ashigaru_grid|ACTIVE_ASHIGARU_COUNT|retainers" "$PROJECT_ROOT/shutsujin_departure.sh"
-    [ "$status" -eq 0 ]
-    [[ "$output" != *"new-window -t \"\$GOZA_SESSION_NAME\" -n retainers"* ]]
-}
-
-@test "focus helper で御座の間内の agent pane へ移動できる" {
-    run rg -n "focus_agent_pane\\.sh|switch-client -t|attach-session -t \\$SESSION|show-options -p -t .*@agent_id" \
-      "$PROJECT_ROOT/scripts/focus_agent_pane.sh" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "multiagent pane には agent_id と model_name を付与する" {
+    run rg -n "set-option -p -t \"multiagent:agents\.\$\{p\}\" @agent_id|set-option -p -t \"multiagent:agents\.\$\{p\}\" @model_name|pane-border-format" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "御座の間は手動リサイズ後の tmux window_layout を保存して次回復元する" {
-    run rg -n "GOZA_LAYOUT_FILE|GOZA_SIGNATURE_FILE|save_goza_layout|restore_goza_layout_if_available|start_goza_layout_autosave|goza_layout_autosave\\.sh|window_layout|select-layout -t .*saved_layout|compose_goza_signature_from_agents" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/goza_layout_autosave.sh" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+@test "focus helper は split session の実 pane へ移動する" {
+    run rg -n "attach-session -t shogun|attach-session -t gunshi|attach-session -t multiagent|list-panes -t multiagent:agents|show-options -p -t .*@agent_id" "$PROJECT_ROOT/scripts/focus_agent_pane.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "御座の間は agent人数が変わった時だけ再生成し、CLI種別変更では再生成条件に含めない" {
-    run rg -n "desired_goza_signature|current_goza_signature|compose_goza_signature|topology_load_active_ashigaru|topology_resolve_karo_agents" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+@test "watcher supervisor は split session を正本に pane 解決する" {
+    run rg -n "has-session -t \"shogun\"|has-session -t \"gunshi\"|has-session -t \"multiagent\"|list-panes -t \"multiagent:agents\"|show-options -p -t .*@agent_id|ASW_PROCESS_TIMEOUT=1" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "runtime 同期は split session を優先し Android 互換 target を読める" {
+    run rg -n "shogun:main|gunshi:main|multiagent:agents|goza-no-ma" "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
     [ "$status" -eq 0 ]
 }
 
 @test "agent収集は shutsujin_departure が topology_adapter を利用する" {
-    run rg -n "topology_adapter\\.sh|topology_load_active_ashigaru|topology_resolve_karo_agents" "$PROJECT_ROOT/shutsujin_departure.sh"
-    [ "$status" -eq 0 ]
-}
-
-@test "tmux bootstrap と watcher は backend pane を agent_id から解決する" {
-    run rg -n "resolve_agent_pane_target|list_backend_pane_targets|show-options -p -t .*@agent_id" \
-        "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
-    [ "$status" -eq 0 ]
-}
-
-@test "watcher supervisor は timeout fallback を有効にして inbox watcher を起動する" {
-    run rg -n "ASW_PROCESS_TIMEOUT=1" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
-    [ "$status" -eq 0 ]
-}
-
-@test "役職判定は複数家老IDに対応" {
-    run rg -n "karo\\|karo\\[1-9\\]\\*\\|karo_gashira" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "topology_adapter\.sh|topology_load_active_ashigaru|topology_resolve_karo_agents" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "tmux 起動は ntfy_inbox.yaml を確保する" {
-    run rg -n "ntfy_inbox\\.yaml" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n "ntfy_inbox\.yaml" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }

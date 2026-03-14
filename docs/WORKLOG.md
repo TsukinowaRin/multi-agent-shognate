@@ -2781,7 +2781,7 @@
   - この修正で、Gemini が PATH 外の user-local install でも見つかれば fallback せずに起動できる見込み。
   - `goza-no-ma` は人数・構成が同じ限り既存 session と保存済み layout を維持し、CLI 種別変更だけでは作り直さない設計になった。
 ## 2026-03-13 12:35 JST — Gemini fallback 前検出を .nvm 配下まで拡張
-- ユーザー提供情報: `command -v gemini` は `/home/muro/.nvm/versions/node/v22.22.0/bin/gemini` を返す。
+- ユーザー提供情報: `command -v gemini` は `$HOME/.nvm/versions/node/<version>/bin/gemini` を返す。
 - 調査:
   - 直前の `_cli_adapter_find_executable()` は `~/.local/bin`, `~/.npm/bin`, `~/.npm-global/bin`, `~/bin`, `${PNPM_HOME}` までしか見ておらず、`.nvm` 配下は探索していなかった。
   - そのため、非対話 shell で `PATH` が痩せる環境では「Gemini 実体はあるのに見逃して fallback」する余地が残っていた。
@@ -2871,3 +2871,14 @@
 - 対応: `scripts/inbox_watcher.sh` に `get_wakeup_text()` を追加。`AGENT_ID=shogun` かつ unread に `type: cmd_done` がある時は、`inboxN` ではなく `queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。` を送るよう変更。Phase 2 (`send_wakeup_with_escape`) でも同じメッセージを使う。
 - テスト: `tests/unit/test_send_wakeup.bats` に `T-SW-010b` と `T-ESC-003c` を追加し、通常 nudge / Phase 2 の両方で `cmd_done` 明示起床へ変わることを確認する回帰を追加。
 - 備考: これは `cmd_done` unread を Gemini 将軍が会話タスクとして拾いやすくする修正であり、API 利用制限そのものは別問題。quota 枯渇時は別途 UI 側で止まる。
+## 2026-03-14 12:30 JST — 公開前の Codex 統一と runtime 逆流停止
+- 要求に合わせて公開用の既定構成を `config/settings.yaml` で `shogun/gunshi/karo/ashigaru1/ashigaru2 = codex`, `model = auto`, `reasoning_effort = auto` に固定し、`topology.active_ashigaru` を 2 名構成へ変更した。
+- `.gitignore` から `dashboard.md` と `queue/shogun_to_karo.yaml` の追跡例外を外し、`git rm --cached` で `dashboard.md`, `queue/shogun_to_karo.yaml`, `logs/backup_20260214_181620/dashboard.md` を index から外した。以後は runtime 状態として GitHub へ載せない。
+- `scripts/sync_runtime_cli_preferences.py` を修正し、runtime 同期対象を「現在の設定に含まれる agent のみ」「設定上の `type` と稼働中 CLI が一致する場合のみ」に限定した。これにより、古い Gemini pane や非アクティブ足軽 (`ashigaru3..8`) の live 状態が `config/settings.yaml` へ逆流しないようにした。
+- `shutsujin_departure.sh` は setup-only でも `queue/runtime/agent_cli.tsv` を現在の設定から再生成するよう変更し、過去ランの残骸を表示しないようにした。
+- `first_setup.sh` の初期テンプレートも `gunshi` を含む全員 `codex` / 足軽 2 名 / `model=auto` / `reasoning_effort=auto` に更新した。
+- `README.md` / `README_ja.md` の設定例は公開用既定構成に合わせて Codex-only の 2 足軽例へ更新した。
+- 検証:
+  - `python3 -m py_compile scripts/sync_runtime_cli_preferences.py` PASS
+  - `bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats` PASS (`1..130`)
+  - `bash shutsujin_departure.sh -s` PASS。`queue/runtime/agent_cli.tsv` は `shogun/gunshi/karo/ashigaru1/ashigaru2 = codex` のみを出力し、`config/settings.yaml` も同内容を維持した。

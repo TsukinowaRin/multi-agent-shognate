@@ -19,7 +19,6 @@
 !README_ja.md
 !CONTRIBUTING.md
 !SECURITY.md
-!dashboard.md
 
 # Claude Code settings (spinner verbs only, no secrets)
 !.claude/
@@ -168,7 +167,6 @@
 # queue は実行時データを基本的に追跡しない
 !queue/
 queue/**
-!queue/shogun_to_karo.yaml
 
 # Upstream参照用のローカルcloneは追跡しない
 _upstream_reference/

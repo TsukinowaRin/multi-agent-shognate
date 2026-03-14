@@ -78,6 +78,26 @@ def ensure_agent_cfg(cfg: dict, agent_id: str) -> dict:
     return new_cfg
 
 
+def configured_agent_ids(cfg: dict) -> set[str]:
+    result: set[str] = {"shogun", "gunshi", "karo"}
+    topology = cfg.get("topology")
+    if isinstance(topology, dict):
+        active = topology.get("active_ashigaru")
+        if isinstance(active, list):
+            for item in active:
+                if isinstance(item, str) and item.strip():
+                    result.add(item.strip())
+
+    cli = cfg.get("cli")
+    if isinstance(cli, dict):
+        agents = cli.get("agents")
+        if isinstance(agents, dict):
+            for agent_id in agents.keys():
+                if isinstance(agent_id, str) and agent_id.strip() and not agent_id.startswith("ashigaru"):
+                    result.add(agent_id.strip())
+    return result
+
+
 def list_backend_targets() -> list[tuple[str, str, str]]:
     if tmux_ok("has-session", "-t", "goza-no-ma"):
         out = tmux_output("list-panes", "-s", "-t", "goza-no-ma", "-F", "#{pane_id}")
@@ -230,6 +250,7 @@ def main() -> int:
     cfg = load_yaml(SETTINGS_PATH)
     alias_map = load_gemini_aliases()
     targets = gather_targets()
+    allowed_agents = configured_agent_ids(cfg)
 
     SUMMARY_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not targets:
@@ -241,6 +262,10 @@ def main() -> int:
     rows = ["agent_id\tcli_type\tmodel\treasoning_effort\tthinking_level\tthinking_budget\twarning"]
 
     for target, agent_id, cli_type in targets:
+        if agent_id not in allowed_agents:
+            rows.append("\t".join([agent_id, cli_type, "", "", "", "", "not-configured-skip"]))
+            continue
+
         text = capture_joined(target)
         agent_cfg = ensure_agent_cfg(cfg, agent_id)
 
@@ -252,6 +277,8 @@ def main() -> int:
         configured_type = str(agent_cfg.get("type", "") or "").strip().lower()
         if configured_type and cli_type and configured_type != cli_type:
             warning = f"configured-type={configured_type}, running-cli={cli_type}"
+            rows.append("\t".join([agent_id, cli_type, "", "", "", "", warning]))
+            continue
 
         if cli_type == "codex":
             state = parse_codex_state(text)

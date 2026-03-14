@@ -579,9 +579,10 @@ multiplexer:
 
 # 起動トポロジ設定
 topology:
-  # デフォルトは足軽1名のみ起動（必要時に追加）
+  # デフォルトは足軽2名を起動（必要時に追加）
   active_ashigaru:
     - ashigaru1
+    - ashigaru2
 
 # スキル設定
 skill:
@@ -602,10 +603,24 @@ cli:
   agents:
     shogun:
       type: codex
+      model: auto
+      reasoning_effort: auto
+    gunshi:
+      type: codex
+      model: auto
+      reasoning_effort: auto
     karo:
       type: codex
+      model: auto
+      reasoning_effort: auto
     ashigaru1:
       type: codex
+      model: auto
+      reasoning_effort: auto
+    ashigaru2:
+      type: codex
+      model: auto
+      reasoning_effort: auto
   commands:
     gemini: "gemini --yolo"
     localapi: "python3 scripts/localapi_repl.py"

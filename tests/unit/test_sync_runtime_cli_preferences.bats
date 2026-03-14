@@ -15,6 +15,9 @@ cli:
       type: codex
       model: auto
       reasoning_effort: auto
+topology:
+  active_ashigaru:
+    - ashigaru1
 YAML
 
   cat > "$TEST_TMP/gemini_aliases.tsv" <<'TSV'
@@ -156,11 +159,84 @@ import sys, yaml
 with open(sys.argv[1], encoding='utf-8') as fh:
     cfg = yaml.safe_load(fh) or {}
 assert cfg['cli']['agents']['shogun']['type'] == 'gemini'
+assert cfg['cli']['agents']['shogun']['model'] == 'auto'
 print('ok')
 PY
   [ "$status" -eq 0 ]
 
   run rg -n "configured-type=gemini, running-cli=claude" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  [ "$status" -eq 0 ]
+}
+
+@test "sync_runtime_cli_preferences: 非アクティブ足軽は再生成しない" {
+  cat > "$TEST_TMP/settings.yaml" <<'YAML'
+cli:
+  default: codex
+  agents:
+    karo:
+      type: codex
+      model: auto
+      reasoning_effort: auto
+topology:
+  active_ashigaru:
+    - ashigaru1
+    - ashigaru2
+YAML
+  cat > "$TEST_TMP/tmux" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+cmd="$1"
+shift
+case "$cmd" in
+  has-session)
+    [[ "$2" == "multiagent" ]] && exit 0 || exit 1
+    ;;
+  list-panes)
+    printf 'multiagent:agents.0\nmultiagent:agents.1\n'
+    ;;
+  show-options)
+    target="$3"
+    option="${5:-}"
+    case "$target:$option" in
+      multiagent:agents.0:@agent_id) printf 'karo\n' ;;
+      multiagent:agents.0:@agent_cli) printf 'codex\n' ;;
+      multiagent:agents.1:@agent_id) printf 'ashigaru8\n' ;;
+      multiagent:agents.1:@agent_cli) printf 'codex\n' ;;
+    esac
+    ;;
+  capture-pane)
+    target="$4"
+    case "$target" in
+      multiagent:agents.0)
+        printf 'gpt-5.4 high · 94%% left · /mnt/d/repo\n'
+        ;;
+      multiagent:agents.1)
+        printf 'gpt-5.4 low · 90%% left · /mnt/d/repo\n'
+        ;;
+    esac
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+SH
+  chmod +x "$TEST_TMP/tmux"
+
+  run python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
+  [ "$status" -eq 0 ]
+
+  run python3 - "$MAS_SETTINGS_PATH" <<'PY'
+import sys, yaml
+with open(sys.argv[1], encoding='utf-8') as fh:
+    cfg = yaml.safe_load(fh) or {}
+agents = cfg['cli']['agents']
+assert 'ashigaru8' not in agents
+assert agents['karo']['model'] == 'gpt-5.4'
+print('ok')
+PY
+  [ "$status" -eq 0 ]
+
+  run rg -n "ashigaru8\tcodex\t\t\t\t\tnot-configured-skip" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 

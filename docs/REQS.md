@@ -1,7 +1,25 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-13
+最終更新: 2026-03-14
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-14: 公開前のCodex統一と追跡物整理）
+### 要求
+1. `config/settings.yaml` の既定構成を、`shogun/gunshi/karo/ashigaru1/ashigaru2` がすべて `codex` になる形へ固定すること。
+2. 初期の足軽人数は `2` にすること。
+3. 公開前に、runtime 状態や一時ファイルにあたる追跡物を GitHub へ載せないよう整理すること。
+4. 追跡中ファイルに残る個人情報は、公開に不要なものを無力化または一般化すること。
+5. 変更後に `shutsujin_departure.sh` の setup-only 起動で `agent_cli.tsv` が全員 `codex` になることを確認すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `cat config/settings.yaml`
+   - 期待結果: `topology.active_ashigaru` が `ashigaru1, ashigaru2` のみで、`cli.default` と各役職の `type` が `codex`、`model` が `auto` になっている。
+2. コマンド: `git ls-files dashboard.md queue/shogun_to_karo.yaml logs/backup_20260214_181620/dashboard.md`
+   - 期待結果: runtime 状態ファイルが Git 追跡対象から外れている。
+3. コマンド: `bash shutsujin_departure.sh -s`
+   - 期待結果: setup-only 完了後、`queue/runtime/agent_cli.tsv` の各役職が `codex` になる。
+4. コマンド: `cat queue/runtime/agent_cli.tsv`
+   - 期待結果: `shogun/gunshi/karo/ashigaru1/ashigaru2` がすべて `codex` と表示される。
 
 ## 追補（2026-03-14: 将軍 cmd_done 起床メッセージ強化）
 ### 要求

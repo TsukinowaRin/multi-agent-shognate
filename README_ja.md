@@ -85,37 +85,29 @@ topology:
   active_ashigaru:
     - ashigaru1
     - ashigaru2
-    - ashigaru3
-    - ashigaru4
 cli:
   default: codex
   agents:
     shogun:
-      type: gemini
+      type: codex
       model: auto
+      reasoning_effort: auto
     gunshi:
-      type: gemini
+      type: codex
       model: auto
+      reasoning_effort: auto
     karo:
       type: codex
       model: auto
+      reasoning_effort: auto
     ashigaru1:
       type: codex
       model: auto
+      reasoning_effort: auto
     ashigaru2:
       type: codex
       model: auto
-    ashigaru3:
-      type: opencode
-      model: ollama/qwen3-coder:30b
-    ashigaru4:
-      type: kilo
-      model: lmstudio/codellama-7b.Q4_0.gguf
-  opencode_like:
-    provider: ollama
-    base_url: http://127.0.0.1:11434/v1
-    instructions:
-      - AGENTS.md
+      reasoning_effort: auto
 ```
 
 ## Local AI

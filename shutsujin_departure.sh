@@ -1231,6 +1231,22 @@ KARO_TARGET="${AGENT_PANES[${KARO_AGENTS[0]:-karo}]}"
 log_success "  └─ 御座の間、構築完了"
 echo ""
 
+mkdir -p "$SCRIPT_DIR/queue/runtime"
+: > "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
+_emit_runtime_cli_entry() {
+    local _agent="$1"
+    local _cli_type="claude"
+    if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        _cli_type=$(resolve_cli_type_for_agent "$_agent")
+    fi
+    printf "%s\t%s\n" "$_agent" "$_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
+}
+_emit_runtime_cli_entry "shogun"
+_emit_runtime_cli_entry "gunshi"
+for _agent in "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}"; do
+    _emit_runtime_cli_entry "$_agent"
+done
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 6: CLI 起動（-s / --setup-only のときはスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1251,7 +1267,6 @@ if [ "$SETUP_ONLY" = false ]; then
     fi
 
     log_war "👑 全エージェントCLIを起動中..."
-    mkdir -p "$SCRIPT_DIR/queue/runtime"
     : > "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
 
     # Phase 0: 全エージェントのブートストラップファイルを事前生成

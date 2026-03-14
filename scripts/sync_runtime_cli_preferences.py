@@ -112,6 +112,20 @@ def list_backend_targets() -> list[tuple[str, str, str]]:
 
 
 def gather_targets() -> list[tuple[str, str, str]]:
+    if tmux_ok("has-session", "-t", "goza-no-ma"):
+        out = tmux_output("list-panes", "-s", "-t", "goza-no-ma", "-F", "#{pane_id}")
+        targets: list[tuple[str, str, str]] = []
+        for pane_id in out.splitlines():
+            pane_id = pane_id.strip()
+            if not pane_id:
+                continue
+            agent_id = tmux_output("show-options", "-p", "-t", pane_id, "-v", "@agent_id").strip()
+            cli_type = tmux_output("show-options", "-p", "-t", pane_id, "-v", "@agent_cli").strip().lower()
+            if agent_id:
+                targets.append((pane_id, agent_id, cli_type))
+        if targets:
+            return targets
+
     targets: list[tuple[str, str, str]] = []
     if tmux_ok("has-session", "-t", "shogun"):
         cli_type = tmux_output("show-options", "-p", "-t", "shogun:main", "-v", "@agent_cli").strip().lower() or "claude"
@@ -131,17 +145,6 @@ def gather_targets() -> list[tuple[str, str, str]]:
                 targets.append((target, agent_id, cli_type))
     if targets:
         return targets
-
-    if tmux_ok("has-session", "-t", "goza-no-ma"):
-        out = tmux_output("list-panes", "-s", "-t", "goza-no-ma", "-F", "#{pane_id}")
-        for pane_id in out.splitlines():
-            pane_id = pane_id.strip()
-            if not pane_id:
-                continue
-            agent_id = tmux_output("show-options", "-p", "-t", pane_id, "-v", "@agent_id").strip()
-            cli_type = tmux_output("show-options", "-p", "-t", pane_id, "-v", "@agent_cli").strip().lower()
-            if agent_id:
-                targets.append((pane_id, agent_id, cli_type))
     return targets
 
 

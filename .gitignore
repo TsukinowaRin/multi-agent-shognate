@@ -102,6 +102,7 @@
 !scripts/localapi_repl.py
 !scripts/configure_agents.sh
 !scripts/goza_no_ma.sh
+!scripts/android_tmux_proxy.py
 !scripts/sync_gemini_settings.py
 !scripts/sync_opencode_config.py
 !scripts/sync_runtime_cli_preferences.py

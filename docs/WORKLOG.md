@@ -1,5 +1,22 @@
 # Worklog
 
+## 2026-03-14 14:20 JST — goza-no-ma 本体を復帰しつつ Android 互換 session を併設
+- ユーザー要求に従い、直前の「split session を本体に戻す」方針を撤回し、`goza-no-ma:overview` を再び実 runtime に戻した。
+- ただし upstream Android アプリ互換は維持する必要があるため、`shogun:main` / `gunshi:main` / `multiagent:agents` は **本物の pane ではなく proxy session** として併設する方式へ変更した。
+- `scripts/android_tmux_proxy.py` を追加。`goza-no-ma` 内の実 pane を `@agent_id` で見つけ、`tmux capture-pane` で表示を複写し、標準入力から受けた行を `tmux send-keys` で実 pane へ転送する。
+- `shutsujin_departure.sh` の Step 5 は再度 `goza-no-ma:overview` 構築へ戻し、`shogun / karo / gunshi / active ashigaru` の実 pane を 1 window に配置するよう変更した。各 pane には `@agent_id`, `@model_name`, `@current_task`, `@agent_cli` を付与した。
+- `shutsujin_departure.sh` に `create_android_compat_sessions()` を追加し、出陣後に `shogun`, `gunshi`, `multiagent` の Android 互換 proxy session を自動生成するようにした。`multiagent:agents` には `karo` と active `ashigaruN` の proxy pane を並べる。
+- `scripts/goza_no_ma.sh` は view session 生成をやめ、再び `goza-no-ma` 本体へ attach/switch する wrapper に戻した。`--ensure-backend` は `goza-no-ma` が無い時だけ `shutsujin_departure.sh` を呼ぶ。
+- `scripts/focus_agent_pane.sh`, `scripts/watcher_supervisor.sh`, `scripts/sync_runtime_cli_preferences.py` は `goza-no-ma` を正本として pane 解決し、split session は fallback 扱いに戻した。
+- `README.md` / `README_ja.md` / `docs/REQS.md` / `docs/EXECPLAN_2026-03-14_android_compat.md` を「御座の間本体 + Android 互換 proxy」前提に更新した。
+- 検証:
+  - `bash -n shutsujin_departure.sh scripts/goza_no_ma.sh scripts/focus_agent_pane.sh scripts/watcher_supervisor.sh` PASS
+  - `python3 -m py_compile scripts/android_tmux_proxy.py scripts/sync_runtime_cli_preferences.py` PASS
+  - `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_send_wakeup.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/unit/test_topology_adapter.bats` PASS (`1..183`)
+  - same-shell tmux smoke で `bash shutsujin_departure.sh -s` を実行し、`goza-no-ma` 本体と `shogun/gunshi/multiagent` proxy session が同時に生成されることを確認。
+  - `tmux list-panes -t goza-no-ma:overview` で `shogun/karo/gunshi/ashigaru1/ashigaru2` の実 pane を確認。
+  - `tmux list-panes -t shogun:main`, `tmux list-panes -t gunshi:main`, `tmux list-panes -t multiagent:agents` で Android 互換 proxy pane を確認。
+
 ## 2026-03-13 23:10 JST — 家老完了を将軍へ relay する
 - 事実確認:
   - 殿の提示ログでは `cmd_115` は `queue/inbox/karo.yaml` に `type: cmd_new` として届き、`read: true` だった。

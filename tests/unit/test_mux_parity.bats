@@ -11,7 +11,7 @@ setup_file() {
 }
 
 @test "tmux起動入口は shutsujin_departure.sh のみを使う" {
-    run rg -n "Usage:|./shutsujin_departure\.sh|tmux attach-session" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/README.md"
+    run rg -n "Usage:|./shutsujin_departure\.sh|tmux attach-session|cgo" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/README.md"
     [ "$status" -eq 0 ]
 }
 
@@ -30,33 +30,33 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "御座の間は split runtime を俯瞰する view session として構築する" {
-    run rg -n "attach-session -t shogun|attach-session -t multiagent|attach-session -t gunshi|main-vertical|main-pane-width" "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+@test "御座の間は本体 session として構築する" {
+    run rg -n 'GOZA_SESSION_NAME|new-session -d -x .* -s "\$GOZA_SESSION_NAME"|pane-border-format|build_ashigaru_grid|restore_goza_layout_if_available|start_goza_layout_autosave' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "出陣本体は Android 互換の split session を構築する" {
-    run rg -n "new-session -d -s shogun -n main|new-session -d -s gunshi -n main|new-session -d -s multiagent -n \"agents\"|multiagent:agents|shogun:main|gunshi:main" "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "goza helper は goza-no-ma へ直接 attach/switch する" {
+    run rg -n 'GOZA_SESSION|switch-client -t "\$GOZA_SESSION"|attach-session -t "\$GOZA_SESSION"|shutsujin_departure\.sh' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "multiagent pane には agent_id と model_name を付与する" {
-    run rg -n "set-option -p -t \"multiagent:agents\.\$\{p\}\" @agent_id|set-option -p -t \"multiagent:agents\.\$\{p\}\" @model_name|pane-border-format" "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "Android 互換 session は proxy 経由で shogun gunshi multiagent を提供する" {
+    run rg -n 'android_tmux_proxy\.py|new-session -d -s shogun -n main|new-session -d -s gunshi -n main|new-session -d -s multiagent -n agents|set-option -p -t shogun:main @agent_id|set-option -p -t gunshi:main @agent_id|multiagent:agents' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/android_tmux_proxy.py"
     [ "$status" -eq 0 ]
 }
 
-@test "focus helper は split session の実 pane へ移動する" {
-    run rg -n "attach-session -t shogun|attach-session -t gunshi|attach-session -t multiagent|list-panes -t multiagent:agents|show-options -p -t .*@agent_id" "$PROJECT_ROOT/scripts/focus_agent_pane.sh"
+@test "focus helper は goza 本体 pane へ移動する" {
+    run rg -n 'GOZA_SESSION|show-options -p -t .*@agent_id|list-panes -t "\$\{GOZA_SESSION\}:\$\{GOZA_WINDOW\}"|select-window -t|select-pane -t' "$PROJECT_ROOT/scripts/focus_agent_pane.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "watcher supervisor は split session を正本に pane 解決する" {
-    run rg -n "has-session -t \"shogun\"|has-session -t \"gunshi\"|has-session -t \"multiagent\"|list-panes -t \"multiagent:agents\"|show-options -p -t .*@agent_id|ASW_PROCESS_TIMEOUT=1" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
+@test "watcher supervisor は goza 本体を正本に pane 解決する" {
+    run rg -n 'has-session -t "goza-no-ma"|list-panes -s -t "goza-no-ma"|show-options -p -t .*@agent_id|ASW_PROCESS_TIMEOUT=1' "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "runtime 同期は split session を優先し Android 互換 target を読める" {
-    run rg -n "shogun:main|gunshi:main|multiagent:agents|goza-no-ma" "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
+@test "runtime 同期は goza 本体を優先し Android 互換 target は fallback とする" {
+    run rg -n 'has-session", "-t", "goza-no-ma"|list-panes", "-s", "-t", "goza-no-ma"|shogun:main|gunshi:main|multiagent:agents' "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
     [ "$status" -eq 0 ]
 }
 

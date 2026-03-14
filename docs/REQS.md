@@ -3,28 +3,27 @@
 最終更新: 2026-03-14
 出典: 直近ユーザープロンプト
 
-## 追補（2026-03-14: upstream Android アプリ互換）
+## 追補（2026-03-14: upstream Android アプリ互換 + 御座の間維持）
 ### 要求
-1. 実 runtime は upstream Android アプリがそのまま接続できる tmux split session 構成にすること。
-2. `shogun` は `shogun:main`、`gunshi` は `gunshi:main`、家老と足軽は `multiagent:agents` に存在すること。
-3. `multiagent:agents` は window index `0` としても参照可能で、pane ごとに `@agent_id` と `@model_name` を持つこと。
-4. `scripts/goza_no_ma.sh` は本体ではなく、既存の split session を俯瞰する補助 view とすること。
-5. `scripts/focus_agent_pane.sh` は `shogun` / `gunshi` / `multiagent` の実 pane へ移動すること。
-6. watcher と runtime CLI 同期は `goza-no-ma` より `shogun` / `gunshi` / `multiagent` を優先して参照すること。
+1. `goza-no-ma:overview` を引き続き本体 runtime とし、`shogun / karo / gunshi / ashigaruN` の実 pane を保持すること。
+2. upstream Android アプリが無改造で接続できるよう、`shogun:main` / `gunshi:main` / `multiagent:agents` を互換 target として併設すること。
+3. Android 互換 target は `goza-no-ma` の実 pane を壊さず、proxy として入力・表示を橋渡しすること。
+4. `scripts/goza_no_ma.sh` は `goza-no-ma` 本体を開く wrapper とし、view session へ降格しないこと。
+5. `scripts/focus_agent_pane.sh` / watcher / runtime CLI 同期は `goza-no-ma` を正本として扱うこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash -n shutsujin_departure.sh scripts/goza_no_ma.sh scripts/focus_agent_pane.sh scripts/watcher_supervisor.sh`
-   - 期待結果: split session 構成への戻し込み後も構文エラーがない。
+   - 期待結果: 御座の間本体 + Android 互換 layer 追加後も構文エラーがない。
 2. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_send_wakeup.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/unit/test_topology_adapter.bats`
-   - 期待結果: Android 互換の split session 前提へ更新した回帰が PASS する。
+   - 期待結果: `goza-no-ma` 本体と Android 互換 proxy 前提へ更新した回帰が PASS する。
 3. コマンド: `bash shutsujin_departure.sh -s`
-   - 期待結果: `shogun`, `gunshi`, `multiagent` の 3 session が生成される。
-4. コマンド: `tmux list-panes -t shogun:main -F '#{session_name}:#{window_name}.#{pane_index}	#{@agent_id}	#{@model_name}'`
-   - 期待結果: `shogun:main.0	shogun	...` が確認できる。
-5. コマンド: `tmux list-panes -t multiagent:agents -F '#{session_name}:#{window_index}.#{pane_index}	#{@agent_id}	#{@model_name}'`
-   - 期待結果: `multiagent:0.*` に `karo` と active `ashigaruN` が並ぶ。
+   - 期待結果: `goza-no-ma` が本体として作成され、あわせて `shogun` / `gunshi` / `multiagent` の互換 session も生成される。
+4. コマンド: `tmux list-panes -t goza-no-ma:overview -F '#{pane_index}	#{@agent_id}	#{@model_name}'`
+   - 期待結果: `shogun` / `karo` / `gunshi` / active `ashigaruN` が同一 window に並ぶ。
+5. コマンド: `tmux list-panes -t multiagent:agents -F '#{pane_index}	#{@agent_id}	#{@model_name}'`
+   - 期待結果: `karo` と active `ashigaruN` の proxy pane が列挙される。
 6. コマンド: `bash scripts/goza_no_ma.sh --no-attach`
-   - 期待結果: `goza-no-ma` view session が作成され、`shogun` / `multiagent` / `gunshi` を俯瞰できる。
+   - 期待結果: `goza-no-ma` 本体 session を確認し、そのまま attach できる。 
 
 ## 追補（2026-03-14: 公開前のCodex統一と追跡物整理）
 ### 要求

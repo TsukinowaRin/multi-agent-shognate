@@ -2882,3 +2882,10 @@
   - `python3 -m py_compile scripts/sync_runtime_cli_preferences.py` PASS
   - `bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_mux_parity.bats` PASS (`1..130`)
   - `bash shutsujin_departure.sh -s` PASS。`queue/runtime/agent_cli.tsv` は `shogun/gunshi/karo/ashigaru1/ashigaru2 = codex` のみを出力し、`config/settings.yaml` も同内容を維持した。
+## 2026-03-14 13:00 JST — upstream Android app compatibility check
+- `git fetch upstream --prune` を実施し、上流最新を `upstream/main = 7855af2 (v4.1.3)` と確認した。
+- 上流には `android/` 一式と `android/release/multi-agent-shogun.apk` が含まれている。`README.md` / `README_ja.md` でも「専用Androidアプリ」を正式導線として案内している。
+- Android app source を確認したところ、Shogun tab は `"<shogunSession>:main"`、Agents tab は `"<agentsSession>:0"` を固定前提で `tmux capture-pane` / `tmux send-keys` している。Settings も project path と 2 つの tmux session 名しか持たない。
+- 現フォークは `goza-no-ma` 単一 session / `overview` 単一 window に実 pane を集約しており、`shogun:main` と `multiagent:0` を前提にした upstream Android app とは直接互換ではない。
+- `dashboard.md` 読取は今のフォークでも成立するが、将軍 tab / エージェント tab の interactive target は不一致。
+- 対応案は `docs/EXECPLAN_2026-03-14_android_compat.md` に整理した。推奨は「Android compatibility mode を追加する」か「Android app 側を goza-no-ma + @agent_id に対応させる」であり、現時点では互換と断言しない。

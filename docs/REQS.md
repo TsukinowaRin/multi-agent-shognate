@@ -17,6 +17,19 @@
 2. コマンド: `rg -n "multi-agent-shognate Android|com\\.shogun\\.android\\.shognate|multi-agent-shognate-android|GitHub Releases|upstream.*APK|公式 APK" android README.md README_ja.md android/README.md android/README_ja.md .github/workflows/android-release.yml`
    - 期待結果: 識別子と配布導線がコード・README・workflow に反映されている。
 
+## 追補（2026-03-15: Android 設定初期値の匿名化）
+### 要求
+1. Android アプリの SSH 接続設定および `project path` / `session` / `ntfy topic` の初期値は、個人情報や環境依存値を含まないこと。
+2. 少なくとも `host`, `port`, `user`, `key path`, `password`, `project path`, `shogun session`, `agents session`, `ntfy topic` は初期状態で空欄にできること。
+3. 初期値を空欄にしても、未設定状態で自動接続してクラッシュや不要な接続エラーを起こさないこと。
+4. README は「既定値」ではなく「入力例」として説明すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n \"const val (SSH_HOST|SSH_PORT_STR|PROJECT_PATH|SHOGUN_SESSION|AGENTS_SESSION|NTFY_TOPIC) = \\\"\\\"\" android/app/src/main/java/com/shogun/android/util/Constants.kt`
+   - 期待結果: 接続系既定値が空欄化されている。
+2. コマンド: `rg -n \"if \\(host\\.isBlank\\(\\) \\|\\| user\\.isBlank\\(\\) \\|\\| portText\\.isBlank\\(\\)\\) return@LaunchedEffect\" android/app/src/main/java/com/shogun/android/ui`
+   - 期待結果: 未設定時の自動接続ガードが Shogun / Agents / Dashboard に入っている。
+
 ## 追補（2026-03-15: Androidアプリをこのフォーク前提へ最小差分で調整）
 ### 要求
 1. Android アプリの UI/UX は upstream を踏襲しつつ、このフォーク向けの必須差分だけを統合すること。

@@ -334,14 +334,14 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
 
    | Field | Example | Description |
    |-------|---------|-------------|
-   | SSH Host | `100.xxx.xxx.xxx` | Server IP (e.g., Tailscale IP) |
+   | SSH Host | `100.xxx.xxx.xxx` | Server IP (e.g., Tailscale IP). Initial value is blank |
    | SSH Port | `2222` | This fork assumes WSL SSH is exposed on 2222 |
-   | SSH User | `your_username` | SSH login username |
+   | SSH User | `your_username` | SSH login username. Initial value is blank |
    | SSH Key Path | `/data/data/.../id_ed25519` | Private key path on phone (*1) |
    | SSH Password | `****` | Use if no key available |
-   | Project Path | `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate` | Server-side project directory |
-   | Shogun Session | `shogun` | tmux session name for Shogun |
-   | Agent Session | `multiagent` | tmux session name for agents |
+   | Project Path | `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate` | Server-side project directory. Initial value is blank |
+   | Shogun Session | `shogun` | tmux session name for Shogun. Initial value is blank |
+   | Agent Session | `multiagent` | tmux session name for agents. Initial value is blank |
 
    *1 In this fork, leaving `SSH Key Path` blank and using password authentication is the default path.
 

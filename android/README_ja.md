@@ -2,7 +2,7 @@
 
 [multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun) のコンパニオンアプリ — スマホからAIエージェント軍団を監視・操作。
 
-このフォークでは、元の UI/UX を維持しつつ、接続既定値を WSL + Tailscale + `portproxy` 構成向けに寄せています。
+このフォークでは、元の UI/UX を維持しつつ、接続挙動を WSL + Tailscale + `portproxy` 構成向けに寄せています。
 
 <p align="center">
   <img src="screenshots/01_shogun_terminal.png" alt="将軍ターミナル" width="230">
@@ -68,16 +68,18 @@
    - **ポート**: 2222
    - **ユーザー**: SSHユーザー名
    - **鍵パス** または **パスワード**: 認証方式。通常は鍵パスを空欄にし、パスワード認証を使う
-   - **プロジェクトパス**: サーバー側のプロジェクトパス（既定: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`）
+   - **プロジェクトパス**: サーバー側のプロジェクトパス
    - **セッション名**: 将軍・エージェント用のtmuxセッション名
 3. **保存** → **将軍** タブに切替 → 自動接続
 
-### このフォーク向けの既定値
+### 入力例
 
 - **SSHポート**: `2222`
 - **将軍セッション名**: `shogun`
 - **エージェントセッション名**: `multiagent`
 - **プロジェクトパス**: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`
+
+接続系の初期値は空欄です。個人情報や環境依存の値はプリセットしません。
 
 ### 認証の挙動
 

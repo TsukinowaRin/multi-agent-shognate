@@ -41,7 +41,6 @@ class NtfyService : Service() {
     companion object {
         private const val CHANNEL_ID = "ntfy_service"
         private const val NOTIFICATION_ID = 2
-        private val TOPIC = Defaults.NTFY_TOPIC
         private val BACKOFF_DELAYS = longArrayOf(5_000L, 10_000L, 30_000L, 60_000L)
     }
 
@@ -72,8 +71,11 @@ class NtfyService : Service() {
     }
 
     private fun connect() {
+        val prefs = getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+        val topic = prefs.getString(PrefsKeys.NTFY_TOPIC, Defaults.NTFY_TOPIC) ?: Defaults.NTFY_TOPIC
+        if (topic.isBlank()) return
         val since = if (lastReceivedId.isNotEmpty()) "?since=$lastReceivedId" else "?since=30m"
-        val url = "wss://ntfy.sh/$TOPIC/ws$since"
+        val url = "wss://ntfy.sh/$topic/ws$since"
         val request = Request.Builder().url(url).build()
         webSocket = client.newWebSocket(request, NtfyWebSocketListener())
     }

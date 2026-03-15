@@ -83,7 +83,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             singleLine = true
         )
         Text(
-            "Tailscale の IPv4 を推奨。Windows 側で 2222 を WSL に転送して使う前提です。",
+            "初期値は空欄です。Tailscale の IPv4 など、実際に使う接続先だけを入力してください。",
             color = Color(0xFFAABBCC),
             fontSize = 12.sp
         )
@@ -94,7 +94,8 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             label = { Text("SSHポート") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            placeholder = { Text("2222") }
         )
 
         OutlinedTextField(
@@ -102,7 +103,8 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             onValueChange = { user = it },
             label = { Text("SSHユーザー") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            placeholder = { Text("your_username") }
         )
 
         OutlinedTextField(
@@ -110,7 +112,8 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             onValueChange = { keyPath = it },
             label = { Text("SSH秘密鍵パス") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            placeholder = { Text("/data/data/.../id_ed25519") }
         )
         Text(
             "通常は空欄のまま。鍵認証に失敗した場合でも、パスワードが入っていれば自動で再試行します。",
@@ -135,12 +138,12 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             value = projectPath,
             onValueChange = { projectPath = it },
             label = { Text("プロジェクトパス（サーバー側）") },
-            placeholder = { Text(Defaults.PROJECT_PATH) },
+            placeholder = { Text("/path/to/multi-agent-shognate") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
         Text(
-            "このフォークの既定パスを初期値にしています。別の場所へ clone している場合だけ変更してください。",
+            "初期値は空欄です。サーバー上の実際のプロジェクトパスだけを入力してください。",
             color = Color(0xFFAABBCC),
             fontSize = 12.sp
         )
@@ -154,7 +157,8 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             onValueChange = { shogunSession = it },
             label = { Text("将軍セッション名") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            placeholder = { Text("shogun") }
         )
 
         OutlinedTextField(
@@ -162,7 +166,8 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             onValueChange = { agentsSession = it },
             label = { Text("エージェントセッション名") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            placeholder = { Text("multiagent") }
         )
 
         Divider()

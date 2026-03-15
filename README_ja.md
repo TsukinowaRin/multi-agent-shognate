@@ -334,14 +334,14 @@ cd /mnt/c/tools/multi-agent-shogun
 
    | 項目 | 入力例 | 説明 |
    |------|--------|------|
-   | SSHホスト | `100.xxx.xxx.xxx` | サーバーのIP（Tailscale IPなど） |
+   | SSHホスト | `100.xxx.xxx.xxx` | サーバーのIP（Tailscale IPなど）。初期値は空欄 |
    | SSHポート | `2222` | このフォークでは WSL SSH を 2222 で公開する前提 |
-   | SSHユーザー | `your_username` | SSH接続のユーザー名 |
+   | SSHユーザー | `your_username` | SSH接続のユーザー名。初期値は空欄 |
    | SSH秘密鍵パス | `/data/data/.../id_ed25519` | スマホ上の秘密鍵パス（※1） |
    | SSHパスワード | `****` | 鍵がない場合はパスワード認証 |
-   | プロジェクトパス | `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate` | サーバー側のプロジェクトディレクトリ |
-   | 将軍セッション名 | `shogun` | tmuxの将軍セッション名 |
-   | エージェントセッション名 | `multiagent` | tmuxのエージェントセッション名 |
+   | プロジェクトパス | `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate` | サーバー側のプロジェクトディレクトリ。初期値は空欄 |
+   | 将軍セッション名 | `shogun` | tmuxの将軍セッション名。初期値は空欄 |
+   | エージェントセッション名 | `multiagent` | tmuxのエージェントセッション名。初期値は空欄 |
 
    ※1 このフォークでは `SSH秘密鍵パス` を空欄にしてパスワード認証を使うのが既定経路
 

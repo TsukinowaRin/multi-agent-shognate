@@ -2,7 +2,7 @@
 
 Companion app for [multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun) — monitor and control your AI agent army from your phone.
 
-This fork keeps the upstream UI/UX, but adjusts the connection defaults for a WSL + Tailscale + Windows `portproxy` workflow.
+This fork keeps the upstream UI/UX, but adjusts the connection behavior for a WSL + Tailscale + Windows `portproxy` workflow.
 
 <p align="center">
   <img src="screenshots/01_shogun_terminal.png" alt="Shogun Terminal" width="230">
@@ -68,16 +68,18 @@ The fork APK is intentionally distinct from the upstream `multi-agent-shogun.apk
    - **Port**: 2222
    - **User**: Your SSH username
    - **Key Path** or **Password**: Authentication method. In this fork, password auth is the default and key path can stay blank
-   - **Project Path**: Server-side path to the project (default: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`)
+   - **Project Path**: Server-side path to the project
    - **Session Names**: tmux session names for Shogun and Agents
 3. Tap **Save** → switch to **Shogun** tab → auto-connects
 
-### Fork defaults
+### Input examples
 
 - **SSH Port**: `2222`
 - **Shogun session**: `shogun`
 - **Agents session**: `multiagent`
 - **Project Path**: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`
+
+All connection fields now start empty so no personal or environment-specific values are prefilled.
 
 ### Authentication behavior
 

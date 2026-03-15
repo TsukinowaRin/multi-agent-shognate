@@ -3001,9 +3001,32 @@
 - Decisions / Assumptions:
   - release 署名鍵の秘密管理を持ち込まず、installability と公開自動化を優先して debug-signed release APK を採用。
   - upstream UI/UX を崩さず、配布導線と識別子だけを増やす方針を維持。
- - Verification:
-   - `cd android && ./gradlew --no-daemon assembleRelease` → PASS
-   - 出力確認:
-     - `android/app/build/outputs/apk/release/app-release.apk`
-     - `android/app/build/outputs/apk/release/output-metadata.json`
-   - `git rm -f android/release/multi-agent-shogun.apk` を実施し、repo 直置きの upstream APK を削除。
+- Verification:
+  - `cd android && ./gradlew --no-daemon assembleRelease` → PASS
+  - 出力確認:
+    - `android/app/build/outputs/apk/release/app-release.apk`
+    - `android/app/build/outputs/apk/release/output-metadata.json`
+  - `git rm -f android/release/multi-agent-shogun.apk` を実施し、repo 直置きの upstream APK を削除。
+
+## 2026-03-15 17:40 (JST)
+- Goal: Android アプリ設定の初期値から個人情報・環境依存値を除去する。
+- Changes (files):
+  - `android/app/src/main/java/com/shogun/android/util/Constants.kt`
+    - `SSH_HOST`, `SSH_PORT_STR`, `PROJECT_PATH`, `SHOGUN_SESSION`, `AGENTS_SESSION`, `NTFY_TOPIC` を空欄へ変更。
+    - `SSH_PORT` は未設定 sentinel として `0` に変更。
+  - `android/app/src/main/java/com/shogun/android/ui/ShogunScreen.kt`
+  - `android/app/src/main/java/com/shogun/android/ui/AgentsScreen.kt`
+  - `android/app/src/main/java/com/shogun/android/ui/DashboardScreen.kt`
+    - `host/user/port` 未設定時は自動接続を実行しないガードを追加。
+  - `android/app/src/main/java/com/shogun/android/ui/SettingsScreen.kt`
+    - 実値の初期プリセットをやめ、placeholder を入力例へ変更。
+    - 「初期値は空欄」と明示する説明へ変更。
+  - `android/app/src/main/java/com/shogun/android/NtfyService.kt`
+    - `ntfy topic` を prefs から毎回読み、空欄なら接続しないよう変更。
+  - `README.md`, `README_ja.md`, `android/README.md`, `android/README_ja.md`
+    - 「既定値」を「入力例」に変更し、初期値は空欄であることを追記。
+  - `docs/REQS.md`
+    - Android 設定初期値の匿名化要件を追加。
+- Decisions / Assumptions:
+  - 初期値を空欄にするだけでは UX が悪化するため、placeholder と説明文で入力例を残す。
+  - `session` 名も環境依存値として扱い、プリセットしない。

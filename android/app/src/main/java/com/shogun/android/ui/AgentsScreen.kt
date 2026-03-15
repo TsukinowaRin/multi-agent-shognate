@@ -175,10 +175,12 @@ fun AgentsScreen(
     LaunchedEffect(Unit) {
         val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, android.content.Context.MODE_PRIVATE)
         val host = prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST
-        val port = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR)?.toIntOrNull() ?: Defaults.SSH_PORT
+        val portText = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR) ?: Defaults.SSH_PORT_STR
         val user = prefs.getString(PrefsKeys.SSH_USER, "") ?: ""
         val keyPath = prefs.getString(PrefsKeys.SSH_KEY_PATH, "") ?: ""
         val password = prefs.getString(PrefsKeys.SSH_PASSWORD, "") ?: ""
+        if (host.isBlank() || user.isBlank() || portText.isBlank()) return@LaunchedEffect
+        val port = portText.toIntOrNull() ?: return@LaunchedEffect
         viewModel.connect(host, port, user, keyPath, password)
     }
 

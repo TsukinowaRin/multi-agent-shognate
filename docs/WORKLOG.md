@@ -2936,3 +2936,22 @@
 - Decisions / Assumptions:
   - README は全面的な独自文書ではなく、upstream README を土台に差分だけを追加する。
   - 家老の自律配置は新機能ではなく、既存運用方針を role/protocol で明確化する。
+
+## 2026-03-15 16:05 (JST)
+- Goal: Android アプリをこのフォーク前提で使いやすくしつつ、upstream の UI/UX を維持する。
+- Changes (files):
+  - `android/app/src/main/java/com/shogun/android/util/Constants.kt`
+    - `SSH_PORT` 既定値を `2222` に変更。
+    - `PROJECT_PATH` の既定値を `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate` に追加。
+    - `SSH_HOST` 既定値は空欄にして、環境依存 IP の誤誘導を避けた。
+  - `android/app/src/main/java/com/shogun/android/ssh/SshManager.kt`
+    - `SSH秘密鍵パス` が設定されていて鍵認証が失敗した場合でも、パスワードが入力されていれば自動で `keyboard-interactive,password` に再試行するよう修正。
+    - 接続ログに認証モードを残し、切り分けしやすくした。
+  - `android/app/src/main/java/com/shogun/android/ui/SettingsScreen.kt`
+    - Tailscale IPv4 推奨、鍵パス通常空欄、既定プロジェクトパスの前提を短い補助文で追記。
+    - `projectPath` の初期値に `Defaults.PROJECT_PATH` を適用。
+  - `android/README.md` / `android/README_ja.md`
+    - upstream ベースを維持したまま、このフォークの既定値と認証 fallback 挙動だけを追記。
+- Decisions / Assumptions:
+  - 画面を増やさず、設定の意味を短文で補う方がスマホ UI として堅い。
+  - 認証失敗の主因は SSH サーバ側ではなく、鍵パス残骸や保存済み設定の齟齬だと判断したため、UI 拡張ではなく接続層の自動 fallback で吸収する。

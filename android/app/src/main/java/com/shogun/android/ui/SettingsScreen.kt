@@ -41,7 +41,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     var user by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_USER, "") ?: "") }
     var keyPath by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_KEY_PATH, "") ?: "") }
     var password by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PASSWORD, "") ?: "") }
-    var projectPath by remember { mutableStateOf(prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: "") }
+    var projectPath by remember { mutableStateOf(prefs.getString(PrefsKeys.PROJECT_PATH, Defaults.PROJECT_PATH) ?: Defaults.PROJECT_PATH) }
     var shogunSession by remember { mutableStateOf(prefs.getString(PrefsKeys.SHOGUN_SESSION, Defaults.SHOGUN_SESSION) ?: Defaults.SHOGUN_SESSION) }
     var agentsSession by remember { mutableStateOf(prefs.getString(PrefsKeys.AGENTS_SESSION, Defaults.AGENTS_SESSION) ?: Defaults.AGENTS_SESSION) }
 
@@ -82,6 +82,11 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
+        Text(
+            "Tailscale の IPv4 を推奨。Windows 側で 2222 を WSL に転送して使う前提です。",
+            color = Color(0xFFAABBCC),
+            fontSize = 12.sp
+        )
 
         OutlinedTextField(
             value = port,
@@ -107,6 +112,11 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
+        Text(
+            "通常は空欄のまま。鍵認証に失敗した場合でも、パスワードが入っていれば自動で再試行します。",
+            color = Color(0xFFAABBCC),
+            fontSize = 12.sp
+        )
 
         OutlinedTextField(
             value = password,
@@ -125,9 +135,14 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             value = projectPath,
             onValueChange = { projectPath = it },
             label = { Text("プロジェクトパス（サーバー側）") },
-            placeholder = { Text("/path/to/multi-agent-shogun") },
+            placeholder = { Text(Defaults.PROJECT_PATH) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
+        )
+        Text(
+            "このフォークの既定パスを初期値にしています。別の場所へ clone している場合だけ変更してください。",
+            color = Color(0xFFAABBCC),
+            fontSize = 12.sp
         )
 
         Divider()

@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.shogun.android.ssh.SshManager
+import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,7 +43,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun loadDashboard() {
         viewModelScope.launch {
             _isLoading.value = true
-            val projectPath = prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: ""
+            val projectPath = prefs.getString(PrefsKeys.PROJECT_PATH, Defaults.PROJECT_PATH) ?: Defaults.PROJECT_PATH
             if (projectPath.isBlank()) {
                 _errorMessage.value = "設定画面でプロジェクトパスを設定してください"
                 _isLoading.value = false

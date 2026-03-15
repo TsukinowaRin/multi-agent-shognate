@@ -172,7 +172,7 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _rateLimitLoading.value = true
             _rateLimitResult.value = null
-            val projectPath = prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: ""
+            val projectPath = prefs.getString(PrefsKeys.PROJECT_PATH, Defaults.PROJECT_PATH) ?: Defaults.PROJECT_PATH
             if (projectPath.isBlank()) {
                 _rateLimitLoading.value = false
                 _rateLimitResult.value = "設定画面でプロジェクトパスを設定してください"

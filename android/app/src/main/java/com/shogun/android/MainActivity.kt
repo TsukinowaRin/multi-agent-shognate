@@ -45,6 +45,7 @@ import com.shogun.android.ui.DashboardScreen
 import com.shogun.android.ui.SettingsScreen
 import com.shogun.android.ui.ShogunScreen
 import com.shogun.android.ui.theme.ShogunTheme
+import com.shogun.android.util.Defaults
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Shogun : Screen("shogun", "将軍", Icons.Default.Star)
@@ -121,7 +122,7 @@ class MainActivity : ComponentActivity() {
         }
 
         val prefs = getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
-        val projectPath = prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: ""
+        val projectPath = prefs.getString(PrefsKeys.PROJECT_PATH, Defaults.PROJECT_PATH) ?: Defaults.PROJECT_PATH
         if (projectPath.isBlank()) {
             Toast.makeText(this, "❌ 設定画面でプロジェクトパスを設定してください", Toast.LENGTH_LONG).show()
             return

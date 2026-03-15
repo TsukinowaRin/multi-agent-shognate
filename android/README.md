@@ -2,6 +2,8 @@
 
 Companion app for [multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun) — monitor and control your AI agent army from your phone.
 
+This fork keeps the upstream UI/UX, but adjusts the connection defaults for a WSL + Tailscale + Windows `portproxy` workflow.
+
 <p align="center">
   <img src="screenshots/01_shogun_terminal.png" alt="Shogun Terminal" width="230">
   <img src="screenshots/02_agents_grid.png" alt="Agents Grid" width="230">
@@ -59,13 +61,26 @@ Or build from source:
 
 1. Launch the app → **Settings** tab
 2. Enter SSH connection info:
-   - **Host**: Your server's IP (e.g., Tailscale IP)
-   - **Port**: 22
+   - **Host**: Your server's IP (for example, a Tailscale IPv4)
+   - **Port**: 2222
    - **User**: Your SSH username
-   - **Key Path** or **Password**: Authentication method
-   - **Project Path**: Server-side path to multi-agent-shogun (e.g., `/mnt/c/tools/multi-agent-shogun`)
+   - **Key Path** or **Password**: Authentication method. In this fork, password auth is the default and key path can stay blank
+   - **Project Path**: Server-side path to the project (default: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`)
    - **Session Names**: tmux session names for Shogun and Agents
 3. Tap **Save** → switch to **Shogun** tab → auto-connects
+
+### Fork defaults
+
+- **SSH Port**: `2222`
+- **Shogun session**: `shogun`
+- **Agents session**: `multiagent`
+- **Project Path**: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`
+
+### Authentication behavior
+
+- If **Key Path is blank**, the app uses `keyboard-interactive,password`.
+- If **Key Path is set**, the app tries public key auth first.
+- In this fork, if public key auth fails and a password is present, the app automatically retries with password auth.
 
 ### Prerequisites
 

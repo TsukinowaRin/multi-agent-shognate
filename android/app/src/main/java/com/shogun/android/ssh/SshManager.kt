@@ -70,23 +70,54 @@ class SshManager private constructor() {
     }
 
     private fun connectInternal(): Result<Unit> {
+        val trimmedKeyPath = lastKeyPath.trim()
+        val primaryMode = if (trimmedKeyPath.isNotBlank()) "publickey" else "password"
+        val primary = connectInternalOnce(usePublicKey = trimmedKeyPath.isNotBlank())
+        if (primary.isSuccess) return Result.success(Unit)
+
+        val primaryError = primary.exceptionOrNull()
+        val canRetryWithPassword = trimmedKeyPath.isNotBlank() && lastPassword.trim().isNotEmpty()
+        if (!canRetryWithPassword) {
+            AppLogger.log("SSH", "Connect FAILED (mode=$primaryMode): ${primaryError?.message}")
+            return Result.failure(Exception("SSH接続失敗 (${primaryMode}, pw=${lastPassword.trim().length}文字): ${primaryError?.message}", primaryError))
+        }
+
+        AppLogger.log("SSH", "Publickey auth failed, retrying with password auth")
+        val fallback = connectInternalOnce(usePublicKey = false)
+        if (fallback.isSuccess) {
+            AppLogger.log("SSH", "Password fallback succeeded after publickey failure")
+            return Result.success(Unit)
+        }
+
+        val fallbackError = fallback.exceptionOrNull()
+        AppLogger.log("SSH", "Connect FAILED after fallback: ${fallbackError?.message}")
+        return Result.failure(
+            Exception(
+                "SSH接続失敗 (鍵→パスワード再試行済み, pw=${lastPassword.trim().length}文字): ${fallbackError?.message}",
+                fallbackError
+            )
+        )
+    }
+
+    private fun connectInternalOnce(usePublicKey: Boolean): Result<Unit> {
         return try {
             val trimmedPassword = lastPassword.trim()
+            val trimmedKeyPath = lastKeyPath.trim()
             val jsch = JSch()
-            if (lastKeyPath.isNotBlank()) {
-                jsch.addIdentity(lastKeyPath)
+            if (usePublicKey && trimmedKeyPath.isNotBlank()) {
+                jsch.addIdentity(trimmedKeyPath)
             }
             val newSession = jsch.getSession(lastUser, lastHost, lastPort)
             val config = Properties()
             config["StrictHostKeyChecking"] = "no"
             config["MaxAuthTries"] = "2"
-            if (lastKeyPath.isNotBlank()) {
-                config["PreferredAuthentications"] = "publickey"
+            config["PreferredAuthentications"] = if (usePublicKey) {
+                "publickey"
             } else {
-                config["PreferredAuthentications"] = "keyboard-interactive,password"
+                "keyboard-interactive,password"
             }
             newSession.setConfig(config)
-            if (lastKeyPath.isBlank() && trimmedPassword.isNotEmpty()) {
+            if (!usePublicKey && trimmedPassword.isNotEmpty()) {
                 newSession.setPassword(trimmedPassword)
             }
             var passwordAttempted = false
@@ -103,22 +134,18 @@ class SshManager private constructor() {
                 override fun showMessage(message: String) {}
             }
             newSession.userInfo = userInfo
-            // No aggressive keepalive — Tailscale VPN delays cause false disconnects
-            // Disconnect detection handled by exec retry logic instead
             newSession.connect(10000)
             session = newSession
-            // Verify exec channel works immediately after connect
             val testResult = execCommandInternal(newSession, "echo ssh_exec_ok")
             if (testResult.isSuccess) {
                 val out = testResult.getOrDefault("").trim()
-                AppLogger.log("SSH", "Connected OK (exec verified: $out)")
+                AppLogger.log("SSH", "Connected OK (mode=${if (usePublicKey) "publickey" else "password"}, exec verified: $out)")
             } else {
                 AppLogger.log("SSH", "Connected but exec FAILED: ${testResult.exceptionOrNull()?.message}")
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            AppLogger.log("SSH", "Connect FAILED: ${e.message}")
-            Result.failure(Exception("SSH接続失敗 (pw=${lastPassword.trim().length}文字): ${e.message}", e))
+            Result.failure(e)
         }
     }
 

@@ -22,9 +22,10 @@ object PrefsKeys {
 }
 
 object Defaults {
-    const val SSH_HOST = "192.168.1.1"
-    const val SSH_PORT = 22
-    const val SSH_PORT_STR = "22"
+    const val SSH_HOST = ""
+    const val SSH_PORT = 2222
+    const val SSH_PORT_STR = "2222"
+    const val PROJECT_PATH = "/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate"
     const val SHOGUN_SESSION = "shogun"
     const val AGENTS_SESSION = "multiagent"
     const val NTFY_TOPIC = "sho-y0uhey"

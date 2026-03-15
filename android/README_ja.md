@@ -2,6 +2,8 @@
 
 [multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun) のコンパニオンアプリ — スマホからAIエージェント軍団を監視・操作。
 
+このフォークでは、元の UI/UX を維持しつつ、接続既定値を WSL + Tailscale + `portproxy` 構成向けに寄せています。
+
 <p align="center">
   <img src="screenshots/01_shogun_terminal.png" alt="将軍ターミナル" width="230">
   <img src="screenshots/02_agents_grid.png" alt="エージェント一覧" width="230">
@@ -59,13 +61,26 @@
 
 1. アプリを起動 → **設定** タブ
 2. SSH接続情報を入力:
-   - **ホスト**: サーバーのIP（例: Tailscale IP）
-   - **ポート**: 22
+   - **ホスト**: サーバーのIP（例: Tailscale IPv4）
+   - **ポート**: 2222
    - **ユーザー**: SSHユーザー名
-   - **鍵パス** または **パスワード**: 認証方式
-   - **プロジェクトパス**: サーバー側のmulti-agent-shogunパス（例: `/mnt/c/tools/multi-agent-shogun`）
+   - **鍵パス** または **パスワード**: 認証方式。通常は鍵パスを空欄にし、パスワード認証を使う
+   - **プロジェクトパス**: サーバー側のプロジェクトパス（既定: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`）
    - **セッション名**: 将軍・エージェント用のtmuxセッション名
 3. **保存** → **将軍** タブに切替 → 自動接続
+
+### このフォーク向けの既定値
+
+- **SSHポート**: `2222`
+- **将軍セッション名**: `shogun`
+- **エージェントセッション名**: `multiagent`
+- **プロジェクトパス**: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`
+
+### 認証の挙動
+
+- **鍵パスが空欄**なら、`password` / `keyboard-interactive` で接続します。
+- **鍵パスが入っている**場合は、まず鍵認証を試します。
+- このフォーク版では、鍵認証に失敗してもパスワードが入っていれば自動でパスワード認証に再試行します。
 
 ### 前提条件
 

@@ -1,7 +1,24 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-14
+最終更新: 2026-03-15
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-15: READMEをupstream基準へ戻し、家老の自律配置を明文化）
+### 要求
+1. `README.md` / `README_ja.md` は upstream の構成と説明順を土台にし、このフォーク独自の差分だけを前段で説明すること。
+2. README では、このフォークの独自差分として少なくとも次を明示すること。
+   - `goza-no-ma:overview` が実 runtime の正本であること
+   - Android 互換 session は proxy として併設していること
+   - 追加 CLI (`Gemini CLI` / `OpenCode` / `Kilo` / `localapi`) と `Ollama` / `LM Studio` 連携
+   - 既定構成が `codex + auto + 足軽2名` であること
+3. 家老は、上様や将軍から陣形名を指定されなくても、目的と acceptance criteria から足軽配置を自律判断することを role / protocol に明記すること。
+4. generated instructions は上記の role / protocol 更新を反映して再生成すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh`
+   - 期待結果: generated instructions が再生成される。
+2. コマンド: `rg -n "Autonomous Formation Planning|Karo Autonomy Rule|陣形名を明示しなくても|goza-no-ma:overview|proxy session|codex.*auto.*ashigaru1.*ashigaru2" README.md README_ja.md instructions/roles/karo_role.md instructions/common/protocol.md instructions/generated`
+   - 期待結果: README と instructions に今回の方針が反映されている。
 
 ## 追補（2026-03-14: upstream Android アプリ互換 + 御座の間維持）
 ### 要求

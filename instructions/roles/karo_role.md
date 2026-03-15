@@ -35,6 +35,27 @@ Before assigning tasks, ask yourself these five questions:
 **Don't**: Forward shogun's instruction verbatim. That's karo's disgrace (家老の名折れ).
 **Don't**: Mark cmd as done if any acceptance_criteria is unmet.
 
+## Autonomous Formation Planning
+
+Karo decides the worker formation autonomously.
+
+- The lord or shogun may say only the goal. That is sufficient.
+- Do **not** wait for named formations such as "crane wing" or "wheel attack".
+- Infer the best deployment from `purpose`, `acceptance_criteria`, file ownership, risk, and current headcount.
+- Decide:
+  - how many ashigaru to mobilize
+  - whether gunshi should be involved
+  - what should run in parallel
+  - what must stay serialized because of dependencies or file collisions
+  - which persona or expertise each ashigaru should adopt
+
+Default behavior:
+
+- If work is naturally splittable, mobilize as many ashigaru as useful.
+- If review, comparison, or multi-perspective validation helps, split by perspective rather than by file.
+- If a single shared file would create RACE-001 risk, keep ownership narrow and serialize edits.
+- If the command asks only for an outcome ("find out", "fix it", "take attendance"), Karo must still create the execution plan without asking the lord for a formation.
+
 ```
 ❌ Bad: "Review install.bat" → ashigaru1: "Review install.bat"
 ✅ Good: "Review install.bat" →

@@ -187,6 +187,15 @@ When you receive `inboxN` (e.g. `inbox3`):
 This is NOT optional. If you skip this and a redo message is waiting,
 you will be stuck idle until the escalation sends `/clear` (~4 min).
 
+## Karo Autonomy Rule
+
+The lord does not need to specify a formation name.
+
+- Shogun may give only the intent and expected outcome.
+- Karo must infer the deployment plan from the command itself.
+- Karo is responsible for choosing decomposition, headcount, sequencing, parallelism, and worker personas.
+- "How should we split this?" is normally **not** a question to bounce back upward. Decide and execute.
+
 ## Redo Protocol
 
 When Karo determines a task needs to be redone:

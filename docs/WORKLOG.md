@@ -2921,3 +2921,18 @@
   - `bash shutsujin_departure.sh -s` 実行で `shogun`, `gunshi`, `multiagent` の 3 session が生成されることを確認
   - `tmux list-panes -t shogun:main` と `tmux list-panes -t multiagent:agents` で Android アプリが前提にする target が存在することを確認
   - `bash scripts/goza_no_ma.sh --no-attach` 実行で `goza-no-ma:overview` に `shogun`, `multiagent`, `gunshi` の 3 pane が立つことを確認
+
+## 2026-03-15 15:10 (JST)
+- Goal: README を upstream 基準へ戻し、家老の自律配置を明文化。
+- Changes (files):
+  - `README.md` / `README_ja.md` — upstream 構成を土台に戻し、このフォークの差分説明を前段へ集約。
+  - `instructions/roles/karo_role.md` — `Autonomous Formation Planning` を追加し、陣形名なしでも家老が分担・人数・並列度を自律判断する規則を明記。
+  - `instructions/common/protocol.md` — `Karo Autonomy Rule` を追加し、上位へ編成判断を問い合わせずに決める方針を明記。
+  - `instructions/generated/*` / `AGENTS.md` / `.github/copilot-instructions.md` / `agents/default/system.md` — 再生成。
+  - `docs/REQS.md` — 今回の要件を追記。
+- Commands + Results:
+  - `bash scripts/build_instructions.sh` → PASS
+  - `rg -n "Autonomous Formation Planning|Karo Autonomy Rule|goza-no-ma:overview|proxy session" README.md README_ja.md instructions/...` → 反映確認
+- Decisions / Assumptions:
+  - README は全面的な独自文書ではなく、upstream README を土台に差分だけを追加する。
+  - 家老の自律配置は新機能ではなく、既存運用方針を role/protocol で明確化する。

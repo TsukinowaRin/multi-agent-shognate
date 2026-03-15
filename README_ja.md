@@ -325,7 +325,7 @@ cd /mnt/c/tools/multi-agent-shogun
 **手順：**
 
 1. **APKをインストール**
-   1. [`android/release/multi-agent-shogun.apk`](android/release/multi-agent-shogun.apk) をスマホにダウンロード（GitHub上のファイルを開いて「Download raw file」）
+   1. このフォークの **GitHub Releases** から `multi-agent-shognate-android-*.apk` をダウンロードする。upstream の `multi-agent-shogun.apk` は使わない
    2. ダウンロード完了の通知をタップ → 「インストール」
    3. 「提供元不明のアプリ」警告が出たら → 「設定」→ 該当ブラウザの「この提供元を許可」をON → 戻って「インストール」
    4. インストール完了 → 「開く」
@@ -335,15 +335,17 @@ cd /mnt/c/tools/multi-agent-shogun
    | 項目 | 入力例 | 説明 |
    |------|--------|------|
    | SSHホスト | `100.xxx.xxx.xxx` | サーバーのIP（Tailscale IPなど） |
-   | SSHポート | `22` | 通常は22 |
+   | SSHポート | `2222` | このフォークでは WSL SSH を 2222 で公開する前提 |
    | SSHユーザー | `your_username` | SSH接続のユーザー名 |
    | SSH秘密鍵パス | `/data/data/.../id_ed25519` | スマホ上の秘密鍵パス（※1） |
    | SSHパスワード | `****` | 鍵がない場合はパスワード認証 |
-   | プロジェクトパス | `/mnt/c/tools/multi-agent-shogun` | サーバー側のプロジェクトディレクトリ |
+   | プロジェクトパス | `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate` | サーバー側のプロジェクトディレクトリ |
    | 将軍セッション名 | `shogun` | tmuxの将軍セッション名 |
    | エージェントセッション名 | `multiagent` | tmuxのエージェントセッション名 |
 
-   ※1 秘密鍵はスマホに転送するか、パスワード認証を使用
+   ※1 このフォークでは `SSH秘密鍵パス` を空欄にしてパスワード認証を使うのが既定経路
+
+> **このフォークの注意:** Android アプリはこのリポジトリの **GitHub Releases** にある fork 版 APK を使う。upstream の公式 APK は使わない。
 
 3. **保存 → 将軍タブに切り替え** → 自動接続
 

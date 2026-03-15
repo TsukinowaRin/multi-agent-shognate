@@ -48,14 +48,17 @@ This fork keeps the upstream UI/UX, but adjusts the connection defaults for a WS
 
 ## Install
 
-Download the pre-built APK from [`release/multi-agent-shogun.apk`](release/multi-agent-shogun.apk) and sideload it.
+Download the pre-built APK from this repository's **GitHub Releases**. Use the asset named `multi-agent-shognate-android-*.apk`.
 
 Or build from source:
 
 ```bash
 ./gradlew assembleDebug
 # APK: app/build/outputs/apk/debug/app-debug.apk
+# Release APK: app/build/outputs/apk/release/app-release.apk
 ```
+
+The fork APK is intentionally distinct from the upstream `multi-agent-shogun.apk`. In this repository, the fork APK is the supported distribution.
 
 ## Setup
 

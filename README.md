@@ -70,7 +70,7 @@ bash scripts/goza_no_ma.sh         # open Goza room
 bash scripts/focus_agent_pane.sh karo
 ```
 
-For the upstream Android app, keep using these session names in the app settings:
+For the Android app distributed by this fork, keep using these session names in the app settings:
 
 - Shogun session: `shogun`
 - Agents session: `multiagent`
@@ -325,7 +325,7 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
 **Steps:**
 
 1. **Install APK**
-   1. Download [`android/release/multi-agent-shogun.apk`](android/release/multi-agent-shogun.apk) on your phone (open the file on GitHub → "Download raw file")
+   1. Download the APK from this fork's **GitHub Releases** page. Use the asset named `multi-agent-shognate-android-*.apk`, not the upstream `multi-agent-shogun.apk`
    2. Tap the download notification → "Install"
    3. If "Unknown sources" warning appears → "Settings" → enable "Allow from this source" for your browser → go back → "Install"
    4. Done → "Open"
@@ -335,15 +335,17 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
    | Field | Example | Description |
    |-------|---------|-------------|
    | SSH Host | `100.xxx.xxx.xxx` | Server IP (e.g., Tailscale IP) |
-   | SSH Port | `22` | Usually 22 |
+   | SSH Port | `2222` | This fork assumes WSL SSH is exposed on 2222 |
    | SSH User | `your_username` | SSH login username |
    | SSH Key Path | `/data/data/.../id_ed25519` | Private key path on phone (*1) |
    | SSH Password | `****` | Use if no key available |
-   | Project Path | `/mnt/c/tools/multi-agent-shogun` | Server-side project directory |
+   | Project Path | `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate` | Server-side project directory |
    | Shogun Session | `shogun` | tmux session name for Shogun |
    | Agent Session | `multiagent` | tmux session name for agents |
 
-   *1 Transfer your private key to the phone, or use password authentication
+   *1 In this fork, leaving `SSH Key Path` blank and using password authentication is the default path.
+
+> **Fork-specific note:** In this repository, the supported Android app is the fork APK published on this repository's **GitHub Releases**. Do not use the upstream project's APK here.
 
 3. **Save → Switch to Shogun tab** → auto-connects
 

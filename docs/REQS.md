@@ -3,6 +3,20 @@
 最終更新: 2026-03-15
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-15: Android fork release 配布）
+### 要求
+1. Android APK は upstream の repo 直置き APK ではなく、このフォークの GitHub Releases に載せて誰でもダウンロードできるようにすること。
+2. upstream APK と混同しないよう、fork 版 Android アプリは少なくともアプリ名、アプリアイコン、APK ファイル名、`applicationId` の複数箇所で識別可能にすること。
+3. Android UI/UX は upstream を大きく崩さず、このフォーク固有の必須差分だけを統合すること。
+4. README / Android README では、この repo では fork 版 APK を正規配布物として使い、upstream の公式 APK は使わないことを明記すること。
+5. GitHub Actions workflow により release APK をビルドし、GitHub Releases へ添付できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `cd android && ./gradlew assembleRelease`
+   - 期待結果: installable な release APK が生成される。
+2. コマンド: `rg -n "multi-agent-shognate Android|com\\.shogun\\.android\\.shognate|multi-agent-shognate-android|GitHub Releases|upstream.*APK|公式 APK" android README.md README_ja.md android/README.md android/README_ja.md .github/workflows/android-release.yml`
+   - 期待結果: 識別子と配布導線がコード・README・workflow に反映されている。
+
 ## 追補（2026-03-15: Androidアプリをこのフォーク前提へ最小差分で調整）
 ### 要求
 1. Android アプリの UI/UX は upstream を踏襲しつつ、このフォーク向けの必須差分だけを統合すること。

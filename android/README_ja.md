@@ -48,14 +48,17 @@
 
 ## インストール
 
-[`release/multi-agent-shogun.apk`](release/multi-agent-shogun.apk) からビルド済みAPKをダウンロードしてサイドロード。
+このリポジトリの **GitHub Releases** から `multi-agent-shognate-android-*.apk` をダウンロードしてサイドロード。
 
 またはソースからビルド:
 
 ```bash
 ./gradlew assembleDebug
 # APK: app/build/outputs/apk/debug/app-debug.apk
+# Release APK: app/build/outputs/apk/release/app-release.apk
 ```
+
+このフォークでは upstream の `multi-agent-shogun.apk` ではなく、fork 版 APK を正規配布物として扱う。
 
 ## セットアップ
 

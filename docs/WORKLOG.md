@@ -2978,3 +2978,32 @@
 - Decisions / Assumptions:
   - OS 全体には SDK を入れず、この repo 専用の workspace-local SDK を優先した。
   - `android/local.properties` と workspace-local SDK/cache はローカル成果物として Git 追跡対象から外す。
+
+## 2026-03-15 17:25 (JST)
+- Goal: fork 版 Android APK を GitHub Releases 正本に切り替え、upstream APK と混同しない配布導線へ整理する。
+- Changes (files):
+  - `android/app/build.gradle.kts`
+    - `applicationId` を `com.shogun.android.shognate` へ変更。
+    - `versionCode = 3`, `versionName = 4.1.0-shognate` へ更新。
+    - `release` build を debug signing にして installable APK を生成可能にした。
+  - `android/app/src/main/res/values/strings.xml`
+    - アプリ名を `multi-agent-shognate Android` に変更。
+  - `android/app/src/main/res/drawable/ic_launcher_foreground.xml`
+    - upstream アイコンとの差別化として右上に crimson sash を追加。
+  - `android/app/src/main/res/mipmap-anydpi-v26/ic_launcher*.xml`
+    - adaptive icon の foreground を vector drawable 参照へ変更。
+  - `.github/workflows/android-release.yml`
+    - `workflow_dispatch` / `android-v*` tag push で release APK をビルドし GitHub Releases へ添付する workflow を追加。
+  - `README.md`, `README_ja.md`, `android/README.md`, `android/README_ja.md`
+    - upstream APK ではなく、この repo の GitHub Releases にある fork APK を使う導線へ変更。
+  - `android/release/README.md`
+    - repo 直置き APK はやめ、GitHub Releases を使う旨の案内を追加。
+- Decisions / Assumptions:
+  - release 署名鍵の秘密管理を持ち込まず、installability と公開自動化を優先して debug-signed release APK を採用。
+  - upstream UI/UX を崩さず、配布導線と識別子だけを増やす方針を維持。
+ - Verification:
+   - `cd android && ./gradlew --no-daemon assembleRelease` → PASS
+   - 出力確認:
+     - `android/app/build/outputs/apk/release/app-release.apk`
+     - `android/app/build/outputs/apk/release/output-metadata.json`
+   - `git rm -f android/release/multi-agent-shogun.apk` を実施し、repo 直置きの upstream APK を削除。

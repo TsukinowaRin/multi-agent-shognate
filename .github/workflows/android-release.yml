@@ -49,7 +49,10 @@ jobs:
 
       - name: Build release APK
         working-directory: android
-        run: ./gradlew --no-daemon assembleRelease
+        run: |
+          chmod +x gradlew
+          printf 'sdk.dir=%s\n' "${ANDROID_SDK_ROOT}" > local.properties
+          ./gradlew --no-daemon assembleRelease
 
       - name: Prepare release asset
         id: asset

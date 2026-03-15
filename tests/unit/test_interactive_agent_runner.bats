@@ -11,6 +11,10 @@ teardown() {
 }
 
 @test "interactive_agent_runner: codex update skip 後に ready を待って bootstrap を送る" {
+    if [ ! -f "$PROJECT_ROOT/scripts/interactive_agent_runner.py" ]; then
+        skip "interactive_agent_runner.py は現行本線では未使用"
+    fi
+
     run python3 - <<'PY'
 import pty
 pty.openpty()

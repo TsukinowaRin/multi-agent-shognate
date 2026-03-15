@@ -154,11 +154,11 @@ cli:
 
 ## 主なスクリプト
 - `shutsujin_departure.sh`
-  - 本体。`shogun` / `gunshi` / `multiagent` の split session に CLI と watcher を起動します。
+  - 本体。`goza-no-ma:overview` に `shogun / karo / gunshi / ashigaruN` の実 pane を構築し、あわせて Android 互換 proxy session を起動します。
 - `scripts/goza_no_ma.sh`
-  - split session を俯瞰する view session を開く wrapper です。
+  - 本体 `goza-no-ma` session を開く wrapper です。
 - `scripts/focus_agent_pane.sh`
-  - `shogun` / `gunshi` / `multiagent` の実 pane へ直接移動します。
+  - `goza-no-ma` 内の `shogun / karo / gunshi / ashigaruN` の実 pane へ直接移動します。
 - `scripts/configure_agents.sh`
   - `config/settings.yaml` を対話更新します。
 - `scripts/build_instructions.sh`

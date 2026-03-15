@@ -541,6 +541,12 @@ agent_has_self_watch() {
 # Only checks bottom 5 lines — old markers linger in scroll-back.
 agent_is_busy() {
     local pane_tail
+    local idle_flag="${IDLE_FLAG_DIR:-/tmp}/shogun_idle_${AGENT_ID}"
+    local effective_cli
+    effective_cli=$(get_effective_cli_type)
+    local now clear_busy_until
+    now=$(date +%s)
+    clear_busy_until=$((LAST_CLEAR_TS + 30))
 
     if declare -F agent_is_busy_check >/dev/null 2>&1; then
         agent_is_busy_check "$PANE_TARGET"
@@ -548,6 +554,17 @@ agent_is_busy() {
             0) return 0 ;;
             1|2) return 1 ;;
         esac
+    fi
+
+    if [ "${LAST_CLEAR_TS:-0}" -gt 0 ] && [ "$now" -lt "$clear_busy_until" ]; then
+        return 0
+    fi
+
+    if [[ "$effective_cli" == "claude" ]] && [ -n "${IDLE_FLAG_DIR:-}" ]; then
+        if [ -f "$idle_flag" ]; then
+            return 1
+        fi
+        return 0
     fi
 
     pane_tail=$(mux_capture_pane_tail)

@@ -1,6 +1,6 @@
 <div align="center">
 
-# multi-agent-shogun
+# multi-agent-shognate
 
 **Command your AI army like a feudal warlord.**
 
@@ -8,9 +8,9 @@ Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copi
 
 **Talk Coding, not Vibe Coding. Speak to your phone, AI executes.**
 
-[![GitHub Stars](https://img.shields.io/github/stars/yohey-w/multi-agent-shogun?style=social)](https://github.com/yohey-w/multi-agent-shogun)
+[![GitHub Stars](https://img.shields.io/github/stars/TsukinowaRin/multi-agent-shognate?style=social)](https://github.com/TsukinowaRin/multi-agent-shognate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![v3.5 Dynamic Model Routing](https://img.shields.io/badge/v3.5-Dynamic_Model_Routing-ff6600?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHRleHQgeD0iMCIgeT0iMTIiIGZvbnQtc2l6ZT0iMTIiPuKalTwvdGV4dD48L3N2Zz4=)](https://github.com/yohey-w/multi-agent-shogun)
+[![v3.5 Dynamic Model Routing](https://img.shields.io/badge/v3.5-Dynamic_Model_Routing-ff6600?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHRleHQgeD0iMCIgeT0iMTIiIGZvbnQtc2l6ZT0iMTIiPuKalTwvdGV4dD48L3N2Zz4=)](https://github.com/TsukinowaRin/multi-agent-shognate)
 [![Shell](https://img.shields.io/badge/Shell%2FBash-100%25-green)]()
 
 [English](README.md) | [日本語](README_ja.md)
@@ -35,8 +35,8 @@ Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copi
 **Requirements:** tmux, bash 4+, at least one of: [Claude Code](https://claude.ai/code) / Codex / Copilot / Kimi
 
 ```bash
-git clone https://github.com/yohey-w/multi-agent-shogun
-cd multi-agent-shogun
+git clone https://github.com/TsukinowaRin/multi-agent-shognate
+cd multi-agent-shognate
 bash first_setup.sh          # one-time setup: config, dependencies, MCP
 bash shutsujin_departure.sh  # launch all agents
 ```
@@ -52,9 +52,9 @@ You watch the dashboard. That's it.
 
 ---
 
-## This Fork
+## This Repository
 
-This fork stays close to upstream and changes only the parts that differ operationally.
+This repository stays close to upstream and changes only the parts that differ operationally.
 
 - Runtime authority is `goza-no-ma:overview`. `shogun:main`, `gunshi:main`, and `multiagent:agents` exist as Android-compatible proxy sessions.
 - `cgo` opens the real Goza room. `css`, `csg`, and `csm` jump to the live panes.
@@ -80,7 +80,7 @@ For the Android app distributed by this fork, keep using these session names in 
 
 ## What is this?
 
-**multi-agent-shogun** is a system that runs multiple AI coding CLI instances simultaneously, orchestrating them like a feudal Japanese army. Supports **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, and **Kimi Code**.
+**multi-agent-shognate** is a fork of `multi-agent-shogun` that runs multiple AI coding CLI instances simultaneously and adapts the runtime for this repository's tmux and Android workflow. It supports **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, and **Kimi Code**.
 
 **Why use it?**
 - One command spawns 7 AI workers + 1 strategist executing in parallel
@@ -112,7 +112,7 @@ For the Android app distributed by this fork, keep using these session names in 
 
 Most multi-agent frameworks burn API tokens on coordination. Shogun doesn't.
 
-| | Claude Code `Task` tool | Claude Code Agent Teams | LangGraph | CrewAI | **multi-agent-shogun** |
+| | Claude Code `Task` tool | Claude Code Agent Teams | LangGraph | CrewAI | **multi-agent-shognate** |
 |---|---|---|---|---|---|
 | **Architecture** | Subagents inside one process | Team lead + teammates (JSON mailbox) | Graph-based state machine | Role-based agents | Feudal hierarchy via tmux |
 | **Parallelism** | Sequential (one at a time) | Multiple independent sessions | Parallel nodes (v0.2+) | Limited | **8 independent agents** |
@@ -213,9 +213,9 @@ Skills grow organically from real work — not from a predefined template librar
 
 📥 **Download the repository**
 
-[Download ZIP](https://github.com/yohey-w/multi-agent-shogun/archive/refs/heads/main.zip) and extract to `C:\tools\multi-agent-shogun`
+[Download ZIP](https://github.com/TsukinowaRin/multi-agent-shognate/archive/refs/heads/main.zip) and extract to `C:\tools\multi-agent-shognate`
 
-*Or use git:* `git clone https://github.com/yohey-w/multi-agent-shogun.git C:\tools\multi-agent-shogun`
+*Or use git:* `git clone https://github.com/TsukinowaRin/multi-agent-shognate.git C:\tools\multi-agent-shognate`
 
 </td>
 </tr>
@@ -244,7 +244,7 @@ Right-click → "Run as Administrator" (if WSL2 is not installed). Sets up WSL2 
 🐧 **Open Ubuntu and run** (first time only)
 
 ```bash
-cd /mnt/c/tools/multi-agent-shogun
+cd /mnt/c/tools/multi-agent-shognate
 ./first_setup.sh
 ```
 
@@ -290,7 +290,7 @@ This saves credentials to `~/.claude/` — you won't need to do it again.
 Open an **Ubuntu terminal** (WSL) and run:
 
 ```bash
-cd /mnt/c/tools/multi-agent-shogun
+cd /mnt/c/tools/multi-agent-shognate
 ./shutsujin_departure.sh
 ```
 
@@ -313,7 +313,7 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
 | **Voice Input** | Japanese continuous recognition via Google Speech API — higher accuracy than phone keyboard voice |
 | **Screenshot Share** | Share images via Android share menu → SFTP transfer to server |
 
-> **Note:** Android only for now. No iOS version — the developer doesn't own an iPhone. If there's demand, please open an [Issue](https://github.com/yohey-w/multi-agent-shogun/issues). PRs welcome!
+> **Note:** Android only for now. No iOS version. If you need it, open an [Issue](https://github.com/TsukinowaRin/multi-agent-shognate/issues).
 
 #### Setup
 
@@ -352,11 +352,9 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
 **Using Tailscale (connect from anywhere):**
 
 ```bash
-# Server-side (WSL2)
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscaled &
-sudo tailscale up --authkey tskey-auth-XXXXXXXXXXXX
+# Server-side (WSL2 or Linux)
 sudo service ssh start
+# Expose SSH through your own Tailscale or equivalent tunnel as needed
 ```
 
 Install the Tailscale app on your phone, log in with the same account, and use the displayed Tailscale IP as the SSH Host in the app.
@@ -413,8 +411,8 @@ SSH via Termux also works. More limited than the dedicated app, but requires no 
 
 ```bash
 # 1. Clone
-git clone https://github.com/yohey-w/multi-agent-shogun.git ~/multi-agent-shogun
-cd ~/multi-agent-shogun
+git clone https://github.com/TsukinowaRin/multi-agent-shognate.git ~/multi-agent-shognate
+cd ~/multi-agent-shognate
 
 # 2. Make scripts executable
 chmod +x *.sh
@@ -426,7 +424,7 @@ chmod +x *.sh
 ### Daily startup
 
 ```bash
-cd ~/multi-agent-shogun
+cd ~/multi-agent-shognate
 ./shutsujin_departure.sh
 ```
 
@@ -778,7 +776,7 @@ Shogun reads `memory/MEMORY.md` at every session start. It contains Lord's prefe
 │                    Git Repositories                          │
 │                                                              │
 │  ┌─────────────────────┐   ┌──────────────────────────┐    │
-│  │  multi-agent-shogun │   │      shogun-private        │    │
+│  │ multi-agent-shognate│   │      shogun-private        │    │
 │  │       (public OSS)  │   │   (your private repo)      │    │
 │  │                     │   │                            │    │
 │  │ scripts/            │   │ projects/client.yaml  ←──┐ │    │
@@ -798,7 +796,7 @@ Shogun reads `memory/MEMORY.md` at every session start. It contains Lord's prefe
 ```bash
 # One-time setup (already done by first_setup.sh)
 git init --bare ~/.shogun-private.git
-alias privategit='git --git-dir=$HOME/.shogun-private.git --work-tree=/path/to/multi-agent-shogun'
+alias privategit='git --git-dir=$HOME/.shogun-private.git --work-tree=/path/to/multi-agent-shognate'
 privategit remote add origin https://github.com/YOU/shogun-private.git
 
 # Daily use
@@ -1546,7 +1544,7 @@ tmux kill-session -t multiagent
 Running `first_setup.sh` automatically adds these aliases to `~/.bashrc`:
 
 ```bash
-alias csst='cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh'
+alias csst='cd /mnt/c/tools/multi-agent-shognate && ./shutsujin_departure.sh'
 alias css='tmux attach-session -t shogun'      # Connect to Shogun
 alias csm='tmux attach-session -t multiagent'  # Connect to Karo + Ashigaru
 ```
@@ -1563,7 +1561,7 @@ To apply aliases: run `source ~/.bashrc` or restart your terminal (PowerShell: `
 <summary><b>Click to expand file structure</b></summary>
 
 ```
-multi-agent-shogun/
+multi-agent-shognate/
 │
 │  ┌──────────────── Setup Scripts ────────────────────┐
 ├── install.bat               # Windows: First-time setup

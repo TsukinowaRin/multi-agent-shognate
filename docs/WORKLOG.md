@@ -3030,3 +3030,20 @@
 - Decisions / Assumptions:
   - 初期値を空欄にするだけでは UX が悪化するため、placeholder と説明文で入力例を残す。
   - `session` 名も環境依存値として扱い、プリセットしない。
+
+## 2026-03-15 18:05 (JST)
+- Goal: `README.md` / `README_ja.md` をこのリポジトリの運用実態に合わせ、利用者が upstream の URL やパスをそのまま踏まない状態へ戻す。
+- Changes (files):
+  - `README.md`
+    - repo 名、Stars badge、clone URL、ZIP URL、Issue URL を `TsukinowaRin/multi-agent-shognate` 基準へ更新。
+    - `This Fork` を `This Repository` へ変更。
+    - Quick Start、Windows、Linux/macOS、alias、file structure のサンプルパスを `multi-agent-shognate` 基準へ更新。
+    - Android / Tailscale 導線を「SSH を起動し、公開経路は利用者側で用意する」説明に寄せた。
+  - `README_ja.md`
+    - 上記と同内容を日本語版にも反映。
+- Decisions / Assumptions:
+  - upstream 比較の文脈は残すが、ユーザーがコピペする URL / パス / Issue 先はすべてこの repo 基準に統一する。
+  - Android 接続経路の説明は、repo 内で制御できない Tailscale 構築を前提化しない。
+- Verification:
+  - `rg -n "yohey-w|tools/multi-agent-shogun|~/multi-agent-shogun|/path/to/multi-agent-shogun|multi-agent-shogun/|github/stars/yohey-w" README.md README_ja.md` → no matches
+  - `git diff --check README.md README_ja.md` → PASS

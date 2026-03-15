@@ -83,7 +83,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             singleLine = true
         )
         Text(
-            "初期値は空欄です。Tailscale の IPv4 など、実際に使う接続先だけを入力してください。",
+            "初期値は空欄です。実際に使う SSH 接続先の IP またはホスト名だけを入力してください。",
             color = Color(0xFFAABBCC),
             fontSize = 12.sp
         )

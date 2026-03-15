@@ -2,7 +2,7 @@
 
 Companion app for [multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun) — monitor and control your AI agent army from your phone.
 
-This fork keeps the upstream UI/UX, but adjusts the connection behavior for a WSL + Tailscale + Windows `portproxy` workflow.
+This fork keeps the upstream UI/UX, but adjusts the connection behavior for this repository's tmux and Android workflow.
 
 <p align="center">
   <img src="screenshots/01_shogun_terminal.png" alt="Shogun Terminal" width="230">
@@ -64,7 +64,7 @@ The fork APK is intentionally distinct from the upstream `multi-agent-shogun.apk
 
 1. Launch the app → **Settings** tab
 2. Enter SSH connection info:
-   - **Host**: Your server's IP (for example, a Tailscale IPv4)
+   - **Host**: Your server's reachable IP address or hostname
    - **Port**: 2222
    - **User**: Your SSH username
    - **Key Path** or **Password**: Authentication method. In this fork, password auth is the default and key path can stay blank
@@ -91,7 +91,7 @@ All connection fields now start empty so no personal or environment-specific val
 
 - SSH server running on the host machine
 - tmux sessions already launched via `shutsujin_departure.sh`
-- Network connectivity between phone and server (LAN, Tailscale, etc.)
+- Network connectivity between phone and server over any reachable SSH path
 
 ## Architecture
 

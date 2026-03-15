@@ -320,7 +320,7 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
 **Prerequisites:**
 - Shogun system running on WSL2 (or Linux server)
 - SSH server started (`sudo service ssh start`)
-- Phone and server on same network (LAN or [Tailscale](https://tailscale.com/))
+- Phone can reach the server over SSH
 
 **Steps:**
 
@@ -334,7 +334,7 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
 
    | Field | Example | Description |
    |-------|---------|-------------|
-   | SSH Host | `100.xxx.xxx.xxx` | Server IP (e.g., Tailscale IP). Initial value is blank |
+   | SSH Host | `ssh.example.local` | Reachable server IP or hostname. Initial value is blank |
    | SSH Port | `2222` | This fork assumes WSL SSH is exposed on 2222 |
    | SSH User | `your_username` | SSH login username. Initial value is blank |
    | SSH Key Path | `/data/data/.../id_ed25519` | Private key path on phone (*1) |
@@ -349,15 +349,9 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
 
 3. **Save → Switch to Shogun tab** → auto-connects
 
-**Using Tailscale (connect from anywhere):**
+**Remote access note:**
 
-```bash
-# Server-side (WSL2 or Linux)
-sudo service ssh start
-# Expose SSH through your own Tailscale or equivalent tunnel as needed
-```
-
-Install the Tailscale app on your phone, log in with the same account, and use the displayed Tailscale IP as the SSH Host in the app.
+If the phone is not on the same network as the host, provide any SSH-reachable route yourself. The app only needs a host, port, username, and project path that resolve correctly from the phone.
 
 **With ntfy notifications:**
 
@@ -372,29 +366,24 @@ SSH via Termux also works. More limited than the dedicated app, but requires no 
 
 | Name | In a nutshell | Role |
 |------|--------------|------|
-| [Tailscale](https://tailscale.com/) | A road to your home from anywhere | Connect to your home PC from anywhere |
-| SSH | The feet that walk that road | Log into your home PC through Tailscale |
-| [Termux](https://termux.dev/) | A black screen on your phone | Required to use SSH — just install it |
+| SSH | Remote shell access to the host | Connect to the machine that runs tmux |
+| [Termux](https://termux.dev/) | A black screen on your phone | Required to use SSH from Android without the companion app |
 
 **Setup:**
 
-1. Install Tailscale on both WSL and your phone
-2. In WSL (auth key method — browser not needed):
+1. Ensure the host machine accepts SSH connections
    ```bash
-   curl -fsSL https://tailscale.com/install.sh | sh
-   sudo tailscaled &
-   sudo tailscale up --authkey tskey-auth-XXXXXXXXXXXX
    sudo service ssh start
    ```
-3. In Termux on your phone:
+2. In Termux on your phone:
    ```sh
    pkg update && pkg install openssh
-   ssh youruser@your-tailscale-ip
+   ssh youruser@your-host
    css    # Connect to Shogun
    ```
-4. Open a new Termux window (+ button) for workers:
+3. Open a new Termux window (+ button) for workers:
    ```sh
-   ssh youruser@your-tailscale-ip
+   ssh youruser@your-host
    csm    # See all 9 panes
    ```
 

@@ -2,7 +2,7 @@
 
 [multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun) のコンパニオンアプリ — スマホからAIエージェント軍団を監視・操作。
 
-このフォークでは、元の UI/UX を維持しつつ、接続挙動を WSL + Tailscale + `portproxy` 構成向けに寄せています。
+このフォークでは、元の UI/UX を維持しつつ、このリポジトリ向けの tmux / Android 接続導線だけを調整しています。
 
 <p align="center">
   <img src="screenshots/01_shogun_terminal.png" alt="将軍ターミナル" width="230">
@@ -64,7 +64,7 @@
 
 1. アプリを起動 → **設定** タブ
 2. SSH接続情報を入力:
-   - **ホスト**: サーバーのIP（例: Tailscale IPv4）
+   - **ホスト**: 到達可能なサーバーの IP またはホスト名
    - **ポート**: 2222
    - **ユーザー**: SSHユーザー名
    - **鍵パス** または **パスワード**: 認証方式。通常は鍵パスを空欄にし、パスワード認証を使う
@@ -91,7 +91,7 @@
 
 - ホストマシンでSSHサーバーが稼働中
 - `shutsujin_departure.sh` でtmuxセッション起動済み
-- スマホとサーバー間のネットワーク接続（LAN、Tailscale等）
+- スマホからサーバーへ SSH 到達できるネットワーク経路
 
 ## アーキテクチャ
 

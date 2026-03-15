@@ -3047,3 +3047,23 @@
 - Verification:
   - `rg -n "yohey-w|tools/multi-agent-shogun|~/multi-agent-shogun|/path/to/multi-agent-shogun|multi-agent-shogun/|github/stars/yohey-w" README.md README_ja.md` → no matches
   - `git diff --check README.md README_ja.md` → PASS
+
+## 2026-03-15 18:22 (JST)
+- Goal: SSH 接続説明から Tailscale 推奨前提を外し、Android アプリと README の説明を「到達可能な SSH ホストを入力する」形へ中立化する。
+- Changes (files):
+  - `android/app/src/main/java/com/shogun/android/ui/SettingsScreen.kt`
+    - `SSHホスト` の補助文から Tailscale 固有の例示を削除し、IP またはホスト名を入力する説明へ変更。
+  - `android/README.md`, `android/README_ja.md`
+    - 接続前提を Tailscale 固定から一般的な SSH 到達性へ変更。
+    - `Host` の説明を「到達可能なサーバーの IP またはホスト名」へ変更。
+    - 前提条件も LAN/Tailscale 列挙ではなく SSH 経路に整理。
+  - `README.md`, `README_ja.md`
+    - Android セットアップ節の前提条件、`SSH Host` 説明、外部接続説明、Termux 節を Tailscale 非依存の記述へ変更。
+  - `docs/REQS.md`
+    - Android 接続要件を Tailscale 前提ではなく、到達可能な SSH ホスト前提に更新。
+- Decisions / Assumptions:
+  - 接続方式は repo が規定しない。README と UI は、利用者が用意した SSH 到達経路の上に成り立つ説明だけを持つ。
+  - Tailscale は禁止ではないが、推奨や前提条件としては書かない。
+- Verification:
+  - `rg -n "Tailscale|tailscale" README.md README_ja.md android/README.md android/README_ja.md android/app/src/main/java/com/shogun/android/ui/SettingsScreen.kt docs/REQS.md` → README 本文の SSH 導線からは除去済み（ntfy の比較説明を除く）
+  - `cd android && ./gradlew --no-daemon assembleDebug` → PASS

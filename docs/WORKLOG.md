@@ -2955,3 +2955,26 @@
 - Decisions / Assumptions:
   - 画面を増やさず、設定の意味を短文で補う方がスマホ UI として堅い。
   - 認証失敗の主因は SSH サーバ側ではなく、鍵パス残骸や保存済み設定の齟齬だと判断したため、UI 拡張ではなく接続層の自動 fallback で吸収する。
+
+## 2026-03-15 16:40 (JST)
+- Goal: Android APK をこの workspace 内だけで再ビルドできる状態まで整える。
+- Changes (files):
+  - `android/.gitignore`
+    - `.gradle-user-home`, `.android-sdk`, `.android-sdk-tmp`, `.android-prefs` を ignore に追加。
+- Local provisioning (workspace only):
+  - `android/.android-sdk/` に commandline-tools / platform-tools / build-tools 34.0.0 / platforms android-34 を展開。
+  - `android/local.properties` に workspace 内 SDK パスを書き込み。
+  - `GRADLE_USER_HOME` / `ANDROID_USER_HOME` を workspace 配下へ向けて Gradle を実行。
+- Verification:
+  - `./gradlew assembleDebug` は最初 `JAVA_HOME` 未設定、次に `sdk.dir` 未設定、さらに `sdkmanager` の proxy 問題、platform metadata 不整合、license 未承諾で段階的に失敗した。
+  - それぞれを最小変更で解消し、最終的に `cd android && ./gradlew --no-daemon assembleDebug` が PASS。
+  - 出力確認:
+    - `android/app/build/outputs/apk/debug/app-debug.apk`
+    - `android/app/build/outputs/apk/debug/output-metadata.json`
+  - Android 資産確認:
+    - `android/app/build.gradle.kts` は `release { isMinifyEnabled = false }`
+    - scan で検出された主なバイナリは `android/gradle/wrapper/gradle-wrapper.jar` と `android/release/multi-agent-shogun.apk` のみ
+    - APK zip listing は標準的な `classes*.dex` と Android metadata 中心で、追加の不審ファイルは見当たらなかった
+- Decisions / Assumptions:
+  - OS 全体には SDK を入れず、この repo 専用の workspace-local SDK を優先した。
+  - `android/local.properties` と workspace-local SDK/cache はローカル成果物として Git 追跡対象から外す。

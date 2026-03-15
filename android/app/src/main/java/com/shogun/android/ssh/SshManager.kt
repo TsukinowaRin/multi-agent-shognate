@@ -6,6 +6,8 @@ import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelSftp
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.Session
+import com.jcraft.jsch.UIKeyboardInteractive
+import com.jcraft.jsch.UserInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -121,7 +123,7 @@ class SshManager private constructor() {
                 newSession.setPassword(trimmedPassword)
             }
             var passwordAttempted = false
-            val userInfo = object : com.jcraft.jsch.UserInfo {
+            val userInfo = object : UserInfo, UIKeyboardInteractive {
                 override fun getPassword(): String = trimmedPassword
                 override fun promptPassword(message: String): Boolean {
                     if (passwordAttempted) return false
@@ -132,6 +134,17 @@ class SshManager private constructor() {
                 override fun getPassphrase(): String = ""
                 override fun promptYesNo(message: String): Boolean = true
                 override fun showMessage(message: String) {}
+                override fun promptKeyboardInteractive(
+                    destination: String?,
+                    name: String?,
+                    instruction: String?,
+                    prompt: Array<out String>?,
+                    echo: BooleanArray?
+                ): Array<String>? {
+                    if (trimmedPassword.isEmpty()) return null
+                    if (prompt.isNullOrEmpty()) return arrayOf(trimmedPassword)
+                    return Array(prompt.size) { trimmedPassword }
+                }
             }
             newSession.userInfo = userInfo
             newSession.connect(10000)

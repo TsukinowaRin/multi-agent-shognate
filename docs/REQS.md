@@ -1367,3 +1367,14 @@
    - 期待結果: デフォルト `auto` の回帰テストが存在する。
 3. コマンド: `rg -n "model: auto" config/settings.yaml`
    - 期待結果: 明示 model を維持したい agent を除き、現在の agent 設定が `auto` に寄っている。
+
+## 追補（2026-03-15: Android の keyboard-interactive 認証補強）
+### 要求
+1. Android アプリは、SSH サーバーが `password` ではなく `keyboard-interactive` を提示する環境でも、保存済みパスワードで接続できること。
+2. 既存の UI や設定項目は増やさず、SSH 実装層で吸収すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "UIKeyboardInteractive|promptKeyboardInteractive" android/app/src/main/java/com/shogun/android/ssh/SshManager.kt`
+   - 期待結果: `keyboard-interactive` 応答実装が入っている。
+2. コマンド: `cd android && ./gradlew assembleDebug`
+   - 期待結果: Android アプリがビルドできる。

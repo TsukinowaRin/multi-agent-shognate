@@ -3067,3 +3067,16 @@
 - Verification:
   - `rg -n "Tailscale|tailscale" README.md README_ja.md android/README.md android/README_ja.md android/app/src/main/java/com/shogun/android/ui/SettingsScreen.kt docs/REQS.md` → README 本文の SSH 導線からは除去済み（ntfy の比較説明を除く）
   - `cd android && ./gradlew --no-daemon assembleDebug` → PASS
+
+## 2026-03-15 21:18 (JST)
+- Goal: Android アプリの SSH パスワード認証が `keyboard-interactive` のみ提示される環境でも通るようにする。
+- Changes (files):
+  - `android/app/src/main/java/com/shogun/android/ssh/SshManager.kt`
+    - `UserInfo` に加えて `UIKeyboardInteractive` を実装。
+    - `promptKeyboardInteractive()` で保存済みパスワードを返すよう変更。
+    - OpenSSH/PAM 環境で `Auth fail for methods 'publickey, keyboard-interactive'` になっていた経路を吸収。
+- Decisions / Assumptions:
+  - サーバー側の `PasswordAuthentication` は有効で、Android 側が `keyboard-interactive` に正しく応答できていないのが主因と判断。
+  - UI は変えず、SSH 実装層だけで修正する。
+- Verification:
+  - `cd android && ./gradlew --no-daemon assembleDebug` → PASS

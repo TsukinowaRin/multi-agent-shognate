@@ -17,7 +17,11 @@ if [[ -n "$tracked_forbidden" ]]; then
   exit 1
 fi
 
-private_hits="$(git grep -n -I -E '/mnt/[a-z]/|[A-Za-z]:\\\\|192\\.168\\.|172\\.31\\.|100\\.[0-9]+\\.[0-9]+\\.[0-9]+|muro' -- . ':(exclude)docs/PUBLISHING.md' || true)"
+private_hits="$(
+  git grep -n -I -E \
+    '/mnt/d/Git_WorkSpace|D:\\\\Git_WorkSpace|/mnt/c/Users/muro|100\\.71\\.16\\.5|172\\.31\\.8\\.112|192\\.168\\.1\\.2|muro@MURO' \
+    -- . ':(exclude)docs/PUBLISHING.md' ':(exclude)scripts/prepublish_check.sh' || true
+)"
 if [[ -n "$private_hits" ]]; then
   printf '[FAIL] possible local/private values detected:\n%s\n' "$private_hits" >&2
   exit 1

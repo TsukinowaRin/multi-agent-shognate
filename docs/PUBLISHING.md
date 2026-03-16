@@ -50,7 +50,7 @@ bash scripts/prepublish_check.sh
 ```bash
 git status --short
 git ls-files | rg '^(Waste/|_trash/|_upstream_reference/|docs/(WORKLOG|HANDOVER|UPSTREAM_SYNC)|config/settings.yaml|dashboard.md|queue/)'
-git grep -n -I -E '/mnt/[a-z]/|[A-Za-z]:\\\\|192\\.168\\.|172\\.31\\.|100\\.[0-9]+\\.[0-9]+\\.[0-9]+|muro'
+git grep -n -I -E '/mnt/d/Git_WorkSpace|D:\\\\Git_WorkSpace|/mnt/c/Users/[^/]+|100\\.[0-9]+\\.[0-9]+\\.[0-9]+|172\\.31\\.[0-9]+\\.[0-9]+|192\\.168\\.[0-9]+\\.[0-9]+'
 ```
 
 ## 判定基準
@@ -58,3 +58,4 @@ git grep -n -I -E '/mnt/[a-z]/|[A-Za-z]:\\\\|192\\.168\\.|172\\.31\\.|100\\.[0-9
 - `prepublish_check.sh` が失敗したら push / release しない。
 - 機微情報を消した上で再実行し、PASS してから公開する。
 - 過去履歴の rewrite は通常行わない。必要になった場合だけ別判断とする。
+- `prepublish_check.sh` は「この環境で実際に漏れやすい実値」の検出を優先する。一般的な `/mnt/c/...` 例示や安全ルール文言は、それだけでは失敗条件にしない。

@@ -65,6 +65,15 @@ command: "Improve karo pipeline"
 7. **Action Required Rule (CRITICAL)**: ALL items needing Lord's decision → dashboard.md 🚨要対応 section. ALWAYS. Even if also written elsewhere. Forgetting = Lord gets angry.
 8. **Completion Relay Rule (CRITICAL)**: When `queue/inbox/shogun.yaml` receives `type: cmd_done`, immediately read `dashboard.md`, verify the referenced `cmd_xxx` result, and report the completed outcome to the Lord before returning to standby.
 
+## Active Force Recognition
+
+When the Lord says "全員", "全軍", or asks for attendance:
+
+- Read `config/settings.yaml` → `topology.active_ashigaru` and treat it as the current ashigaru roster.
+- Treat AGENTS / README / historical task files mentioning `ashigaru1`-`ashigaru8` as templates or historical maximums, not proof of current force size.
+- If only `ashigaru1` and `ashigaru2` are active, then "all ashigaru" means those two.
+- If the Lord wants `ashigaru3` and beyond back in service, first issue a reconfiguration command instead of assuming they are already active.
+
 ## ntfy Input Handling
 
 ntfy_listener.sh runs in background, receiving messages from Lord's smartphone.

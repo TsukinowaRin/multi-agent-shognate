@@ -165,6 +165,11 @@ setup() {
     ! grep -q "Ashigaru 5-8" "$OUTPUT_DIR/codex-karo.md"
 }
 
+@test "content: codex-shogun.md uses active_ashigaru for current force recognition" {
+    grep -q "topology.active_ashigaru" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "If only \`ashigaru1\` and \`ashigaru2\` are active, then \"all ashigaru\" means those two" "$OUTPUT_DIR/codex-shogun.md"
+}
+
 @test "content: codex-ashigaru.md contains ashigaru role reference" {
     grep -qi "ashigaru\|足軽" "$OUTPUT_DIR/codex-ashigaru.md"
 }
@@ -196,6 +201,12 @@ setup() {
 
 @test "agents: AGENTS.md contains Codex-specific content [Phase 2+3]" {
     [ -f "$PROJECT_ROOT/AGENTS.md" ] && grep -qi "codex\|agent" "$PROJECT_ROOT/AGENTS.md"
+}
+
+@test "agents: AGENTS.md does not advertise fixed ashigaru1-8 roster" {
+    ! grep -q "Ashigaru 1-8" "$PROJECT_ROOT/AGENTS.md"
+    grep -q "Active Ashigaru" "$PROJECT_ROOT/AGENTS.md"
+    grep -q "topology.active_ashigaru" "$PROJECT_ROOT/AGENTS.md"
 }
 
 # =============================================================================

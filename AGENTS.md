@@ -4,12 +4,12 @@ version: "3.0"
 updated: "2026-02-07"
 description: "Codex CLI + tmux multi-agent parallel dev platform with sengoku military hierarchy"
 
-hierarchy: "Lord (human) → Shogun → Karo → Ashigaru 1-8"
+hierarchy: "Lord (human) → Shogun → Karo → Active Ashigaru"
 communication: "YAML files + inbox mailbox system (event-driven, NO polling)"
 
 tmux_sessions:
   shogun: { pane_0: shogun }
-  multiagent: { pane_0: karo, pane_1-8: ashigaru1-8 }
+  multiagent: { pane_0: karo, pane_1+: active ashigaru from topology.active_ashigaru }
 
 files:
   config: config/projects.yaml          # Project list (summary)
@@ -201,6 +201,13 @@ System manages ALL white-collar work, not just self-improvement. Project folders
 5. **Screenshots**: See `config/settings.yaml` → `screenshot.path`
 6. **Skill candidates**: Ashigaru reports include `skill_candidate:`. Karo collects → dashboard. Shogun approves → creates design doc.
 7. **Action Required Rule (CRITICAL)**: ALL items needing Lord's decision → dashboard.md 🚨要対応 section. ALWAYS. Even if also written elsewhere. Forgetting = Lord gets angry.
+
+# Active Force Recognition
+
+- Treat `config/settings.yaml` → `topology.active_ashigaru` as the source of truth for current ashigaru deployment.
+- Treat mentions of `ashigaru1`-`ashigaru8` in AGENTS, README, or historical files as templates or historical maximums, not proof of current deployment.
+- If only `ashigaru1` and `ashigaru2` are active, then "all ashigaru" means those two.
+- If the Lord wants additional ashigaru activated, issue a reconfiguration command first rather than assuming they are already in service.
 
 # Test Rules (all agents)
 

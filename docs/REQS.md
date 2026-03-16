@@ -3,6 +3,21 @@
 最終更新: 2026-03-16
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-16: 家老の足軽人数認識を active_ashigaru に限定）
+### 要求
+1. 家老は点呼・全軍把握・タスク分配時に、`config/settings.yaml` の `topology.active_ashigaru` のみを現役足軽として扱うこと。
+2. `queue/tasks/ashigaru*.yaml` や `queue/reports/ashigaru*_report.yaml` に過去の 3 号以降の痕跡が残っていても、それだけで現役兵力を 8 名とみなさないこと。
+3. 特に `ashigaru1` と `ashigaru2` の2名構成では、家老が「8人中2人しか見えない」ではなく「2人構成」と認識すること。
+4. 家老向け generated instructions に、inactive ashigaru を仮定しない明示ルールを含めること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh`
+   - 期待結果: generated instructions が再生成される。
+2. コマンド: `rg -n "topology.active_ashigaru|force size is two|inactive ashigaru" instructions/roles/karo_role.md instructions/common/protocol.md instructions/generated/codex-karo.md`
+   - 期待結果: 家老の正本 role/protocol と generated instruction に active roster ルールが入る。
+3. コマンド: `bats tests/unit/test_build_system.bats`
+   - 期待結果: `codex-karo.md` に `topology.active_ashigaru` が含まれ、固定の `Ashigaru 1-4` / `Ashigaru 5-8` 文言が消えて PASS する。
+
 ## 追補（2026-03-16: upstream 最新同期確認 + 構成整理）
 ### 要求
 1. 最新の upstream リポジトリの変更が、このフォークへ反映済みであることを確認し、必要なら統合すること。

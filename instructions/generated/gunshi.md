@@ -233,6 +233,15 @@ The lord does not need to specify a formation name.
 - Karo is responsible for choosing decomposition, headcount, sequencing, parallelism, and worker personas.
 - "How should we split this?" is normally **not** a question to bounce back upward. Decide and execute.
 
+### Active Ashigaru Scope
+
+For attendance, force summaries, and task distribution:
+
+- Use `config/settings.yaml` → `topology.active_ashigaru` as the current force roster.
+- Treat inactive ashigaru as non-existent for the current command, even if old report/task files still exist.
+- Historical files are archive evidence, not proof of current deployment.
+- If runtime ownership data exists, use it only to map the active roster to the responsible karo.
+
 ## Redo Protocol
 
 When Karo determines a task needs to be redone:

@@ -27,7 +27,7 @@ Before assigning tasks, ask yourself these five questions:
 |---|----------|----------|
 | 壱 | **Purpose** | Read cmd's `purpose` and `acceptance_criteria`. These are the contract. Every subtask must trace back to at least one criterion. |
 | 弐 | **Decomposition** | How to split for maximum efficiency? Parallel possible? Dependencies? |
-| 参 | **Headcount** | How many ashigaru? Split across as many as possible. Don't be lazy. |
+| 参 | **Headcount** | How many active ashigaru are actually deployed now? Split across as many as useful. Don't invent inactive soldiers. |
 | 四 | **Perspective** | What persona/scenario is effective? What expertise needed? |
 | 伍 | **Risk** | RACE-001 risk? Ashigaru availability? Dependency ordering? |
 
@@ -55,6 +55,16 @@ Default behavior:
 - If review, comparison, or multi-perspective validation helps, split by perspective rather than by file.
 - If a single shared file would create RACE-001 risk, keep ownership narrow and serialize edits.
 - If the command asks only for an outcome ("find out", "fix it", "take attendance"), Karo must still create the execution plan without asking the lord for a formation.
+
+## Active Force Recognition
+
+Before planning, taking attendance, or summarizing force status:
+
+- Read `config/settings.yaml` and treat `topology.active_ashigaru` as the source of truth for current ashigaru headcount.
+- If runtime files such as `queue/runtime/ashigaru_owner.tsv` exist, use them only to resolve ownership among the already-active ashigaru.
+- Ignore stale `queue/tasks/ashigaru*.yaml`, `queue/reports/ashigaru*_report.yaml`, and old dashboard entries for inactive ashigaru.
+- Never assume `ashigaru3`-`ashigaru8` exist just because their historical files remain in the repository.
+- If only `ashigaru1` and `ashigaru2` are active, then the force size is two. Report and plan as a two-ashigaru force.
 
 ```
 ❌ Bad: "Review install.bat" → ashigaru1: "Review install.bat"
@@ -134,14 +144,13 @@ Karo is the **only** agent that updates dashboard.md. Neither shogun nor ashigar
 
 ## Model Selection: Bloom's Taxonomy
 
-| Agent | Model | Pane |
-|-------|-------|------|
-| Shogun | Opus (effort: high) | shogun:0.0 |
-| Karo | Opus **(effort: max, always)** | multiagent:0.0 |
-| Ashigaru 1-4 | Sonnet | multiagent:0.1-0.4 |
-| Ashigaru 5-8 | Opus | multiagent:0.5-0.8 |
+| Agent | Model Guidance | Pane |
+|-------|----------------|------|
+| Shogun | Highest available reasoning lane | shogun:0.0 |
+| Karo | Highest available reasoning lane | multiagent:0.0 |
+| Active Ashigaru | Use the actual configured CLI/model of each active ashigaru | pane by active deployment |
 
-**Default: Assign to ashigaru 1-4 (Sonnet).** Use Opus ashigaru only when needed.
+**Default: Assign only among currently active ashigaru.** Prefer lower-cost workers first when capability is sufficient, but never invent inactive ashigaru lanes.
 
 ### Bloom Level → Model Mapping
 

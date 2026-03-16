@@ -155,6 +155,16 @@ setup() {
     grep -qi "karo\|家老" "$OUTPUT_DIR/codex-karo.md"
 }
 
+@test "content: codex-karo.md uses active_ashigaru as force roster" {
+    grep -q "topology.active_ashigaru" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "If only \`ashigaru1\` and \`ashigaru2\` are active, then the force size is two" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md does not hardcode ashigaru1-4/5-8 lanes" {
+    ! grep -q "Ashigaru 1-4" "$OUTPUT_DIR/codex-karo.md"
+    ! grep -q "Ashigaru 5-8" "$OUTPUT_DIR/codex-karo.md"
+}
+
 @test "content: codex-ashigaru.md contains ashigaru role reference" {
     grep -qi "ashigaru\|足軽" "$OUTPUT_DIR/codex-ashigaru.md"
 }

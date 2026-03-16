@@ -214,6 +214,7 @@ Skills grow organically from real work — not from a predefined template librar
 📥 **Download `install.bat` from Releases**
 
 Download `multi-agent-shognate-installer.bat` from this repository's **GitHub Releases** page.
+That installer pulls the **same tagged source version as the Release you downloaded it from**.
 
 *Alternative:* Clone or download the repository ZIP and run the bundled `install.bat`
 
@@ -229,7 +230,7 @@ Download `multi-agent-shognate-installer.bat` from this repository's **GitHub Re
 
 🖱️ **Run `install.bat`**
 
-It verifies WSL2 / Ubuntu, downloads the latest `main` branch from GitHub when needed, and **runs `first_setup.sh` automatically inside Ubuntu**.
+It verifies WSL2 / Ubuntu, downloads the tagged source version from GitHub when used as a Release asset, and **runs `first_setup.sh` automatically inside Ubuntu**.
 Only run as Administrator when WSL2 itself needs to be installed.
 
 </td>
@@ -244,7 +245,7 @@ Only run as Administrator when WSL2 itself needs to be installed.
 
 🐧 **Wait for setup to finish** (first time only)
 
-`install.bat` now downloads the latest code when used standalone, then runs `first_setup.sh` for you inside Ubuntu.
+`install.bat` now downloads the matching Release tag when used standalone, then runs `first_setup.sh` for you inside Ubuntu.
 Only open Ubuntu manually if the script tells you the distro still needs first-time initialization.
 
 </td>
@@ -432,7 +433,7 @@ cd ~/multi-agent-shognate
 No problem! Running `install.bat` will:
 1. Check if WSL2 is installed (auto-install if not)
 2. Check if Ubuntu is installed (auto-install if not)
-3. Download the latest code from GitHub Releases / `main.zip` when needed
+3. Download the matching tagged code from GitHub when needed
 4. Run `first_setup.sh`
 
 **Quick install command** (run PowerShell as Administrator):
@@ -459,7 +460,7 @@ Then restart your computer and run `install.bat` again.
 ### What `install.bat` does automatically:
 - ✅ Checks if WSL2 is installed (guides you if not)
 - ✅ Checks if Ubuntu is installed (guides you if not)
-- ✅ Downloads the latest code when run as a standalone Release asset
+- ✅ Downloads the matching Release tag when run as a standalone Release asset
 - ✅ Runs `first_setup.sh` automatically inside Ubuntu
 
 ### What `shutsujin_departure.sh` does:

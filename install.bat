@@ -5,14 +5,16 @@ title multi-agent-shognate Installer
 
 set "REPO_OWNER=TsukinowaRin"
 set "REPO_NAME=multi-agent-shognate"
-set "REPO_BRANCH=main"
-set "DOWNLOAD_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/archive/refs/heads/%REPO_BRANCH%.zip"
+set "REPO_REF=main"
+set "REPO_REF_KIND=heads"
+set "REPO_VERSION_LABEL=main"
+set "DOWNLOAD_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/archive/refs/%REPO_REF_KIND%/%REPO_REF%.zip"
 set "INSTALL_ROOT=%USERPROFILE%\tools"
 set "INSTALL_DIR=%INSTALL_ROOT%\%REPO_NAME%"
 set "TEMP_ROOT=%TEMP%\%REPO_NAME%-installer"
-set "ZIP_PATH=%TEMP_ROOT%\%REPO_NAME%-%REPO_BRANCH%.zip"
+set "ZIP_PATH=%TEMP_ROOT%\%REPO_NAME%-%REPO_REF%.zip"
 set "EXTRACT_ROOT=%TEMP_ROOT%\extract"
-set "EXTRACTED_DIR=%EXTRACT_ROOT%\%REPO_NAME%-%REPO_BRANCH%"
+set "EXTRACTED_DIR=%EXTRACT_ROOT%\%REPO_NAME%-%REPO_REF%"
 
 echo.
 echo   +============================================================+
@@ -39,6 +41,8 @@ if /I "%INSTALL_MODE%"=="local" (
 ) else (
     echo   Mode:
     echo     Standalone release bootstrap
+    echo   Source ref:
+    echo     %REPO_VERSION_LABEL%
     echo   Download source:
     echo     %DOWNLOAD_URL%
     echo   Install target:
@@ -130,11 +134,11 @@ if not exist "%INSTALL_ROOT%" mkdir "%INSTALL_ROOT%" >nul 2>&1
 if exist "%TEMP_ROOT%" rmdir /s /q "%TEMP_ROOT%" >nul 2>&1
 mkdir "%TEMP_ROOT%" >nul 2>&1
 
-echo         Downloading latest source from GitHub...
+echo         Downloading source from GitHub...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing -Uri '%DOWNLOAD_URL%' -OutFile '%ZIP_PATH%'"
 if %ERRORLEVEL% NEQ 0 (
-    echo   [ERROR] Failed to download latest source archive.
-    echo           GitHub から最新コードをダウンロードできませんでした。
+    echo   [ERROR] Failed to download source archive.
+    echo           GitHub からソースをダウンロードできませんでした。
     pause
     exit /b 1
 )
@@ -165,7 +169,7 @@ if %ERRORLEVEL% GEQ 8 (
 )
 
 set "REPO_DIR_WIN=%INSTALL_DIR%"
-echo   [OK] Latest source synced to:
+echo   [OK] Source synced to:
 echo        %REPO_DIR_WIN%
 echo.
 

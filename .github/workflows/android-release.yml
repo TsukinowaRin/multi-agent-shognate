@@ -69,10 +69,27 @@ jobs:
           INSTALLER_ASSET="multi-agent-shognate-installer.bat"
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/${APK_ASSET}"
-          cp install.bat "dist/${INSTALLER_ASSET}"
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          tag = os.environ["TAG"]
+          src = Path("install.bat").read_text(encoding="utf-8")
+          src = src.replace('set "REPO_REF=main"', f'set "REPO_REF={tag}"')
+          src = src.replace('set "REPO_REF_KIND=heads"', 'set "REPO_REF_KIND=tags"')
+          src = src.replace('set "REPO_VERSION_LABEL=main"', f'set "REPO_VERSION_LABEL={tag}"')
+          Path("dist").mkdir(parents=True, exist_ok=True)
+          Path("dist").joinpath("multi-agent-shognate-installer.bat").write_text(
+              src,
+              encoding="utf-8",
+              newline="\r\n",
+          )
+          PY
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "apk_asset=${APK_ASSET}" >> "$GITHUB_OUTPUT"
           echo "installer_asset=${INSTALLER_ASSET}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4

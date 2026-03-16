@@ -20,6 +20,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Run prepublish check
+        run: |
+          bash scripts/prepublish_check.sh
+
       - name: Install bats-core (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -117,6 +121,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Run prepublish check
+        run: |
+          bash scripts/prepublish_check.sh
+
       - name: Check if build script exists
         id: check_script
         run: |
@@ -162,6 +170,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Run prepublish check
+        run: |
+          bash scripts/prepublish_check.sh
+
       - name: Install shellcheck
         run: |
           sudo apt-get update
@@ -199,6 +211,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Run prepublish check
+        run: |
+          bash scripts/prepublish_check.sh
 
       - name: Install system dependencies
         run: |

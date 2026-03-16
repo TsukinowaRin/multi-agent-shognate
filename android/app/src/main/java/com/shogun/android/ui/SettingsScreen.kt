@@ -95,7 +95,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            placeholder = { Text("2222") }
+            placeholder = { Text("22") }
         )
 
         OutlinedTextField(

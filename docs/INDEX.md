@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-03-15
+最終更新: 2026-03-16
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -22,6 +22,7 @@
 - `docs/HANDOVER_2026-02-23_prompt_injection_open_issues.md` - 「起動するが注入されない」未解決事象の課題整理と次エージェント向け実行計画。
 
 ## Plans
+- `docs/EXECPLAN_2026-03-16_upstream_layout_alignment.md` - 最新 upstream 同期済みの確認と、現役ファイル構成を upstream に寄せる整理計画。
 - `docs/EXECPLAN_2026-03-14_android_compat.md` — upstream Android app compatibility check and options.
 - `docs/EXECPLAN_2026-02-10_zellij_multi_cli.md` - 旧 zellij 移植とCLI拡張の実行計画（履歴）。
 - `docs/EXECPLAN_2026-02-12_role_instruction_sync.md` - 役職別正本MDの必読化と最適化MD自動同期の実行計画。

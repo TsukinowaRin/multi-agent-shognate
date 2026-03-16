@@ -1,7 +1,22 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-15
+最終更新: 2026-03-16
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-16: upstream 最新同期確認 + 構成整理）
+### 要求
+1. 最新の upstream リポジトリの変更が、このフォークへ反映済みであることを確認し、必要なら統合すること。
+2. ファイルの位置や構成は、現役導線を壊さない範囲で upstream に近づけること。
+3. upstream にはない退避済み・非現役のランチャーや歴史的残骸は、トップレベルに置かないこと。
+4. 今回の判断と範囲は `ExecPlan` と docs に記録すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `git merge --no-ff --no-edit upstream/main`
+   - 期待結果: `Already up to date.` または必要な統合が完了する。
+2. コマンド: `test ! -f start_zellij_pure.bat`
+   - 期待結果: top-level の deprecated zellij launcher が存在しない。
+3. コマンド: `rg -n "upstream_layout_alignment|upstream 最新同期確認 \\+ 構成整理" docs/INDEX.md docs/EXECPLAN_2026-03-16_upstream_layout_alignment.md docs/REQS.md docs/WORKLOG.md`
+   - 期待結果: 今回の整理内容が docs に反映されている。
 
 ## 追補（2026-03-15: Android fork release 配布）
 ### 要求

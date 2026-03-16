@@ -3080,3 +3080,22 @@
   - UI は変えず、SSH 実装層だけで修正する。
 - Verification:
   - `cd android && ./gradlew --no-daemon assembleDebug` → PASS
+
+## 2026-03-16 00:15 (JST)
+- Goal: 最新 upstream が反映済みであることを確認し、現役ファイル構成を upstream に近づける。
+- Changes (files):
+  - `docs/EXECPLAN_2026-03-16_upstream_layout_alignment.md`
+    - 今回の同期確認と構成整理の実行計画を追加。
+  - `docs/INDEX.md`
+    - 新しい ExecPlan を索引へ追加し、更新日を更新。
+  - `docs/REQS.md`
+    - 「upstream 最新同期確認 + 構成整理」要件を追加。
+  - `start_zellij_pure.bat`
+    - 未参照で deprecated な top-level ランチャーを削除し、トップレベル構成を upstream に寄せた。
+- Decisions / Assumptions:
+  - `git fetch upstream --prune` 後の比較で `upstream/main...HEAD` が `0 268` だったため、最新 upstream は履歴上すでに取り込み済みと判断。
+  - upstream に寄せる対象は「現役構成」に限定し、CLI 拡張や archive docs までは動かさない。
+  - archive は `Waste/` に残し、トップレベルからは排除する。
+- Verification:
+  - `git merge --no-ff --no-edit upstream/main` → `Already up to date.`
+  - `rg -n "start_zellij_pure\\.bat" -S .` → 参照は `Waste/` 内の説明のみ

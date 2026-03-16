@@ -211,11 +211,11 @@ dashboard.md に掲載 → 殿が承認 → .claude/commands/ にスキル作成
 </td>
 <td>
 
-📥 **リポジトリをダウンロード**
+📥 **Release から `install.bat` を取得**
 
-[ZIPダウンロード](https://github.com/TsukinowaRin/multi-agent-shognate/archive/refs/heads/main.zip) して `C:\tools\multi-agent-shognate` に展開
+このリポジトリの **GitHub Releases** から `multi-agent-shognate-installer.bat` をダウンロード
 
-*または git を使用:* `git clone https://github.com/TsukinowaRin/multi-agent-shognate.git C:\tools\multi-agent-shognate`
+*代替:* リポジトリを clone / ZIP 展開して同梱の `install.bat` を実行
 
 </td>
 </tr>
@@ -229,7 +229,7 @@ dashboard.md に掲載 → 殿が承認 → .claude/commands/ にスキル作成
 
 🖱️ **`install.bat` を実行**
 
-WSL2 / Ubuntu を確認し、準備できていれば **そのまま `first_setup.sh` まで自動実行**します。
+WSL2 / Ubuntu を確認し、必要なら GitHub から最新 `main` を取得して、**そのまま `first_setup.sh` まで自動実行**します。
 WSL2 未導入時だけ、必要に応じて「管理者として実行」してください。
 
 </td>
@@ -244,7 +244,7 @@ WSL2 未導入時だけ、必要に応じて「管理者として実行」して
 
 🐧 **完了を待つ**（初回のみ）
 
-`install.bat` が Ubuntu 側で `first_setup.sh` まで実行します。
+`install.bat` が standalone 実行時は最新コード取得まで行い、その後 Ubuntu 側で `first_setup.sh` まで実行します。
 途中で止まった場合だけ、表示された案内に従って Ubuntu で再実行してください。
 
 </td>
@@ -436,7 +436,8 @@ cd ~/multi-agent-shognate
 問題ありません！`install.bat` を実行すると：
 1. WSL2がインストールされているかチェック（なければ自動インストール）
 2. Ubuntuがインストールされているかチェック（なければ自動インストール）
-3. 次のステップ（`first_setup.sh` の実行方法）を案内
+3. 必要なら GitHub から最新コードを取得
+4. `first_setup.sh` を実行
 
 **クイックインストールコマンド**（PowerShellを管理者として実行）：
 ```powershell
@@ -454,7 +455,7 @@ wsl --install
 
 | スクリプト | 用途 | 実行タイミング |
 |-----------|------|---------------|
-| `install.bat` | Windows: WSL2 + Ubuntu のセットアップ | 初回のみ |
+| `install.bat` | Windows: 最新コード取得 + WSL2 + Ubuntu のセットアップ | 初回のみ |
 | `first_setup.sh` | tmux、Node.js、Claude Code CLI のインストール + Memory MCP設定 | 初回のみ |
 | `shutsujin_departure.sh` | tmuxセッション作成 + CLI起動 + 指示書読み込み + ntfyリスナー起動 | 毎日 |
 | `scripts/switch_cli.sh` | エージェントのCLI/モデルをライブ切替（settings.yaml → /exit → 再起動） | 必要時 |
@@ -462,7 +463,8 @@ wsl --install
 ### `install.bat` が自動で行うこと：
 - ✅ WSL2がインストールされているかチェック（未インストールなら案内）
 - ✅ Ubuntuがインストールされているかチェック（未インストールなら案内）
-- ✅ 次のステップ（`first_setup.sh` の実行方法）を案内
+- ✅ standalone 実行時は最新コードを取得
+- ✅ Ubuntu 内で `first_setup.sh` を自動実行
 
 ### `shutsujin_departure.sh` が行うこと：
 - ✅ tmuxセッションを作成（shogun + multiagent）

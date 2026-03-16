@@ -65,24 +65,31 @@ jobs:
           if [ -z "$TAG" ]; then
             TAG="${GITHUB_REF_NAME}"
           fi
-          ASSET="multi-agent-shognate-android-${TAG}.apk"
+          APK_ASSET="multi-agent-shognate-android-${TAG}.apk"
+          INSTALLER_ASSET="multi-agent-shognate-installer.bat"
           mkdir -p dist
-          cp android/app/build/outputs/apk/release/app-release.apk "dist/${ASSET}"
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/${APK_ASSET}"
+          cp install.bat "dist/${INSTALLER_ASSET}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "asset=${ASSET}" >> "$GITHUB_OUTPUT"
+          echo "apk_asset=${APK_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "installer_asset=${INSTALLER_ASSET}" >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-release-apk
-          path: dist/${{ steps.asset.outputs.asset }}
+          name: android-release-assets
+          path: |
+            dist/${{ steps.asset.outputs.apk_asset }}
+            dist/${{ steps.asset.outputs.installer_asset }}
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.asset.outputs.tag }}
           name: ${{ github.event.inputs.release_name || format('multi-agent-shognate Android {0}', steps.asset.outputs.tag) }}
-          files: dist/${{ steps.asset.outputs.asset }}
+          files: |
+            dist/${{ steps.asset.outputs.apk_asset }}
+            dist/${{ steps.asset.outputs.installer_asset }}
           generate_release_notes: true
           prerelease: ${{ github.event.inputs.prerelease == true }}
           target_commitish: ${{ github.sha }}

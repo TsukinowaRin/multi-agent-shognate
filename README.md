@@ -211,11 +211,11 @@ Skills grow organically from real work — not from a predefined template librar
 </td>
 <td>
 
-📥 **Download the repository**
+📥 **Download `install.bat` from Releases**
 
-[Download ZIP](https://github.com/TsukinowaRin/multi-agent-shognate/archive/refs/heads/main.zip) and extract to `C:\tools\multi-agent-shognate`
+Download `multi-agent-shognate-installer.bat` from this repository's **GitHub Releases** page.
 
-*Or use git:* `git clone https://github.com/TsukinowaRin/multi-agent-shognate.git C:\tools\multi-agent-shognate`
+*Alternative:* Clone or download the repository ZIP and run the bundled `install.bat`
 
 </td>
 </tr>
@@ -229,7 +229,7 @@ Skills grow organically from real work — not from a predefined template librar
 
 🖱️ **Run `install.bat`**
 
-It verifies WSL2 / Ubuntu and, if ready, **runs `first_setup.sh` automatically inside Ubuntu**.
+It verifies WSL2 / Ubuntu, downloads the latest `main` branch from GitHub when needed, and **runs `first_setup.sh` automatically inside Ubuntu**.
 Only run as Administrator when WSL2 itself needs to be installed.
 
 </td>
@@ -244,7 +244,7 @@ Only run as Administrator when WSL2 itself needs to be installed.
 
 🐧 **Wait for setup to finish** (first time only)
 
-`install.bat` now runs `first_setup.sh` for you inside Ubuntu.
+`install.bat` now downloads the latest code when used standalone, then runs `first_setup.sh` for you inside Ubuntu.
 Only open Ubuntu manually if the script tells you the distro still needs first-time initialization.
 
 </td>
@@ -432,7 +432,8 @@ cd ~/multi-agent-shognate
 No problem! Running `install.bat` will:
 1. Check if WSL2 is installed (auto-install if not)
 2. Check if Ubuntu is installed (auto-install if not)
-3. Guide you through next steps (running `first_setup.sh`)
+3. Download the latest code from GitHub Releases / `main.zip` when needed
+4. Run `first_setup.sh`
 
 **Quick install command** (run PowerShell as Administrator):
 ```powershell
@@ -450,7 +451,7 @@ Then restart your computer and run `install.bat` again.
 
 | Script | Purpose | When to run |
 |--------|---------|-------------|
-| `install.bat` | Windows: WSL2 + Ubuntu setup | First time only |
+| `install.bat` | Windows: bootstrap latest code + WSL2 + Ubuntu setup | First time only |
 | `first_setup.sh` | Install tmux, Node.js, Claude Code CLI + Memory MCP config | First time only |
 | `shutsujin_departure.sh` | Create tmux sessions + launch CLI + load instructions + start ntfy listener | Daily |
 | `scripts/switch_cli.sh` | Live switch agent CLI/model (settings.yaml → /exit → relaunch) | As needed |
@@ -458,7 +459,8 @@ Then restart your computer and run `install.bat` again.
 ### What `install.bat` does automatically:
 - ✅ Checks if WSL2 is installed (guides you if not)
 - ✅ Checks if Ubuntu is installed (guides you if not)
-- ✅ Shows next steps (how to run `first_setup.sh`)
+- ✅ Downloads the latest code when run as a standalone Release asset
+- ✅ Runs `first_setup.sh` automatically inside Ubuntu
 
 ### What `shutsujin_departure.sh` does:
 - ✅ Creates tmux sessions (shogun + multiagent)

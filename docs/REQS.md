@@ -31,6 +31,19 @@
 2. コマンド: `rg -n "first_setup\\.sh.*automatically|そのまま `first_setup\\.sh` まで自動実行|Wait for setup to finish" README.md README_ja.md`
    - 期待結果: Windows セットアップ説明が one-click 化に更新されている。
 
+## 追補（2026-03-16: Release 同梱 installer）
+### 要求
+1. `install.bat` は repo 内で実行した場合だけでなく、GitHub Release asset として単体配布しても機能すること。
+2. standalone の `install.bat` は、このフォークの GitHub から最新 `main` ソースを取得し、既定の Windows 配置先へ展開してから WSL セットアップへ進むこと。
+3. Android Release workflow は APK だけでなく `install.bat` も release asset として公開すること。
+4. README には Windows 正規導線として Release asset の `install.bat` を記載すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "DOWNLOAD_URL|INSTALL_DIR|Invoke-WebRequest|Expand-Archive|robocopy" install.bat`
+   - 期待結果: standalone installer が GitHub から最新コードを取得・展開する実装になっている。
+2. コマンド: `rg -n "installer_asset|multi-agent-shognate-installer\\.bat" .github/workflows/android-release.yml README.md README_ja.md android/release/README.md`
+   - 期待結果: release workflow と docs に installer asset が反映されている。
+
 ## 追補（2026-03-16: 家老の足軽人数認識を active_ashigaru に限定）
 ### 要求
 1. 家老は点呼・全軍把握・タスク分配時に、`config/settings.yaml` の `topology.active_ashigaru` のみを現役足軽として扱うこと。

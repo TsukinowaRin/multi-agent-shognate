@@ -339,7 +339,7 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
    | SSH User | `your_username` | SSH login username. Initial value is blank |
    | SSH Key Path | `/data/data/.../id_ed25519` | Private key path on phone (*1) |
    | SSH Password | `****` | Use if no key available |
-   | Project Path | `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate` | Server-side project directory. Initial value is blank |
+   | Project Path | `/path/to/multi-agent-shognate` | Server-side project directory. Initial value is blank |
    | Shogun Session | `shogun` | tmux session name for Shogun. Initial value is blank |
    | Agent Session | `multiagent` | tmux session name for agents. Initial value is blank |
 

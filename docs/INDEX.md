@@ -8,18 +8,7 @@
 
 ## Specs
 - `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。
-- `docs/UPSTREAM_SYNC_2026-03-11_CLI_ONLY_STRATEGY.md` - upstream `main` を正本にし、独自差分を tmux 本線の CLI 拡張に限定する再整理方針。
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
-- `docs/UPSTREAM_SYNC_2026-02-14.md` - 上流multi-agent-shogunとの差分分析と採用/非採用判断。
-- `docs/UPSTREAM_SYNC_2026-02-21.md` - 上流最新（cbad684時点）との差分確認と反映内容（Codex `--search` / watcher抑止条件 / zellij起動補正）。
-- `docs/UPSTREAM_SYNC_2026-03-05.md` - 上流最新（86ee80b時点）の取得方法と反映差分（watcher busy保護 / zellij ACKログ）。
-- `docs/UPSTREAM_SYNC_2026-03-06_ZELLIJ_GEMINI.md` - 上流最新のうち zellij / Gemini CLI に限定して採用した差分と見送り範囲。
-- `docs/UPSTREAM_SYNC_2026-03-07_RESTART.md` - 上流の内部構造変化を踏まえ、zellij / Gemini だけを上流基盤へ載せ直す再出発方針。
-- `docs/UPSTREAM_SYNC_2026-03-07_FULL_BASELINE.md` - 上流完全クローンを基準にした再出発方針と、採用対象ファイルの優先順。
-- `docs/UPSTREAM_SYNC_2026-03-11_COMPACTION.md` - upstream `2ef81f9` の compaction 復帰手順を、このフォークの複数 CLI 用 root instruction 群へ横展開した記録。
-- `docs/HANDOVER_2026-02-14_codex_limit.md` - Codex利用制限前の引き継ぎ（現状/即対応/次アクション）。
-- `docs/HANDOVER_2026-02-17_bootstrap_injection.md` - zellij初動注入混線の原因分析と暫定/恒久対策案。
-- `docs/HANDOVER_2026-02-23_prompt_injection_open_issues.md` - 「起動するが注入されない」未解決事象の課題整理と次エージェント向け実行計画。
 
 ## Plans
 - `docs/EXECPLAN_2026-03-16_upstream_layout_alignment.md` - 最新 upstream 同期済みの確認と、現役ファイル構成を upstream に寄せる整理計画。
@@ -40,8 +29,7 @@
 - `docs/EXECPLAN_TEMPLATE.md` - ExecPlanテンプレート。
 
 ## Archive
-- `Waste/zellij_2026-03-11/` - 廃止した zellij 実装、関連テスト、旧ランチャーの退避先。
-- `Waste/tmux_unification_2026-03-11/` - 廃止した `goza*` / `shutsujin_zellij.sh` / mirror/dispatch 残骸 / 旧 tmux template / 旧 bat ランチャーの退避先。
+- `Waste/` / `_trash/` / `_upstream_reference/` - ローカル archive / 退避 / upstream 参照用。公開対象外。
 
 ## Logs
-- `docs/WORKLOG.md` - 実装途中の詳細ログ（チェックポイント記録）。
+- 実運用ログ、引き継ぎメモ、upstream 詳細同期ノートはローカル保持とし、公開対象外。

@@ -77,7 +77,7 @@ The fork APK is intentionally distinct from the upstream `multi-agent-shogun.apk
 - **SSH Port**: `2222`
 - **Shogun session**: `shogun`
 - **Agents session**: `multiagent`
-- **Project Path**: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`
+- **Project Path**: `/path/to/multi-agent-shognate`
 
 All connection fields now start empty so no personal or environment-specific values are prefilled.
 

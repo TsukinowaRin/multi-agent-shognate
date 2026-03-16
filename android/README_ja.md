@@ -77,7 +77,7 @@
 - **SSHポート**: `2222`
 - **将軍セッション名**: `shogun`
 - **エージェントセッション名**: `multiagent`
-- **プロジェクトパス**: `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`
+- **プロジェクトパス**: `/path/to/multi-agent-shognate`
 
 接続系の初期値は空欄です。個人情報や環境依存の値はプリセットしません。
 

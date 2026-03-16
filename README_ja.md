@@ -339,7 +339,7 @@ cd /mnt/c/tools/multi-agent-shognate
    | SSHユーザー | `your_username` | SSH接続のユーザー名。初期値は空欄 |
    | SSH秘密鍵パス | `/data/data/.../id_ed25519` | スマホ上の秘密鍵パス（※1） |
    | SSHパスワード | `****` | 鍵がない場合はパスワード認証 |
-   | プロジェクトパス | `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate` | サーバー側のプロジェクトディレクトリ。初期値は空欄 |
+   | プロジェクトパス | `/path/to/multi-agent-shognate` | サーバー側のプロジェクトディレクトリ。初期値は空欄 |
    | 将軍セッション名 | `shogun` | tmuxの将軍セッション名。初期値は空欄 |
    | エージェントセッション名 | `multiagent` | tmuxのエージェントセッション名。初期値は空欄 |
 

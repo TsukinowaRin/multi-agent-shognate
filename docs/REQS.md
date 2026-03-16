@@ -48,15 +48,15 @@
 ## 追補（2026-03-15: Androidアプリをこのフォーク前提へ最小差分で調整）
 ### 要求
 1. Android アプリの UI/UX は upstream を踏襲しつつ、このフォーク向けの必須差分だけを統合すること。
-2. 設定画面の既定値は、このフォークの Android 接続導線に合わせて `SSH port = 2222`, `project path = /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`, `shogun session = shogun`, `agents session = multiagent` にすること。
+2. 設定画面の接続既定値は個人情報を含まないこと。具体パスは埋め込まず、README 上の入力例も一般化された placeholder を使うこと。
 3. `SSH秘密鍵パス` に値が残っていて鍵認証に失敗しても、`SSHパスワード` が入力されていれば自動でパスワード認証へ再試行すること。
-4. 設定画面には、到達可能な SSH ホストを入力すること、鍵パスは通常空欄でよいこと、既定プロジェクトパスの前提を短く説明し、画面を過度に複雑にしないこと。
+4. 設定画面には、到達可能な SSH ホストを入力すること、鍵パスは通常空欄でよいことを短く説明し、画面を過度に複雑にしないこと。
 5. Android README は upstream ベースの説明を維持しつつ、このフォークの既定値と認証挙動だけを追記すること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `cd android && ./gradlew assembleDebug`
    - 期待結果: Android アプリがビルドできる。
-2. コマンド: `rg -n "2222|multi-agent-shognate/multi-agent-shognate|鍵認証に失敗しても|password auth|SSH ホスト|SSH host|到達可能" android/app/src/main/java/com/shogun/android android/README.md android/README_ja.md`
+2. コマンド: `rg -n "2222|/path/to/multi-agent-shognate|鍵認証に失敗しても|password auth|SSH ホスト|SSH host|到達可能" android/app/src/main/java/com/shogun/android android/README.md android/README_ja.md README.md README_ja.md`
    - 期待結果: 設定画面、既定値、README にフォーク向け前提が反映されている。
 
 ## 追補（2026-03-15: READMEをupstream基準へ戻し、家老の自律配置を明文化）

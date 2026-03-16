@@ -8,6 +8,7 @@
 
 ## Specs
 - `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。
+- `docs/PUBLISHING.md` - 公開前の個人情報・履歴・退避物の除外ポリシーと確認手順。
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 
 ## Plans

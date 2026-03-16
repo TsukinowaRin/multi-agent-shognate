@@ -118,6 +118,7 @@
 !scripts/slim_yaml.sh
 !scripts/slim_yaml.py
 !scripts/ensure_generated_instructions.sh
+!scripts/prepublish_check.sh
 
 
 # SayTask (sample template only, not actual data)

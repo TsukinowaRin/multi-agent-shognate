@@ -3,6 +3,21 @@
 最終更新: 2026-03-16
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-16: 公開前に個人情報と履歴物を除外）
+### 要求
+1. 今後の push / release / GitHub 公開では、個人情報、ローカル履歴、退避物、実行時データを最新ツリーから除外すること。
+2. `Waste/`, `_trash/`, `_upstream_reference/`, `docs/WORKLOG.md`, `docs/HANDOVER_*.md`, `docs/UPSTREAM_SYNC_*.md`, `config/settings.yaml`, `dashboard.md`, `queue/` runtime data は公開対象外として扱うこと。
+3. README / docs / Android 説明文には、個人の絶対パス、ローカル IP、ユーザー名、private topic を残さないこと。
+4. 公開前チェックは手順だけでなく、再利用できるスクリプトでも実行可能にすること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/prepublish_check.sh`
+   - 期待結果: forbidden tracked path, local path, local IP, username, dirty worktree がなければ PASS する。
+2. コマンド: `git ls-files | rg '^(Waste/|_trash/|_upstream_reference/|docs/(WORKLOG|HANDOVER|UPSTREAM_SYNC)|config/settings.yaml|dashboard.md|queue/)'`
+   - 期待結果: 出力なし。
+3. コマンド: `rg -n "Publishing Policy|prepublish_check.sh|公開前" docs/DOCS_POLICY.md docs/INDEX.md docs/PUBLISHING.md docs/REQS.md`
+   - 期待結果: 公開運用と確認手順が docs に記録されている。
+
 ## 追補（2026-03-16: 家老の足軽人数認識を active_ashigaru に限定）
 ### 要求
 1. 家老は点呼・全軍把握・タスク分配時に、`config/settings.yaml` の `topology.active_ashigaru` のみを現役足軽として扱うこと。

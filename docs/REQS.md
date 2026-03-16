@@ -18,6 +18,19 @@
 3. コマンド: `rg -n "Publishing Policy|prepublish_check.sh|公開前" docs/DOCS_POLICY.md docs/INDEX.md docs/PUBLISHING.md docs/REQS.md`
    - 期待結果: 公開運用と確認手順が docs に記録されている。
 
+## 追補（2026-03-16: install.bat の one-click セットアップ化）
+### 要求
+1. `install.bat` は WSL2 / Ubuntu の確認だけで終わらず、準備済みならそのまま Ubuntu 内で `first_setup.sh` を実行すること。
+2. `install.bat` は固定パス前提ではなく、自身が置かれているリポジトリパスを解決して Ubuntu 側へ渡すこと。
+3. WSL2 未導入時のみ管理者権限を要求し、それ以外は通常実行で進められること。
+4. README の Windows セットアップ手順は、`install.bat` 実行で `first_setup.sh` まで自動実行される説明に更新すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "wslpath -a|bash first_setup\\.sh|Running first_setup\\.sh in Ubuntu" install.bat`
+   - 期待結果: `install.bat` が repo パスを WSL へ変換して `first_setup.sh` を起動する実装になっている。
+2. コマンド: `rg -n "first_setup\\.sh.*automatically|そのまま `first_setup\\.sh` まで自動実行|Wait for setup to finish" README.md README_ja.md`
+   - 期待結果: Windows セットアップ説明が one-click 化に更新されている。
+
 ## 追補（2026-03-16: 家老の足軽人数認識を active_ashigaru に限定）
 ### 要求
 1. 家老は点呼・全軍把握・タスク分配時に、`config/settings.yaml` の `topology.active_ashigaru` のみを現役足軽として扱うこと。

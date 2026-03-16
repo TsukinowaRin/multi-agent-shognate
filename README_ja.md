@@ -229,7 +229,8 @@ dashboard.md に掲載 → 殿が承認 → .claude/commands/ にスキル作成
 
 🖱️ **`install.bat` を実行**
 
-右クリック→「管理者として実行」（WSL2が未インストールの場合）。WSL2 + Ubuntu をセットアップします。
+WSL2 / Ubuntu を確認し、準備できていれば **そのまま `first_setup.sh` まで自動実行**します。
+WSL2 未導入時だけ、必要に応じて「管理者として実行」してください。
 
 </td>
 </tr>
@@ -241,12 +242,10 @@ dashboard.md に掲載 → 殿が承認 → .claude/commands/ にスキル作成
 </td>
 <td>
 
-🐧 **Ubuntu を開いて以下を実行**（初回のみ）
+🐧 **完了を待つ**（初回のみ）
 
-```bash
-cd /mnt/c/tools/multi-agent-shognate
-./first_setup.sh
-```
+`install.bat` が Ubuntu 側で `first_setup.sh` まで実行します。
+途中で止まった場合だけ、表示された案内に従って Ubuntu で再実行してください。
 
 </td>
 </tr>
@@ -270,7 +269,7 @@ cd /mnt/c/tools/multi-agent-shognate
 
 #### 🔑 初回のみ: 認証
 
-`first_setup.sh` 完了後、一度だけ以下を実行して認証：
+`install.bat` / `first_setup.sh` 完了後、一度だけ以下を実行して認証：
 
 ```bash
 # 1. PATHの反映

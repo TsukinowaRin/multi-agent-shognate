@@ -229,7 +229,8 @@ Skills grow organically from real work — not from a predefined template librar
 
 🖱️ **Run `install.bat`**
 
-Right-click → "Run as Administrator" (if WSL2 is not installed). Sets up WSL2 + Ubuntu automatically.
+It verifies WSL2 / Ubuntu and, if ready, **runs `first_setup.sh` automatically inside Ubuntu**.
+Only run as Administrator when WSL2 itself needs to be installed.
 
 </td>
 </tr>
@@ -241,12 +242,10 @@ Right-click → "Run as Administrator" (if WSL2 is not installed). Sets up WSL2 
 </td>
 <td>
 
-🐧 **Open Ubuntu and run** (first time only)
+🐧 **Wait for setup to finish** (first time only)
 
-```bash
-cd /mnt/c/tools/multi-agent-shognate
-./first_setup.sh
-```
+`install.bat` now runs `first_setup.sh` for you inside Ubuntu.
+Only open Ubuntu manually if the script tells you the distro still needs first-time initialization.
 
 </td>
 </tr>
@@ -270,7 +269,7 @@ cd /mnt/c/tools/multi-agent-shognate
 
 #### First-time only: Authentication
 
-After `first_setup.sh`, run these commands once to authenticate:
+After `install.bat` / `first_setup.sh`, run these commands once to authenticate:
 
 ```bash
 # 1. Apply PATH changes

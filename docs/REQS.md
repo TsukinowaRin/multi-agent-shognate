@@ -3,6 +3,22 @@
 最終更新: 2026-03-17
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-17: multi-CLI 運用スクリプトの opencode / kilo / gemini 対応）
+### 要求
+1. `scripts/inbox_watcher.sh` の `is_valid_cli_type` に `opencode` と `kilo` を追加し、正常な CLI 種別として受け入れること。
+2. `scripts/inbox_watcher.sh` の `send_cli_command` に `opencode)` と `kilo)` のケースを追加すること。`/clear` は Ctrl-C + 再起動、`/model` はスキップとする。
+3. `scripts/switch_cli.sh` の `send_exit()` に `gemini|opencode|kilo)` ケースを追加し、これら CLI の終了は Ctrl-C で行うこと（`/exit` コマンドは非対応のため）。
+4. `scripts/switch_cli.sh` の `usage()` に gemini / opencode / kilo / localapi を追記すること。
+5. 上記変更は `tests/unit/test_send_wakeup.bats` にテストを追加して検証すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: `is_valid_cli_type opencode` / `is_valid_cli_type kilo` が 0 を返し、opencode / kilo の `/clear` 送信テストが PASS する。
+2. コマンド: `bash -n scripts/inbox_watcher.sh scripts/switch_cli.sh`
+   - 期待結果: 構文エラーがない。
+3. コマンド: `rg -n "opencode\|kilo" scripts/inbox_watcher.sh scripts/switch_cli.sh`
+   - 期待結果: 両スクリプトで opencode / kilo が認識されている。
+
 ## 追補（2026-03-17: 全エージェント既定で権限確認をバイパス）
 ### 要求
 1. 全エージェントは、この fork の既定状態で権限確認を挟まないモードで起動すること。

@@ -140,6 +140,33 @@ _cli_adapter_shell_quote() {
     printf '%q' "${1:-}"
 }
 
+_cli_adapter_prefix_node_path_for_global_bin() {
+    local cmd="${1:-}"
+    local node_root=""
+    local node_bin=""
+
+    [[ -n "$cmd" ]] || {
+        printf '%s\n' "$cmd"
+        return 0
+    }
+
+    [[ "$cmd" == *"PATH="* ]] && {
+        printf '%s\n' "$cmd"
+        return 0
+    }
+
+    if [[ "$cmd" =~ (/[^[:space:]]+)/lib/node_modules/[^[:space:]]+ ]]; then
+        node_root="${BASH_REMATCH[1]}"
+        node_bin="${node_root}/bin"
+        if [[ -x "${node_bin}/node" ]]; then
+            printf 'env PATH=%s:$PATH %s\n' "$node_bin" "$cmd"
+            return 0
+        fi
+    fi
+
+    printf '%s\n' "$cmd"
+}
+
 _cli_adapter_codex_home() {
     local agent_id="$1"
     printf '%s/.codex/agents/%s' "$CLI_ADAPTER_PROJECT_ROOT" "$agent_id"
@@ -420,6 +447,7 @@ build_cli_command_with_type() {
         opencode)
             local opencode_cmd
             opencode_cmd=$(_cli_adapter_read_yaml "cli.commands.opencode" "opencode")
+            opencode_cmd=$(_cli_adapter_prefix_node_path_for_global_bin "$opencode_cmd")
             if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
                 opencode_cmd="$opencode_cmd --model $configured_model"
             fi
@@ -428,6 +456,7 @@ build_cli_command_with_type() {
         kilo)
             local kilo_cmd
             kilo_cmd=$(_cli_adapter_read_yaml "cli.commands.kilo" "kilo")
+            kilo_cmd=$(_cli_adapter_prefix_node_path_for_global_bin "$kilo_cmd")
             if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
                 kilo_cmd="$kilo_cmd --model $configured_model"
             fi

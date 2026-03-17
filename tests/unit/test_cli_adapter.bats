@@ -271,6 +271,17 @@ cli:
   commands:
     kilo: "kilo"
 YAML
+
+    cat > "${TEST_TMP}/settings_opencode_global_bin.yaml" << 'YAML'
+cli:
+  default: opencode
+  agents:
+    ashigaru1:
+      type: opencode
+      model: lmstudio/openai/gpt-oss-20b
+  commands:
+    opencode: "env XDG_DATA_HOME=/tmp/mas_xdg XDG_CACHE_HOME=/tmp/mas_cache /tmp/test-home/.nvm/versions/node/v22.22.0/lib/node_modules/opencode-ai/bin/opencode"
+YAML
 }
 
 teardown() {
@@ -628,6 +639,19 @@ SH
     load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
     result=$(build_cli_command "gunshi")
     [ "$result" = "kilo --model lmstudio/codellama-7b.Q4_0.gguf" ]
+}
+
+@test "build_cli_command: opencode global bin絶対パスには node PATH を自動付与する" {
+    load_adapter_with "${TEST_TMP}/settings_opencode_global_bin.yaml"
+    mkdir -p "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin"
+    cat > "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/node" << 'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+    chmod +x "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/node"
+    sed -i "s#/tmp/test-home#${TEST_TMP}/home#g" "${TEST_TMP}/settings_opencode_global_bin.yaml"
+    result=$(build_cli_command "ashigaru1")
+    [ "$result" = "env PATH=${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin:\$PATH env XDG_DATA_HOME=/tmp/mas_xdg XDG_CACHE_HOME=/tmp/mas_cache ${TEST_TMP}/home/.nvm/versions/node/v22.22.0/lib/node_modules/opencode-ai/bin/opencode --model lmstudio/openai/gpt-oss-20b" ]
 }
 
 @test "get_model_display_name: codex は opus/sonnet 既定値ではなく Codex を表示する" {

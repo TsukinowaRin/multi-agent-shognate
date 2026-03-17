@@ -128,6 +128,9 @@ busy パターン文字列を確認してから追加する。
 - 2026-03-17: 課題 3 調査。`~/.gemini/` には model/auth/workspace 情報はあるが quota counter は見当たらず、`~/.config/opencode` / `~/.config/kilo` にも rate-limit 用のローカル counter は見当たらなかった。`ratelimit_check.sh` は専用セクションを追加し、「telemetry 未発見」を明示表示する方針にした。
 - 2026-03-17: 課題 4 対応。`busy` 判定の保守的な追加語として `Processing` / `Analyzing` / `Generating` / `Executing` を採用し、Gemini/OpenCode/Kilo の unit test を追加。
 - 2026-03-17: 実機寄り確認として `ashigaru1=opencode`, `ashigaru2=kilo` で tmux 起動を試した。両 CLI は `XDG_DATA_HOME=/tmp/mas_xdg` を付けると起動自体は進むが、この sandbox では `~/.cache/*/models.json` の EROFS と OpenTUI render library の読込失敗で UI が崩れ、busy 文字列の最終採取までは到達しなかった。
+- 2026-03-17: 通常 WSL + LM Studio (mirrored networking) でも確認した。WSL から `http://127.0.0.1:1234/v1/models` は参照でき、`OpenCode` / `Kilo` の `models lmstudio` も応答した。
+- 2026-03-17: ただし `cli.commands.opencode` / `cli.commands.kilo` に npm global bin の絶対パスを置いた場合、shebang の `#!/usr/bin/env node` が `PATH` 上の `node` を見つけられず即死した。これを避けるため、`lib/cli_adapter.sh` で `/lib/node_modules/.../bin/<cli>` を検出したら対応する Node bin を `PATH` に自動前置するよう修正した。
+- 2026-03-17: LM Studio 上で `OpenCode` / `Kilo` が認識したモデルは `lmstudio/openai/gpt-oss-20b`, `lmstudio/qwen/qwen3-30b-a3b-2507`, `lmstudio/qwen/qwen3-coder-30b` のみだった。一方、実行時は `n_keep ~= 14k-15k` に対して `n_ctx = 4096` のエラーで停止した。原因は CLI 側ではなく、LM Studio でロード済みモデルの context length が短すぎること。
 
 ## Decision Log
 
@@ -136,6 +139,9 @@ busy パターン文字列を確認してから追加する。
 - 課題 3 は「対応する quota API がある」と仮定せず、現に取得できるローカル telemetry の有無だけを表示する。
 - 課題 4 は実スクリーン全文字列が未収集でも、既存 regex に近い保守的な busy 語を追加して誤配送リスクを先に下げる。
 - 実機寄り確認は続けるが、sandbox 固有の EROFS / library 制約は CLI 対応不足と切り分けて扱う。
+- 通常 WSL では mirrored networking により LM Studio を `127.0.0.1:1234` で参照できる。`172.31.0.1` 固定で考えない。
+- npm global bin を絶対パス指定した `opencode` / `kilo` は、Node 本体が `PATH` から消えると起動できない。repo 側で Node bin を補完して吸収する。
+- LM Studio で `OpenCode` / `Kilo` を使うには、CLI が認識する model ID を選ぶだけでなく、初期プロンプトを収められる十分な context length を持つロード設定が必要。
 
 ## Outcomes & Retrospective
 
@@ -144,3 +150,5 @@ busy パターン文字列を確認してから追加する。
 - `ratelimit_check.sh` は Gemini/OpenCode/Kilo を「Other」へ埋めず、専用セクションで現在の telemetry 制約を出せるようになった。
 - `busy` 判定は Gemini の `Processing...` 系、OpenCode/Kilo の `Analyzing` / `Executing` 系を拾えるようになり、不要な nudge を減らせる。
 - OpenCode/Kilo の pane 起動までは確認できたが、sandbox では `.cache` / OpenTUI 制約で UI 完全動作に至らない。別マシンや通常 WSL では同じコマンドで再確認する価値がある。
+- 通常 WSL では LM Studio endpoint までは正常到達した。現在の残課題はネットワークではなく、LM Studio 側のモデル選択と context length 設定である。
+- `lib/cli_adapter.sh` に Node bin 補完を入れたことで、NVM 配下の npm global install を `cli.commands.*` に絶対パスで書いても、tmux 起動時に `env node` 解決で落ちにくくなった。

@@ -9,8 +9,6 @@ set "REPO_REF=main"
 set "REPO_REF_KIND=heads"
 set "REPO_VERSION_LABEL=main"
 set "DOWNLOAD_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/archive/refs/%REPO_REF_KIND%/%REPO_REF%.zip"
-set "INSTALL_ROOT=%USERPROFILE%\tools"
-set "INSTALL_DIR=%INSTALL_ROOT%\%REPO_NAME%"
 set "TEMP_ROOT=%TEMP%\%REPO_NAME%-installer"
 set "ZIP_PATH=%TEMP_ROOT%\%REPO_NAME%-%REPO_REF%.zip"
 set "EXTRACT_ROOT=%TEMP_ROOT%\extract"
@@ -27,6 +25,7 @@ set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 set "REPO_DIR_WIN="
 set "INSTALL_MODE=download"
+set "INSTALL_DIR=%SCRIPT_DIR%"
 
 if exist "%SCRIPT_DIR%\first_setup.sh" (
     set "INSTALL_MODE=local"
@@ -47,6 +46,8 @@ if /I "%INSTALL_MODE%"=="local" (
     echo     %DOWNLOAD_URL%
     echo   Install target:
     echo     %INSTALL_DIR%
+    echo   Note:
+    echo     The installer deploys into the folder containing install.bat
 )
 echo.
 
@@ -130,9 +131,9 @@ REM ===== Step 3: Prepare repository =====
 echo   [3/4] Preparing repository...
 if /I "%INSTALL_MODE%"=="local" goto :repo_ready
 
-if not exist "%INSTALL_ROOT%" mkdir "%INSTALL_ROOT%" >nul 2>&1
 if exist "%TEMP_ROOT%" rmdir /s /q "%TEMP_ROOT%" >nul 2>&1
 mkdir "%TEMP_ROOT%" >nul 2>&1
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%" >nul 2>&1
 
 echo         Downloading source from GitHub...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing -Uri '%DOWNLOAD_URL%' -OutFile '%ZIP_PATH%'"

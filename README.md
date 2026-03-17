@@ -213,7 +213,7 @@ Skills grow organically from real work — not from a predefined template librar
 
 📥 **Download `install.bat` from Releases**
 
-Download `multi-agent-shognate-installer.bat` from this repository's **GitHub Releases** page.
+Download `multi-agent-shognate-installer.bat` from this repository's **GitHub Releases** page and place it in the folder where you want to install the system.
 That installer pulls the **same tagged source version as the Release you downloaded it from**.
 
 *Alternative:* Clone or download the repository ZIP and run the bundled `install.bat`
@@ -230,7 +230,7 @@ That installer pulls the **same tagged source version as the Release you downloa
 
 🖱️ **Run `install.bat`**
 
-It verifies WSL2 / Ubuntu, downloads the tagged source version from GitHub when used as a Release asset, and **runs `first_setup.sh` automatically inside Ubuntu**.
+It verifies WSL2 / Ubuntu, downloads the tagged source version from GitHub into the **same folder as `install.bat`**, and **runs `first_setup.sh` automatically inside Ubuntu**.
 Only run as Administrator when WSL2 itself needs to be installed.
 
 </td>
@@ -245,7 +245,7 @@ Only run as Administrator when WSL2 itself needs to be installed.
 
 🐧 **Wait for setup to finish** (first time only)
 
-`install.bat` now downloads the matching Release tag when used standalone, then runs `first_setup.sh` for you inside Ubuntu.
+`install.bat` now downloads the matching Release tag into the folder where you placed it, then runs `first_setup.sh` for you inside Ubuntu.
 Only open Ubuntu manually if the script tells you the distro still needs first-time initialization.
 
 </td>
@@ -433,7 +433,7 @@ cd ~/multi-agent-shognate
 No problem! Running `install.bat` will:
 1. Check if WSL2 is installed (auto-install if not)
 2. Check if Ubuntu is installed (auto-install if not)
-3. Download the matching tagged code from GitHub when needed
+3. Download the matching tagged code into the folder where `install.bat` is placed
 4. Run `first_setup.sh`
 
 **Quick install command** (run PowerShell as Administrator):
@@ -460,7 +460,7 @@ Then restart your computer and run `install.bat` again.
 ### What `install.bat` does automatically:
 - ✅ Checks if WSL2 is installed (guides you if not)
 - ✅ Checks if Ubuntu is installed (guides you if not)
-- ✅ Downloads the matching Release tag when run as a standalone Release asset
+- ✅ Downloads the matching Release tag into the folder where `install.bat` is placed
 - ✅ Runs `first_setup.sh` automatically inside Ubuntu
 
 ### What `shutsujin_departure.sh` does:

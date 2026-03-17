@@ -37,13 +37,13 @@
 ## 追補（2026-03-16: Release 同梱 installer）
 ### 要求
 1. `install.bat` は repo 内で実行した場合だけでなく、GitHub Release asset として単体配布しても機能すること。
-2. standalone の `install.bat` は、このフォークの GitHub から「ダウンロード元 Release と同じ tag」のソースを取得し、既定の Windows 配置先へ展開してから WSL セットアップへ進むこと。
+2. standalone の `install.bat` は、このフォークの GitHub から「ダウンロード元 Release と同じ tag」のソースを取得し、`install.bat` を置いたディレクトリへ展開してから WSL セットアップへ進むこと。
 3. Android Release workflow は APK だけでなく `install.bat` も release asset として公開すること。
 4. README には Windows 正規導線として Release asset の `install.bat` を記載すること。
 
 ### 受け入れ条件（観測可能）
-1. コマンド: `rg -n "REPO_REF|REPO_REF_KIND|REPO_VERSION_LABEL|DOWNLOAD_URL|Invoke-WebRequest|Expand-Archive|robocopy" install.bat`
-   - 期待結果: installer が取得対象 ref を変数化している。
+1. コマンド: `rg -n "REPO_REF|REPO_REF_KIND|REPO_VERSION_LABEL|INSTALL_DIR=%SCRIPT_DIR%|Invoke-WebRequest|Expand-Archive|robocopy" install.bat`
+   - 期待結果: installer が取得対象 ref を変数化し、配置先を `install.bat` 自身のディレクトリにしている。
 2. コマンド: `rg -n "REPO_REF=|REPO_REF_KIND=tags|REPO_VERSION_LABEL=|multi-agent-shognate-installer\\.bat" .github/workflows/android-release.yml README.md README_ja.md android/release/README.md`
    - 期待結果: release workflow が tag 固定 installer を生成し、docs に installer asset が反映されている。
 

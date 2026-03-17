@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-03-16
+最終更新: 2026-03-17
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -12,6 +12,7 @@
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 
 ## Plans
+- `docs/EXECPLAN_2026-03-17_readme_refresh.md` - README 英日をこの fork の実配布・実運用に合わせて全面更新する実行計画。
 - `docs/EXECPLAN_2026-03-16_upstream_layout_alignment.md` - 最新 upstream 同期済みの確認と、現役ファイル構成を upstream に寄せる整理計画。
 - `docs/EXECPLAN_2026-03-14_android_compat.md` — upstream Android app compatibility check and options.
 - `docs/EXECPLAN_2026-02-10_zellij_multi_cli.md` - 旧 zellij 移植とCLI拡張の実行計画（履歴）。

@@ -1,7 +1,22 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-16
+最終更新: 2026-03-17
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-17: README 英日全面更新）
+### 要求
+1. `README.md` と `README_ja.md` は、この fork の実際の配布方法・運用方法・対応 CLI に合わせて全面的に書き直すこと。
+2. インストール方法は、Release の `multi-agent-shognate-installer.bat` を使う Windows 導線と、clone / ZIP 展開後の手動導線の両方を説明すること。
+3. Multi-CLI 対応では、upstream 由来の CLI だけでなく、`Gemini CLI`、`OpenCode`、`Kilo`、`localapi`、および `Ollama` / `LM Studio` のような provider 連携も明記すること。
+4. Android APK について、この fork の GitHub Releases にある fork 版 APK を正規配布物として説明し、接続が SSH ベースであることを記載すること。
+5. upstream とこの fork の違いを、runtime 構成、既定値、Android 配布、CLI 対応範囲などの観点で明確に説明すること。
+6. README 内に個人環境の実パス、個人 topic、ローカル IP を書かないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `rg -n "Gemini CLI|OpenCode|Kilo|localapi|Ollama|LM Studio|multi-agent-shognate-installer|APK|upstream|goza-no-ma|multiagent" README.md README_ja.md`
+   - 期待結果: 要求された fork 固有要素が英日 README に反映されている。
+2. コマンド: `git diff --check`
+   - 期待結果: README 改稿後も空白エラーがない。
 
 ## 追補（2026-03-16: 公開前に個人情報と履歴物を除外）
 ### 要求

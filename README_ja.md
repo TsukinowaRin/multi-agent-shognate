@@ -98,6 +98,8 @@
 | `kilo` | 生成される `opencode.json` に `permission: allow` を入れる |
 | `localapi` | 別の承認レイヤーを持たず、local REPL を直接起動する |
 
+特に `Codex` については、各役職を repo-local の別 `CODEX_HOME` で起動するようにしてあります。これにより、将軍側で選んだ model や `reasoning_effort` が、VSCode の Codex や無関係な別 Codex CLI セッションへ漏れにくくなります。
+
 ### local provider 対応
 
 `localapi` は、ローカルまたは self-hosted な provider を Shogunate に載せるための入口です。具体的には次を想定しています。

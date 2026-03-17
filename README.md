@@ -96,6 +96,8 @@ All agent CLIs are configured to start in a no-approval-by-default mode in this 
 | `kilo` | generated `opencode.json` sets `permission: allow` |
 | `localapi` | no separate approval layer; local REPL is launched directly |
 
+For Codex specifically, this fork also isolates runtime state per agent by launching each role with its own repo-local `CODEX_HOME`. That keeps Shogun-side model or reasoning choices from leaking into VSCode Codex or unrelated Codex CLI sessions.
+
 ### Local-provider support
 
 `localapi` is the bridge for local or self-hosted model providers. In practice this means:

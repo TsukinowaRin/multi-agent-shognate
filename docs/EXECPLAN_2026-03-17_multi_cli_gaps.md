@@ -127,6 +127,7 @@ busy パターン文字列を確認してから追加する。
 - 2026-03-17: `tests/unit/test_switch_cli.bats` に `usage()` と `send_exit()` の回帰を追加し、`bats tests/unit/test_switch_cli.bats` を PASS。
 - 2026-03-17: 課題 3 調査。`~/.gemini/` には model/auth/workspace 情報はあるが quota counter は見当たらず、`~/.config/opencode` / `~/.config/kilo` にも rate-limit 用のローカル counter は見当たらなかった。`ratelimit_check.sh` は専用セクションを追加し、「telemetry 未発見」を明示表示する方針にした。
 - 2026-03-17: 課題 4 対応。`busy` 判定の保守的な追加語として `Processing` / `Analyzing` / `Generating` / `Executing` を採用し、Gemini/OpenCode/Kilo の unit test を追加。
+- 2026-03-17: 実機寄り確認として `ashigaru1=opencode`, `ashigaru2=kilo` で tmux 起動を試した。両 CLI は `XDG_DATA_HOME=/tmp/mas_xdg` を付けると起動自体は進むが、この sandbox では `~/.cache/*/models.json` の EROFS と OpenTUI render library の読込失敗で UI が崩れ、busy 文字列の最終採取までは到達しなかった。
 
 ## Decision Log
 
@@ -134,6 +135,7 @@ busy パターン文字列を確認してから追加する。
 - 課題 2 の `switch_cli.sh` では、`gemini` / `opencode` / `kilo` に `/exit` を送らず Ctrl-C のみにする。CLI 自体の実際の終了方法に合わせる。
 - 課題 3 は「対応する quota API がある」と仮定せず、現に取得できるローカル telemetry の有無だけを表示する。
 - 課題 4 は実スクリーン全文字列が未収集でも、既存 regex に近い保守的な busy 語を追加して誤配送リスクを先に下げる。
+- 実機寄り確認は続けるが、sandbox 固有の EROFS / library 制約は CLI 対応不足と切り分けて扱う。
 
 ## Outcomes & Retrospective
 
@@ -141,3 +143,4 @@ busy パターン文字列を確認してから追加する。
 - 既存テストには `.venv` の PyYAML 依存や古い Codex 表示名期待値が残っていたため、現行実装に合わせて unit test を安定化した。
 - `ratelimit_check.sh` は Gemini/OpenCode/Kilo を「Other」へ埋めず、専用セクションで現在の telemetry 制約を出せるようになった。
 - `busy` 判定は Gemini の `Processing...` 系、OpenCode/Kilo の `Analyzing` / `Executing` 系を拾えるようになり、不要な nudge を減らせる。
+- OpenCode/Kilo の pane 起動までは確認できたが、sandbox では `.cache` / OpenTUI 制約で UI 完全動作に至らない。別マシンや通常 WSL では同じコマンドで再確認する価値がある。

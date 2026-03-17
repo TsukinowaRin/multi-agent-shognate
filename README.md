@@ -81,6 +81,21 @@ This fork is intentionally not locked to one vendor.
 | `kilo` | Kilo CLI | Added in this fork |
 | `localapi` | OpenAI-compatible local endpoint | For `Ollama`, `LM Studio`, llama.cpp server, or similar |
 
+### Default permission / approval stance
+
+All agent CLIs are configured to start in a no-approval-by-default mode in this fork.
+
+| CLI type | Default unattended stance |
+|---|---|
+| `claude` | `--dangerously-skip-permissions` |
+| `codex` | `--dangerously-bypass-approvals-and-sandbox` |
+| `copilot` | `--yolo` |
+| `kimi` | `--yolo` |
+| `gemini` | `--yolo` |
+| `opencode` | generated `opencode.json` sets `permission: allow` |
+| `kilo` | generated `opencode.json` sets `permission: allow` |
+| `localapi` | no separate approval layer; local REPL is launched directly |
+
 ### Local-provider support
 
 `localapi` is the bridge for local or self-hosted model providers. In practice this means:

@@ -450,6 +450,7 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 - Default launch: `kilo`
 - Optional model pin: `--model <provider/model>`
 - Initial prompt: `--prompt <text>`
+- In this repository, generated `opencode.json` defaults `permission` to `allow` so agents run without approval prompts unless you override it.
 
 ## Local model usage in this repository
 - Kilo CLI is a fork of OpenCode and uses the same project config format (`opencode.json`).

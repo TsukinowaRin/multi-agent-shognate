@@ -3,6 +3,19 @@
 最終更新: 2026-03-17
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-17: 全エージェント既定で権限確認をバイパス）
+### 要求
+1. 全エージェントは、この fork の既定状態で権限確認を挟まないモードで起動すること。
+2. `claude` / `codex` / `copilot` / `kimi` / `gemini` は既存の bypass 系起動フラグを維持すること。
+3. `opencode` / `kilo` は project config の生成時に承認不要設定を既定出力し、確認プロンプトが出ない状態を正本とすること。
+4. README 英日には、この既定方針を CLI ごとに分かる形で記載すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_opencode_config.bats`
+   - 期待結果: 既存 CLI の bypass 起動と、`opencode.json` の `permission: allow` 出力が PASS する。
+2. コマンド: `rg -n "dangerously-skip-permissions|dangerously-bypass-approvals-and-sandbox|--yolo|permission: allow" README.md README_ja.md lib/cli_adapter.sh scripts/sync_opencode_config.py`
+   - 期待結果: 既定の unattended 方針がコードと README に反映されている。
+
 ## 追補（2026-03-17: README 英日全面更新）
 ### 要求
 1. `README.md` と `README_ja.md` は、この fork の実際の配布方法・運用方法・対応 CLI に合わせて全面的に書き直すこと。

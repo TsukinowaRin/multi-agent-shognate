@@ -41,6 +41,7 @@ teardown() {
 import json, sys
 with open(sys.argv[1], encoding='utf-8') as fh:
     cfg = json.load(fh)
+assert cfg["permission"] == "allow"
 assert cfg["instructions"] == ["AGENTS.md"]
 provider = cfg["provider"]["openai-compatible"]["options"]
 assert provider["baseURL"] == "http://127.0.0.1:1234/v1"
@@ -108,6 +109,20 @@ import json, sys
 with open(sys.argv[1], encoding='utf-8') as fh:
     cfg = json.load(fh)
 assert cfg["provider"]["lmstudio"]["options"]["baseURL"] == "http://127.0.0.1:1234/v1"
+print("ok")
+PY
+  [ "$status" -eq 0 ]
+}
+
+@test "sync_opencode_config: permission は allow を既定出力する" {
+  run python3 "$PROJECT_ROOT/scripts/sync_opencode_config.py"
+  [ "$status" -eq 0 ]
+
+  run python3 - "$MAS_OPENCODE_CONFIG_PATH" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding='utf-8') as fh:
+    cfg = json.load(fh)
+assert cfg["permission"] == "allow"
 print("ok")
 PY
   [ "$status" -eq 0 ]

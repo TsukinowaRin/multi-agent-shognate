@@ -541,6 +541,7 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 - Default launch: `opencode`
 - Optional model pin: `--model <provider/model>`
 - Initial prompt: `--prompt <text>`
+- In this repository, generated `opencode.json` defaults `permission` to `allow` so agents run without approval prompts unless you override it.
 
 ## Local model usage in this repository
 - OpenCode can use local providers such as `ollama/...` and `lmstudio/...`.

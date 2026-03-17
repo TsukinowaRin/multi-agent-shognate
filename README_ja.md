@@ -83,6 +83,21 @@
 | `kilo` | Kilo CLI | この fork で追加 |
 | `localapi` | OpenAI 互換 local endpoint | `Ollama` / `LM Studio` / llama.cpp server など向け |
 
+### 既定の権限 / 承認方針
+
+この fork では、全エージェントが既定で「承認確認を挟まない」側に寄るようにしてあります。
+
+| CLI type | 既定の unattended 方針 |
+|---|---|
+| `claude` | `--dangerously-skip-permissions` |
+| `codex` | `--dangerously-bypass-approvals-and-sandbox` |
+| `copilot` | `--yolo` |
+| `kimi` | `--yolo` |
+| `gemini` | `--yolo` |
+| `opencode` | 生成される `opencode.json` に `permission: allow` を入れる |
+| `kilo` | 生成される `opencode.json` に `permission: allow` を入れる |
+| `localapi` | 別の承認レイヤーを持たず、local REPL を直接起動する |
+
 ### local provider 対応
 
 `localapi` は、ローカルまたは self-hosted な provider を Shogunate に載せるための入口です。具体的には次を想定しています。

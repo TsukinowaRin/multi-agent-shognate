@@ -65,7 +65,10 @@ def build_config(section: dict) -> dict:
     if provider_id and not base_url:
         base_url = default_base_url(provider_id)
 
-    config: dict = {}
+    config: dict = {
+        # Default this repository to unattended operation for OpenCode/Kilo.
+        "permission": "allow",
+    }
     if isinstance(instructions, list):
         clean_instructions = [item for item in instructions if isinstance(item, str) and item.strip()]
         if clean_instructions:

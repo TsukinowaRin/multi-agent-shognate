@@ -13,7 +13,7 @@
 
 ## Plans (open)
 - `docs/EXECPLAN_2026-03-17_codex_role_isolation.md` - Codex の model / reasoning state を role ごとに repo-local `CODEX_HOME` へ分離する実行計画（完了）。
-- `docs/EXECPLAN_2026-03-17_multi_cli_gaps.md` - `inbox_watcher.sh` / `switch_cli.sh` / `ratelimit_check.sh` に残る opencode / kilo / gemini 未対応箇所の修正計画。優先度順: 課題1→2→4→3。
+- `docs/EXECPLAN_2026-03-17_multi_cli_gaps.md` - `inbox_watcher.sh` / `switch_cli.sh` / `ratelimit_check.sh` に残る opencode / kilo / gemini 未対応箇所の修正計画（完了）。
 - `docs/EXECPLAN_2026-03-17_readme_refresh.md` - README 英日をこの fork の実配布・実運用に合わせて全面更新する実行計画（完了）。
 - `docs/EXECPLAN_2026-03-16_upstream_layout_alignment.md` - 最新 upstream 同期済みの確認と、現役ファイル構成を upstream に寄せる整理計画。
 - `docs/EXECPLAN_2026-03-14_android_compat.md` — upstream Android app compatibility check and options.

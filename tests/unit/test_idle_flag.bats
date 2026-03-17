@@ -210,6 +210,39 @@ YAML
     [ "$status" -eq 0 ]  # 0 = busy (from pane detection)
 }
 
+@test "T-005b: agent_is_busy detects Gemini Processing marker" {
+    run bash -c "
+        MOCK_CAPTURE_PANE='Processing Initial Instructions'
+        source '$WATCHER_HARNESS'
+        LAST_CLEAR_TS=0
+        CLI_TYPE='gemini'
+        agent_is_busy
+    "
+    [ "$status" -eq 0 ]
+}
+
+@test "T-005c: agent_is_busy detects OpenCode Analyzing marker" {
+    run bash -c "
+        MOCK_CAPTURE_PANE='Analyzing repository layout'
+        source '$WATCHER_HARNESS'
+        LAST_CLEAR_TS=0
+        CLI_TYPE='opencode'
+        agent_is_busy
+    "
+    [ "$status" -eq 0 ]
+}
+
+@test "T-005d: agent_is_busy detects Kilo Executing marker" {
+    run bash -c "
+        MOCK_CAPTURE_PANE='Executing tool call'
+        source '$WATCHER_HARNESS'
+        LAST_CLEAR_TS=0
+        CLI_TYPE='kilo'
+        agent_is_busy
+    "
+    [ "$status" -eq 0 ]
+}
+
 # ─── T-006: stop_hook_active=True時にもフラグ作成 (C-001修正) ───
 
 @test "T-006: stop_hook creates idle flag even when stop_hook_active=True" {

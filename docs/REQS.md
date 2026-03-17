@@ -549,6 +549,7 @@
 5. `Kilo CLI` は local model / OpenAI-compatible endpoint の設定を `OpenCode` と同じ `opencode.json` 形式で扱うことを前提にする。
 6. `scripts/configure_agents.sh` から `OpenCode/Kilo` の shared provider 設定（`provider` / `base_url` / `api_key_env` / `instructions`）を保存できること。
 7. `Ollama` と `LM Studio` は `OpenCode/Kilo` 用 provider として明示選択でき、`base_url` 未指定時でも既定URLへ補完されること。
+8. `OpenCode/Kilo` の local provider 対応は best-effort とし、任意のローカル model / OpenAI-compatible endpoint を主経路として扱う場合は `localapi` を優先案内すること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bats tests/unit/test_cli_adapter.bats`

@@ -109,6 +109,16 @@
 - llama.cpp server
 - OpenAI 互換 API を出す local endpoint
 
+任意のローカルモデルを主目的で使うなら、まず `localapi` を使ってください。
+この fork では、次の用途の主経路を `localapi` と位置付けます。
+
+- LM Studio 上の独自 model ID をそのまま使いたい
+- Ollama の local model を素直につなぎたい
+- llama.cpp など OpenAI 互換 endpoint を直接叩きたい
+- OpenCode / Kilo の内蔵 provider registry に載っていない backend を使いたい
+
+`opencode` / `kilo` 自体は引き続き agent CLI として対応していますが、local provider 運用は best-effort です。backend 側では応答可能でも、CLI 側の provider/model registry によって model 名が弾かれることがあります。
+
 ### 役職ごとの CLI / model 設定
 
 CLI や model を役職ごとに変えたい時はこれを使います。

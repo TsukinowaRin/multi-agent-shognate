@@ -10,6 +10,7 @@
 - OpenCode can use local providers such as `ollama/...` and `lmstudio/...`.
 - This repository can generate a project-level `opencode.json` from `config/settings.yaml`.
 - Generated config is meant for provider options such as `baseURL` and `apiKey` env references, not for storing secrets.
+- For arbitrary local-model operation, prefer `localapi` first. OpenCode local-provider support is best-effort and depends on OpenCode's own provider/model registry.
 
 ## Compatibility in this repository
 - Inbox wake-up remains file/event driven.

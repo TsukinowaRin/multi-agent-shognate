@@ -107,6 +107,16 @@ For Codex specifically, each role launches with its own repo-local `CODEX_HOME`.
 - llama.cpp server
 - any OpenAI-compatible local endpoint
 
+If your primary goal is to run arbitrary local models, use `localapi` first.
+It talks to the OpenAI-compatible endpoint directly and is the main path in this fork for:
+
+- custom LM Studio model IDs
+- Ollama-hosted local models
+- llama.cpp or similar local inference servers
+- other self-hosted backends that do not match OpenCode / Kilo's built-in provider registry
+
+`opencode` and `kilo` are still supported agent CLIs in this fork, but local-provider use should be treated as best-effort. Their own provider/model registry may reject model IDs that the backend itself would otherwise serve.
+
 ### Per-role CLI and model settings
 
 Use this when you want different CLIs or models per role:

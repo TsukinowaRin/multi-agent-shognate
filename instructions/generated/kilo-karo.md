@@ -547,6 +547,7 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 - Kilo CLI is a fork of OpenCode and uses the same project config format (`opencode.json`).
 - This repository can generate `opencode.json` from `config/settings.yaml` for local providers such as Ollama, LM Studio, and OpenAI-compatible endpoints.
 - Secrets should stay in environment variables; generated config writes env references only.
+- For arbitrary local-model operation, prefer `localapi` first. Kilo local-provider support is best-effort and depends on Kilo's own provider/model registry.
 
 ## Compatibility in this repository
 - Inbox wake-up remains file/event driven.

@@ -17,6 +17,10 @@ if [[ -n "$tracked_forbidden" ]]; then
   exit 1
 fi
 
+if ! git check-ignore -q config/settings.yaml; then
+  fail "config/settings.yaml must remain ignored (local values such as ntfy_topic must not be published)"
+fi
+
 private_hits="$(
   git grep -n -I -E \
     '/mnt/d/Git_WorkSpace|D:\\\\Git_WorkSpace|/mnt/c/Users/muro|100\\.71\\.16\\.5|172\\.31\\.8\\.112|192\\.168\\.1\\.2|muro@MURO' \

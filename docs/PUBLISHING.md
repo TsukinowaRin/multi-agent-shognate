@@ -27,6 +27,13 @@
 - `dashboard.md`
 - ローカル生成ログ、バックアップ、個人用メモ
 
+特に `config/settings.yaml` に入る以下は push/release 前に公開面へ出してはいけない。
+
+- `ntfy_topic`
+- SSH 接続先
+- project path
+- ローカル CLI / model 上書き
+
 ## 個人情報・ローカル値として扱うもの
 
 以下は原則として公開しない。
@@ -49,6 +56,7 @@ bash scripts/prepublish_check.sh
 
 ```bash
 git status --short
+git check-ignore config/settings.yaml
 git ls-files | rg '^(Waste/|_trash/|_upstream_reference/|docs/(WORKLOG|HANDOVER|UPSTREAM_SYNC)|config/settings.yaml|dashboard.md|queue/)'
 git grep -n -I -E '/mnt/d/Git_WorkSpace|D:\\\\Git_WorkSpace|/mnt/c/Users/[^/]+|100\\.[0-9]+\\.[0-9]+\\.[0-9]+|172\\.31\\.[0-9]+\\.[0-9]+|192\\.168\\.[0-9]+\\.[0-9]+'
 ```

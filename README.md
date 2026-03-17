@@ -2,357 +2,295 @@
 
 # multi-agent-shognate
 
-**A portable, multi-CLI fork of multi-agent-shogun for tmux-first coding and Android remote operation.**
+**複数の AI エージェントを戦国の軍制で動かす、tmux / Zellij マルチエージェント基盤**
 
-[![GitHub Stars](https://img.shields.io/github/stars/TsukinowaRin/multi-agent-shognate?style=social)](https://github.com/TsukinowaRin/multi-agent-shognate)
+fork of [multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun) — extended for multi-CLI and Zellij.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Shell](https://img.shields.io/badge/Shell%2FBash-100%25-green)]()
-
-[English](README.md) | [日本語](README_ja.md)
+[![Shell](https://img.shields.io/badge/Shell-bash-green)]()
+[![CLIs](https://img.shields.io/badge/CLI-Claude%20|%20Codex%20|%20Gemini%20|%20Copilot%20|%20LocalAPI-blue)]()
 
 </div>
 
-<p align="center">
-  <img src="images/screenshots/hero/latest-translucent-20260210-190453.png" alt="Shogun pane controlling multiple agents" width="940">
-</p>
+---
 
-## What This Repository Is
+## これは何か
 
-`multi-agent-shognate` is a fork of [`multi-agent-shogun`](https://github.com/yohey-w/multi-agent-shogun) that keeps the upstream concept but changes the operational defaults.
+`claude`、`codex`、`gemini` などの AI CLI を **複数のターミナルペインで並列に動かし、役割ごとに連携させる**基盤。
 
-This repository is optimized for:
+各エージェントは独立したペインで動作し、YAML ファイルベースのメッセージパッシングで連携する。通信はポーリングなし — `inotifywait` による純粋なイベント駆動。エージェントは自分の inbox が更新されたときだけ起きる。
 
-- `tmux`-first operation
-- portable installation into any workspace folder
-- Android remote access through the fork APK
-- broader multi-CLI coverage than upstream
-- conservative default topology: all roles on `codex`, `model: auto`, and only `ashigaru1` / `ashigaru2` active by default
-
-If you want the short version:
-
-- install the system into the folder where you want to work
-- launch `shutsujin_departure.sh`
-- talk to the Shogun
-- let Karo decide staffing and parallelism from intent
-
-## What Is Different From Upstream
-
-| Topic | Upstream | This fork |
-|---|---|---|
-| Runtime layout | Split tmux sessions are the main runtime | `goza-no-ma:overview` is the canonical runtime; `shogun` / `gunshi` / `multiagent` remain as Android-compatible proxy sessions |
-| Default active workers | Historically described as a larger formation | Default active force is `ashigaru1` and `ashigaru2` only |
-| Default CLI setup | Upstream defaults | Conservative `codex` defaults for all roles, `model: auto` |
-| CLI coverage | Core upstream CLIs | Adds `Gemini CLI`, `OpenCode`, `Kilo`, `localapi`, plus local-provider sync for `Ollama` / `LM Studio` |
-| Android app | Upstream Android app / APK | Fork APK is published in this repository's Releases and is the supported build here |
-| Windows installer | Manual / repo-based flow | Portable `multi-agent-shognate-installer.bat` published in Releases; installs into the folder containing the installer |
-| Karo behavior | User can guide team formation by intent | Karo is explicitly expected to infer decomposition, headcount, and parallelism autonomously from the lord's command |
-
-## Core Model
-
-The command chain is still the Shogun model:
-
-```text
-You
- -> Shogun
- -> Karo
- -> Ashigaru / Gunshi
+```
+あなた (Lord)
+  └─ Shogun    ── 方針策定・タスク分解・家老への委任
+       ├─ Karo       ── 並列度決定・足軽への割り当て・QC・ルーティング
+       │    └─ Ashigaru × N  ── 実コーディング・調査・テスト
+       └─ Gunshi     ── 戦略立案・設計判断（Thinking モデル専任）
 ```
 
-The important operational rule in this fork is:
+---
 
-- current force size comes from `topology.active_ashigaru`
-- historical mentions of `ashigaru1..8` are not treated as the live roster
-- Karo should adapt staffing to the configured active force and the current task
+## upstream との違い
 
-## Supported CLIs And Vendors
-
-This fork is intentionally not locked to one vendor.
-
-### Supported agent CLI types
-
-| CLI type | Typical vendor / backend | Notes |
+| 機能 | upstream | this fork |
 |---|---|---|
-| `codex` | OpenAI Codex CLI | Default in this fork |
-| `claude` | Anthropic Claude Code | Supported like upstream |
-| `copilot` | GitHub Copilot CLI | Supported like upstream |
-| `kimi` | Kimi Code | Supported like upstream |
-| `gemini` | Gemini CLI | Explicitly supported in this fork |
-| `opencode` | OpenCode CLI | Added in this fork |
-| `kilo` | Kilo CLI | Added in this fork |
-| `localapi` | OpenAI-compatible local endpoint | For `Ollama`, `LM Studio`, llama.cpp server, or similar |
+| 対応 CLI | claude / codex / copilot / kimi | + **Gemini / OpenCode / Kilo / localapi** |
+| マルチプレクサ | tmux のみ | **tmux + Zellij**（pure / hybrid モード） |
+| ビュー | 手動 tmux セッション切替 | `goza-no-ma` — 全エージェントを1画面に集約 |
+| 設定方法 | YAML 直接編集 | **`configure_agents.sh`** インタラクティブ TUI |
+| Codex 状態 | セッション共有 | **役職ごとに `CODEX_HOME` を分離**（VSCode と干渉しない） |
+| Gemini thinking | 未対応 | `thinking_level` / `thinking_budget` をエージェントごとに設定可能 |
+| Karo ルーティング | 標準 | **Bloom フィルタ QC ルーティング**（Gunshi トークンコスト最適化） |
 
-### Default permission / approval stance
+---
 
-All agent CLIs are configured to start in a no-approval-by-default mode in this fork.
+## アーキテクチャ
 
-| CLI type | Default unattended stance |
-|---|---|
-| `claude` | `--dangerously-skip-permissions` |
-| `codex` | `--dangerously-bypass-approvals-and-sandbox` |
-| `copilot` | `--yolo` |
-| `kimi` | `--yolo` |
-| `gemini` | `--yolo` |
-| `opencode` | generated `opencode.json` sets `permission: allow` |
-| `kilo` | generated `opencode.json` sets `permission: allow` |
-| `localapi` | no separate approval layer; local REPL is launched directly |
-
-For Codex specifically, this fork also isolates runtime state per agent by launching each role with its own repo-local `CODEX_HOME`. That keeps Shogun-side model or reasoning choices from leaking into VSCode Codex or unrelated Codex CLI sessions.
-
-### Local-provider support
-
-`localapi` is the bridge for local or self-hosted model providers. In practice this means:
-
-- `Ollama`
-- `LM Studio`
-- llama.cpp server
-- any OpenAI-compatible local endpoint
-
-### Role-by-role configuration
-
-Use this when you want to mix vendors or models per role:
-
-```bash
-bash scripts/configure_agents.sh
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   御座の間 (goza-no-ma)                       │
+│                                                               │
+│  ┌─────────────┬─────────────┬───────────────────────────┐   │
+│  │   shogun    │   gunshi    │  karo   |  ashigaru × N   │   │
+│  │  (任意 CLI) │  (Thinking) │  (任意) |     (任意)      │   │
+│  └──────┬──────┴──────┬──────┴────────┬──────────────────┘   │
+└─────────│─────────────│──────────────│──────────────────────┘
+          │             │              │
+          └─────────────┴──────────────┘
+                YAML mailbox — inotifywait ベース、ポーリングなし
+                queue/inbox/{agent}.yaml
+                queue/tasks/ashigaru{N}.yaml
+                queue/reports/{agent}_report.yaml
 ```
 
-That script lets you set:
+**通信の仕組み**: 書き手が `inbox_write.sh` で YAML を更新 → `inotifywait` が検知 → `inbox_watcher.sh` が対象エージェントのペインに短い wake-up signal を `tmux send-keys` → エージェントが自分の inbox を read して処理。**メッセージ本文は tmux を一切通らない。**
 
-- CLI type per role
-- model per role
-- Codex reasoning effort
-- Gemini thinking level / budget
-- OpenCode / Kilo provider settings
-- active Ashigaru count
+---
 
-## Installation
-
-### Recommended: Windows portable installer
-
-Use this when you want a self-contained install in a folder of your choice.
-
-1. Open this repository's **GitHub Releases**.
-2. Download `multi-agent-shognate-installer.bat`.
-3. Put it in the folder where you want the Shogunate system to live.
-4. Run it.
-
-Important behavior:
-
-- the installer downloads the **same tagged source version** as the Release you downloaded it from
-- it installs into the **same folder that contains `install.bat`**
-- it checks WSL2 / Ubuntu and runs `first_setup.sh` automatically when possible
-
-This is the main portable workflow for this fork.
-
-### Manual install from clone or ZIP
-
-Use this when you want to manage the repo directly.
+## クイックスタート
 
 ```bash
 git clone https://github.com/TsukinowaRin/multi-agent-shognate
 cd multi-agent-shognate
 bash first_setup.sh
-```
 
-If you downloaded a ZIP instead of cloning, unpack it and run the same command from the repository root.
-
-### What `first_setup.sh` does
-
-`first_setup.sh` is expected to create local runtime configuration on first run.
-
-That includes:
-
-- local config generation such as `config/settings.yaml`
-- dependency checks
-- CLI bootstrap support
-- tmux-oriented runtime preparation
-
-`config/settings.yaml` is intentionally local-only in this fork. It is not part of the published Git tree.
-
-## First Launch
-
-After installation:
-
-```bash
+# 全エージェント起動
 bash shutsujin_departure.sh
 ```
 
-That brings up the runtime and the compatibility sessions.
+Windows（WSL2 Ubuntu 前提）は `install.bat` をダブルクリック。
 
-Useful commands:
+起動後、将軍ペインに話しかけるだけでよい:
 
-```bash
-bash scripts/goza_no_ma.sh
-bash scripts/focus_agent_pane.sh shogun
-bash scripts/focus_agent_pane.sh karo
-bash scripts/focus_agent_pane.sh gunshi
+```
+あなた: 「auth モジュールのリファクタを全体設計から始めてほしい」
+Shogun: タスク分解して Karo に委任
+Karo:   足軽を 3 名アサイン、並列で着手
+Ashigaru 1-3: コーディング・テスト・レビュー
 ```
 
-### Canonical and compatibility sessions
+---
 
-This matters because the Android app depends on it.
+## マルチプレクサの選択
 
-| Session | Purpose |
-|---|---|
-| `goza-no-ma:overview` | Canonical runtime in this fork |
-| `shogun:main` | Android-compatible Shogun target |
-| `gunshi:main` | Android-compatible Gunshi target |
-| `multiagent:agents` | Android-compatible Karo / Ashigaru target |
-
-## Android App And APK
-
-This repository ships its **own** Android app build.
-
-Do not use the upstream APK here.
-
-### Supported APK for this fork
-
-Download the APK from this repository's **GitHub Releases**.
-
-Use the asset named like:
-
-- `multi-agent-shognate-android-*.apk`
-
-This fork APK is the supported Android app for this repository.
-
-### What the Android app does
-
-The APK is a remote control and monitoring client.
-
-It connects to a running Shogunate host over SSH and then reads:
-
-- the `shogun` tmux session
-- the `multiagent` tmux session
-- `dashboard.md`
-
-It can also send commands to the Shogun pane.
-
-### Android connection model
-
-The app is SSH-based. It does not require a specific VPN product, but the phone must be able to reach the host over SSH.
-
-You need:
-
-- reachable SSH host or hostname
-- SSH port
-- Linux username on the host
-- password or key for that Linux user
-- project path on the host
-- session names
-
-Typical values for this fork:
-
-| Field | Value |
-|---|---|
-| Shogun session | `shogun` |
-| Agents session | `multiagent` |
-| Project path | the repository root on the host |
-
-Notes:
-
-- initial Android settings are intentionally blank or non-identifying
-- SSH settings are not baked with personal hostnames, IPs, or topics
-- the APK also has an `ntfy` topic field for app-side notification subscription
-
-## Notifications (`ntfy`)
-
-This fork supports `ntfy`, but keep the roles clear:
-
-- server-side Shogunate notifications use local config such as `config/settings.yaml`
-- the Android app can subscribe directly to an `ntfy` topic for phone-side notifications
-
-Local topics and other personal values are treated as private and should stay out of the published tree.
-
-## Portable Workspace Usage
-
-This system is intended to be portable.
-
-If you want the Shogunate system to work inside another workspace, the recommended pattern is:
-
-- create or choose the target workspace folder
-- place `multi-agent-shognate-installer.bat` there
-- run it there
-- let the system install into that same folder
-
-That keeps these runtime artifacts local to that workspace:
-
-- `queue/`
-- `logs/`
-- `dashboard.md`
-- `config/settings.yaml`
-- tmux runtime state
-
-## Recommended Defaults In This Fork
-
-Current default stance:
-
-- all roles start on `codex`
-- `model: auto`
-- `ashigaru1` and `ashigaru2` active by default
-- Karo decides staffing autonomously from intent
-
-If you want to expand the force, change the active topology rather than assuming historical worker slots are live.
-
-## Key Commands
+### tmux（デフォルト）
 
 ```bash
+bash shutsujin_departure.sh         # エージェント起動
+bash scripts/goza_no_ma.sh          # 御座の間（全ペイン一画面）を開く
+```
+
+### Zellij
+
+```bash
+# Pure Zellij — ネイティブ Zellij UI + バックエンド
+bash scripts/goza_zellij.sh --template goza_room
+
+# Hybrid — tmux バックエンド + Zellij UI（既存 tmux セッションを Zellij で表示）
+bash scripts/goza_hybrid.sh --template goza_room
+```
+
+Windows ダブルクリック:
+
+| ファイル | モード |
+|---|---|
+| `start_tmux_goza.bat` | ネイティブ tmux |
+| `start_zellij_pure.bat` | Pure Zellij |
+| `start_zellij_goza.bat` | Hybrid（tmux + Zellij UI） |
+
+Zellij モードでのレイアウト（KDL が自動生成される）:
+
+```
+┌────────────────────────────────────────────────────┐
+│ tab: 御座の間 (zellij-core)                         │
+│                                                     │
+│ ┌──────────┬──────────┬──────────────────────────┐  │
+│ │ shogun   │ karo     │ ashigaru1                │  │
+│ │          │          ├──────────────────────────┤  │
+│ ├──────────┤          │ ashigaru2                │  │
+│ │ gunshi   │          │                          │  │
+│ └──────────┴──────────┴──────────────────────────┘  │
+└────────────────────────────────────────────────────┘
+```
+
+---
+
+## CLI の設定
+
+### インタラクティブ TUI
+
+```bash
+bash scripts/configure_agents.sh
+```
+
+役職ごとに設定できる:
+
+- CLI 種別（claude / codex / gemini / copilot / kimi / opencode / kilo / localapi）
+- モデル（opus / sonnet / gemini-2.5-pro / auto / ...）
+- Codex reasoning effort（low / medium / high）
+- Gemini thinking level（minimal / low / medium / high）+ thinking budget（token 数）
+- アクティブ足軽数
+
+### settings.yaml による直接設定
+
+```yaml
+cli:
+  default: codex
+  agents:
+    shogun:
+      type: claude
+      model: opus
+    gunshi:
+      type: gemini
+      model: gemini-2.5-pro
+      thinking_level: high
+      thinking_budget: 16000
+    karo:
+      type: codex
+      model: auto
+    ashigaru1:
+      type: claude
+      model: sonnet
+    ashigaru2:
+      type: gemini
+      thinking_level: minimal
+```
+
+### 対応 CLI
+
+| CLI | デフォルト起動オプション | 備考 |
+|---|---|---|
+| `claude` | `--dangerously-skip-permissions` | |
+| `codex` | `--dangerously-bypass-approvals-and-sandbox` | 役職ごとに `CODEX_HOME` 分離 |
+| `gemini` | `--yolo` | thinking_level / budget 対応 |
+| `copilot` | `--yolo` | |
+| `kimi` | `--yolo` | |
+| `opencode` | `opencode.json` 自動生成（permission: allow） | |
+| `kilo` | 同上 | |
+| `localapi` | `localapi_repl.py` | Ollama / LM Studio / llama.cpp 対応 |
+
+### Codex 状態分離
+
+```bash
+# 役職ごとに CODEX_HOME を持つ → VSCode の Codex と完全分離
+~/.codex/shogun/     # 将軍のモデル設定・会話履歴
+~/.codex/karo/       # 家老の設定
+~/.codex/ashigaru1/  # ...
+```
+
+---
+
+## inbox_watcher の設計
+
+### ポーリングをやめた理由
+
+エージェントがループで inbox を読み続けるとトークンを消費し続ける。代わりに:
+
+1. **書き手**が `inbox_write.sh` で YAML を更新
+2. **`inotifywait`** がファイル変更イベントを検知（WSL2 向け 30 秒フォールバックつき）
+3. **`inbox_watcher.sh`** が対象ペインに `tmux send-keys` で wake-up signal（`inbox3` など）を送信
+4. **エージェント**が自分の inbox を read して処理
+
+nudge はごく短い文字列のみ。**メッセージ本文は tmux を通らない**。
+
+### 未読放置時のエスカレーション
+
+| 経過時間 | アクション | 備考 |
+|---|---|---|
+| 0〜2 分 | 標準 nudge（send-keys） | Working 中はスキップ |
+| 2〜4 分 | Escape×2 + nudge | カーソル位置バグ対処 |
+| 4 分〜 | `/clear` 送信（5 分に1回まで） | 強制リセット + YAML 再読 |
+
+### ホットスワップ
+
+実行中のエージェントを停止せずに CLI を切り替えられる:
+
+```bash
+bash scripts/switch_cli.sh karo gemini
+# karo の CLI を codex → gemini に切り替え（inbox_watcher 自動再起動）
+```
+
+---
+
+## ファイル構成
+
+```
+multi-agent-shognate/
+├── shutsujin_departure.sh      # 全エージェント起動エントリポイント
+├── lib/
+│   ├── cli_adapter.sh          # CLI 抽象化レイヤー（8 CLI 対応）
+│   ├── topology_adapter.sh     # 足軽台数・役職構成の読み取り
+│   └── inbox_path.sh           # inbox パス解決
+├── scripts/
+│   ├── goza_no_ma.sh           # 御座の間（tmux/Zellij ビュー）
+│   ├── goza_zellij.sh          # Pure Zellij 起動
+│   ├── goza_hybrid.sh          # Hybrid 起動（tmux backend + Zellij UI）
+│   ├── configure_agents.sh     # インタラクティブ設定 TUI
+│   ├── inbox_watcher.sh        # イベント駆動 inbox 監視（inotifywait）
+│   ├── inbox_write.sh          # エージェント間メッセージ送信
+│   ├── shogun_to_karo_bridge.py    # 将軍→家老コマンドキュー処理
+│   ├── karo_done_to_shogun_bridge.py  # 家老完了通知の集約
+│   ├── switch_cli.sh           # 実行中エージェントの CLI をホットスワップ
+│   ├── slim_yaml.sh            # YAML タスク・レポートの肥大化抑制
+│   ├── watcher_supervisor.sh   # ウォッチャー障害検知・自動再起動
+│   └── ratelimit_check.sh      # CLI レートリミット監視
+├── instructions/
+│   ├── generated/              # build_instructions.sh が生成する CLI 別指示書
+│   └── *.md                    # 役職共通指示書
+├── config/
+│   └── settings.yaml           # ローカル設定（git-ignored）
+└── queue/
+    ├── inbox/                  # エージェント間 YAML メールボックス
+    ├── tasks/                  # 家老→足軽タスク割り当て
+    └── reports/                # 足軽→家老完了レポート
+```
+
+---
+
+## テスト
+
+```bash
+bats tests/unit/    # ユニットテスト（183 ケース）
+make test           # CI と同じ full suite
+```
+
+---
+
+## upstream からの移行
+
+このフォークは upstream の YAML スキーマ・inbox 形式・エージェント指示書を維持している。`config/settings.yaml` と `queue/` を持ち込めばそのまま動く:
+
+```bash
+cp /path/to/upstream/config/settings.yaml config/settings.yaml
 bash first_setup.sh
 bash shutsujin_departure.sh
-bash scripts/configure_agents.sh
-bash scripts/goza_no_ma.sh
-bash scripts/focus_agent_pane.sh shogun
-bash scripts/focus_agent_pane.sh karo
-bash scripts/prepublish_check.sh
 ```
 
-## Repository Layout
+---
 
-```text
-multi-agent-shognate/
-├── android/                   # Fork Android app source
-├── config/                    # Local/runtime configuration templates
-├── docs/                      # Requirements, plans, publishing policy
-├── instructions/              # Shared and generated CLI instructions
-├── lib/                       # Shell helper libraries
-├── scripts/                   # Runtime, bootstrap, bridge, watcher scripts
-├── tests/                     # Unit and smoke tests
-├── install.bat                # Windows installer / bootstrap entry point
-├── first_setup.sh             # First-time setup
-└── shutsujin_departure.sh     # Runtime launcher
-```
+## 関連ドキュメント
 
-## Publish Hygiene
-
-This fork treats some files as local-only by design.
-
-Examples:
-
-- `config/settings.yaml`
-- runtime queue state
-- local logs
-- private notification topics
-- local hostnames, paths, and IPs
-
-Before publishing, run:
-
-```bash
-bash scripts/prepublish_check.sh
-```
-
-## When To Choose This Fork
-
-Choose this fork if you want:
-
-- portable installation into arbitrary workspace folders
-- a maintained fork APK in Releases
-- explicit multi-CLI coverage including Gemini / OpenCode / Kilo / localapi
-- tmux-first operation with `goza-no-ma` as the real runtime
-- conservative defaults and fewer surprises in published state
-
-Choose upstream if you want the original project with its original defaults and release story.
-
-## Related Documents
-
-- `android/README.md` - Android app details
-- `docs/REQS.md` - normalized current requirements
-- `docs/PUBLISHING.md` - publish-time privacy and cleanup policy
-- `docs/philosophy.md` - design philosophy
+- [`AGENTS.md`](AGENTS.md) — エージェントプロトコル・コマンドフォーマット定義
+- [`lib/cli_adapter.sh`](lib/cli_adapter.sh) — CLI 抽象化レイヤーの API リファレンス
+- [`scripts/configure_agents.sh`](scripts/configure_agents.sh) — 設定 TUI
+- [`docs/`](docs/) — 設計書・要件定義

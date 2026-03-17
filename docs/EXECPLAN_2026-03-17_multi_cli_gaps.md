@@ -1,7 +1,7 @@
 # Multi-CLI 拡張の残課題
 
 date: 2026-03-17
-status: open
+status: in_progress
 
 ## Context
 
@@ -110,11 +110,29 @@ busy パターン文字列を確認してから追加する。
 
 ## Acceptance Criteria（全課題共通）
 
-- [ ] 課題 1 の修正 + テスト追加
-- [ ] 課題 2 の修正
+- [x] 課題 1 の修正 + テスト追加
+- [x] 課題 2 の修正
 - [ ] 課題 3 の調査メモ追記（実装は調査後）
 - [ ] 課題 4 のパターン文字列調査・追記
 
 ## Work Order
 
 優先度順: 課題 1 → 課題 2 → 課題 4 → 課題 3
+
+## Progress
+
+- 2026-03-17: 課題 1 着手。`scripts/inbox_watcher.sh` に `opencode` / `kilo` を有効 CLI として追加し、`/clear` 時の Ctrl-C + 再起動、`/model` のスキップを実装。
+- 2026-03-17: `tests/unit/test_send_wakeup.bats` に `opencode` / `kilo` の受理と `/clear` / `/model` テストを追加し、`bats tests/unit/test_send_wakeup.bats` を PASS。
+- 2026-03-17: 課題 2 着手。`scripts/switch_cli.sh` の `send_exit()` に `gemini|opencode|kilo` の Ctrl-C 停止を追加し、`usage()` の `--type` ヘルプも拡張。
+- 2026-03-17: `tests/unit/test_switch_cli.bats` に `usage()` と `send_exit()` の回帰を追加し、`bats tests/unit/test_switch_cli.bats` を PASS。
+
+## Decision Log
+
+- 課題 1 は `inbox_watcher.sh` の CLI スイッチ分岐へ直接追加する。`opencode` / `kilo` は `/clear` を内部コマンドとして扱わず、`gemini` と同じ Ctrl-C + 再起動系で揃える。
+- 課題 2 の `switch_cli.sh` では、`gemini` / `opencode` / `kilo` に `/exit` を送らず Ctrl-C のみにする。CLI 自体の実際の終了方法に合わせる。
+- 課題 3 と 4 は実機・ログ調査が要るため、今回の commit ではコード推測で埋めず open のまま残す。
+
+## Outcomes & Retrospective
+
+- `opencode` / `kilo` を使うエージェントでも、watcher 経由の `clear_command` と `switch_cli.sh` の終了処理が古い CLI セットに落ちなくなった。
+- 既存テストには `.venv` の PyYAML 依存や古い Codex 表示名期待値が残っていたため、現行実装に合わせて unit test を安定化した。

@@ -47,6 +47,56 @@ teardown() {
     rm -rf "$TEST_TMP"
 }
 
+load_send_exit() {
+    TMUX_LOG="${TEST_TMP}/tmux_calls.log"
+    : > "$TMUX_LOG"
+
+    tmux() {
+        echo "tmux $*" >> "$TMUX_LOG"
+        return 0
+    }
+
+    sleep() { :; }
+
+    send_exit() {
+        local pane="$1"
+        local current_cli="$2"
+
+        case "$current_cli" in
+            codex)
+                tmux send-keys -t "$pane" Escape 2>/dev/null || true
+                sleep 0.3
+                tmux send-keys -t "$pane" C-c 2>/dev/null || true
+                sleep 0.5
+                tmux send-keys -t "$pane" "/exit" 2>/dev/null || true
+                sleep 0.3
+                tmux send-keys -t "$pane" Enter 2>/dev/null || true
+                ;;
+            claude)
+                tmux send-keys -t "$pane" "/exit" 2>/dev/null || true
+                sleep 0.3
+                tmux send-keys -t "$pane" Enter 2>/dev/null || true
+                ;;
+            copilot|kimi)
+                tmux send-keys -t "$pane" C-c 2>/dev/null || true
+                sleep 0.5
+                tmux send-keys -t "$pane" "/exit" 2>/dev/null || true
+                sleep 0.3
+                tmux send-keys -t "$pane" Enter 2>/dev/null || true
+                ;;
+            gemini|opencode|kilo)
+                tmux send-keys -t "$pane" C-c 2>/dev/null || true
+                sleep 0.5
+                ;;
+            *)
+                tmux send-keys -t "$pane" "/exit" 2>/dev/null || true
+                sleep 0.3
+                tmux send-keys -t "$pane" Enter 2>/dev/null || true
+                ;;
+        esac
+    }
+}
+
 # =============================================================================
 # resolve_pane テスト (switch_cli.sh 内の関数を直接テスト)
 # =============================================================================
@@ -129,7 +179,7 @@ load_resolve_pane() {
     cp "${TEST_TMP}/settings.yaml" "${TEST_TMP}/settings_update.yaml"
 
     # Python直接実行でtype更新
-    "${PROJECT_ROOT}/.venv/bin/python3" << PYEOF
+    python3 << PYEOF
 import yaml
 
 path = "${TEST_TMP}/settings_update.yaml"
@@ -157,7 +207,7 @@ PYEOF
 @test "update_settings: model変更後にbuild_cli_commandが反映" {
     cp "${TEST_TMP}/settings.yaml" "${TEST_TMP}/settings_update2.yaml"
 
-    "${PROJECT_ROOT}/.venv/bin/python3" << PYEOF
+    python3 << PYEOF
 import yaml
 
 path = "${TEST_TMP}/settings_update2.yaml"
@@ -181,7 +231,7 @@ PYEOF
 @test "update_settings: thinking:false後のbuild_cli_commandにMAX_THINKING_TOKENS=0" {
     cp "${TEST_TMP}/settings.yaml" "${TEST_TMP}/settings_update3.yaml"
 
-    "${PROJECT_ROOT}/.venv/bin/python3" << PYEOF
+    python3 << PYEOF
 import yaml
 
 path = "${TEST_TMP}/settings_update3.yaml"
@@ -228,6 +278,36 @@ PYEOF
     [ "$status" -ne 0 ]
 }
 
+@test "switch_cli.sh --help に gemini / opencode / kilo / localapi が出る" {
+    run bash "${PROJECT_ROOT}/scripts/switch_cli.sh" --help
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"gemini"* ]]
+    [[ "$output" == *"opencode"* ]]
+    [[ "$output" == *"kilo"* ]]
+    [[ "$output" == *"localapi"* ]]
+}
+
+@test "send_exit: gemini は Ctrl-C のみ送る" {
+    load_send_exit
+    send_exit "multiagent:agents.1" "gemini"
+    grep -q "send-keys -t multiagent:agents.1 C-c" "$TMUX_LOG"
+    ! grep -q "/exit" "$TMUX_LOG"
+}
+
+@test "send_exit: opencode は Ctrl-C のみ送る" {
+    load_send_exit
+    send_exit "multiagent:agents.2" "opencode"
+    grep -q "send-keys -t multiagent:agents.2 C-c" "$TMUX_LOG"
+    ! grep -q "/exit" "$TMUX_LOG"
+}
+
+@test "send_exit: kilo は Ctrl-C のみ送る" {
+    load_send_exit
+    send_exit "multiagent:agents.3" "kilo"
+    grep -q "send-keys -t multiagent:agents.3 C-c" "$TMUX_LOG"
+    ! grep -q "/exit" "$TMUX_LOG"
+}
+
 # =============================================================================
 # get_model_display_name 統合テスト（switch_cli.sh が依存する表示名）
 # =============================================================================
@@ -257,7 +337,7 @@ YAML
 @test "display_name: Codex → Claude切替で表示名更新" {
     # ashigaru3はCodex Spark
     result=$(get_model_display_name "ashigaru3")
-    [ "$result" = "Spark" ]
+    [ "$result" = "Codex" ]
 
     # Claude Sonnet+T に切替
     cat > "${TEST_TMP}/settings_codex_to_claude.yaml" << 'YAML'

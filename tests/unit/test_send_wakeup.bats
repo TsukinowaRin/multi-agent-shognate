@@ -38,6 +38,11 @@
 #   T-CODEX-012: auto-recovery task_assignedは重複投入しない
 #   T-COPILOT-001: send_cli_command — copilot /clear → Ctrl-C + restart
 #   T-COPILOT-002: send_cli_command — copilot /model → skip
+#   T-EXTRA-CLI-001: is_valid_cli_type — opencode / kilo を受理
+#   T-OPENCODE-001: send_cli_command — opencode /clear → Ctrl-C + restart
+#   T-OPENCODE-002: send_cli_command — opencode /model → skip
+#   T-KILO-001: send_cli_command — kilo /clear → Ctrl-C + restart
+#   T-KILO-002: send_cli_command — kilo /model → skip
 
 # --- セットアップ ---
 
@@ -221,6 +226,11 @@ MOCK
     run bash -c "MOCK_PANE_CLI=codex; source '$TEST_HARNESS' && send_wakeup 4"
     [ "$status" -eq 0 ]
     grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
+@test "T-EXTRA-CLI-001: is_valid_cli_type accepts opencode and kilo" {
+    run bash -c "source '$TEST_HARNESS' && is_valid_cli_type opencode && is_valid_cli_type kilo"
+    [ "$status" -eq 0 ]
 }
 
 # --- T-SW-008: /clear uses send-keys ---
@@ -823,6 +833,58 @@ PY
     grep -q "send-keys.*C-c" "$MOCK_LOG"
     grep -q "send-keys.*gemini --yolo" "$MOCK_LOG"
     ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+}
+
+# --- T-OPENCODE-001: opencode /clear → Ctrl-C + restart ---
+
+@test "T-OPENCODE-001: send_cli_command sends Ctrl-C + opencode restart for opencode /clear" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="opencode"
+        send_cli_command "/clear"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys.*C-c" "$MOCK_LOG"
+    grep -q "send-keys.*opencode" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+}
+
+@test "T-OPENCODE-002: send_cli_command skips /model for opencode" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="opencode"
+        send_cli_command "/model gpt-5.4"
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys.*/model" "$MOCK_LOG"
+}
+
+# --- T-KILO-001: kilo /clear → Ctrl-C + restart ---
+
+@test "T-KILO-001: send_cli_command sends Ctrl-C + kilo restart for kilo /clear" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="kilo"
+        send_cli_command "/clear"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys.*C-c" "$MOCK_LOG"
+    grep -q "send-keys.*kilo" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+}
+
+@test "T-KILO-002: send_cli_command skips /model for kilo" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="kilo"
+        send_cli_command "/model gpt-5.4"
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys.*/model" "$MOCK_LOG"
 }
 
 # --- T-LOCALAPI-001: localapi /model → :model translation ---

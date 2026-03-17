@@ -30,7 +30,7 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
     AGENT_ID="$1"
     PANE_TARGET="$2"
-    CLI_TYPE="${3:-claude}"  # CLI種別（claude/codex/copilot/kimi/gemini/localapi）
+    CLI_TYPE="${3:-claude}"  # CLI種別（claude/codex/copilot/kimi/gemini/opencode/kilo/localapi）
     MUX_TYPE="tmux"
 
     INBOX="$SCRIPT_DIR/queue/inbox/${AGENT_ID}.yaml"
@@ -141,7 +141,7 @@ disable_normal_nudge() {
 
 is_valid_cli_type() {
     case "${1:-}" in
-        claude|codex|copilot|kimi|gemini|localapi) return 0 ;;
+        claude|codex|copilot|kimi|gemini|opencode|kilo|localapi) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -394,7 +394,7 @@ PY
 # ─── Send CLI command via pty direct write ───
 # For /clear and /model only. These are CLI commands, not conversation messages.
 # CLI_TYPE別分岐: claude→そのまま, codex→/clear対応・/modelスキップ,
-#                  copilot→Ctrl-C+再起動・/modelスキップ
+#                  copilot/gemini/opencode/kilo/localapi→Ctrl-C+再起動・CLI依存処理
 # 実行時にtmux paneの @agent_cli を再確認し、ドリフト時はpane値を優先する。
 send_cli_command() {
     local cmd="$1"
@@ -462,6 +462,38 @@ send_cli_command() {
             fi
             if [[ "$cmd" == /model* ]]; then
                 echo "[$(date)] Skipping $cmd (model switch may be unsupported on gemini CLI)" >&2
+                return 0
+            fi
+            ;;
+        opencode)
+            if [[ "$cmd" == "/clear" ]]; then
+                echo "[$(date)] [SEND-KEYS] OpenCode /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
+                mux_send_ctrl_c
+                sleep 1
+                mux_send_text "${OPENCODE_RESTART_CMD:-opencode}"
+                sleep 0.3
+                mux_send_enter
+                sleep 2
+                return 0
+            fi
+            if [[ "$cmd" == /model* ]]; then
+                echo "[$(date)] Skipping $cmd (model switch may be unsupported on opencode CLI)" >&2
+                return 0
+            fi
+            ;;
+        kilo)
+            if [[ "$cmd" == "/clear" ]]; then
+                echo "[$(date)] [SEND-KEYS] Kilo /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
+                mux_send_ctrl_c
+                sleep 1
+                mux_send_text "${KILO_RESTART_CMD:-kilo}"
+                sleep 0.3
+                mux_send_enter
+                sleep 2
+                return 0
+            fi
+            if [[ "$cmd" == /model* ]]; then
+                echo "[$(date)] Skipping $cmd (model switch may be unsupported on kilo CLI)" >&2
                 return 0
             fi
             ;;

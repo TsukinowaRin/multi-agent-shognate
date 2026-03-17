@@ -30,14 +30,18 @@
 ## Progress
 - 2026-03-17: Started. Current README content, docs policy, and related implementation points were reviewed.
 - 2026-03-17: Rewrote `README.md` and `README_ja.md` around fork-specific install, runtime, CLI coverage, Android APK distribution, and upstream differences.
+- 2026-03-17: Synced the English `README.md` again after finding stale pre-fork text (`Gemini thinking 未対応`, old Zellij paths, old Codex home examples) that no longer matched the actual tmux-only runtime and per-role `CODEX_HOME` behavior.
 
 ## Surprises & Discoveries
 - The current root README already contains many fork notes, but they are scattered through an upstream-length document and understate newer additions such as portable release installers and broader CLI coverage.
+- The Japanese README had already been refreshed further than the English one; only the English side still carried stale text from an older branch of the fork.
 
 ## Decision Log
 - Rewrite the root README pair rather than append more fork notes.
 - Keep the documents shorter and more operational than upstream, focusing on what this repository actually ships and supports.
+- Treat the tmux-only runtime, Android proxy sessions, and repo-local Codex state isolation as first-class facts in the root README, not footnotes.
 
 ## Outcomes & Retrospective
 - Root README files were rewritten as mirrored documents focused on this fork's actual runtime and release story.
 - Installation, Android APK distribution, multi-CLI coverage, and upstream differences are now first-class sections instead of scattered notes.
+- The English README was later re-synced so both languages now describe the same current system: tmux-first runtime, portable installer, fork APK distribution, and role-local Codex state.

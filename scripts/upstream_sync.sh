@@ -4,4 +4,4 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-python3 scripts/update_manager.py upstream-sync
+python3 scripts/update_manager.py upstream-sync "$@"

@@ -187,6 +187,12 @@ If you also want to import the latest content from the original upstream reposit
 bash scripts/upstream_sync.sh
 ```
 
+If you want to inspect what would change before touching the tree, use:
+
+```bash
+bash scripts/upstream_sync.sh --dry-run
+```
+
 That flow:
 
 - fetches `upstream/main`
@@ -194,6 +200,8 @@ That flow:
 - stores incoming conflicting files under `.shogunate/merge-candidates/`
 - appends a pending command to `queue/shogun_to_karo.yaml`
 - lets Karo coordinate the merge work after startup
+
+`--dry-run` prints the planned adds / updates / removals / conflicts as JSON and does not modify the worktree.
 
 ### 2. Release installer / portable install
 

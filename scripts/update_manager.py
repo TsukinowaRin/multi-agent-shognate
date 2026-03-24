@@ -424,6 +424,7 @@ def apply_release_snapshot(
     old_manifest: Dict[str, str],
     preserve_patterns: List[str],
     emit_merge_command: bool = True,
+    dry_run: bool = False,
 ) -> ApplyResult:
     ensure_state_dir()
     source_files = list_source_files(source_root)
@@ -448,7 +449,8 @@ def apply_release_snapshot(
             continue
 
         if not dest.exists():
-            copy_with_parents(src, dest)
+            if not dry_run:
+                copy_with_parents(src, dest)
             added.append(rel)
             continue
 
@@ -457,7 +459,8 @@ def apply_release_snapshot(
             continue
 
         if old_hash and current_hash == old_hash:
-            copy_with_parents(src, dest)
+            if not dry_run:
+                copy_with_parents(src, dest)
             updated.append(rel)
             continue
 
@@ -466,7 +469,8 @@ def apply_release_snapshot(
             continue
 
         conflicts.append(rel)
-        copy_with_parents(src, merge_incoming_root / rel)
+        if not dry_run:
+            copy_with_parents(src, merge_incoming_root / rel)
 
     for rel, old_hash in old_manifest.items():
         if rel in source_manifest:
@@ -479,13 +483,14 @@ def apply_release_snapshot(
             continue
         current_hash = sha256_file(dest)
         if current_hash == old_hash:
-            dest.unlink()
+            if not dry_run:
+                dest.unlink()
             removed.append(rel)
         else:
             deletions_blocked.append(rel)
 
     applied = bool(added or updated or removed)
-    if conflicts or deletions_blocked:
+    if (conflicts or deletions_blocked) and not dry_run:
         summary = write_merge_summary(merge_batch, version_after, conflicts, deletions_blocked)
         cmd_id = None
         if emit_merge_command:
@@ -508,7 +513,8 @@ def apply_release_snapshot(
     else:
         merge_batch = None
 
-    write_json(MANIFEST_PATH, source_manifest)
+    if not dry_run:
+        write_json(MANIFEST_PATH, source_manifest)
 
     return ApplyResult(
         applied=applied,
@@ -761,7 +767,29 @@ def release_manual_or_startup() -> Tuple[bool, str]:
     return True, latest_tag
 
 
-def upstream_sync() -> Tuple[bool, str]:
+def print_snapshot_summary(
+    *,
+    source_label: str,
+    current_label: str,
+    result: ApplyResult,
+    dry_run: bool,
+) -> None:
+    payload = {
+        "mode": "dry-run" if dry_run else "apply",
+        "source_label": source_label,
+        "current_label": current_label,
+        "would_change": bool(result.added or result.updated or result.removed or result.conflicts or result.deletions_blocked),
+        "added": result.added,
+        "updated": result.updated,
+        "removed": result.removed,
+        "preserved": result.preserved,
+        "conflicts": result.conflicts,
+        "deletions_blocked": result.deletions_blocked,
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def upstream_sync(dry_run: bool = False) -> Tuple[bool, str]:
     ensure_state_dir()
     state = read_json(STATE_PATH, {})
     current_upstream = state.get("upstream_ref", "")
@@ -779,7 +807,27 @@ def upstream_sync() -> Tuple[bool, str]:
 
     latest_upstream = git(["rev-parse", f"upstream/{DEFAULT_BRANCH}"]).stdout.strip()
     if current_upstream == latest_upstream:
-        print(f"[update_manager] upstream snapshot already imported: {latest_upstream}")
+        if dry_run:
+            print(
+                json.dumps(
+                    {
+                        "mode": "dry-run",
+                        "source_label": f"upstream/{DEFAULT_BRANCH}@{latest_upstream[:12]}",
+                        "current_label": current_upstream or "unset",
+                        "would_change": False,
+                        "added": [],
+                        "updated": [],
+                        "removed": [],
+                        "preserved": [],
+                        "conflicts": [],
+                        "deletions_blocked": [],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+        else:
+            print(f"[update_manager] upstream snapshot already imported: {latest_upstream}")
         return False, latest_upstream
 
     extracted, temp_dir = extract_git_tree(f"upstream/{DEFAULT_BRANCH}")
@@ -793,16 +841,30 @@ def upstream_sync() -> Tuple[bool, str]:
             old_manifest=old_manifest,
             preserve_patterns=preserve,
             emit_merge_command=False,
+            dry_run=dry_run,
         )
     finally:
         temp_dir.cleanup()
+
+    source_label = f"upstream/{DEFAULT_BRANCH}@{latest_upstream[:12]}"
+    if dry_run:
+        print_snapshot_summary(
+            source_label=source_label,
+            current_label=current_upstream or "upstream-unset",
+            result=result,
+            dry_run=True,
+        )
+        would_change = bool(
+            result.added or result.updated or result.removed or result.conflicts or result.deletions_blocked
+        )
+        return would_change, latest_upstream
 
     # release-style conflict command text is too vague; append upstream-specific command if needed
     if result.conflicts or result.deletions_blocked:
         summary_path = (MERGE_ROOT / result.merge_batch / "SUMMARY.md") if result.merge_batch else None
         if summary_path and summary_path.exists():
             cmd_id = append_karo_command_for_merge(
-                source_label=f"upstream/{DEFAULT_BRANCH}@{latest_upstream[:12]}",
+                source_label=source_label,
                 summary_path=summary_path,
                 conflicts=result.conflicts,
                 deletions_blocked=result.deletions_blocked,
@@ -842,7 +904,9 @@ def manual_update(args: argparse.Namespace) -> int:
 
 
 def manual_upstream_sync(args: argparse.Namespace) -> int:
-    applied, _ = upstream_sync()
+    applied, _ = upstream_sync(dry_run=args.dry_run)
+    if args.dry_run:
+        return 0
     return 10 if applied else 0
 
 
@@ -926,6 +990,7 @@ def build_parser() -> argparse.ArgumentParser:
     manual_p.set_defaults(func=manual_update)
 
     upstream_p = sub.add_parser("upstream-sync", help="import latest upstream/main snapshot and queue merge work")
+    upstream_p.add_argument("--dry-run", action="store_true", help="show planned changes without modifying the repo")
     upstream_p.set_defaults(func=manual_upstream_sync)
 
     startup_p = sub.add_parser("startup", help="run startup update check/apply")

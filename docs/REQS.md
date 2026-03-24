@@ -1525,11 +1525,14 @@
 3. 衝突した incoming file は `.shogunate/merge-candidates/` に退避すること。
 4. 衝突がある場合は `queue/shogun_to_karo.yaml` に pending cmd を追加し、Shogunate がマージ処理を進められること。
 5. 上記導線は `bash scripts/upstream_sync.sh` で実行できること。
+6. 適用前確認のため、`bash scripts/upstream_sync.sh --dry-run` で副作用なしに予定差分を確認できること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `python3 -m unittest tests.unit.test_update_manager`
    - 期待結果: merge-candidate 作成時に pending cmd も生成される。
 2. コマンド: `python3 scripts/update_manager.py upstream-sync`
    - 期待結果: 最新 upstream を import し、差分が無ければ no-op、差分があれば適用/merge-candidate 化される。
-3. コマンド: `rg -n "upstream-sync|queue/shogun_to_karo.yaml|merge-candidates" scripts/update_manager.py scripts/upstream_sync.sh README.md README_ja.md`
+3. コマンド: `python3 scripts/update_manager.py upstream-sync --dry-run`
+   - 期待結果: 予定される add / update / remove / conflict を JSON で表示し、worktree は変化しない。
+4. コマンド: `rg -n "upstream-sync|--dry-run|queue/shogun_to_karo.yaml|merge-candidates" scripts/update_manager.py scripts/upstream_sync.sh README.md README_ja.md`
    - 期待結果: upstream import と AI マージ導線の接点が揃っている。

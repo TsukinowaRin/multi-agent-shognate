@@ -135,6 +135,27 @@ class UpdateManagerApplySnapshotTests(unittest.TestCase):
 
         self.assertFalse((self.root / "queue" / "shogun_to_karo.yaml").exists())
 
+    def test_dry_run_reports_conflict_without_writing_files(self):
+        self._write("README.md", "local edit\n")
+        old_manifest = {"README.md": "oldhash"}
+        source = self._source_dir({"README.md": "incoming\n"})
+
+        result = update_manager.apply_release_snapshot(
+            source_root=source,
+            version_before="v1",
+            version_after="v2",
+            old_manifest=old_manifest,
+            preserve_patterns=[],
+            dry_run=True,
+        )
+
+        self.assertEqual((self.root / "README.md").read_text(encoding="utf-8"), "local edit\n")
+        self.assertIn("README.md", result.conflicts)
+        self.assertEqual(list(self.merge_root.rglob("*")), [])
+        self.assertFalse(self.notice_path.exists())
+        self.assertFalse((self.root / "queue" / "shogun_to_karo.yaml").exists())
+        self.assertFalse(update_manager.MANIFEST_PATH.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

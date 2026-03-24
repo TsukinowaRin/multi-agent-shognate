@@ -192,7 +192,7 @@ echo        %REPO_WSL%
 echo.
 
 REM ===== Step 4: Run first_setup.sh =====
-echo   [4/4] Running first_setup.sh in Ubuntu...
+echo   [4/5] Running first_setup.sh in Ubuntu...
 echo         first_setup.sh を実行中...
 echo.
 
@@ -214,6 +214,30 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
+echo   [5/5] Initializing update metadata...
+echo         アップデート状態を初期化中...
+
+set "UPDATE_INIT_CMD=cd \"%REPO_WSL%\" && python3 scripts/update_manager.py init"
+if /I not "%INSTALL_MODE%"=="local" (
+    for /f "usebackq delims=" %%I in (`wsl.exe -d Ubuntu -- wslpath -a "%EXTRACTED_DIR%"`) do set "EXTRACTED_WSL=%%I"
+    if not defined EXTRACTED_WSL (
+        echo   [ERROR] Failed to resolve extracted archive path.
+        pause
+        exit /b 1
+    )
+    set "UPDATE_INIT_CMD=%UPDATE_INIT_CMD% --install-mode release --ref %REPO_REF% --ref-kind %REPO_REF_KIND% --version-label %REPO_VERSION_LABEL% --source-root \"%EXTRACTED_WSL%\""
+)
+
+wsl.exe -d Ubuntu -- bash -lc "%UPDATE_INIT_CMD%"
+if %ERRORLEVEL% NEQ 0 (
+    echo   [WARN] Update metadata initialization failed.
+    echo          You can re-run inside Ubuntu:
+    echo            cd %REPO_WSL%
+    echo            python3 scripts/update_manager.py init
+    echo.
+)
+
+echo.
 echo   +============================================================+
 echo   ^|  [OK] Setup complete!                                      ^|
 echo   ^|       初回セットアップ完了                                 ^|
@@ -228,6 +252,10 @@ echo.
 echo   Or inside Ubuntu:
 echo     cd %REPO_WSL%
 echo     bash shutsujin_departure.sh
+echo.
+echo   Manual updater / 手動アップデート:
+echo     Download multi-agent-shognate-updater.bat into the same folder and run it
+echo     同じフォルダに multi-agent-shognate-updater.bat を置いて実行
 echo.
 pause
 exit /b 0

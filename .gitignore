@@ -68,6 +68,7 @@
 !first_setup.sh
 !setup.sh
 !install.bat
+!updater.bat
 
 # Development tooling
 !Makefile
@@ -119,6 +120,7 @@
 !scripts/slim_yaml.py
 !scripts/ensure_generated_instructions.sh
 !scripts/prepublish_check.sh
+!scripts/update_manager.py
 
 
 # SayTask (sample template only, not actual data)
@@ -152,6 +154,7 @@
 !tests/*.bats
 !tests/unit/
 !tests/unit/*.bats
+!tests/unit/*.py
 !tests/integration/
 !tests/integration/*.bats
 !tests/test_helper/
@@ -170,6 +173,7 @@ queue/**
 # Runtime / local-only artifacts
 Waste/
 _trash/
+.shogunate/
 
 # Upstream参照用のローカルcloneは追跡しない
 _upstream_reference/

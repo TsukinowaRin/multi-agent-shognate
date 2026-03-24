@@ -11,7 +11,7 @@ fail() {
 
 printf '[INFO] prepublish check start\n'
 
-tracked_forbidden="$(git ls-files | rg '^(Waste/|_trash/|_upstream_reference/|docs/(WORKLOG|HANDOVER|UPSTREAM_SYNC)|config/settings.yaml|dashboard.md|queue/)' || true)"
+tracked_forbidden="$(git ls-files | rg '^(Waste/|_trash/|_upstream_reference/|\\.shogunate/|docs/(WORKLOG|HANDOVER|UPSTREAM_SYNC)|config/settings.yaml|dashboard.md|queue/)' || true)"
 if [[ -n "$tracked_forbidden" ]]; then
   printf '[FAIL] forbidden tracked paths detected:\n%s\n' "$tracked_forbidden" >&2
   exit 1

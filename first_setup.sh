@@ -597,6 +597,22 @@ logging:
   level: info  # debug | info | warn | error
   path: "$SCRIPT_DIR/logs/"
 
+# アップデート設定（local-only）
+update:
+  # 起動時に更新確認を行うか
+  startup_check: true
+  # Release install のみ対象。true にすると起動時に最新 Release へ自動更新
+  auto_apply_release: false
+  # 常に残すローカル資産
+  preserve_paths:
+    - ".codex/"
+    - ".claude/"
+    - "projects/"
+    - "context/local/"
+    - "instructions/local/"
+    - "skills/local/"
+    - "memory/global_context.md"
+
 # Multi-CLI設定
 cli:
   default: codex

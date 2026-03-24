@@ -1500,3 +1500,20 @@
    - 期待結果: `keyboard-interactive` 応答実装が入っている。
 2. コマンド: `cd android && ./gradlew assembleDebug`
    - 期待結果: Android アプリがビルドできる。
+
+## 追補（2026-03-24: Git install / Release install のアップデート導線）
+### 要求
+1. `git clone` した `main` 運用は rolling channel とし、`shutsujin_departure.sh` 起動前に `origin/main` への fast-forward 更新を確認すること。
+2. tracked な local 編集や local commit がある場合、git install はそれを破壊せず、`.shogunate/merge-candidates/` に incoming file を退避して家老へ通知すること。
+3. Release installer で入れた portable install は stable release channel とし、既定では startup auto-update を無効化すること。
+4. Release install の手動更新は `multi-agent-shognate-updater.bat` で行えること。
+5. Release install は local state (`config/settings.yaml`, `.codex/`, `.claude/`, `projects/`, `context/local/`, `instructions/local/`, `skills/local/`, `queue/`, `logs/`, `dashboard.md`) を保持したまま更新できること。
+6. 更新後に merge candidate がある場合、起動完了後に家老へ `merge_required` の inbox 通知を送ること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `python3 -m unittest tests.unit.test_update_manager`
+   - 期待結果: release snapshot 更新時の置換・preserve・merge candidate 退避が通る。
+2. コマンド: `python3 scripts/update_manager.py status`
+   - 期待結果: install mode / version / auto-update 状態が JSON で出る。
+3. コマンド: `rg -n "update_manager.py|multi-agent-shognate-updater.bat|merge-candidates|auto_apply_release" install.bat updater.bat shutsujin_departure.sh README.md README_ja.md .github/workflows/android-release.yml first_setup.sh`
+   - 期待結果: installer / updater / startup / docs / release workflow の接点が揃っている。

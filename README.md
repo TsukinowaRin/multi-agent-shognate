@@ -150,6 +150,7 @@ Important behavior:
 - the installer downloads the source for the **same Release tag** it was downloaded from
 - it installs into the **same folder where the installer itself is placed**
 - it checks WSL2 / Ubuntu and, when possible, runs `first_setup.sh` automatically
+- it initializes local update metadata for that portable install
 
 This is the standard Windows install path for this fork.
 
@@ -164,6 +165,57 @@ bash first_setup.sh
 ```
 
 The same applies if you unpack a ZIP and run from the repo root.
+
+## Updating
+
+This fork supports two update channels.
+
+### 1. Git `main` install
+
+If you run the repo directly from a `git clone` on `main`, startup treats that as the rolling channel.
+
+- `shutsujin_departure.sh` checks for a fast-forward update before boot
+- if the worktree is clean, it pulls latest `origin/main`
+- if tracked local edits or local commits would collide, it does **not** destroy them
+- instead it writes merge candidates into `.shogunate/merge-candidates/` and notifies Karo after startup
+
+This is the "always follow latest code" path.
+
+### 2. Release installer / portable install
+
+If you installed the system with `multi-agent-shognate-installer.bat`, that is the stable release channel.
+
+- install is pinned to the Release tag you downloaded
+- it does **not** auto-apply newer Releases by default
+- manual updates use `multi-agent-shognate-updater.bat`
+- startup auto-update can be enabled later in local config
+
+Place `multi-agent-shognate-updater.bat` into the same folder as the installed repo and run it.
+
+Supported updater usage:
+
+- double-click: update now to the latest Release
+- `multi-agent-shognate-updater.bat --auto-on`: enable startup auto-update for Release installs
+- `multi-agent-shognate-updater.bat --auto-off`: disable startup auto-update for Release installs
+
+### What gets preserved
+
+Updates keep local state and user-specific assets such as:
+
+- `config/settings.yaml`
+- `.codex/`
+- `.claude/`
+- `projects/`
+- `context/local/`
+- `instructions/local/`
+- `skills/local/`
+- runtime state under `queue/`, `logs/`, and `dashboard.md`
+
+If an incoming tracked file collides with local edits, the updater keeps the local file in place and stores the incoming version under:
+
+- `.shogunate/merge-candidates/<batch>/incoming/...`
+
+After startup, Karo is nudged to handle the merge work.
 
 ### What `first_setup.sh` does
 
@@ -322,6 +374,7 @@ multi-agent-shognate/
 ├── scripts/                   # runtime, bootstrap, bridge, watcher
 ├── tests/                     # unit and smoke tests
 ├── install.bat                # Windows installer / bootstrap entry
+├── updater.bat                # Windows updater for portable installs
 ├── first_setup.sh             # first-time setup
 └── shutsujin_departure.sh     # runtime startup
 ```

@@ -23,6 +23,7 @@
 - `docs/HANDOVER_*.md`
 - `docs/UPSTREAM_SYNC_*.md`
 - `config/settings.yaml`
+- `.shogunate/`
 - 実行時 `queue/` データ
 - `dashboard.md`
 - ローカル生成ログ、バックアップ、個人用メモ

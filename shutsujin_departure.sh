@@ -104,6 +104,36 @@ sync_opencode_like_workspace_settings() {
     fi
 }
 
+run_startup_update_check() {
+    local update_script="$SCRIPT_DIR/scripts/update_manager.py"
+    [ -x "$update_script" ] || return 0
+    [ "${MAS_SKIP_STARTUP_UPDATE:-0}" = "1" ] && return 0
+
+    log_info "🆙 起動前アップデート確認を実行中..."
+    if python3 "$update_script" startup; then
+        return 0
+    fi
+
+    case "$?" in
+        10)
+            log_info "🆙 更新を適用したため first_setup.sh を再実行します"
+            bash "$SCRIPT_DIR/first_setup.sh" || true
+            log_info "🆙 新しいコードで出陣をやり直します"
+            exec env MAS_SKIP_STARTUP_UPDATE=1 bash "$0" "$@"
+            ;;
+        *)
+            log_info "⚠️  起動前アップデート確認に失敗しました。現行コードで継続します"
+            return 0
+            ;;
+    esac
+}
+
+notify_pending_merge_candidates() {
+    local update_script="$SCRIPT_DIR/scripts/update_manager.py"
+    [ -x "$update_script" ] || return 0
+    python3 "$update_script" notify-karo >/dev/null 2>&1 || true
+}
+
 # 色付きログ関数（戦国風）
 log_info() {
     echo -e "\033[1;33m【報】\033[0m $1"
@@ -116,6 +146,8 @@ log_success() {
 log_war() {
     echo -e "\033[1;31m【戦】\033[0m $1"
 }
+
+run_startup_update_check "$@"
 
 # Gemini CLI 初回の trust folder プロンプトを自動承認する（1回のみ）
 auto_accept_gemini_trust_prompt_tmux() {
@@ -1654,6 +1686,7 @@ NINJA_EOF
     fi
     create_android_compat_sessions
     log_success "  └─ Android 互換 session を更新完了"
+    notify_pending_merge_candidates
     echo ""
 fi
 

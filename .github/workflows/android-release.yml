@@ -67,6 +67,7 @@ jobs:
           fi
           APK_ASSET="multi-agent-shognate-android-${TAG}.apk"
           INSTALLER_ASSET="multi-agent-shognate-installer.bat"
+          UPDATER_ASSET="multi-agent-shognate-updater.bat"
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/${APK_ASSET}"
           python3 - <<'PY'
@@ -84,10 +85,17 @@ jobs:
               encoding="utf-8",
               newline="\r\n",
           )
+          updater = Path("updater.bat").read_text(encoding="utf-8")
+          Path("dist").joinpath("multi-agent-shognate-updater.bat").write_text(
+              updater,
+              encoding="utf-8",
+              newline="\r\n",
+          )
           PY
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "apk_asset=${APK_ASSET}" >> "$GITHUB_OUTPUT"
           echo "installer_asset=${INSTALLER_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "updater_asset=${UPDATER_ASSET}" >> "$GITHUB_OUTPUT"
         env:
           TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
 
@@ -98,6 +106,7 @@ jobs:
           path: |
             dist/${{ steps.asset.outputs.apk_asset }}
             dist/${{ steps.asset.outputs.installer_asset }}
+            dist/${{ steps.asset.outputs.updater_asset }}
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -107,6 +116,7 @@ jobs:
           files: |
             dist/${{ steps.asset.outputs.apk_asset }}
             dist/${{ steps.asset.outputs.installer_asset }}
+            dist/${{ steps.asset.outputs.updater_asset }}
           generate_release_notes: true
           prerelease: ${{ github.event.inputs.prerelease == true }}
           target_commitish: ${{ github.sha }}

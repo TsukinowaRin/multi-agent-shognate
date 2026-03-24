@@ -62,7 +62,6 @@ DEFAULT_PRESERVE_PATTERNS = [
     "logs/**",
 ]
 
-
 @dataclass
 class ApplyResult:
     applied: bool
@@ -84,6 +83,10 @@ def utcnow() -> str:
 def ensure_state_dir() -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     MERGE_ROOT.mkdir(parents=True, exist_ok=True)
+
+
+def shogun_to_karo_path() -> Path:
+    return ROOT / "queue" / "shogun_to_karo.yaml"
 
 
 def read_json(path: Path, default):
@@ -286,6 +289,23 @@ def copy_with_parents(src: Path, dst: Path) -> None:
     shutil.copy2(src, dst)
 
 
+def extract_git_tree(ref: str) -> Tuple[Path, tempfile.TemporaryDirectory[str]]:
+    temp_dir = tempfile.TemporaryDirectory(prefix="mas-git-tree-")
+    root = Path(temp_dir.name)
+    tar_path = root / "tree.tar"
+    archive = subprocess.run(
+        ["git", "archive", "--format=tar", ref],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+    tar_path.write_bytes(archive.stdout)
+    extract_root = root / "tree"
+    extract_root.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["tar", "-xf", str(tar_path), "-C", str(extract_root)], check=True)
+    return extract_root, temp_dir
+
+
 def write_merge_summary(
     merge_batch: str,
     source_label: str,
@@ -319,6 +339,61 @@ def write_merge_summary(
     return summary
 
 
+def append_karo_command_for_merge(
+    source_label: str,
+    summary_path: Path,
+    conflicts: List[str],
+    deletions_blocked: List[str],
+    purpose_prefix: str,
+) -> str:
+    queue_path = shogun_to_karo_path()
+    queue_path.parent.mkdir(parents=True, exist_ok=True)
+    existing = []
+    if queue_path.exists():
+        with queue_path.open("r", encoding="utf-8") as fh:
+            existing = yaml.safe_load(fh) or []
+        if not isinstance(existing, list):
+            existing = []
+
+    cmd_id = "cmd_upstream_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+    criteria = [
+        f"`{summary_path.relative_to(ROOT).as_posix()}` の内容が確認されている。",
+        "local customization を保持したまま、必要な upstream 差分の採否が整理されている。",
+        "採用・保留・却下の判断と理由が dashboard.md に記録されている。",
+    ]
+    if conflicts:
+        criteria.append("衝突ファイルごとに、どの版を採るかが整理されている。")
+    if deletions_blocked:
+        criteria.append("upstream 削除候補について、残置/削除の判断が整理されている。")
+
+    command_lines = [
+        f"{purpose_prefix} の取り込み後、local 変更と衝突した差分が残った。",
+        f"summary: {summary_path.relative_to(ROOT).as_posix()}",
+        f"source: {source_label}",
+        "merge-candidates を確認し、local customization を残しつつ必要な upstream 差分を統合せよ。",
+    ]
+    if conflicts:
+        command_lines.append("衝突ファイル: " + ", ".join(conflicts[:12]))
+    if deletions_blocked:
+        command_lines.append("upstream 削除候補: " + ", ".join(deletions_blocked[:12]))
+    command_lines.append("結果は dashboard.md に記し、必要なら追加 subtasks を発行せよ。")
+
+    entry = {
+        "id": cmd_id,
+        "timestamp": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "purpose": "家老が upstream 差分の衝突候補を整理し、統合方針を報告できる状態にする。",
+        "acceptance_criteria": criteria,
+        "command": "\n".join(command_lines),
+        "project": REPO_NAME,
+        "priority": "high",
+        "status": "pending",
+    }
+    existing.append(entry)
+    with queue_path.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump(existing, fh, allow_unicode=True, sort_keys=False)
+    return cmd_id
+
+
 def register_pending_merge_notice(
     merge_batch: str,
     summary_path: Path,
@@ -326,6 +401,7 @@ def register_pending_merge_notice(
     conflicts: List[str],
     deletions_blocked: List[str],
     reason: str,
+    cmd_id: Optional[str] = None,
 ) -> None:
     notice = {
         "created_at": utcnow(),
@@ -335,6 +411,7 @@ def register_pending_merge_notice(
         "conflicts": conflicts,
         "deletions_blocked": deletions_blocked,
         "reason": reason,
+        "cmd_id": cmd_id,
         "delivered": False,
     }
     write_json(NOTICE_PATH, notice)
@@ -346,6 +423,7 @@ def apply_release_snapshot(
     version_after: str,
     old_manifest: Dict[str, str],
     preserve_patterns: List[str],
+    emit_merge_command: bool = True,
 ) -> ApplyResult:
     ensure_state_dir()
     source_files = list_source_files(source_root)
@@ -409,6 +487,15 @@ def apply_release_snapshot(
     applied = bool(added or updated or removed)
     if conflicts or deletions_blocked:
         summary = write_merge_summary(merge_batch, version_after, conflicts, deletions_blocked)
+        cmd_id = None
+        if emit_merge_command:
+            cmd_id = append_karo_command_for_merge(
+                source_label=version_after,
+                summary_path=summary,
+                conflicts=conflicts,
+                deletions_blocked=deletions_blocked,
+                purpose_prefix="Release update",
+            )
         register_pending_merge_notice(
             merge_batch=merge_batch,
             summary_path=summary,
@@ -416,6 +503,7 @@ def apply_release_snapshot(
             conflicts=conflicts,
             deletions_blocked=deletions_blocked,
             reason="release update kept local changes and stored incoming files for merge",
+            cmd_id=cmd_id,
         )
     else:
         merge_batch = None
@@ -673,6 +761,69 @@ def release_manual_or_startup() -> Tuple[bool, str]:
     return True, latest_tag
 
 
+def upstream_sync() -> Tuple[bool, str]:
+    ensure_state_dir()
+    state = read_json(STATE_PATH, {})
+    current_upstream = state.get("upstream_ref", "")
+
+    fetch_proc = subprocess.run(
+        ["git", "fetch", "upstream", DEFAULT_BRANCH],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if fetch_proc.returncode != 0:
+        print(fetch_proc.stderr.strip(), file=sys.stderr)
+        return False, current_upstream or "unknown"
+
+    latest_upstream = git(["rev-parse", f"upstream/{DEFAULT_BRANCH}"]).stdout.strip()
+    if current_upstream == latest_upstream:
+        print(f"[update_manager] upstream snapshot already imported: {latest_upstream}")
+        return False, latest_upstream
+
+    extracted, temp_dir = extract_git_tree(f"upstream/{DEFAULT_BRANCH}")
+    try:
+        old_manifest = read_json(MANIFEST_PATH, {})
+        preserve = configured_preserve_patterns()
+        result = apply_release_snapshot(
+            source_root=extracted,
+            version_before=current_upstream or "upstream-unset",
+            version_after=f"upstream/{DEFAULT_BRANCH}@{latest_upstream[:12]}",
+            old_manifest=old_manifest,
+            preserve_patterns=preserve,
+            emit_merge_command=False,
+        )
+    finally:
+        temp_dir.cleanup()
+
+    # release-style conflict command text is too vague; append upstream-specific command if needed
+    if result.conflicts or result.deletions_blocked:
+        summary_path = (MERGE_ROOT / result.merge_batch / "SUMMARY.md") if result.merge_batch else None
+        if summary_path and summary_path.exists():
+            cmd_id = append_karo_command_for_merge(
+                source_label=f"upstream/{DEFAULT_BRANCH}@{latest_upstream[:12]}",
+                summary_path=summary_path,
+                conflicts=result.conflicts,
+                deletions_blocked=result.deletions_blocked,
+                purpose_prefix="Original upstream import",
+            )
+            notice = read_json(NOTICE_PATH, {})
+            if notice:
+                notice["cmd_id"] = cmd_id
+                notice["reason"] = "upstream import kept local changes and stored incoming files for merge"
+                write_json(NOTICE_PATH, notice)
+
+    state["upstream_ref"] = latest_upstream
+    state["last_upstream_sync_at"] = utcnow()
+    write_json(STATE_PATH, state)
+    print(
+        f"[update_manager] upstream import applied: {current_upstream or 'unset'} -> {latest_upstream} "
+        f"(updated={len(result.updated)}, added={len(result.added)}, conflicts={len(result.conflicts)})"
+    )
+    return True, latest_upstream
+
+
 def run_update(mode: str) -> Tuple[bool, str]:
     state = read_json(STATE_PATH, {})
     install_mode = detect_install_mode(state)
@@ -687,6 +838,11 @@ def run_update(mode: str) -> Tuple[bool, str]:
 def manual_update(args: argparse.Namespace) -> int:
     maybe_toggle_auto_release(args)
     applied, version_after = run_update("manual")
+    return 10 if applied else 0
+
+
+def manual_upstream_sync(args: argparse.Namespace) -> int:
+    applied, _ = upstream_sync()
     return 10 if applied else 0
 
 
@@ -768,6 +924,9 @@ def build_parser() -> argparse.ArgumentParser:
     manual_p.add_argument("--enable-auto", action="store_true")
     manual_p.add_argument("--disable-auto", action="store_true")
     manual_p.set_defaults(func=manual_update)
+
+    upstream_p = sub.add_parser("upstream-sync", help="import latest upstream/main snapshot and queue merge work")
+    upstream_p.set_defaults(func=manual_upstream_sync)
 
     startup_p = sub.add_parser("startup", help="run startup update check/apply")
     startup_p.set_defaults(func=startup_update)

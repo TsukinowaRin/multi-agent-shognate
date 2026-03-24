@@ -181,6 +181,20 @@ If you run the repo directly from a `git clone` on `main`, startup treats that a
 
 This is the "always follow latest code" path.
 
+If you also want to import the latest content from the original upstream repository and let Shogunate review collisions, run:
+
+```bash
+bash scripts/upstream_sync.sh
+```
+
+That flow:
+
+- fetches `upstream/main`
+- imports the upstream snapshot without deleting local customizations
+- stores incoming conflicting files under `.shogunate/merge-candidates/`
+- appends a pending command to `queue/shogun_to_karo.yaml`
+- lets Karo coordinate the merge work after startup
+
 ### 2. Release installer / portable install
 
 If you installed the system with `multi-agent-shognate-installer.bat`, that is the stable release channel.

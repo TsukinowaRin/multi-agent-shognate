@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 import importlib.util
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -98,6 +99,9 @@ class UpdateManagerApplySnapshotTests(unittest.TestCase):
         self.assertEqual(incoming[0].read_text(encoding="utf-8"), "incoming\n")
         notice = json.loads(self.notice_path.read_text(encoding="utf-8"))
         self.assertEqual(notice["conflicts"], ["README.md"])
+        queue = yaml.safe_load((self.root / "queue" / "shogun_to_karo.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(queue[-1]["status"], "pending")
+        self.assertIn("merge-candidates", queue[-1]["command"])
 
     def test_preserve_pattern_skips_copy(self):
         self._write("memory/global_context.md", "keep me\n")
@@ -114,6 +118,22 @@ class UpdateManagerApplySnapshotTests(unittest.TestCase):
 
         self.assertEqual((self.root / "memory/global_context.md").read_text(encoding="utf-8"), "keep me\n")
         self.assertIn("memory/global_context.md", result.preserved)
+
+    def test_emit_merge_command_can_be_disabled(self):
+        self._write("README.md", "local edit\n")
+        old_manifest = {"README.md": "oldhash"}
+        source = self._source_dir({"README.md": "incoming\n"})
+
+        update_manager.apply_release_snapshot(
+            source_root=source,
+            version_before="v1",
+            version_after="v2",
+            old_manifest=old_manifest,
+            preserve_patterns=[],
+            emit_merge_command=False,
+        )
+
+        self.assertFalse((self.root / "queue" / "shogun_to_karo.yaml").exists())
 
 
 if __name__ == "__main__":

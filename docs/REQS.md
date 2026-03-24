@@ -1517,3 +1517,19 @@
    - 期待結果: install mode / version / auto-update 状態が JSON で出る。
 3. コマンド: `rg -n "update_manager.py|multi-agent-shognate-updater.bat|merge-candidates|auto_apply_release" install.bat updater.bat shutsujin_departure.sh README.md README_ja.md .github/workflows/android-release.yml first_setup.sh`
    - 期待結果: installer / updater / startup / docs / release workflow の接点が揃っている。
+
+## 追補（2026-03-24: original upstream 取り込み + AI マージ導線）
+### 要求
+1. original upstream (`upstream/main`) から最新内容を fetch/import できること。
+2. local customization を壊さずに upstream snapshot を取り込めること。
+3. 衝突した incoming file は `.shogunate/merge-candidates/` に退避すること。
+4. 衝突がある場合は `queue/shogun_to_karo.yaml` に pending cmd を追加し、Shogunate がマージ処理を進められること。
+5. 上記導線は `bash scripts/upstream_sync.sh` で実行できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `python3 -m unittest tests.unit.test_update_manager`
+   - 期待結果: merge-candidate 作成時に pending cmd も生成される。
+2. コマンド: `python3 scripts/update_manager.py upstream-sync`
+   - 期待結果: 最新 upstream を import し、差分が無ければ no-op、差分があれば適用/merge-candidate 化される。
+3. コマンド: `rg -n "upstream-sync|queue/shogun_to_karo.yaml|merge-candidates" scripts/update_manager.py scripts/upstream_sync.sh README.md README_ja.md`
+   - 期待結果: upstream import と AI マージ導線の接点が揃っている。

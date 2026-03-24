@@ -120,6 +120,7 @@
 !scripts/slim_yaml.py
 !scripts/ensure_generated_instructions.sh
 !scripts/prepublish_check.sh
+!scripts/upstream_sync.sh
 !scripts/update_manager.py
 
 

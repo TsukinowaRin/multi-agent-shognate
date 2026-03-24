@@ -21,6 +21,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="${__STOP_HOOK_SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+WAIT_TIMEOUT="${STOP_HOOK_WAIT_TIMEOUT:-55}"
 
 # ─── Read stdin (hook input JSON) ───
 INPUT=$(cat)
@@ -64,9 +65,9 @@ if [ "$STOP_HOOK_ACTIVE" = "True" ]; then
     if [ "$AGENT_ID" = "shogun" ]; then
         WATCH_TARGETS_ACTIVE+=("$SCRIPT_DIR/dashboard.md")
     fi
-    if command -v inotifywait &>/dev/null; then
+    if [ "${WAIT_TIMEOUT}" -gt 0 ] && command -v inotifywait &>/dev/null; then
         inotifywait -e close_write -e moved_to \
-            --timeout 55 \
+            --timeout "${WAIT_TIMEOUT}" \
             "${WATCH_TARGETS_ACTIVE[@]}" 2>/dev/null || true
     fi
     UNREAD_COUNT=$(grep -c 'read: false' "$INBOX" 2>/dev/null || true)
@@ -124,9 +125,9 @@ if [ "${UNREAD_COUNT:-0}" -eq 0 ]; then
     if [ "$AGENT_ID" = "shogun" ]; then
         WATCH_TARGETS+=("$SCRIPT_DIR/dashboard.md")
     fi
-    if command -v inotifywait &>/dev/null; then
+    if [ "${WAIT_TIMEOUT}" -gt 0 ] && command -v inotifywait &>/dev/null; then
         inotifywait -e close_write -e moved_to \
-            --timeout 55 \
+            --timeout "${WAIT_TIMEOUT}" \
             "${WATCH_TARGETS[@]}" 2>/dev/null || true
     else
         # inotifywait not available: fall through to exit 0

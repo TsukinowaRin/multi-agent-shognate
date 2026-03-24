@@ -113,6 +113,7 @@ run_hook() {
     local json="$1"
     local agent_id="${2:-test_idle_agent}"
     IDLE_FLAG_DIR="$IDLE_FLAG_DIR" \
+    STOP_HOOK_WAIT_TIMEOUT=0 \
     __STOP_HOOK_SCRIPT_DIR="$TEST_HOOK_TMP" \
     __STOP_HOOK_AGENT_ID="$agent_id" \
     run bash "$HOOK_SCRIPT" <<< "$json"

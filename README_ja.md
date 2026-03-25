@@ -235,6 +235,8 @@ bash scripts/upstream_sync.sh --dry-run
 - `multi-agent-shognate-updater.bat --auto-on`: Release install の startup auto-update を有効化
 - `multi-agent-shognate-updater.bat --auto-off`: Release install の startup auto-update を無効化
 
+Android アプリから SSH で接続している場合は、APK 側から **ホスト上の Shogunate 本体**の更新も実行できます。これは APK 自身の更新ではなく、ホストに入っている Shogunate の更新です。
+
 ### 何が保持されるか
 
 アップデートでは、次のような local state / user-specific assets を残します。
@@ -310,6 +312,15 @@ SSH でホストへ接続し、そこで次を読みます。
 
 必要なら将軍 pane に命令も送れます。
 
+さらに、この fork 版 APK からは **ホスト側 Shogunate の更新**も操作できます。
+
+- 更新状態確認
+- `upstream-sync --dry-run` の差分確認
+- Shogunate を停止してから Release 更新
+- Shogunate を停止してから upstream 取込
+
+APK 自身の更新は行いません。Android アプリの更新は引き続き GitHub Releases から行います。
+
 ### Android の接続モデル
 
 接続は SSH ベースです。特定の VPN 製品が必須というわけではなく、**スマホからホストへ SSH 到達できること**が条件です。
@@ -336,6 +347,7 @@ SSH でホストへ接続し、そこで次を読みます。
 - Android アプリの初期値は空欄または非識別的な placeholder にしてあります
 - 個人の host 名、IP、topic は焼き込んでいません
 - APK には app 側で `ntfy` を subscribe するための topic 欄もあります
+- APK からの host 更新は、実行中の tmux runtime へ hot-apply せず、Shogunate 停止後に適用します
 
 ## 通知 (`ntfy`)
 

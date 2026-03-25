@@ -42,6 +42,7 @@ STATE_PATH = STATE_DIR / "install_state.json"
 MANIFEST_PATH = STATE_DIR / "install_manifest.json"
 MERGE_ROOT = STATE_DIR / "merge-candidates"
 NOTICE_PATH = STATE_DIR / "pending_merge_notice.json"
+PENDING_UPDATE_PATH = STATE_DIR / "pending_update.json"
 SETTINGS_PATH = ROOT / "config" / "settings.yaml"
 
 REPO_OWNER = "TsukinowaRin"
@@ -61,6 +62,8 @@ DEFAULT_PRESERVE_PATTERNS = [
     "queue/**",
     "logs/**",
 ]
+
+VALID_PENDING_ACTIONS = ("manual", "upstream-sync")
 
 @dataclass
 class ApplyResult:
@@ -415,6 +418,69 @@ def register_pending_merge_notice(
         "delivered": False,
     }
     write_json(NOTICE_PATH, notice)
+
+
+def queue_update_request(action: str, requested_by: str) -> dict:
+    if action not in VALID_PENDING_ACTIONS:
+        raise ValueError(f"unsupported pending update action: {action}")
+    ensure_state_dir()
+    payload = {
+        "action": action,
+        "requested_at": utcnow(),
+        "requested_by": requested_by,
+        "status": "queued",
+    }
+    write_json(PENDING_UPDATE_PATH, payload)
+    return payload
+
+
+def apply_pending_update_request() -> Tuple[bool, str]:
+    if not PENDING_UPDATE_PATH.exists():
+        print("[update_manager] no pending update request")
+        return False, current_version_label(read_json(STATE_PATH, {}))
+
+    payload = read_json(PENDING_UPDATE_PATH, {})
+    action = payload.get("action", "")
+    if action not in VALID_PENDING_ACTIONS:
+        payload["status"] = "failed"
+        payload["failed_at"] = utcnow()
+        payload["last_error"] = f"unsupported action: {action}"
+        write_json(PENDING_UPDATE_PATH, payload)
+        print(f"[update_manager] pending update failed: unsupported action: {action}", file=sys.stderr)
+        return False, current_version_label(read_json(STATE_PATH, {}))
+
+    payload["status"] = "applying"
+    payload["started_at"] = utcnow()
+    write_json(PENDING_UPDATE_PATH, payload)
+
+    try:
+        if action == "manual":
+            applied, version_after = run_update("manual")
+        else:
+            applied, version_after = upstream_sync(dry_run=False)
+    except Exception as exc:
+        payload["status"] = "failed"
+        payload["failed_at"] = utcnow()
+        payload["last_error"] = str(exc)
+        write_json(PENDING_UPDATE_PATH, payload)
+        print(f"[update_manager] pending update failed: {exc}", file=sys.stderr)
+        return False, current_version_label(read_json(STATE_PATH, {}))
+
+    if PENDING_UPDATE_PATH.exists():
+        PENDING_UPDATE_PATH.unlink()
+    print(f"[update_manager] pending update applied: action={action} applied={applied}")
+    return applied, version_after
+
+
+def queue_pending_update(args: argparse.Namespace) -> int:
+    payload = queue_update_request(args.action, args.requested_by)
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0
+
+
+def apply_pending_update(args: argparse.Namespace) -> int:
+    applied, _ = apply_pending_update_request()
+    return 10 if applied else 0
 
 
 def apply_release_snapshot(
@@ -966,6 +1032,7 @@ def status(args: argparse.Namespace) -> int:
         "startup_check": startup_enabled(),
         "release_auto_apply": release_auto_apply_enabled(state) if install_mode == "release" else None,
         "pending_merge_notice": NOTICE_PATH.exists(),
+        "pending_update": read_json(PENDING_UPDATE_PATH, None) if PENDING_UPDATE_PATH.exists() else None,
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0
@@ -995,6 +1062,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     startup_p = sub.add_parser("startup", help="run startup update check/apply")
     startup_p.set_defaults(func=startup_update)
+
+    queue_p = sub.add_parser("queue-update", help="queue a pending update request")
+    queue_p.add_argument("action", choices=VALID_PENDING_ACTIONS)
+    queue_p.add_argument("--requested-by", default="unknown")
+    queue_p.set_defaults(func=queue_pending_update)
+
+    apply_p = sub.add_parser("apply-pending", help="apply a queued update request if present")
+    apply_p.set_defaults(func=apply_pending_update)
 
     notify_p = sub.add_parser("notify-karo", help="send pending merge notice to karo")
     notify_p.set_defaults(func=notify_karo)

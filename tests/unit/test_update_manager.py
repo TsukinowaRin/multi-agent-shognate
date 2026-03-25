@@ -32,12 +32,14 @@ class UpdateManagerApplySnapshotTests(unittest.TestCase):
         self.original_manifest = update_manager.MANIFEST_PATH
         self.original_notice = update_manager.NOTICE_PATH
         self.original_merge_root = update_manager.MERGE_ROOT
+        self.original_pending = update_manager.PENDING_UPDATE_PATH
 
         update_manager.ROOT = self.root
         update_manager.STATE_DIR = self.state_dir
         update_manager.MANIFEST_PATH = self.state_dir / "install_manifest.json"
         update_manager.NOTICE_PATH = self.notice_path
         update_manager.MERGE_ROOT = self.merge_root
+        update_manager.PENDING_UPDATE_PATH = self.state_dir / "pending_update.json"
 
     def tearDown(self):
         update_manager.ROOT = self.original_root
@@ -45,6 +47,7 @@ class UpdateManagerApplySnapshotTests(unittest.TestCase):
         update_manager.MANIFEST_PATH = self.original_manifest
         update_manager.NOTICE_PATH = self.original_notice
         update_manager.MERGE_ROOT = self.original_merge_root
+        update_manager.PENDING_UPDATE_PATH = self.original_pending
         self.temp_dir.cleanup()
 
     def _write(self, rel: str, content: str):
@@ -155,6 +158,89 @@ class UpdateManagerApplySnapshotTests(unittest.TestCase):
         self.assertFalse(self.notice_path.exists())
         self.assertFalse((self.root / "queue" / "shogun_to_karo.yaml").exists())
         self.assertFalse(update_manager.MANIFEST_PATH.exists())
+
+
+class UpdateManagerPendingUpdateTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix="mas-pending-update-test-")
+        self.root = Path(self.temp_dir.name) / "repo"
+        self.root.mkdir(parents=True)
+        self.state_dir = self.root / ".shogunate"
+
+        self.original_root = update_manager.ROOT
+        self.original_state_dir = update_manager.STATE_DIR
+        self.original_state_path = update_manager.STATE_PATH
+        self.original_pending_path = update_manager.PENDING_UPDATE_PATH
+
+        update_manager.ROOT = self.root
+        update_manager.STATE_DIR = self.state_dir
+        update_manager.STATE_PATH = self.state_dir / "install_state.json"
+        update_manager.PENDING_UPDATE_PATH = self.state_dir / "pending_update.json"
+
+    def tearDown(self):
+        update_manager.ROOT = self.original_root
+        update_manager.STATE_DIR = self.original_state_dir
+        update_manager.STATE_PATH = self.original_state_path
+        update_manager.PENDING_UPDATE_PATH = self.original_pending_path
+        self.temp_dir.cleanup()
+
+    def test_queue_update_request_writes_pending_file(self):
+        payload = update_manager.queue_update_request("manual", "android")
+
+        self.assertEqual(payload["action"], "manual")
+        self.assertEqual(payload["requested_by"], "android")
+        stored = json.loads(update_manager.PENDING_UPDATE_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(stored["status"], "queued")
+
+    def test_apply_pending_dispatches_manual_update(self):
+        update_manager.queue_update_request("manual", "android")
+        original_run_update = update_manager.run_update
+
+        def fake_run_update(mode):
+            self.assertEqual(mode, "manual")
+            return True, "v-test"
+
+        update_manager.run_update = fake_run_update
+        try:
+            applied, version = update_manager.apply_pending_update_request()
+        finally:
+            update_manager.run_update = original_run_update
+
+        self.assertTrue(applied)
+        self.assertEqual(version, "v-test")
+        self.assertFalse(update_manager.PENDING_UPDATE_PATH.exists())
+
+    def test_apply_pending_dispatches_upstream_sync(self):
+        update_manager.queue_update_request("upstream-sync", "android")
+        original_upstream_sync = update_manager.upstream_sync
+
+        def fake_upstream_sync(dry_run=False):
+            self.assertFalse(dry_run)
+            return True, "upstream-123"
+
+        update_manager.upstream_sync = fake_upstream_sync
+        try:
+            applied, version = update_manager.apply_pending_update_request()
+        finally:
+            update_manager.upstream_sync = original_upstream_sync
+
+        self.assertTrue(applied)
+        self.assertEqual(version, "upstream-123")
+        self.assertFalse(update_manager.PENDING_UPDATE_PATH.exists())
+
+    def test_apply_pending_invalid_action_is_marked_failed(self):
+        update_manager.ensure_state_dir()
+        update_manager.write_json(
+            update_manager.PENDING_UPDATE_PATH,
+            {"action": "bad-action", "requested_by": "android", "status": "queued"},
+        )
+
+        applied, _ = update_manager.apply_pending_update_request()
+
+        self.assertFalse(applied)
+        stored = json.loads(update_manager.PENDING_UPDATE_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(stored["status"], "failed")
+        self.assertIn("unsupported action", stored["last_error"])
 
 
 if __name__ == "__main__":

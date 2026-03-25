@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-03-17
+最終更新: 2026-03-25
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -12,6 +12,7 @@
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-03-25_android_host_update.md` - Android APK から host 側 Shogunate 更新を停止後に安全適用する実行計画（完了）。
 - `docs/EXECPLAN_2026-03-17_codex_role_isolation.md` - Codex の model / reasoning state を role ごとに repo-local `CODEX_HOME` へ分離する実行計画（完了）。
 - `docs/EXECPLAN_2026-03-17_multi_cli_gaps.md` - `inbox_watcher.sh` / `switch_cli.sh` / `ratelimit_check.sh` に残る opencode / kilo / gemini 未対応箇所の修正計画（完了）。
 - `docs/EXECPLAN_2026-03-17_readme_refresh.md` - README 英日をこの fork の実配布・実運用に合わせて全面更新する実行計画（完了）。

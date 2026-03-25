@@ -35,6 +35,8 @@ import com.shogun.android.viewmodel.SettingsViewModel
 fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+    val updateLoading by settingsViewModel.updateLoading.collectAsState()
+    val updateResult by settingsViewModel.updateResult.collectAsState()
 
     var host by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST) }
     var port by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR) ?: Defaults.SSH_PORT_STR) }
@@ -52,6 +54,20 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     // Debug log dialog
     if (showDebugLog) {
         DebugLogDialog(onDismiss = { showDebugLog = false })
+    }
+
+    val saveSettings = {
+        prefs.edit()
+            .putString(PrefsKeys.SSH_HOST, host)
+            .putString(PrefsKeys.SSH_PORT, port)
+            .putString(PrefsKeys.SSH_USER, user)
+            .putString(PrefsKeys.SSH_KEY_PATH, keyPath)
+            .putString(PrefsKeys.SSH_PASSWORD, password)
+            .putString(PrefsKeys.PROJECT_PATH, projectPath)
+            .putString(PrefsKeys.SHOGUN_SESSION, shogunSession)
+            .putString(PrefsKeys.AGENTS_SESSION, agentsSession)
+            .apply()
+        saved = true
     }
 
     Column(
@@ -177,19 +193,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         Divider()
 
         Button(
-            onClick = {
-                prefs.edit()
-                    .putString(PrefsKeys.SSH_HOST, host)
-                    .putString(PrefsKeys.SSH_PORT, port)
-                    .putString(PrefsKeys.SSH_USER, user)
-                    .putString(PrefsKeys.SSH_KEY_PATH, keyPath)
-                    .putString(PrefsKeys.SSH_PASSWORD, password)
-                    .putString(PrefsKeys.PROJECT_PATH, projectPath)
-                    .putString(PrefsKeys.SHOGUN_SESSION, shogunSession)
-                    .putString(PrefsKeys.AGENTS_SESSION, agentsSession)
-                    .apply()
-                saved = true
-            },
+            onClick = saveSettings,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Shuaka,
@@ -206,6 +210,96 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 color = MaterialTheme.colorScheme.primary
             )
         }
+
+        Divider()
+
+        HostUpdateSection(
+            updateLoading = updateLoading,
+            updateResult = updateResult,
+            onStatus = {
+                saveSettings()
+                settingsViewModel.checkHostUpdateStatus()
+            },
+            onPreview = {
+                saveSettings()
+                settingsViewModel.previewUpstreamSync()
+            },
+            onReleaseUpdate = {
+                saveSettings()
+                settingsViewModel.stopAndApplyReleaseUpdate()
+            },
+            onUpstreamUpdate = {
+                saveSettings()
+                settingsViewModel.stopAndApplyUpstreamUpdate()
+            }
+        )
+    }
+}
+
+@Composable
+private fun HostUpdateSection(
+    updateLoading: Boolean,
+    updateResult: String,
+    onStatus: () -> Unit,
+    onPreview: () -> Unit,
+    onReleaseUpdate: () -> Unit,
+    onUpstreamUpdate: () -> Unit
+) {
+    Text("本体更新", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+    Text(
+        "APK 自体ではなく、SSH 先の Shogunate 本体を更新します。live 更新はせず、停止してから適用します。",
+        color = Color(0xFFAABBCC),
+        fontSize = 12.sp
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedButton(onClick = onStatus, modifier = Modifier.weight(1f), enabled = !updateLoading) {
+            Text("状態確認")
+        }
+        OutlinedButton(onClick = onPreview, modifier = Modifier.weight(1f), enabled = !updateLoading) {
+            Text("差分確認")
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Button(
+            onClick = onReleaseUpdate,
+            modifier = Modifier.weight(1f),
+            enabled = !updateLoading,
+            colors = ButtonDefaults.buttonColors(containerColor = Shuaka, contentColor = Color.White)
+        ) {
+            Text("停止してRelease更新")
+        }
+        Button(
+            onClick = onUpstreamUpdate,
+            modifier = Modifier.weight(1f),
+            enabled = !updateLoading,
+            colors = ButtonDefaults.buttonColors(containerColor = Tetsukon, contentColor = Color.White)
+        ) {
+            Text("停止してUpstream取込")
+        }
+    }
+
+    if (updateLoading) {
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    }
+
+    if (updateResult.isNotBlank()) {
+        OutlinedTextField(
+            value = updateResult,
+            onValueChange = {},
+            label = { Text("更新ログ") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 120.dp),
+            readOnly = true
+        )
     }
 }
 

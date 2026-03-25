@@ -128,6 +128,30 @@ run_startup_update_check() {
     esac
 }
 
+run_pending_update_request() {
+    local update_script="$SCRIPT_DIR/scripts/update_manager.py"
+    [ -x "$update_script" ] || return 0
+    [ "${MAS_SKIP_PENDING_UPDATE:-0}" = "1" ] && return 0
+
+    log_info "🆙 予約済みアップデート有無を確認中..."
+    if python3 "$update_script" apply-pending; then
+        return 0
+    fi
+
+    case "$?" in
+        10)
+            log_info "🆙 予約済みアップデートを適用したため first_setup.sh を再実行します"
+            bash "$SCRIPT_DIR/first_setup.sh" || true
+            log_info "🆙 新しいコードで出陣をやり直します"
+            exec env MAS_SKIP_PENDING_UPDATE=1 MAS_SKIP_STARTUP_UPDATE=1 bash "$0" "$@"
+            ;;
+        *)
+            log_info "⚠️  予約済みアップデート適用に失敗しました。現行コードで継続します"
+            return 0
+            ;;
+    esac
+}
+
 notify_pending_merge_candidates() {
     local update_script="$SCRIPT_DIR/scripts/update_manager.py"
     [ -x "$update_script" ] || return 0
@@ -147,6 +171,7 @@ log_war() {
     echo -e "\033[1;31m【戦】\033[0m $1"
 }
 
+run_pending_update_request "$@"
 run_startup_update_check "$@"
 
 # Gemini CLI 初回の trust folder プロンプトを自動承認する（1回のみ）

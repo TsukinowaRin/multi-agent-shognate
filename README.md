@@ -220,6 +220,8 @@ Supported updater usage:
 - `multi-agent-shognate-updater.bat --auto-on`: enable startup auto-update for Release installs
 - `multi-agent-shognate-updater.bat --auto-off`: disable startup auto-update for Release installs
 
+If you are connected from the Android app, the app can also trigger **host-side** updates over SSH. That does not update the APK itself. It updates the installed Shogunate copy on the host.
+
 ### What gets preserved
 
 Updates keep local state and user-specific assets such as:
@@ -306,6 +308,15 @@ It connects to the host over SSH and interacts with:
 
 It can also send commands into the Shogun pane when needed.
 
+The fork APK can also manage **host-side Shogunate updates** over SSH:
+
+- check update status
+- preview upstream import with `--dry-run`
+- stop Shogunate and apply a Release update
+- stop Shogunate and apply an upstream import
+
+The APK does **not** self-update. Android app updates still come from GitHub Releases.
+
 ### Android connection model
 
 The app is SSH-based. No specific VPN product is required. The only requirement is that the phone can reach the host over SSH.
@@ -332,6 +343,7 @@ Notes:
 - Android connection defaults are blank or non-identifying placeholders
 - no personal hostnames, IPs, or topics are baked into the app
 - the APK also has an `ntfy` topic field for app-side notification subscription
+- host updates from the APK are applied only after Shogunate is stopped; they are not hot-applied into a running tmux runtime
 
 ## Notifications (`ntfy`)
 

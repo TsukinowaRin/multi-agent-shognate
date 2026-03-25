@@ -1536,3 +1536,22 @@
    - 期待結果: 予定される add / update / remove / conflict を JSON で表示し、worktree は変化しない。
 4. コマンド: `rg -n "upstream-sync|--dry-run|queue/shogun_to_karo.yaml|merge-candidates" scripts/update_manager.py scripts/upstream_sync.sh README.md README_ja.md`
    - 期待結果: upstream import と AI マージ導線の接点が揃っている。
+
+## 追補（2026-03-25: Android からの本体更新は停止後適用）
+### 要求
+1. Android APK は APK 自身を更新せず、SSH 先の Shogunate 本体だけを更新対象にすること。
+2. 更新は running tmux runtime に hot-apply せず、停止後または次回起動前に適用すること。
+3. `scripts/update_manager.py` は pending update request を queue / status / apply できること。
+4. `shutsujin_departure.sh` は起動前に pending update request を消化できること。
+5. Android 設定画面には、少なくとも `状態確認`、`差分確認`、`停止してRelease更新`、`停止してUpstream取込` を追加し、UI を過度に複雑にしないこと。
+6. `scripts/stop_and_apply_update.sh` のような host 側補助スクリプトで、停止→更新→必要なら再起動を一括実行できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `python3 -m unittest tests.unit.test_update_manager`
+   - 期待結果: pending update queue / apply の回帰が PASS する。
+2. コマンド: `bash -n shutsujin_departure.sh scripts/stop_and_apply_update.sh`
+   - 期待結果: 起動前 pending update 処理と停止更新スクリプトに構文エラーがない。
+3. コマンド: `cd android && ./gradlew assembleDebug`
+   - 期待結果: Android 設定画面の本体更新 UI を含めてもアプリがビルドできる。
+4. コマンド: `rg -n "queue-update|apply-pending|stop_and_apply_update|本体更新|停止してRelease更新|停止してUpstream取込" scripts/update_manager.py scripts/stop_and_apply_update.sh shutsujin_departure.sh android/app/src/main/java/com/shogun/android/viewmodel/SettingsViewModel.kt android/app/src/main/java/com/shogun/android/ui/SettingsScreen.kt README.md README_ja.md`
+   - 期待結果: host 側 pending update 導線と Android UI / docs の接点が揃っている。

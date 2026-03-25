@@ -69,6 +69,7 @@
 !setup.sh
 !install.bat
 !updater.bat
+!scripts/stop_and_apply_update.sh
 
 # Development tooling
 !Makefile

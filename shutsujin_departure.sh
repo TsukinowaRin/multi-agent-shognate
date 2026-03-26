@@ -786,7 +786,7 @@ while [[ $# -gt 0 ]]; do
             echo "  silent（--silent）:   echo表示なし（API節約）"
             echo ""
             echo "エイリアス:"
-            echo "  csst  → cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh"
+            echo "  csst  → cd $SCRIPT_DIR && ./shutsujin_departure.sh"
             echo "  css   → bash scripts/focus_agent_pane.sh shogun"
             echo "  csg   → bash scripts/focus_agent_pane.sh gunshi"
             echo "  csm   → bash scripts/focus_agent_pane.sh karo"

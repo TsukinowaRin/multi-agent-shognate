@@ -212,12 +212,24 @@ The first three numbers track the upstream Shogun version.
 The fourth number is this fork's packaging/release revision.
 Installer and updater asset names use only the version part, for example `v4.2.0.1`.
 
+Use the Windows assets like this:
+
+- `multi-agent-shognate-installer-<version>.bat`
+  - first-time install into the folder where you place the installer
+  - downloads the matching Release snapshot
+  - runs `first_setup.sh`
+  - initializes Shogunate as a Release install
+- `multi-agent-shognate-updater-<version>.bat`
+  - use only after a portable install already exists
+  - updates that installed copy to the latest Release
+  - can also toggle startup auto-update for that Release install
+
 - install is pinned to the Release tag you downloaded
 - it does **not** auto-apply newer Releases by default
 - manual updates use `multi-agent-shognate-updater-<version>.bat`
 - startup auto-update can be enabled later in local config
 
-Place `multi-agent-shognate-updater-<version>.bat` into the same folder as the installed repo and run it.
+Place `multi-agent-shognate-updater-<version>.bat` into the same folder as the installed repo and run it. The updater uses the portable install's own release metadata, so it still follows the Release channel even if that folder lives inside another Git working tree.
 
 Supported updater usage:
 

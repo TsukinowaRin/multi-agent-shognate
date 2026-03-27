@@ -227,12 +227,24 @@ Release tag は `android-v4.2.0.x` 形式で運用します。
 最後の 1 つはこの fork 側の配布・パッケージ改訂番号です。
 installer / updater の asset 名は `android-` を含めず、たとえば `v4.2.0.1` のような version 部だけを使います。
 
+Windows asset の役割はこうです。
+
+- `multi-agent-shognate-installer-<version>.bat`
+  - 初回導入用
+  - その bat を置いたフォルダへ対応 Release snapshot を展開する
+  - `first_setup.sh` を実行する
+  - そのコピーを Release install として初期化する
+- `multi-agent-shognate-updater-<version>.bat`
+  - 既に portable install がある前提で使う
+  - そのインストール済みコピーを最新 Release へ更新する
+  - その Release install の startup auto-update 切替にも使える
+
 - install 時点では、ダウンロードした Release tag に固定される
 - 既定では、起動時に新しい Release を自動適用しない
 - 手動更新は `multi-agent-shognate-updater-<version>.bat` を使う
 - 必要なら、あとから startup auto-update を有効化できる
 
-`multi-agent-shognate-updater-<version>.bat` は、インストール先の repo と同じフォルダに置いて実行してください。
+`multi-agent-shognate-updater-<version>.bat` は、インストール先の repo と同じフォルダに置いて実行してください。配置先が別の Git working tree の中でも、portable install 自身の release metadata を見るので Release channel として更新できます。
 
 使い方:
 

@@ -1507,6 +1507,7 @@
 2. tracked な local 編集や local commit がある場合、git install はそれを破壊せず、`.shogunate/merge-candidates/` に incoming file を退避して家老へ通知すること。
 3. Release installer で入れた portable install は stable release channel とし、既定では startup auto-update を無効化すること。
 4. Release install の手動更新は `multi-agent-shognate-updater-<tag>.bat` で行えること。
+5. Android Release tag は `android-v<upstream>.<packaging_revision>`、例: `android-v4.2.0.1` の形式に統一すること。
 5. Release install は local state (`config/settings.yaml`, `.codex/`, `.claude/`, `projects/`, `context/local/`, `instructions/local/`, `skills/local/`, `queue/`, `logs/`, `dashboard.md`) を保持したまま更新できること。
 6. 更新後に merge candidate がある場合、起動完了後に家老へ `merge_required` の inbox 通知を送ること。
 

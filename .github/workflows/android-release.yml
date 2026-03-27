@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "GitHub Release tag (example: android-v4.2.0.1)"
+        description: "GitHub Release tag (format: android-v4.2.0.x)"
         required: true
         type: string
       release_name:
@@ -57,6 +57,18 @@ jobs:
           chmod +x gradlew
           printf 'sdk.dir=%s\n' "${ANDROID_SDK_ROOT}" > local.properties
           ./gradlew --no-daemon assembleRelease
+
+      - name: Validate release tag format
+        run: |
+          TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          if ! printf '%s\n' "$TAG" | grep -Eq '^android-v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Invalid release tag format: $TAG"
+            echo "Expected format: android-v4.2.0.x"
+            exit 1
+          fi
 
       - name: Prepare release asset
         id: asset

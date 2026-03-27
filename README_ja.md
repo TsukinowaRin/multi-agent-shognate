@@ -222,6 +222,10 @@ bash scripts/upstream_sync.sh --dry-run
 
 `multi-agent-shognate-installer-<tag>.bat` で入れたものは、stable release channel 扱いです。
 
+Release tag は `android-v4.2.0.x` 形式で運用します。
+先頭 3 つの数字は upstream Shogun の版を表し、
+最後の 1 つはこの fork 側の配布・パッケージ改訂番号です。
+
 - install 時点では、ダウンロードした Release tag に固定される
 - 既定では、起動時に新しい Release を自動適用しない
 - 手動更新は `multi-agent-shognate-updater-<tag>.bat` を使う

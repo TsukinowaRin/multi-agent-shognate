@@ -207,6 +207,10 @@ That flow:
 
 If you installed the system with `multi-agent-shognate-installer-<tag>.bat`, that is the stable release channel.
 
+Release tags use the format `android-v4.2.0.x`.
+The first three numbers track the upstream Shogun version.
+The fourth number is this fork's packaging/release revision.
+
 - install is pinned to the Release tag you downloaded
 - it does **not** auto-apply newer Releases by default
 - manual updates use `multi-agent-shognate-updater-<tag>.bat`

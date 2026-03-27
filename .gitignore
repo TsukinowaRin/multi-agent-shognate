@@ -155,6 +155,8 @@
 # Tests
 !tests/
 !tests/*.bats
+!tests/helpers/
+!tests/helpers/*.bash
 !tests/unit/
 !tests/unit/*.bats
 !tests/unit/*.py

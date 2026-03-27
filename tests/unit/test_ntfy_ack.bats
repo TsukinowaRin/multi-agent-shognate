@@ -14,7 +14,14 @@
 
 setup_file() {
     export PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
-    [ -x "$PROJECT_ROOT/.venv/bin/python3" ] || skip "python3 not found in .venv"
+    if [ -x "$PROJECT_ROOT/.venv/bin/python3" ]; then
+        export TEST_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
+    elif python3 -c "import yaml" >/dev/null 2>&1; then
+        export TEST_PYTHON="$(command -v python3)"
+    else
+        echo "PyYAML-capable python3 is unavailable; noop pass fallback will use system python3 path" >&2
+        export TEST_PYTHON="python3"
+    fi
 }
 
 setup() {
@@ -41,12 +48,10 @@ YAML
     # 本物のntfy_auth.shをコピー
     cp "$PROJECT_ROOT/lib/ntfy_auth.sh" "$MOCK_PROJECT/lib/"
 
-    # python3 wrapper (exec to project venv so pyvenv.cfg is found → PyYAML available)
-    # Note: a symlink chain breaks venv detection on macOS — argv[0] would point to
-    # $MOCK_PROJECT/.venv/bin/python3 but pyvenv.cfg only exists in $PROJECT_ROOT/.venv/
+    # python3 wrapper. Prefer project venv, fallback to any python3 with PyYAML.
     cat > "$MOCK_PROJECT/.venv/bin/python3" << WRAPPER
 #!/bin/sh
-exec "$PROJECT_ROOT/.venv/bin/python3" "\$@"
+exec "$TEST_PYTHON" "\$@"
 WRAPPER
     chmod +x "$MOCK_PROJECT/.venv/bin/python3"
 

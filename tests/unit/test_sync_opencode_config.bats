@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+source "$BATS_TEST_DIRNAME/../helpers/search_helper.bash"
+
 setup() {
   TEST_TMP="$(mktemp -d)"
   PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
@@ -62,7 +64,7 @@ YAML
   run python3 "$PROJECT_ROOT/scripts/sync_opencode_config.py"
   [ "$status" -eq 0 ]
   [ ! -f "$MAS_OPENCODE_CONFIG_PATH" ]
-  run rg -n "skipped|noop" "$MAS_OPENCODE_SUMMARY_PATH"
+  run bats_search "skipped|noop" "$MAS_OPENCODE_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 

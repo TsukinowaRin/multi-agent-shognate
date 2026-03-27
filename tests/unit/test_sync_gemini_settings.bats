@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+source "$BATS_TEST_DIRNAME/../helpers/search_helper.bash"
+
 setup() {
   TEST_TMP="$(mktemp -d)"
   PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
@@ -61,7 +63,7 @@ PY
 @test "sync_gemini_settings: summary に warning を書く" {
   run python3 "$PROJECT_ROOT/scripts/sync_gemini_settings.py"
   [ "$status" -eq 0 ]
-  run rg -n "gemini-3-pro-preview は MINIMAL/MEDIUM 非対応|gemini-2.5-pro は thinkingBudget=0" "$MAS_GEMINI_SUMMARY_PATH"
+  run bats_search "gemini-3-pro-preview は MINIMAL/MEDIUM 非対応|gemini-2.5-pro は thinkingBudget=0" "$MAS_GEMINI_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 

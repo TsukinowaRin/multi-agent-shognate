@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+source "$BATS_TEST_DIRNAME/../helpers/search_helper.bash"
+
 setup() {
   TEST_TMP="$(mktemp -d)"
   PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
@@ -73,7 +75,7 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" =~ "primed" ]]
 
-  run rg -n "cmd_300" "$MAS_SHOGUN_INBOX_FILE"
+  run bats_search "cmd_300" "$MAS_SHOGUN_INBOX_FILE"
   [ "$status" -eq 1 ]
 }
 
@@ -91,7 +93,7 @@ PY
   run python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py"
   [ "$status" -eq 0 ]
   [[ "$output" =~ "sent" ]]
-  run rg -n "cmd_302|cmd_done|上申" "$MAS_SHOGUN_INBOX_FILE" "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  run bats_search "cmd_302|cmd_done|上申" "$MAS_SHOGUN_INBOX_FILE" "$MAS_KARO_DONE_TO_SHOGUN_STATE"
   [ "$status" -eq 0 ]
 }
 

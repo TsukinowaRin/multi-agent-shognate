@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+source "$BATS_TEST_DIRNAME/../helpers/search_helper.bash"
+
 setup() {
   TEST_TMP="$(mktemp -d)"
   PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
@@ -101,7 +103,7 @@ print('ok')
 PY
   [ "$status" -eq 0 ]
 
-  run rg -n "shogun\tgemini\tmas-shogun|karo\tcodex\tgpt-5.4\thigh" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  run bats_search "shogun\tgemini\tmas-shogun|karo\tcodex\tgpt-5.4\thigh" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 
@@ -114,7 +116,7 @@ SH
 
   run python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
   [ "$status" -eq 0 ]
-  run rg -n "no-running-tmux-agents" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  run bats_search "no-running-tmux-agents" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 
@@ -164,7 +166,7 @@ print('ok')
 PY
   [ "$status" -eq 0 ]
 
-  run rg -n "configured-type=gemini, running-cli=claude" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  run bats_search "configured-type=gemini, running-cli=claude" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 
@@ -236,7 +238,7 @@ print('ok')
 PY
   [ "$status" -eq 0 ]
 
-  run rg -n "ashigaru8\tcodex\t\t\t\t\tnot-configured-skip" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  run bats_search "ashigaru8\tcodex\t\t\t\t\tnot-configured-skip" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 
@@ -291,6 +293,6 @@ print('ok')
 PY
   [ "$status" -eq 0 ]
 
-  run rg -n "invalid-gemini-model-reset=gpt-5.4" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  run bats_search "invalid-gemini-model-reset=gpt-5.4" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }

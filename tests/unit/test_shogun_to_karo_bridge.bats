@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+source "$BATS_TEST_DIRNAME/../helpers/search_helper.bash"
+
 setup() {
   TEST_TMP="$(mktemp -d)"
   PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
@@ -67,7 +69,7 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" =~ "sent" ]]
 
-  run rg -n "cmd_200" "$MAS_KARO_INBOX_FILE" "$MAS_SHOGUN_TO_KARO_BRIDGE_STATE"
+  run bats_search "cmd_200" "$MAS_KARO_INBOX_FILE" "$MAS_SHOGUN_TO_KARO_BRIDGE_STATE"
   [ "$status" -eq 0 ]
 }
 
@@ -78,7 +80,7 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" =~ "already_sent=cmd_200" ]]
 
-  run rg -n "cmd_200" "$MAS_KARO_INBOX_FILE"
+  run bats_search "cmd_200" "$MAS_KARO_INBOX_FILE"
   [ "$status" -eq 1 ]
 }
 

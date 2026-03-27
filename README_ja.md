@@ -250,7 +250,8 @@ portable install には、インストール後のフォルダ内に `Shogunate-
 - 配置先フォルダの `Shogunate-Uninstaller.bat` を実行する
 - WSL が使える場合は Shogunate の tmux session を止める
 - 個人データを install 外へ保持するか、この install 内のデータごと全削除するかを選べる
-- そのフォルダ内のインストール済みファイルを削除する
+- そのフォルダ内の Shogunate 管理ファイルだけを削除する
+- 同じフォルダ内の unrelated files は残す
 - 親フォルダ自体は残す
 - その後、同じフォルダへクリーンインストールし直せる
 

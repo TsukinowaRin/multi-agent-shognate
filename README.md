@@ -235,7 +235,8 @@ Portable installs include `Shogunate-Uninstaller.bat` inside the installed folde
 - run `Shogunate-Uninstaller.bat` from the installed folder
 - it stops Shogunate tmux sessions if WSL is available
 - it asks whether to preserve personal data outside the install folder or delete everything in the install
-- it removes the installed files inside that folder
+- it removes only Shogunate-managed files inside that folder
+- unrelated files in the same folder are kept
 - it keeps the parent folder itself
 - after uninstall, you can clean-install again into the same folder
 

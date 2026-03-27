@@ -11,7 +11,7 @@ Use this repository's GitHub Releases page and download these assets as needed:
   - if that folder already contains an older portable Release install, it updates that copy while preserving personal data
   - runs `first_setup.sh`
 
-Portable installs created by the installer also contain `Shogunate-Uninstaller.bat` inside the installed folder. The uninstaller lets you either preserve personal data outside the install folder or delete everything and prepare for a clean reinstall into the same folder.
+Portable installs created by the installer also contain `Shogunate-Uninstaller.bat` inside the installed folder. The uninstaller lets you either preserve personal data outside the install folder or delete the Shogunate-managed files in that install while keeping unrelated files in the same folder, so you can clean-install again into the same location.
 
 Release tags are versioned as `android-v4.2.0.x`.
 

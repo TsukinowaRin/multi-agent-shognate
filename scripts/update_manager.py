@@ -246,6 +246,12 @@ def git(args: List[str], check: bool = True) -> subprocess.CompletedProcess:
 
 
 def detect_install_mode(state: dict) -> str:
+    configured = state.get("install_mode")
+    if configured in {"release", "git-main", "git-local"}:
+        if configured == "release":
+            return "release"
+        # git-based installs may still fall back to live detection below.
+
     git_dir = ROOT / ".git"
     if git_dir.exists():
         try:
@@ -255,7 +261,9 @@ def detect_install_mode(state: dict) -> str:
         if branch == DEFAULT_BRANCH:
             return "git-main"
         return "git-local"
-    return state.get("install_mode", "release")
+    if configured in {"git-main", "git-local"}:
+        return configured
+    return "release"
 
 
 def latest_release_info() -> dict:

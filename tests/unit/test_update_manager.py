@@ -243,5 +243,38 @@ class UpdateManagerPendingUpdateTests(unittest.TestCase):
         self.assertIn("unsupported action", stored["last_error"])
 
 
+class UpdateManagerInstallModeDetectionTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix="mas-install-mode-test-")
+        self.root = Path(self.temp_dir.name) / "repo"
+        self.root.mkdir(parents=True)
+
+        self.original_root = update_manager.ROOT
+        update_manager.ROOT = self.root
+
+    def tearDown(self):
+        update_manager.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def test_release_state_wins_over_embedded_git_checkout(self):
+        git_dir = self.root / ".git"
+        git_dir.mkdir(parents=True, exist_ok=True)
+
+        original_git = update_manager.git
+
+        def fake_git(args, check=True):
+            class Result:
+                stdout = "feature/host-project\n"
+            return Result()
+
+        update_manager.git = fake_git
+        try:
+            mode = update_manager.detect_install_mode({"install_mode": "release"})
+        finally:
+            update_manager.git = original_git
+
+        self.assertEqual(mode, "release")
+
+
 if __name__ == "__main__":
     unittest.main()

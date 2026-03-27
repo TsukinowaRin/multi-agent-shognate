@@ -58,6 +58,10 @@ jobs:
           python3 -m venv .venv
           .venv/bin/pip install --quiet pyyaml
 
+      - name: Run Python unit tests
+        run: |
+          python3 -m unittest tests.unit.test_uninstaller_contract tests.unit.test_update_manager
+
       - name: Run root-level tests (except agent_selfwatch)
         run: |
           ROOT_TESTS=$(ls tests/*.bats 2>/dev/null | grep -v 'tests/agent_selfwatch.bats' || true)

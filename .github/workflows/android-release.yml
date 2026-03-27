@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "GitHub Release tag (example: android-v4.1.0-shognate.1)"
+        description: "GitHub Release tag (example: android-v4.2.0.1)"
         required: true
         type: string
       release_name:
@@ -66,8 +66,8 @@ jobs:
             TAG="${GITHUB_REF_NAME}"
           fi
           APK_ASSET="multi-agent-shognate-android-${TAG}.apk"
-          INSTALLER_ASSET="multi-agent-shognate-installer.bat"
-          UPDATER_ASSET="multi-agent-shognate-updater.bat"
+          INSTALLER_ASSET="multi-agent-shognate-installer-${TAG}.bat"
+          UPDATER_ASSET="multi-agent-shognate-updater-${TAG}.bat"
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/${APK_ASSET}"
           python3 - <<'PY'
@@ -80,13 +80,13 @@ jobs:
           src = src.replace('set "REPO_REF_KIND=heads"', 'set "REPO_REF_KIND=tags"')
           src = src.replace('set "REPO_VERSION_LABEL=main"', f'set "REPO_VERSION_LABEL={tag}"')
           Path("dist").mkdir(parents=True, exist_ok=True)
-          Path("dist").joinpath("multi-agent-shognate-installer.bat").write_text(
+          Path("dist").joinpath(f"multi-agent-shognate-installer-{tag}.bat").write_text(
               src,
               encoding="utf-8",
               newline="\r\n",
           )
           updater = Path("updater.bat").read_text(encoding="utf-8")
-          Path("dist").joinpath("multi-agent-shognate-updater.bat").write_text(
+          Path("dist").joinpath(f"multi-agent-shognate-updater-{tag}.bat").write_text(
               updater,
               encoding="utf-8",
               newline="\r\n",

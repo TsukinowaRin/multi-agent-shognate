@@ -31,6 +31,9 @@ if exist "%SCRIPT_DIR%\first_setup.sh" (
     if exist "%SCRIPT_DIR%\.shogunate\install_state.json" (
         set "INSTALL_MODE=release-update"
         set "REPO_DIR_WIN=%SCRIPT_DIR%"
+    ) else if not exist "%SCRIPT_DIR%\.git" if exist "%SCRIPT_DIR%\config\settings.yaml" (
+        set "INSTALL_MODE=release-update"
+        set "REPO_DIR_WIN=%SCRIPT_DIR%"
     ) else (
         set "INSTALL_MODE=local"
         set "REPO_DIR_WIN=%SCRIPT_DIR%"
@@ -257,6 +260,10 @@ if %ERRORLEVEL% NEQ 0 (
     echo.
     pause
     exit /b 1
+)
+
+if defined EXTRACTED_DIR if exist "%EXTRACTED_DIR%\Shogunate-Uninstaller.bat" (
+    copy /Y "%EXTRACTED_DIR%\Shogunate-Uninstaller.bat" "%REPO_DIR_WIN%\Shogunate-Uninstaller.bat" >nul
 )
 
 echo.

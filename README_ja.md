@@ -246,9 +246,10 @@ portable install には、インストール後のフォルダ内に `Shogunate-
 
 - 配置先フォルダの `Shogunate-Uninstaller.bat` を実行する
 - WSL が使える場合は Shogunate の tmux session を止める
-- 必要なら local data のバックアップを取る
+- 個人データを install 外へ保持するか、この install 内のデータごと全削除するかを選べる
 - そのフォルダ内のインストール済みファイルを削除する
 - 親フォルダ自体は残す
+- その後、同じフォルダへクリーンインストールし直せる
 
 Android アプリから SSH で接続している場合は、APK 側から **ホスト上の Shogunate 本体**の更新も実行できます。これは APK 自身の更新ではなく、ホストに入っている Shogunate の更新です。
 

@@ -10,7 +10,7 @@ set "UNINSTALLER_NAME=%~nx0"
 echo.
 echo   +============================================================+
 echo   ^|  [SHOGUN] multi-agent-shognate - Uninstaller              ^|
-echo   ^|      Stops runtime, optionally backs up local data,       ^|
+echo   ^|      Stops runtime, preserves or removes personal data,   ^|
 echo   ^|      then removes the installed files in this folder      ^|
 echo   +============================================================+
 echo.
@@ -34,11 +34,14 @@ echo   Install location:
 echo     %SCRIPT_DIR%
 echo.
 echo   This removes files inside the folder above.
-echo   Parent folder itself is kept.
+echo   Parent folder itself is kept so you can clean-install again.
 echo.
 
-choice /M "Backup local data before uninstall"
-set "BACKUP_CHOICE=%ERRORLEVEL%"
+echo   Personal data handling:
+echo     [Y] Preserve personal data outside this folder for later restore
+echo     [N] Delete everything in this install
+choice /M "Preserve personal data before uninstall"
+set "PRESERVE_CHOICE=%ERRORLEVEL%"
 
 choice /M "Proceed with uninstall"
 if errorlevel 2 (
@@ -48,8 +51,8 @@ if errorlevel 2 (
     exit /b 0
 )
 
-set "DO_BACKUP=0"
-if "%BACKUP_CHOICE%"=="1" set "DO_BACKUP=1"
+set "PRESERVE_DATA=0"
+if "%PRESERVE_CHOICE%"=="1" set "PRESERVE_DATA=1"
 
 echo.
 echo   [1/4] Checking WSL / Ubuntu...
@@ -79,10 +82,12 @@ echo.
 
 for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMdd_HHmmss'"`) do set "STAMP=%%I"
 if not defined STAMP set "STAMP=%RANDOM%%RANDOM%"
-set "BACKUP_ROOT=%SCRIPT_DIR%__backup_%STAMP%"
+for %%I in ("%SCRIPT_DIR%") do set "INSTALL_DIR_NAME=%%~nxI"
+for %%I in ("%SCRIPT_DIR%\..") do set "PARENT_DIR=%%~fI"
+set "BACKUP_ROOT=%PARENT_DIR%\%INSTALL_DIR_NAME%-userdata-backup-%STAMP%"
 
-echo   [3/4] Preparing optional backup...
-if "%DO_BACKUP%"=="1" (
+echo   [3/4] Preparing personal data handling...
+if "%PRESERVE_DATA%"=="1" (
     mkdir "%BACKUP_ROOT%" >nul 2>&1
     for %%R in (
         "config\settings.yaml"
@@ -108,10 +113,10 @@ if "%DO_BACKUP%"=="1" (
             robocopy "%SCRIPT_DIR%\%%~D" "%BACKUP_ROOT%\%%~D" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NC /NS >nul
         )
     )
-    echo   [OK] Backup created:
+    echo   [OK] Personal data preserved at:
     echo        %BACKUP_ROOT%
 ) else (
-    echo   [INFO] Backup skipped
+    echo   [INFO] All personal data in this install will be deleted
 )
 echo.
 
@@ -139,9 +144,13 @@ start "" cmd /c "%CLEANUP_SCRIPT%"
 
 echo.
 echo   [OK] Uninstall scheduled.
-if "%DO_BACKUP%"=="1" (
-    echo   Backup:
+if "%PRESERVE_DATA%"=="1" (
+    echo   Preserved data:
     echo     %BACKUP_ROOT%
+    echo   You can reinstall cleanly into the same folder later and restore from that backup if needed.
+ ) else (
+    echo   Install files and personal data in this folder will be fully removed.
+    echo   You can reinstall cleanly into the same folder later.
 )
 echo.
 echo   This window can now be closed.

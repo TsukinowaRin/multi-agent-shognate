@@ -1510,8 +1510,10 @@
 5. Android Release tag は `android-v<upstream>.<packaging_revision>`、例: `android-v4.2.0.1` の形式に統一すること。
 6. installer / updater の release asset 名は tag 全体ではなく `v4.2.0.1` のような version 部だけを使うこと。
 7. Release installer で作られた portable install には `Shogunate-Uninstaller.bat` が同梱され、配置先フォルダからアンインストールできること。
-5. Release install は local state (`config/settings.yaml`, `.codex/`, `.claude/`, `projects/`, `context/local/`, `instructions/local/`, `skills/local/`, `queue/`, `logs/`, `dashboard.md`) を保持したまま更新できること。
-6. 更新後に merge candidate がある場合、起動完了後に家老へ `merge_required` の inbox 通知を送ること。
+8. `Shogunate-Uninstaller.bat` は個人データを install 外へ保持するか、この install 内のデータごと全削除するかを選べること。
+9. uninstaller 実行後も親フォルダは残り、同じ場所へクリーンインストールし直せること。
+10. Release install は local state (`config/settings.yaml`, `.codex/`, `.claude/`, `projects/`, `context/local/`, `instructions/local/`, `skills/local/`, `queue/`, `logs/`, `dashboard.md`) を保持したまま更新できること。
+11. 更新後に merge candidate がある場合、起動完了後に家老へ `merge_required` の inbox 通知を送ること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `python3 -m unittest tests.unit.test_update_manager`
@@ -1522,6 +1524,8 @@
    - 期待結果: installer / updater / startup / docs / release workflow の接点が揃っている。
 4. コマンド: `rg -n "Shogunate-Uninstaller.bat|Uninstall|アンインストール" .gitignore install.bat README.md README_ja.md android/release/README.md`
    - 期待結果: uninstaller が tracked され、installer 完了メッセージと docs に導線がある。
+5. コマンド: `sed -n '1,220p' Shogunate-Uninstaller.bat`
+   - 期待結果: 個人データ保持 / 全削除の選択肢があり、保持時は install 外へ退避し、親フォルダは残る。
 
 ## 追補（2026-03-24: original upstream 取り込み + AI マージ導線）
 ### 要求

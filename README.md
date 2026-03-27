@@ -231,9 +231,10 @@ Portable installs include `Shogunate-Uninstaller.bat` inside the installed folde
 
 - run `Shogunate-Uninstaller.bat` from the installed folder
 - it stops Shogunate tmux sessions if WSL is available
-- it can create a backup of local data before removal
+- it asks whether to preserve personal data outside the install folder or delete everything in the install
 - it removes the installed files inside that folder
 - it keeps the parent folder itself
+- after uninstall, you can clean-install again into the same folder
 
 If you are connected from the Android app, the app can also trigger **host-side** updates over SSH. That does not update the APK itself. It updates the installed Shogunate copy on the host.
 

@@ -6,7 +6,7 @@ Use this repository's GitHub Releases page and download these assets as needed:
 - `multi-agent-shognate-installer-<version>.bat` (Windows bootstrap installer for the same release tag)
 - `multi-agent-shognate-updater-<version>.bat` (Windows updater that moves an installed portable copy to the latest Release)
 
-Portable installs created by the installer also contain `Shogunate-Uninstaller.bat` inside the installed folder.
+Portable installs created by the installer also contain `Shogunate-Uninstaller.bat` inside the installed folder. The uninstaller lets you either preserve personal data outside the install folder or delete everything and prepare for a clean reinstall into the same folder.
 
 Release tags are versioned as `android-v4.2.0.x`.
 

@@ -1509,6 +1509,7 @@
 4. Release install の手動更新は `multi-agent-shognate-updater-<version>.bat` で行えること。
 5. Android Release tag は `android-v<upstream>.<packaging_revision>`、例: `android-v4.2.0.1` の形式に統一すること。
 6. installer / updater の release asset 名は tag 全体ではなく `v4.2.0.1` のような version 部だけを使うこと。
+7. Release installer で作られた portable install には `Shogunate-Uninstaller.bat` が同梱され、配置先フォルダからアンインストールできること。
 5. Release install は local state (`config/settings.yaml`, `.codex/`, `.claude/`, `projects/`, `context/local/`, `instructions/local/`, `skills/local/`, `queue/`, `logs/`, `dashboard.md`) を保持したまま更新できること。
 6. 更新後に merge candidate がある場合、起動完了後に家老へ `merge_required` の inbox 通知を送ること。
 
@@ -1519,6 +1520,8 @@
    - 期待結果: install mode / version / auto-update 状態が JSON で出る。
 3. コマンド: `rg -n "update_manager.py|multi-agent-shognate-updater-|merge-candidates|auto_apply_release" install.bat updater.bat shutsujin_departure.sh README.md README_ja.md .github/workflows/android-release.yml first_setup.sh`
    - 期待結果: installer / updater / startup / docs / release workflow の接点が揃っている。
+4. コマンド: `rg -n "Shogunate-Uninstaller.bat|Uninstall|アンインストール" .gitignore install.bat README.md README_ja.md android/release/README.md`
+   - 期待結果: uninstaller が tracked され、installer 完了メッセージと docs に導線がある。
 
 ## 追補（2026-03-24: original upstream 取り込み + AI マージ導線）
 ### 要求

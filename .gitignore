@@ -70,6 +70,7 @@
 !setup.sh
 !install.bat
 !updater.bat
+!Shogunate-Uninstaller.bat
 !scripts/stop_and_apply_update.sh
 
 # Development tooling

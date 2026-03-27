@@ -225,6 +225,16 @@ Supported updater usage:
 - `multi-agent-shognate-updater-<version>.bat --auto-on`: enable startup auto-update for Release installs
 - `multi-agent-shognate-updater-<version>.bat --auto-off`: disable startup auto-update for Release installs
 
+### Uninstalling a portable install
+
+Portable installs include `Shogunate-Uninstaller.bat` inside the installed folder itself.
+
+- run `Shogunate-Uninstaller.bat` from the installed folder
+- it stops Shogunate tmux sessions if WSL is available
+- it can create a backup of local data before removal
+- it removes the installed files inside that folder
+- it keeps the parent folder itself
+
 If you are connected from the Android app, the app can also trigger **host-side** updates over SSH. That does not update the APK itself. It updates the installed Shogunate copy on the host.
 
 ### What gets preserved
@@ -414,6 +424,7 @@ multi-agent-shognate/
 ├── tests/                     # unit and smoke tests
 ├── install.bat                # Windows installer / bootstrap entry
 ├── updater.bat                # Windows updater for portable installs
+├── Shogunate-Uninstaller.bat  # Windows uninstaller included in installed copies
 ├── first_setup.sh             # first-time setup
 └── shutsujin_departure.sh     # runtime startup
 ```

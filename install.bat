@@ -257,5 +257,9 @@ echo   Manual updater / 手動アップデート:
 echo     Download multi-agent-shognate-updater.bat into the same folder and run it
 echo     同じフォルダに multi-agent-shognate-updater.bat を置いて実行
 echo.
+echo   Uninstall / アンインストール:
+echo     Run Shogunate-Uninstaller.bat inside this installed folder
+echo     この配置先フォルダ内の Shogunate-Uninstaller.bat を実行
+echo.
 pause
 exit /b 0

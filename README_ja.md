@@ -240,6 +240,16 @@ installer / updater の asset 名は `android-` を含めず、たとえば `v4.
 - `multi-agent-shognate-updater-<version>.bat --auto-on`: Release install の startup auto-update を有効化
 - `multi-agent-shognate-updater-<version>.bat --auto-off`: Release install の startup auto-update を無効化
 
+### portable install のアンインストール
+
+portable install には、インストール後のフォルダ内に `Shogunate-Uninstaller.bat` が含まれます。
+
+- 配置先フォルダの `Shogunate-Uninstaller.bat` を実行する
+- WSL が使える場合は Shogunate の tmux session を止める
+- 必要なら local data のバックアップを取る
+- そのフォルダ内のインストール済みファイルを削除する
+- 親フォルダ自体は残す
+
 Android アプリから SSH で接続している場合は、APK 側から **ホスト上の Shogunate 本体**の更新も実行できます。これは APK 自身の更新ではなく、ホストに入っている Shogunate の更新です。
 
 ### 何が保持されるか
@@ -418,6 +428,7 @@ multi-agent-shognate/
 ├── tests/                     # unit / smoke tests
 ├── install.bat                # Windows installer / bootstrap entry
 ├── updater.bat                # portable install 用 Windows updater
+├── Shogunate-Uninstaller.bat  # インストール済みコピーに含まれる Windows uninstaller
 ├── first_setup.sh             # 初回セットアップ
 └── shutsujin_departure.sh     # runtime 起動
 ```

@@ -30,10 +30,19 @@ if not exist "%SCRIPT_DIR%\shutsujin_departure.sh" (
     exit /b 1
 )
 
+if not exist "%SCRIPT_DIR%\.shogunate\install_manifest.json" (
+    echo   [ERROR] .shogunate\install_manifest.json not found
+    echo           安全のため、削除対象を特定できない状態ではアンインストールを実行しません。
+    echo.
+    pause
+    exit /b 1
+)
+
 echo   Install location:
 echo     %SCRIPT_DIR%
 echo.
-echo   This removes files inside the folder above.
+echo   This removes Shogunate-managed files inside the folder above.
+echo   Unrelated files in the same folder are kept.
 echo   Parent folder itself is kept so you can clean-install again.
 echo.
 
@@ -122,21 +131,54 @@ echo.
 
 echo   [4/4] Scheduling file removal...
 set "CLEANUP_SCRIPT=%TEMP%\multi-agent-shognate-uninstall-%RANDOM%%RANDOM%.cmd"
+set "CLEANUP_PS1=%TEMP%\multi-agent-shognate-uninstall-%RANDOM%%RANDOM%.ps1"
+(
+    echo param([string]$RootPath, [string]$UninstallerName, [string]$PreserveData)
+    echo $ErrorActionPreference = 'SilentlyContinue'
+    echo $root = [System.IO.Path]::GetFullPath($RootPath)
+    echo $manifestPath = Join-Path $root '.shogunate\install_manifest.json'
+    echo if (-not (Test-Path $manifestPath)) { exit 1 }
+    echo $manifest = Get-Content $manifestPath -Raw ^| ConvertFrom-Json
+    echo $tracked = @($manifest.PSObject.Properties.Name)
+    echo foreach ($rel in $tracked) {
+    echo ^    $target = [System.IO.Path]::GetFullPath((Join-Path $root $rel))
+    echo ^    if ($target.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase) -and (Test-Path $target)) {
+    echo ^        Remove-Item -LiteralPath $target -Force -Recurse
+    echo ^    }
+    echo }
+    echo $localPaths = @(
+    echo ^    'config\settings.yaml',
+    echo ^    'dashboard.md',
+    echo ^    '.claude',
+    echo ^    '.codex',
+    echo ^    '.shogunate',
+    echo ^    'projects',
+    echo ^    'context\local',
+    echo ^    'instructions\local',
+    echo ^    'skills\local',
+    echo ^    'queue',
+    echo ^    'logs'
+    echo ^)
+    echo foreach ($rel in $localPaths) {
+    echo ^    $target = [System.IO.Path]::GetFullPath((Join-Path $root $rel))
+    echo ^    if ($target.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase) -and (Test-Path $target)) {
+    echo ^        Remove-Item -LiteralPath $target -Force -Recurse
+    echo ^    }
+    echo }
+    echo $selfPath = Join-Path $root $UninstallerName
+    echo if (Test-Path $selfPath) { Remove-Item -LiteralPath $selfPath -Force }
+    echo Get-ChildItem -LiteralPath $root -Directory -Recurse ^| Sort-Object FullName -Descending ^| ForEach-Object {
+    echo ^    if (-not (Get-ChildItem -LiteralPath $_.FullName -Force)) {
+    echo ^        Remove-Item -LiteralPath $_.FullName -Force
+    echo ^    }
+    echo }
+) > "%CLEANUP_PS1%"
 (
     echo @echo off
     echo setlocal EnableExtensions
     echo ping -n 3 127.0.0.1 ^>nul
-    echo del /f /q "%SCRIPT_DIR%\%UNINSTALLER_NAME%" ^>nul 2^>^&1
-    echo for /d %%%%D in ^("%SCRIPT_DIR%\*"^) do rmdir /s /q "%%%%~fD" ^>nul 2^>^&1
-    echo del /f /q "%SCRIPT_DIR%\*" ^>nul 2^>^&1
-    echo for /f %%%%F in ^('dir /b /a "%SCRIPT_DIR%" 2^>nul'^) do goto :retry
-    echo goto :done
-    echo :retry
-    echo ping -n 3 127.0.0.1 ^>nul
-    echo del /f /q "%SCRIPT_DIR%\%UNINSTALLER_NAME%" ^>nul 2^>^&1
-    echo for /d %%%%D in ^("%SCRIPT_DIR%\*"^) do rmdir /s /q "%%%%~fD" ^>nul 2^>^&1
-    echo del /f /q "%SCRIPT_DIR%\*" ^>nul 2^>^&1
-    echo :done
+    echo powershell -NoProfile -ExecutionPolicy Bypass -File "%CLEANUP_PS1%" -RootPath "%SCRIPT_DIR%" -UninstallerName "%UNINSTALLER_NAME%" -PreserveData "%PRESERVE_DATA%" ^>nul 2^>^&1
+    echo del /f /q "%CLEANUP_PS1%" ^>nul 2^>^&1
     echo del /f /q "%%~f0" ^>nul 2^>^&1
 ) > "%CLEANUP_SCRIPT%"
 

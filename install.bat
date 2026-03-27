@@ -17,7 +17,7 @@ set "EXTRACTED_DIR=%EXTRACT_ROOT%\%REPO_NAME%-%REPO_REF%"
 echo.
 echo   +============================================================+
 echo   ^|  [SHOGUN] multi-agent-shognate - Windows Installer         ^|
-echo   ^|      Release bootstrap + WSL2 + Ubuntu + first_setup.sh   ^|
+echo   ^|      Fresh install or in-place Release update             ^|
 echo   +============================================================+
 echo.
 
@@ -28,8 +28,13 @@ set "INSTALL_MODE=download"
 set "INSTALL_DIR=%SCRIPT_DIR%"
 
 if exist "%SCRIPT_DIR%\first_setup.sh" (
-    set "INSTALL_MODE=local"
-    set "REPO_DIR_WIN=%SCRIPT_DIR%"
+    if exist "%SCRIPT_DIR%\.shogunate\install_state.json" (
+        set "INSTALL_MODE=release-update"
+        set "REPO_DIR_WIN=%SCRIPT_DIR%"
+    ) else (
+        set "INSTALL_MODE=local"
+        set "REPO_DIR_WIN=%SCRIPT_DIR%"
+    )
 )
 
 if /I "%INSTALL_MODE%"=="local" (
@@ -37,6 +42,13 @@ if /I "%INSTALL_MODE%"=="local" (
     echo     Local repository
     echo   Repository:
     echo     %REPO_DIR_WIN%
+) else if /I "%INSTALL_MODE%"=="release-update" (
+    echo   Mode:
+    echo     Existing portable install update
+    echo   Target:
+    echo     %REPO_DIR_WIN%
+    echo   Source ref:
+    echo     %REPO_VERSION_LABEL%
 ) else (
     echo   Mode:
     echo     Standalone release bootstrap
@@ -130,7 +142,6 @@ echo.
 REM ===== Step 3: Prepare repository =====
 echo   [3/4] Preparing repository...
 if /I "%INSTALL_MODE%"=="local" goto :repo_ready
-
 if exist "%TEMP_ROOT%" rmdir /s /q "%TEMP_ROOT%" >nul 2>&1
 mkdir "%TEMP_ROOT%" >nul 2>&1
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%" >nul 2>&1
@@ -160,19 +171,25 @@ if not exist "%EXTRACTED_DIR%\first_setup.sh" (
     exit /b 1
 )
 
-echo         Syncing files into install target...
-robocopy "%EXTRACTED_DIR%" "%INSTALL_DIR%" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NC /NS >nul
-if %ERRORLEVEL% GEQ 8 (
-    echo   [ERROR] Failed to copy files into install target.
-    echo           %INSTALL_DIR%
-    pause
-    exit /b 1
-)
+if /I "%INSTALL_MODE%"=="release-update" (
+    echo   [OK] Update source prepared for in-place update
+    echo        %REPO_DIR_WIN%
+    echo.
+) else (
+    echo         Syncing files into install target...
+    robocopy "%EXTRACTED_DIR%" "%INSTALL_DIR%" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NC /NS >nul
+    if %ERRORLEVEL% GEQ 8 (
+        echo   [ERROR] Failed to copy files into install target.
+        echo           %INSTALL_DIR%
+        pause
+        exit /b 1
+    )
 
-set "REPO_DIR_WIN=%INSTALL_DIR%"
-echo   [OK] Source synced to:
-echo        %REPO_DIR_WIN%
-echo.
+    set "REPO_DIR_WIN=%INSTALL_DIR%"
+    echo   [OK] Source synced to:
+    echo        %REPO_DIR_WIN%
+    echo.
+)
 
 :repo_ready
 echo   [OK] Repository ready
@@ -191,7 +208,36 @@ echo   [OK] WSL path:
 echo        %REPO_WSL%
 echo.
 
-REM ===== Step 4: Run first_setup.sh =====
+set "EXTRACTED_WSL="
+if /I not "%INSTALL_MODE%"=="local" (
+    for /f "usebackq delims=" %%I in (`wsl.exe -d Ubuntu -- wslpath -a "%EXTRACTED_DIR%"`) do set "EXTRACTED_WSL=%%I"
+    if not defined EXTRACTED_WSL (
+        echo   [ERROR] Failed to resolve extracted archive path.
+        pause
+        exit /b 1
+    )
+)
+
+if /I "%INSTALL_MODE%"=="release-update" (
+    echo   [4/5] Applying Release update...
+    echo         個人データを保持したまま更新中...
+    echo.
+    wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && python3 scripts/update_manager.py apply-source-release --source-root \"%EXTRACTED_WSL%\" --ref %REPO_REF% --ref-kind %REPO_REF_KIND% --version-label %REPO_VERSION_LABEL%"
+    if %ERRORLEVEL% GEQ 2 (
+        echo.
+        echo   [ERROR] Release update failed.
+        echo           Ubuntu で詳細確認:
+        echo             cd %REPO_WSL%
+        echo             python3 scripts/update_manager.py status
+        echo.
+        pause
+        exit /b 1
+    )
+    echo.
+    goto :run_first_setup
+)
+
+:run_first_setup
 echo   [4/5] Running first_setup.sh in Ubuntu...
 echo         first_setup.sh を実行中...
 echo.
@@ -218,13 +264,7 @@ echo   [5/5] Initializing update metadata...
 echo         アップデート状態を初期化中...
 
 set "UPDATE_INIT_CMD=cd \"%REPO_WSL%\" && python3 scripts/update_manager.py init"
-if /I not "%INSTALL_MODE%"=="local" (
-    for /f "usebackq delims=" %%I in (`wsl.exe -d Ubuntu -- wslpath -a "%EXTRACTED_DIR%"`) do set "EXTRACTED_WSL=%%I"
-    if not defined EXTRACTED_WSL (
-        echo   [ERROR] Failed to resolve extracted archive path.
-        pause
-        exit /b 1
-    )
+if /I "%INSTALL_MODE%"=="download" (
     set "UPDATE_INIT_CMD=%UPDATE_INIT_CMD% --install-mode release --ref %REPO_REF% --ref-kind %REPO_REF_KIND% --version-label %REPO_VERSION_LABEL% --source-root \"%EXTRACTED_WSL%\""
 )
 
@@ -239,8 +279,8 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo   +============================================================+
-echo   ^|  [OK] Setup complete!                                      ^|
-echo   ^|       初回セットアップ完了                                 ^|
+echo   ^|  [OK] Install / update complete!                           ^|
+echo   ^|       インストール / 更新 完了                             ^|
 echo   +============================================================+
 echo.
 echo   Repository location / 配置先:
@@ -252,10 +292,6 @@ echo.
 echo   Or inside Ubuntu:
 echo     cd %REPO_WSL%
 echo     bash shutsujin_departure.sh
-echo.
-echo   Manual updater / 手動アップデート:
-echo     Download multi-agent-shognate-updater.bat into the same folder and run it
-echo     同じフォルダに multi-agent-shognate-updater.bat を置いて実行
 echo.
 echo   Uninstall / アンインストール:
 echo     Run Shogunate-Uninstaller.bat inside this installed folder

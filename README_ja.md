@@ -151,6 +151,8 @@ bash scripts/configure_agents.sh
 
 - installer は、**ダウンロード元 Release と同じ tag のソース**を取得する
 - 展開先は **`install.bat` を置いたフォルダそのもの**
+- そのフォルダに古い portable Release install があれば、上書き更新モードへ切り替わる
+- 更新モードでは local state / 個人ファイルを保持したまま新しい Release snapshot を適用する
 - WSL2 / Ubuntu を確認し、可能なら `first_setup.sh` まで自動実行する
 - その portable install 用の update metadata も初期化する
 
@@ -225,32 +227,21 @@ bash scripts/upstream_sync.sh --dry-run
 Release tag は `android-v4.2.0.x` 形式で運用します。
 先頭 3 つの数字は upstream Shogun の版を表し、
 最後の 1 つはこの fork 側の配布・パッケージ改訂番号です。
-installer / updater の asset 名は `android-` を含めず、たとえば `v4.2.0.1` のような version 部だけを使います。
+installer asset 名は `android-` を含めず、たとえば `v4.2.0.1` のような version 部だけを使います。
 
 Windows asset の役割はこうです。
 
 - `multi-agent-shognate-installer-<version>.bat`
   - 初回導入用
+  - その場所に古い portable Release install があれば、そのコピーを保持付きで更新する
+  - 何も無ければ新規導入する
   - その bat を置いたフォルダへ対応 Release snapshot を展開する
   - `first_setup.sh` を実行する
   - そのコピーを Release install として初期化する
-- `multi-agent-shognate-updater-<version>.bat`
-  - 既に portable install がある前提で使う
-  - そのインストール済みコピーを最新 Release へ更新する
-  - その Release install の startup auto-update 切替にも使える
 
 - install 時点では、ダウンロードした Release tag に固定される
-- 既定では、起動時に新しい Release を自動適用しない
-- 手動更新は `multi-agent-shognate-updater-<version>.bat` を使う
-- 必要なら、あとから startup auto-update を有効化できる
-
-`multi-agent-shognate-updater-<version>.bat` は、インストール先の repo と同じフォルダに置いて実行してください。配置先が別の Git working tree の中でも、portable install 自身の release metadata を見るので Release channel として更新できます。
-
-使い方:
-
-- ダブルクリック: 最新 Release へ手動更新
-- `multi-agent-shognate-updater-<version>.bat --auto-on`: Release install の startup auto-update を有効化
-- `multi-agent-shognate-updater-<version>.bat --auto-off`: Release install の startup auto-update を無効化
+- 新しい installer を同じフォルダで再実行すれば、local state を保持したままその portable install を更新できる
+- 配置先が別の Git working tree の中でも、portable install 自身の release metadata を見るので Release channel として扱える
 
 ### portable install のアンインストール
 
@@ -278,7 +269,7 @@ Android アプリから SSH で接続している場合は、APK 側から **ホ
 - `skills/local/`
 - `queue/`, `logs/`, `dashboard.md` などの runtime state
 
-tracked file が local 編集と衝突した場合は、local file を残したまま incoming version を次へ退避します。
+tracked file が local 編集と衝突した場合は、installer / 更新導線は local file を残したまま incoming version を次へ退避します。
 
 - `.shogunate/merge-candidates/<batch>/incoming/...`
 
@@ -440,7 +431,7 @@ multi-agent-shognate/
 ├── scripts/                   # runtime / bootstrap / bridge / watcher
 ├── tests/                     # unit / smoke tests
 ├── install.bat                # Windows installer / bootstrap entry
-├── updater.bat                # portable install 用 Windows updater
+├── updater.bat                # 互換維持のため残している旧 Windows updater
 ├── Shogunate-Uninstaller.bat  # インストール済みコピーに含まれる Windows uninstaller
 ├── first_setup.sh             # 初回セットアップ
 └── shutsujin_departure.sh     # runtime 起動

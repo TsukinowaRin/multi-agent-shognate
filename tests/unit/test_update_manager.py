@@ -276,5 +276,75 @@ class UpdateManagerInstallModeDetectionTests(unittest.TestCase):
         self.assertEqual(mode, "release")
 
 
+class UpdateManagerSpecificReleaseApplyTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix="mas-apply-release-test-")
+        self.root = Path(self.temp_dir.name) / "repo"
+        self.root.mkdir(parents=True)
+        self.state_dir = self.root / ".shogunate"
+
+        self.original_root = update_manager.ROOT
+        self.original_state_dir = update_manager.STATE_DIR
+        self.original_state_path = update_manager.STATE_PATH
+        self.original_manifest = update_manager.MANIFEST_PATH
+        self.original_notice = update_manager.NOTICE_PATH
+        self.original_merge_root = update_manager.MERGE_ROOT
+        self.original_settings = update_manager.SETTINGS_PATH
+
+        update_manager.ROOT = self.root
+        update_manager.STATE_DIR = self.state_dir
+        update_manager.STATE_PATH = self.state_dir / "install_state.json"
+        update_manager.MANIFEST_PATH = self.state_dir / "install_manifest.json"
+        update_manager.NOTICE_PATH = self.state_dir / "pending_merge_notice.json"
+        update_manager.MERGE_ROOT = self.state_dir / "merge-candidates"
+        update_manager.SETTINGS_PATH = self.root / "config" / "settings.yaml"
+
+    def tearDown(self):
+        update_manager.ROOT = self.original_root
+        update_manager.STATE_DIR = self.original_state_dir
+        update_manager.STATE_PATH = self.original_state_path
+        update_manager.MANIFEST_PATH = self.original_manifest
+        update_manager.NOTICE_PATH = self.original_notice
+        update_manager.MERGE_ROOT = self.original_merge_root
+        update_manager.SETTINGS_PATH = self.original_settings
+        self.temp_dir.cleanup()
+
+    def _write(self, rel: str, content: str):
+        path = self.root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    def test_apply_specific_release_snapshot_preserves_settings(self):
+        self._write("README.md", "old\n")
+        self._write("config/settings.yaml", "language: ja\n")
+        update_manager.write_json(
+            update_manager.MANIFEST_PATH,
+            {"README.md": update_manager.sha256_file(self.root / "README.md")},
+        )
+        source_root = Path(self.temp_dir.name) / "source"
+        source_root.mkdir(parents=True, exist_ok=True)
+        (source_root / "README.md").write_text("new\n", encoding="utf-8")
+        (source_root / "config").mkdir(parents=True, exist_ok=True)
+        (source_root / "config" / "settings.yaml").write_text("language: en\n", encoding="utf-8")
+
+        applied, version = update_manager.apply_specific_release_snapshot(
+            source_root=source_root,
+            ref="android-v4.2.0.9",
+            ref_kind="tags",
+            version_label="android-v4.2.0.9",
+        )
+
+        self.assertTrue(applied)
+        self.assertEqual(version, "android-v4.2.0.9")
+        self.assertEqual((self.root / "README.md").read_text(encoding="utf-8"), "new\n")
+        settings = yaml.safe_load((self.root / "config/settings.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(settings["language"], "ja")
+        self.assertIn("update", settings)
+        state = json.loads(update_manager.STATE_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(state["install_mode"], "release")
+        self.assertEqual(state["version_label"], "android-v4.2.0.9")
+
+
 if __name__ == "__main__":
     unittest.main()

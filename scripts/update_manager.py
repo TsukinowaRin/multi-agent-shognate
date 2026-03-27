@@ -841,6 +841,39 @@ def release_manual_or_startup() -> Tuple[bool, str]:
     return True, latest_tag
 
 
+def apply_specific_release_snapshot(
+    *,
+    source_root: Path,
+    ref: str,
+    ref_kind: str,
+    version_label: str,
+) -> Tuple[bool, str]:
+    ensure_state_dir()
+    ensure_update_settings_block()
+    state = read_json(STATE_PATH, {})
+    version_before = current_version_label(state)
+    old_manifest = read_json(MANIFEST_PATH, {})
+    preserve = configured_preserve_patterns()
+    result = apply_release_snapshot(
+        source_root=source_root,
+        version_before=version_before,
+        version_after=version_label,
+        old_manifest=old_manifest,
+        preserve_patterns=preserve,
+    )
+    update_release_state(
+        state=state,
+        ref=ref,
+        ref_kind=ref_kind,
+        version_label=version_label,
+    )
+    print(
+        f"[update_manager] release snapshot applied: {version_before} -> {version_label} "
+        f"(updated={len(result.updated)}, added={len(result.added)}, conflicts={len(result.conflicts)})"
+    )
+    return result.applied, version_label
+
+
 def print_snapshot_summary(
     *,
     source_label: str,
@@ -977,6 +1010,17 @@ def manual_update(args: argparse.Namespace) -> int:
     return 10 if applied else 0
 
 
+def apply_source_release(args: argparse.Namespace) -> int:
+    source_root = Path(args.source_root).resolve()
+    applied, _ = apply_specific_release_snapshot(
+        source_root=source_root,
+        ref=args.ref,
+        ref_kind=args.ref_kind,
+        version_label=args.version_label,
+    )
+    return 10 if applied else 0
+
+
 def manual_upstream_sync(args: argparse.Namespace) -> int:
     applied, _ = upstream_sync(dry_run=args.dry_run)
     if args.dry_run:
@@ -1063,6 +1107,13 @@ def build_parser() -> argparse.ArgumentParser:
     manual_p.add_argument("--enable-auto", action="store_true")
     manual_p.add_argument("--disable-auto", action="store_true")
     manual_p.set_defaults(func=manual_update)
+
+    apply_release_p = sub.add_parser("apply-source-release", help="apply a specific release snapshot from a source tree")
+    apply_release_p.add_argument("--source-root", required=True)
+    apply_release_p.add_argument("--ref", required=True)
+    apply_release_p.add_argument("--ref-kind", default="tags")
+    apply_release_p.add_argument("--version-label", required=True)
+    apply_release_p.set_defaults(func=apply_source_release)
 
     upstream_p = sub.add_parser("upstream-sync", help="import latest upstream/main snapshot and queue merge work")
     upstream_p.add_argument("--dry-run", action="store_true", help="show planned changes without modifying the repo")

@@ -149,6 +149,8 @@ Important behavior:
 
 - the installer downloads the source for the **same Release tag** it was downloaded from
 - it installs into the **same folder where the installer itself is placed**
+- if that folder already contains a portable Release install, it switches to in-place update mode
+- in update mode, it preserves local state and personal files, then applies the newer Release snapshot
 - it checks WSL2 / Ubuntu and, when possible, runs `first_setup.sh` automatically
 - it initializes local update metadata for that portable install
 
@@ -210,32 +212,21 @@ If you installed the system with `multi-agent-shognate-installer-<version>.bat`,
 Release tags use the format `android-v4.2.0.x`.
 The first three numbers track the upstream Shogun version.
 The fourth number is this fork's packaging/release revision.
-Installer and updater asset names use only the version part, for example `v4.2.0.1`.
+Installer asset names use only the version part, for example `v4.2.0.1`.
 
-Use the Windows assets like this:
+Use the Windows installer like this:
 
 - `multi-agent-shognate-installer-<version>.bat`
   - first-time install into the folder where you place the installer
+  - if an older portable Release install already exists there, it updates that copy in place
+  - otherwise it performs a fresh install
   - downloads the matching Release snapshot
   - runs `first_setup.sh`
   - initializes Shogunate as a Release install
-- `multi-agent-shognate-updater-<version>.bat`
-  - use only after a portable install already exists
-  - updates that installed copy to the latest Release
-  - can also toggle startup auto-update for that Release install
 
 - install is pinned to the Release tag you downloaded
-- it does **not** auto-apply newer Releases by default
-- manual updates use `multi-agent-shognate-updater-<version>.bat`
-- startup auto-update can be enabled later in local config
-
-Place `multi-agent-shognate-updater-<version>.bat` into the same folder as the installed repo and run it. The updater uses the portable install's own release metadata, so it still follows the Release channel even if that folder lives inside another Git working tree.
-
-Supported updater usage:
-
-- double-click: update now to the latest Release
-- `multi-agent-shognate-updater-<version>.bat --auto-on`: enable startup auto-update for Release installs
-- `multi-agent-shognate-updater-<version>.bat --auto-off`: disable startup auto-update for Release installs
+- rerunning a newer installer in the same folder updates that portable install while preserving local state
+- that release install keeps using its own release metadata even if the folder lives inside another Git working tree
 
 ### Uninstalling a portable install
 
@@ -263,7 +254,7 @@ Updates keep local state and user-specific assets such as:
 - `skills/local/`
 - runtime state under `queue/`, `logs/`, and `dashboard.md`
 
-If an incoming tracked file collides with local edits, the updater keeps the local file in place and stores the incoming version under:
+If an incoming tracked file collides with local edits, the installer/update flow keeps the local file in place and stores the incoming version under:
 
 - `.shogunate/merge-candidates/<batch>/incoming/...`
 
@@ -436,7 +427,7 @@ multi-agent-shognate/
 ├── scripts/                   # runtime, bootstrap, bridge, watcher
 ├── tests/                     # unit and smoke tests
 ├── install.bat                # Windows installer / bootstrap entry
-├── updater.bat                # Windows updater for portable installs
+├── updater.bat                # Legacy Windows updater script kept for compatibility
 ├── Shogunate-Uninstaller.bat  # Windows uninstaller included in installed copies
 ├── first_setup.sh             # first-time setup
 └── shutsujin_departure.sh     # runtime startup

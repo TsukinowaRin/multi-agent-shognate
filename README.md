@@ -44,7 +44,7 @@ In practice, the intended flow is:
 | default CLI | upstream defaults | all roles default to `codex` with `model: auto` |
 | CLI coverage | core upstream CLIs | adds `Gemini CLI`, `OpenCode`, `Kilo`, `localapi`, and local-provider bridges such as `Ollama` / `LM Studio` |
 | Android distribution | upstream Android app / APK | the fork APK in this repo's Releases is the supported distribution |
-| Windows installer | repo-oriented setup flow | Release installer `multi-agent-shognate-installer-<tag>.bat` installs portably into the folder where you place it |
+| Windows installer | repo-oriented setup flow | Release installer `multi-agent-shognate-installer-<version>.bat` installs portably into the folder where you place it |
 | Karo behavior | splits work when instructed | explicitly allows Karo to infer staffing, routing, and parallelism from the task intent |
 
 ## Core Model
@@ -141,7 +141,7 @@ It can configure:
 If you want to place the system directly into any folder, this is the supported path.
 
 1. Open this repo's **GitHub Releases**
-2. Download `multi-agent-shognate-installer-<tag>.bat`
+2. Download `multi-agent-shognate-installer-<version>.bat`
 3. Put it into the folder where you want the system installed
 4. Run it
 
@@ -205,24 +205,25 @@ That flow:
 
 ### 2. Release installer / portable install
 
-If you installed the system with `multi-agent-shognate-installer-<tag>.bat`, that is the stable release channel.
+If you installed the system with `multi-agent-shognate-installer-<version>.bat`, that is the stable release channel.
 
 Release tags use the format `android-v4.2.0.x`.
 The first three numbers track the upstream Shogun version.
 The fourth number is this fork's packaging/release revision.
+Installer and updater asset names use only the version part, for example `v4.2.0.1`.
 
 - install is pinned to the Release tag you downloaded
 - it does **not** auto-apply newer Releases by default
-- manual updates use `multi-agent-shognate-updater-<tag>.bat`
+- manual updates use `multi-agent-shognate-updater-<version>.bat`
 - startup auto-update can be enabled later in local config
 
-Place `multi-agent-shognate-updater-<tag>.bat` into the same folder as the installed repo and run it.
+Place `multi-agent-shognate-updater-<version>.bat` into the same folder as the installed repo and run it.
 
 Supported updater usage:
 
 - double-click: update now to the latest Release
-- `multi-agent-shognate-updater-<tag>.bat --auto-on`: enable startup auto-update for Release installs
-- `multi-agent-shognate-updater-<tag>.bat --auto-off`: disable startup auto-update for Release installs
+- `multi-agent-shognate-updater-<version>.bat --auto-on`: enable startup auto-update for Release installs
+- `multi-agent-shognate-updater-<version>.bat --auto-off`: disable startup auto-update for Release installs
 
 If you are connected from the Android app, the app can also trigger **host-side** updates over SSH. That does not update the APK itself. It updates the installed Shogunate copy on the host.
 
@@ -365,7 +366,7 @@ This system can be used portably.
 If you want it in a different workspace, the intended flow is:
 
 - create or choose the target folder
-- place `multi-agent-shognate-installer-<tag>.bat` there
+- place `multi-agent-shognate-installer-<version>.bat` there
 - run it in place
 - let it install the Shogunate into that folder
 

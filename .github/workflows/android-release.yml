@@ -77,9 +77,11 @@ jobs:
           if [ -z "$TAG" ]; then
             TAG="${GITHUB_REF_NAME}"
           fi
+          VERSION="${TAG#android-}"
+          export VERSION
           APK_ASSET="multi-agent-shognate-android-${TAG}.apk"
-          INSTALLER_ASSET="multi-agent-shognate-installer-${TAG}.bat"
-          UPDATER_ASSET="multi-agent-shognate-updater-${TAG}.bat"
+          INSTALLER_ASSET="multi-agent-shognate-installer-${VERSION}.bat"
+          UPDATER_ASSET="multi-agent-shognate-updater-${VERSION}.bat"
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/${APK_ASSET}"
           python3 - <<'PY'
@@ -87,24 +89,26 @@ jobs:
           import os
 
           tag = os.environ["TAG"]
+          version = os.environ["VERSION"]
           src = Path("install.bat").read_text(encoding="utf-8")
           src = src.replace('set "REPO_REF=main"', f'set "REPO_REF={tag}"')
           src = src.replace('set "REPO_REF_KIND=heads"', 'set "REPO_REF_KIND=tags"')
           src = src.replace('set "REPO_VERSION_LABEL=main"', f'set "REPO_VERSION_LABEL={tag}"')
           Path("dist").mkdir(parents=True, exist_ok=True)
-          Path("dist").joinpath(f"multi-agent-shognate-installer-{tag}.bat").write_text(
+          Path("dist").joinpath(f"multi-agent-shognate-installer-{version}.bat").write_text(
               src,
               encoding="utf-8",
               newline="\r\n",
           )
           updater = Path("updater.bat").read_text(encoding="utf-8")
-          Path("dist").joinpath(f"multi-agent-shognate-updater-{tag}.bat").write_text(
+          Path("dist").joinpath(f"multi-agent-shognate-updater-{version}.bat").write_text(
               updater,
               encoding="utf-8",
               newline="\r\n",
           )
           PY
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "apk_asset=${APK_ASSET}" >> "$GITHUB_OUTPUT"
           echo "installer_asset=${INSTALLER_ASSET}" >> "$GITHUB_OUTPUT"
           echo "updater_asset=${UPDATER_ASSET}" >> "$GITHUB_OUTPUT"

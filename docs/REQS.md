@@ -38,7 +38,7 @@
 ## 追補（2026-03-17: README 英日全面更新）
 ### 要求
 1. `README.md` と `README_ja.md` は、この fork の実際の配布方法・運用方法・対応 CLI に合わせて全面的に書き直すこと。
-2. インストール方法は、Release の `multi-agent-shognate-installer-<tag>.bat` を使う Windows 導線と、clone / ZIP 展開後の手動導線の両方を説明すること。
+2. インストール方法は、Release の `multi-agent-shognate-installer-<version>.bat` を使う Windows 導線と、clone / ZIP 展開後の手動導線の両方を説明すること。
 3. Multi-CLI 対応では、upstream 由来の CLI だけでなく、`Gemini CLI`、`OpenCode`、`Kilo`、`localapi`、および `Ollama` / `LM Studio` のような provider 連携も明記すること。
 4. Android APK について、この fork の GitHub Releases にある fork 版 APK を正規配布物として説明し、接続が SSH ベースであることを記載すること。
 5. upstream とこの fork の違いを、runtime 構成、既定値、Android 配布、CLI 対応範囲などの観点で明確に説明すること。
@@ -1506,8 +1506,9 @@
 1. `git clone` した `main` 運用は rolling channel とし、`shutsujin_departure.sh` 起動前に `origin/main` への fast-forward 更新を確認すること。
 2. tracked な local 編集や local commit がある場合、git install はそれを破壊せず、`.shogunate/merge-candidates/` に incoming file を退避して家老へ通知すること。
 3. Release installer で入れた portable install は stable release channel とし、既定では startup auto-update を無効化すること。
-4. Release install の手動更新は `multi-agent-shognate-updater-<tag>.bat` で行えること。
+4. Release install の手動更新は `multi-agent-shognate-updater-<version>.bat` で行えること。
 5. Android Release tag は `android-v<upstream>.<packaging_revision>`、例: `android-v4.2.0.1` の形式に統一すること。
+6. installer / updater の release asset 名は tag 全体ではなく `v4.2.0.1` のような version 部だけを使うこと。
 5. Release install は local state (`config/settings.yaml`, `.codex/`, `.claude/`, `projects/`, `context/local/`, `instructions/local/`, `skills/local/`, `queue/`, `logs/`, `dashboard.md`) を保持したまま更新できること。
 6. 更新後に merge candidate がある場合、起動完了後に家老へ `merge_required` の inbox 通知を送ること。
 

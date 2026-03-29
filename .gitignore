@@ -178,6 +178,7 @@ android/.android-user-home/
 android/.android-home/
 android/.gradle-home/
 android/.home/
+dist/
 
 # queue は実行時データを基本的に追跡しない
 !queue/

@@ -5,7 +5,8 @@
 - 特に、**旧 uninstaller の危険な削除挙動**と、その修正内容・検証状況・使うべき release を明示する。
 
 ## 1. 結論
-- **使うべき release は `android-v4.2.0.8`。**
+- 旧系統で安全性を確認した release は `android-v4.2.0.8`。
+- **今後の release version は upstream 版に準拠し、現時点では `android-v4.4.1.N` 系で運用する。**
 - `android-v4.2.0.8` は以下を含む。
   - uninstaller の危険な全削除挙動の修正
   - uninstaller 契約テスト追加
@@ -60,8 +61,8 @@
 
 ## 5. Asset naming の現状
 ### 正
-- APK: `multi-agent-shognate-android-v4.2.0.8.apk`
-- installer: `multi-agent-shognate-installer-v4.2.0.8.bat`
+- APK: `multi-agent-shognate-android-v4.4.1.0.apk` のように upstream 版へ準拠させる
+- installer: `multi-agent-shognate-installer-v4.4.1.0.bat` のように version 部だけを使う
 
 ### 旧問題
 - 一時期 APK asset 名が `multi-agent-shognate-android-android-v4.2.0.8.apk` になっていた。
@@ -96,7 +97,7 @@
 1. uninstaller 関連の変更を入れる時は、**フォルダ全体削除へ戻さないこと**。
 2. 既存 repo / project folder へ portable install するユーザーがいる前提で考えること。
 3. release tag を付け替える場合、workflow は既存 assets を削除してから再公開するので、release object 自体の asset 名も置換される。
-4. user 向け案内では、**`.8` 以降を使う**ように明記すること。
+4. user 向け案内では、旧 `4.2.0.x` 系を固定値として案内せず、upstream 版準拠の tag を使うこと。
 
 ## 9. 関連ファイル
 - `Shogunate-Uninstaller.bat`

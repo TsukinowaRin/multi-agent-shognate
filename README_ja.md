@@ -224,10 +224,11 @@ bash scripts/upstream_sync.sh --dry-run
 
 `multi-agent-shognate-installer-<version>.bat` で入れたものは、stable release channel 扱いです。
 
-Release tag は `android-v4.2.0.x` 形式で運用します。
+Release tag は `android-v<upstream-version>.<fork-revision>` 形式で運用します。
 先頭 3 つの数字は upstream Shogun の版を表し、
 最後の 1 つはこの fork 側の配布・パッケージ改訂番号です。
-installer asset 名は `android-` を含めず、たとえば `v4.2.0.1` のような version 部だけを使います。
+現時点の upstream は `v4.4.1` なので、次の整列例は `android-v4.4.1.0` です。
+installer asset 名は `android-` を含めず、たとえば `v4.4.1.0` のような version 部だけを使います。
 
 Windows asset の役割はこうです。
 

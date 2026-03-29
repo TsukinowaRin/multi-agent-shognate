@@ -1530,8 +1530,8 @@
 2. tracked な local 編集や local commit がある場合、git install はそれを破壊せず、`.shogunate/merge-candidates/` に incoming file を退避して家老へ通知すること。
 3. Release installer で入れた portable install は stable release channel とすること。
 4. 同じフォルダに古い portable Release install がある場合、`multi-agent-shognate-installer-<version>.bat` は新規導入ではなく更新モードとして動き、local state を保持したまま newer Release snapshot を適用できること。
-5. Android Release tag は `android-v<upstream>.<packaging_revision>`、例: `android-v4.2.0.1` の形式に統一すること。
-6. installer の release asset 名は tag 全体ではなく `v4.2.0.1` のような version 部だけを使うこと。
+5. Android Release tag は `android-v<upstream>.<packaging_revision>`、例: `android-v4.4.1.0` の形式に統一すること。
+6. installer の release asset 名は tag 全体ではなく `v4.4.1.0` のような version 部だけを使うこと。
 7. Release installer で作られた portable install には `Shogunate-Uninstaller.bat` が同梱され、配置先フォルダからアンインストールできること。
 8. `Shogunate-Uninstaller.bat` は個人データを install 外へ保持するか、この install 内のデータごと全削除するかを選べること。
 9. uninstaller 実行後も親フォルダは残り、同じ場所へクリーンインストールし直せること。
@@ -1544,7 +1544,7 @@
    - 期待結果: release snapshot 更新時の置換・preserve・merge candidate 退避が通る。
 2. コマンド: `python3 scripts/update_manager.py status`
    - 期待結果: install mode / version / auto-update 状態が JSON で出る。
-3. コマンド: `rg -n "apply-source-release|merge-candidates|multi-agent-shognate-installer-|android-v4.2.0.x" install.bat scripts/update_manager.py README.md README_ja.md .github/workflows/android-release.yml android/release/README.md`
+3. コマンド: `rg -n "apply-source-release|merge-candidates|multi-agent-shognate-installer-|android-v<upstream-version>|android-v4.4.1.0" install.bat scripts/update_manager.py README.md README_ja.md .github/workflows/android-release.yml android/release/README.md`
    - 期待結果: installer 単独の install/update 導線と release workflow の接点が揃っている。
 4. コマンド: `rg -n "Shogunate-Uninstaller.bat|Uninstall|アンインストール" .gitignore install.bat README.md README_ja.md android/release/README.md`
    - 期待結果: uninstaller が tracked され、installer 完了メッセージと docs に導線がある。

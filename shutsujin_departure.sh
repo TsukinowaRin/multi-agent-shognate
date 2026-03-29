@@ -233,17 +233,40 @@ auto_skip_codex_update_prompt_tmux() {
 
     for i in {1..20}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
-        if echo "$pane_text" | grep -qiE "Update available|Update now|Skip until next version|Press enter to continue"; then
+        if echo "$pane_text" | grep -qiE "Update available|Update now|Skip until next version|Skip this version|Would you like to update"; then
             tmux send-keys -t "$pane_target" "2"
             tmux send-keys -t "$pane_target" Enter
             sleep 2
             pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
-            if echo "$pane_text" | grep -qiE "Update available|Update now|Skip until next version|Press enter to continue"; then
+            if echo "$pane_text" | grep -qiE "Update available|Update now|Skip until next version|Skip this version|Would you like to update"; then
                 tmux send-keys -t "$pane_target" Down
                 tmux send-keys -t "$pane_target" Enter
             fi
             log_info "  └─ ${agent_id}: Codex update prompt を自動スキップ"
             sleep 1
+            return 0
+        fi
+        sleep 1
+    done
+    return 0
+}
+
+auto_accept_codex_workspace_trust_prompt_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local i
+    local pane_text
+
+    [ "$cli_type" = "codex" ] || return 0
+
+    for i in {1..20}; do
+        pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
+        if echo "$pane_text" | grep -qiE "Do you trust the contents of this directory|1\\. Yes, continue|2\\. No, quit"; then
+            tmux send-keys -t "$pane_target" "1"
+            tmux send-keys -t "$pane_target" Enter
+            log_info "  └─ ${agent_id}: Codex workspace trust prompt を自動承認"
+            sleep 2
             return 0
         fi
         sleep 1
@@ -1522,6 +1545,7 @@ if [ "$SETUP_ONLY" = false ]; then
     _cli_gate_handler() {
         local _pane="$1" _agent="$2" _cli="$3"
         auto_skip_codex_update_prompt_tmux "$_pane" "$_agent" "$_cli"
+        auto_accept_codex_workspace_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_gemini_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_retry_gemini_busy_tmux "$_pane" "$_agent" "$_cli"
     }

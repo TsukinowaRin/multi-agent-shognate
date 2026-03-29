@@ -37,6 +37,10 @@
 - [x] (2026-03-29 17:5x JST) 実 `codex` pane で `Sign in with Device Code` / browser sign-in prompt まで進み、`CODEX_HOME` 不存在での即死ではなく認証待ちで停止することを確認。
 - [x] (2026-03-29 18:0x JST) `lib/cli_adapter.sh` を `.shogunate/codex/agents/<agent>` へ変更し、起動前 `mkdir -p` を追加。
 - [x] (2026-03-29 18:0x JST) `shutsujin_departure.sh` に Codex auth prompt 検知、bootstrap skip、`queue/runtime/goza_bootstrap_<run-id>.log` への status 記録を追加。
+- [x] (2026-03-29 19:0x JST) `Shogunate-test` clone を GitHub から作成し、認証済み Codex state を workspace-local `CODEX_HOME` へ複製して WSL 実機検証を開始。
+- [x] (2026-03-29 19:1x JST) 実機で `Do you trust the contents of this directory?` が update prompt 判定へ誤爆し、`No, quit` へ落ちる問題を再現・修正。
+- [x] (2026-03-29 19:2x JST) 1 本目の top-level task について `shogun -> karo -> ashigaru1/2 -> karo -> shogun` の完了経路を確認。
+- [x] (2026-03-29 19:2x JST) 2 本目の top-level task を投入し、少なくとも `shogun -> karo` までの再現性を確認。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -53,6 +57,16 @@
   Evidence: 実 Codex 起動前の pane capture と CLI probe で、`.codex` が directory ではない前提のエラーを観測した。
 - Observation: auth prompt は `Codex` 文字列を含むため、ready 判定だけでは「起動済み」と誤認しやすい。
   Evidence: sign-in menu 表示中でも screen content に `Codex` が含まれる一方、実際には prompt 入力や task 実行に進まない。
+- Observation: 認証済み Codex を repo-local `CODEX_HOME` で使うには、既存 auth state を workspace-local home へ複製する必要がある。
+  Evidence: `CODEX_HOME=<workspace-local> codex --search exec ... "返答は READY のみ。"` は `READY` を返した一方、空の local home では 401 だった。
+- Observation: 実機の Codex は update prompt の後に workspace trust prompt を出すことがあり、従来の `Press enter to continue` 判定だと trust prompt まで update prompt 扱いして `2=No, quit` を送ってしまう。
+  Evidence: pane 履歴に `Do you trust the contents of this directory?` と `1. Yes, continue / 2. No, quit` が出た直後、shell prompt へ戻り bootstrap が `command not found` になった。
+- Observation: trust prompt を自動承認した後は 5/5 agent が bootstrap を消化し、`ready:*` を返して実 task を処理できた。
+  Evidence: `queue/runtime/goza_bootstrap_20260329_190940.log` は全 agent `bootstrap-delivered`、pane capture に `ready:shogun`, `ready:karo`, `ready:gunshi`, `ready:ashigaru1` が残った。
+- Observation: 1 本目の実 task は `cmd_20260329_191634` として家老へ委譲され、`ashigaru1` / `ashigaru2` の report 完了後に `cmd_done` が将軍 inbox へ戻った。
+  Evidence: `queue/shogun_to_karo.yaml`, `queue/tasks/ashigaru1.yaml`, `queue/tasks/ashigaru2.yaml`, `queue/reports/ashigaru1_report.yaml`, `queue/reports/ashigaru2_report.yaml`, `queue/inbox/shogun.yaml` の遷移で確認した。
+- Observation: 2 本目の実 task は `cmd_20260329_192317` として新規起票され、`queue/inbox/karo.yaml` に `cmd_new` 2 件が未読着弾した。
+  Evidence: `Shogunate-test/queue/shogun_to_karo.yaml` と `Shogunate-test/queue/inbox/karo.yaml` に second command の entry が残った。
 - Observation: Codex の初期 sign-in menu（`Sign in with ChatGPT` / `Provide your own API key`）は、browser auth prompt とは別画面のため、これも auth-required に含めないと pane ごとに 30 秒待たされる。
   Evidence: 実測では `karo`, `ashigaru1`, `ashigaru2`, `gunshi` が sign-in menu で停止し、検知条件を広げる前は個別待機が長引いた。
 - Observation: auth-required を `deliver_bootstrap_tmux` の非0 return で返すだけだと、起動元の `set -e` により runtime 全体が abort した。
@@ -79,6 +93,9 @@
 - Decision: `auth-required` は runtime 全体の致命エラーにせず、watcher / bridge / proxy session は起動継続する。
   Rationale: 認証完了後に同じ runtime を再利用でき、少なくとも未読 queue と session 構成を保持できるため。
   Date/Author: 2026-03-29 / Codex
+- Decision: Codex の workspace trust prompt は update prompt と別処理に分け、常に `1. Yes, continue` を送る。
+  Rationale: 実機では trust prompt が bootstrap 前に現れ、generic `Press enter to continue` 条件だと `2=No, quit` で Codex を落としてしまうため。
+  Date/Author: 2026-03-29 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -90,14 +107,20 @@
   - `queue/runtime/goza_bootstrap_<run-id>.log` へ `auth-required` / `bootstrap-delivered` を残す改善方針を実装した。
   - 実 `codex` 検証用に `queue/inbox/shogun.yaml` へ task を投入し、未認証状態では未読のまま滞留することを確認した。
   - sign-in menu 検知と `bootstrap 未配信でも継続` を追加し、runtime 起動自体は最後まで完了するようになった。
+  - 認証済み WSL Codex を使う `Shogunate-test` 実機検証では、1 本目の task を end-to-end で完了できた。
+  - 2 本目の task も `shogun -> karo` の再委譲まで進み、同じ経路が再利用できることを確認した。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。
   - E2E bats は test helper 実体が repo に無いため、この環境では補強できなかった。
+  - `Shogunate-test` での 2 本目 task は家老着手まで確認済みだが、最終 `cmd_done` までの追跡は今回省略した。
 - Lessons:
   - WSL の `/mnt/d` 配下で tmux を使う検証は、socket を Linux 側 filesystem へ逃がす前提で考えた方が早い。
   - bare command 解決に依存する CLI 起動は、tmux pane shell の PATH 差異で検証が揺れる。隔離検証では絶対パスが安全。
   - 実 Codex 検証では「pane が起動した」だけでは不十分で、認証待ちか prompt ready かを screen content と runtime log の両方で分けて観測する必要がある。
+  - 認証済み state を local `CODEX_HOME` へ複製すれば、repo-local state 分離を保ったまま実 WSL Codex を使える。
+  - update prompt と trust prompt を混同すると、実機だけで Codex が即終了する。prompt 判定は generic 文言より選択肢の固有文言で切る方が安全。
 - Against Purpose:
   - 「隔離コピーで実起動し、複数 task の流れを確認する」という目的は mock Codex で達成。
   - 「実 Codex で task を回す」という追加目的は、未認証環境のため task 完了までは未達。ただし阻害要因の切り分けと起動導線の改善は完了。
+  - その後の認証済み WSL 実機検証により、少なくとも 1 本は end-to-end 完了、2 本目も再委譲再現まで確認できた。

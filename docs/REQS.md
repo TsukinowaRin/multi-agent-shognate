@@ -24,6 +24,28 @@
 5. コマンド: `bash -n shutsujin_departure.sh lib/cli_adapter.sh`
    - 期待結果: 構文エラーがない。
 
+## 追補（2026-03-29: 認証済みWSL Codex での実タスク検証）
+### 要求
+1. ワークスペース内に新規 clone `Shogunate-test` を作成し、GitHub 上の最新作業ブランチを取得すること。
+2. この PC の認証済み `codex` を使い、WSL 上で実際に runtime を起動すること。
+3. repo-local `CODEX_HOME` を使う運用を維持しつつ、認証済み state を agent 別 home へ複製して起動できること。
+4. 少なくとも 1 本は、`shogun -> karo -> ashigaru -> karo -> shogun` の完了経路まで実タスクを流すこと。
+5. 2 本目も投入し、少なくとも `shogun -> karo` まで再現性を確認すること。
+6. 実機で出た trust prompt / ready 判定の問題があればコードを改善すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `git clone --branch codex/upstream-sync-2026-03-29 <origin> Shogunate-test`
+   - 期待結果: [Shogunate-test](/mnt/d/Git_WorkSpace/multi-agent-shognate/Shogunate-test) が作成され、HEAD が `1d4e127` 以降である。
+2. コマンド: `CODEX_HOME=<workspace-local home> codex --search exec ... "返答は READY のみ。"`
+   - 期待結果: `READY` を返し、401 や browser sign-in prompt では止まらない。
+3. コマンド: `TMUX_TMPDIR=/tmp/Shogunate-test bash shutsujin_departure.sh -c`
+   - 実行場所: `Shogunate-test`
+   - 期待結果: 5/5 agent が起動し、`queue/runtime/goza_bootstrap_*.log` が `bootstrap-delivered` になる。
+4. コマンド: `bash scripts/inbox_write.sh shogun "<task>" task_assigned user`
+   - 期待結果: 1 本目の task で `queue/shogun_to_karo.yaml`、`queue/tasks/ashigaru*.yaml`、`queue/reports/ashigaru*_report.yaml`、`queue/inbox/shogun.yaml` の既読化まで確認できる。
+5. コマンド: 2 本目の `inbox_write.sh shogun "<task2>" ...`
+   - 期待結果: 少なくとも `queue/shogun_to_karo.yaml` への新規 `cmd_*` 追加と `queue/inbox/karo.yaml` への `cmd_new` 着弾が確認できる。
+
 ## 追補（2026-03-29: 隔離コピーでの実起動・代表タスク検証）
 ### 要求
 1. ワークスペース内に隔離された新しいフォルダを作成し、その中へこの fork の最新コード一式をコピーすること。

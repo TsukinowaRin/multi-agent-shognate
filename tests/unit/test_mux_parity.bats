@@ -81,3 +81,8 @@ setup_file() {
     run bats_search 'if ! deliver_bootstrap_tmux .*_bootstrap_failed=1|bootstrap 未配信のまま継続' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "tmux 起動は Codex workspace trust prompt を update prompt と分離して自動承認する" {
+    run bats_search 'auto_accept_codex_workspace_trust_prompt_tmux|Do you trust the contents of this directory|1\\. Yes, continue|Would you like to update' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}

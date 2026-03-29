@@ -169,7 +169,7 @@ _cli_adapter_prefix_node_path_for_global_bin() {
 
 _cli_adapter_codex_home() {
     local agent_id="$1"
-    printf '%s/.codex/agents/%s' "$CLI_ADAPTER_PROJECT_ROOT" "$agent_id"
+    printf '%s/.shogunate/codex/agents/%s' "$CLI_ADAPTER_PROJECT_ROOT" "$agent_id"
 }
 
 _cli_adapter_is_shogun() {
@@ -394,7 +394,7 @@ build_cli_command_with_type() {
         codex)
             local codex_home
             codex_home="$(_cli_adapter_codex_home "$agent_id")"
-            local cmd="CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 codex"
+            local cmd="mkdir -p $(_cli_adapter_shell_quote "$codex_home") && CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 codex"
             if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
                 cmd="$cmd --model $configured_model"
             fi

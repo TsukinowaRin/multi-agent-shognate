@@ -3,6 +3,27 @@
 最終更新: 2026-03-29
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-29: 実Codexでの実起動・認証待ち観測・改善）
+### 要求
+1. mock ではなく実 `codex` CLI を使って、隔離コピー側で runtime を起動すること。
+2. 実際に task を回せるかを確認し、不可ならその阻害要因を pane / log / 実行結果で特定すること。
+3. 観測した結果とログを docs に残し、再現条件と未解決点を第三者が追える形にすること。
+4. 観測結果に基づき、起動スクリプトまたは関連コードの改善を入れること。
+5. 少なくとも `CODEX_HOME` 周りの起動失敗や、認証待ち画面の誤判定による bootstrap 誤送信を防ぐこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: 実 `codex` を使う `bash shutsujin_departure.sh -c`
+   - 実行場所: ワークスペース内の隔離コピー直下
+   - 期待結果: 各 Codex pane が少なくとも起動し、即死せずに認証または入力待ち画面まで進む。
+2. コマンド: `tmux capture-pane ...`
+   - 期待結果: 実 pane に `Codex` の認証画面または入力待ち画面が表示され、阻害要因を確認できる。
+3. コマンド: `cat queue/runtime/goza_bootstrap_*.log`
+   - 期待結果: agent ごとの `bootstrap-delivered` または `auth-required` が確認できる。
+4. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `CODEX_HOME` 分離と bootstrap log / auth-required 観測の回帰テストが PASS する。
+5. コマンド: `bash -n shutsujin_departure.sh lib/cli_adapter.sh`
+   - 期待結果: 構文エラーがない。
+
 ## 追補（2026-03-29: 隔離コピーでの実起動・代表タスク検証）
 ### 要求
 1. ワークスペース内に隔離された新しいフォルダを作成し、その中へこの fork の最新コード一式をコピーすること。

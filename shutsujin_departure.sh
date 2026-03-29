@@ -251,6 +251,31 @@ auto_skip_codex_update_prompt_tmux() {
     return 0
 }
 
+codex_auth_prompt_detected_tmux() {
+    local pane_target="$1"
+    local pane_text
+
+    pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -120 || true)"
+    echo "$pane_text" | grep -qiE "Finish signing in via your browser|open the following link to authenticate|Sign in with ChatGPT|Sign in with Device Code|Provide your own API key|auth\\.openai\\.com/oauth/authorize"
+}
+
+append_bootstrap_status_log() {
+    local agent_id="$1"
+    local cli_type="$2"
+    local pane_target="$3"
+    local status="$4"
+    local detail="${5:-}"
+
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    printf '%s\tagent=%s\tcli=%s\tpane=%s\tstatus=%s\tdetail=%s\n' \
+        "$(date '+%Y-%m-%d %H:%M:%S %Z')" \
+        "$agent_id" \
+        "$cli_type" \
+        "$pane_target" \
+        "$status" \
+        "$detail" >> "$GOZA_BOOTSTRAP_LOG"
+}
+
 # ブートストラップメッセージを事前にファイルへ書き出す
 # 各エージェントが自分専用のファイルを読むことで誤送信を根本的に排除
 generate_bootstrap_file() {
@@ -319,6 +344,9 @@ wait_for_cli_ready_tmux() {
     # max_wait=0 でも1回は即時チェックする（for ループでは 0<0 が偽でスキップされるため分離）
     local screen_content
     screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+    if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
+        return 2
+    fi
     if echo "$screen_content" | grep -qiE "$ready_pattern"; then
         return 0
     fi
@@ -326,6 +354,9 @@ wait_for_cli_ready_tmux() {
     for ((i=0; i<max_wait; i++)); do
         sleep 1
         screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+        if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
+            return 2
+        fi
         if echo "$screen_content" | grep -qiE "$ready_pattern"; then
             return 0
         fi
@@ -343,18 +374,29 @@ deliver_bootstrap_tmux() {
 
     if [ ! -f "$bootstrap_file" ]; then
         echo "[WARN] bootstrap file not found for $agent_id: $bootstrap_file" >&2
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "missing-bootstrap" "$bootstrap_file"
         return 1
     fi
 
     # ペイン存在チェック
     if ! tmux display-message -p -t "$pane_target" "#{pane_id}" >/dev/null 2>&1; then
         echo "[WARN] pane '$pane_target' not found, skipping bootstrap for $agent_id" >&2
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "missing-pane" "pane not found"
         return 1
     fi
 
     # CLIの準備完了を最大30秒待機（スクリーン内容ベース判定）
-    if ! wait_for_cli_ready_tmux "$pane_target" "$cli_type" 30; then
+    local ready_rc=0
+    wait_for_cli_ready_tmux "$pane_target" "$cli_type" 30
+    ready_rc=$?
+    if [ "$ready_rc" -ne 0 ]; then
+        if [ "$ready_rc" -eq 2 ]; then
+            echo "[WARN] Codex authentication prompt detected in '$pane_target' for '$agent_id'. Skipping bootstrap until login completes." >&2
+            append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "auth-required" "codex authentication prompt detected"
+            return 1
+        fi
         echo "[WARN] CLI '$cli_type' not ready in '$pane_target' after 30s, sending bootstrap anyway" >&2
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-timeout" "sending bootstrap anyway after 30s"
     fi
 
     local msg
@@ -364,12 +406,15 @@ deliver_bootstrap_tmux() {
     tmux send-keys -l -t "$pane_target" "$msg"
     sleep 0.3
     tmux send-keys -t "$pane_target" Enter
+    append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-delivered" "send-keys literal + enter"
 }
 
 GOZA_SESSION_NAME="${GOZA_SESSION_NAME:-goza-no-ma}"
 GOZA_WINDOW_NAME="${GOZA_WINDOW_NAME:-overview}"
 GOZA_LAYOUT_FILE="${GOZA_LAYOUT_FILE:-$SCRIPT_DIR/queue/runtime/goza_layout.tsv}"
 GOZA_SIGNATURE_FILE="${GOZA_SIGNATURE_FILE:-$SCRIPT_DIR/queue/runtime/goza_signature.tsv}"
+GOZA_BOOTSTRAP_RUN_ID="${GOZA_BOOTSTRAP_RUN_ID:-$(date +%Y%m%d_%H%M%S)}"
+GOZA_BOOTSTRAP_LOG="${GOZA_BOOTSTRAP_LOG:-$SCRIPT_DIR/queue/runtime/goza_bootstrap_${GOZA_BOOTSTRAP_RUN_ID}.log}"
 GOZA_VIEW_WIDTH="${GOZA_VIEW_WIDTH:-220}"
 GOZA_VIEW_HEIGHT="${GOZA_VIEW_HEIGHT:-60}"
 
@@ -1629,6 +1674,7 @@ NINJA_EOF
     # 各エージェントへ初動命令を投入（CLI起動確認後）
     # deliver_bootstrap_tmux 内でCLI毎のready判定（スクリーン内容ベース）を行うため、
     # ここでの一括待機は不要。将軍への注入を最後にしてフォーカスを将軍ペインに固定。
+    _bootstrap_failed=0
     log_info "📜 初動命令をエージェント毎に個別配信中（CLI ready確認つき）"
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
@@ -1638,11 +1684,20 @@ NINJA_EOF
             echo "[WARN] pane target unresolved for $_agent, skipping bootstrap" >&2
             continue
         fi
-        deliver_bootstrap_tmux "$_pane_target" "$_agent" "$_agent_cli_type"
+        if ! deliver_bootstrap_tmux "$_pane_target" "$_agent" "$_agent_cli_type"; then
+            _bootstrap_failed=1
+        fi
     done
-    deliver_bootstrap_tmux "$GUNSHI_TARGET" "gunshi" "$_gunshi_cli_type"
-    deliver_bootstrap_tmux "$SHOGUN_TARGET" "shogun" "$_shogun_cli_type"
+    if ! deliver_bootstrap_tmux "$GUNSHI_TARGET" "gunshi" "$_gunshi_cli_type"; then
+        _bootstrap_failed=1
+    fi
+    if ! deliver_bootstrap_tmux "$SHOGUN_TARGET" "shogun" "$_shogun_cli_type"; then
+        _bootstrap_failed=1
+    fi
     tmux select-pane -t "$SHOGUN_TARGET" >/dev/null 2>&1 || true
+    if [ "$_bootstrap_failed" -ne 0 ]; then
+        log_info "⚠️  一部エージェントは bootstrap 未配信のまま継続（詳細: queue/runtime/goza_bootstrap_*.log）"
+    fi
     log_info "📜 初動命令の配信完了"
 
     # ═══════════════════════════════════════════════════════════════════

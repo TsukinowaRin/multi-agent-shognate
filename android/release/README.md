@@ -2,7 +2,7 @@ Fork APKs are no longer committed into this directory.
 
 Use this repository's GitHub Releases page and download these assets as needed:
 
-- `multi-agent-shognate-android-<tag>.apk`
+- `multi-agent-shognate-android-<version>.apk`
   - Android app package
   - SSH client / dashboard / host-side update UI
 - `multi-agent-shognate-installer-<version>.bat`

@@ -79,7 +79,7 @@ jobs:
           fi
           VERSION="${TAG#android-}"
           export VERSION
-          APK_ASSET="multi-agent-shognate-android-${TAG}.apk"
+          APK_ASSET="multi-agent-shognate-android-${VERSION}.apk"
           INSTALLER_ASSET="multi-agent-shognate-installer-${VERSION}.bat"
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/${APK_ASSET}"

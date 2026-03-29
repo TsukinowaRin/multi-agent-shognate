@@ -5,6 +5,7 @@
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
 - `docs/PLANS.md` - ExecPlanの作成・更新規約。
+- `docs/HANDOFF_2026-03-29_resume.md` - 新しいチャットで実Codex検証を再開するための handoff。現状の正本。
 
 ## Specs
 - `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。
@@ -43,3 +44,7 @@
 
 ## Logs
 - 実運用ログ、引き継ぎメモ、upstream 詳細同期ノートはローカル保持とし、公開対象外。
+
+## Resume
+- 新しいチャットで再開する場合は、`AGENTS.md` の後にこの `docs/INDEX.md` の Must-read を順に読む。
+- 実Codex検証の現状と再開手順は `docs/HANDOFF_2026-03-29_resume.md` を一次情報とする。

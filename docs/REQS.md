@@ -24,6 +24,23 @@
 5. コマンド: `bash -n shutsujin_departure.sh lib/cli_adapter.sh`
    - 期待結果: 構文エラーがない。
 
+## 追補（2026-03-29: 実Codexでの多様タスク再試験と usage-limit prompt 対応）
+### 要求
+1. 認証済み WSL Codex を使う `Shogunate-test` で、docs 要約以外の継続運用タスクを複数回流し、将軍・家老の初動/完了処理の遅延箇所を特定すること。
+2. 可能なら専用ディレクトリ内の小規模共同開発タスクまで進め、ファイル作成・テスト実行・報告まで通るか確認すること。
+3. 実運用中に出た Codex 固有 UI prompt のうち、少なくとも workspace trust、rate-limit warning、usage-limit + model switch prompt を code 側で扱えるようにすること。
+4. usage-limit が外部 quota 由来で残る場合は、その事実、再現条件、repo 側で防げる範囲と防げない範囲を docs に残すこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `TMUX_TMPDIR=/tmp/Shogunate-test bash shutsujin_departure.sh -c`
+   - 期待結果: bootstrap 配信と watcher 起動までは成功し、prompt 処理の log が確認できる。
+2. コマンド: `bash scripts/inbox_write.sh shogun "<task>" task_assigned user`
+   - 期待結果: 少なくとも watcher log に unread 検知と Codex prompt 対応の挙動が残る。
+3. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: bootstrap 側と watcher 側の prompt 対応追加分が PASS する。
+4. コマンド: `tmux capture-pane ...`
+   - 期待結果: `You've hit your usage limit` / `Approaching rate limits` / model switch UI のどれで止まったかを第三者が確認できる。
+
 ## 追補（2026-03-29: 認証済みWSL Codex での実タスク検証）
 ### 要求
 1. ワークスペース内に新規 clone `Shogunate-test` を作成し、GitHub 上の最新作業ブランチを取得すること。

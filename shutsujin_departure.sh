@@ -274,6 +274,36 @@ auto_accept_codex_workspace_trust_prompt_tmux() {
     return 0
 }
 
+auto_dismiss_codex_rate_limit_prompt_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local i
+    local pane_text
+
+    [ "$cli_type" = "codex" ] || return 0
+
+    for i in {1..45}; do
+        pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -120 || true)"
+        if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
+            tmux send-keys -t "$pane_target" "1"
+            tmux send-keys -t "$pane_target" Enter
+            log_info "  └─ ${agent_id}: Codex usage-limit prompt で mini へ自動切替"
+            sleep 2
+            return 0
+        fi
+        if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model \(never show again\)"; then
+            tmux send-keys -t "$pane_target" "3"
+            tmux send-keys -t "$pane_target" Enter
+            log_info "  └─ ${agent_id}: Codex rate-limit prompt を自動dismiss"
+            sleep 2
+            return 0
+        fi
+        sleep 1
+    done
+    return 0
+}
+
 codex_auth_prompt_detected_tmux() {
     local pane_target="$1"
     local pane_text
@@ -308,7 +338,7 @@ generate_bootstrap_file() {
     local bootstrap_file="$bootstrap_dir/bootstrap_${agent_id}.md"
     local role_instruction_file=""
     local optimized_instruction_file=""
-    local lang_rule="" event_rule="" report_rule="" linkage_rule=""
+    local lang_rule="" event_rule="" report_rule="" linkage_rule="" startup_fastpath=""
 
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
@@ -333,16 +363,38 @@ generate_bootstrap_file() {
     lang_rule="$(language_directive)"
     event_rule="$(event_driven_directive "$agent_id")"
     report_rule="$(reporting_chain_directive "$agent_id")"
+    startup_fastpath="$(startup_fastpath_directive "$agent_id")"
 
     local startup_msg
     if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
-        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、続けて ${optimized_instruction_file} を読んで ${cli_type} 向け差分を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、続けて ${optimized_instruction_file} を読んで ${cli_type} 向け差分を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら未読inbox監視へ戻れ。"
     else
-        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} 準備が整ったら未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら未読inbox監視へ戻れ。"
     fi
 
     mkdir -p "$bootstrap_dir"
     echo "$startup_msg" > "$bootstrap_file"
+}
+
+startup_fastpath_directive() {
+    local agent_id="$1"
+    case "$agent_id" in
+        shogun)
+            echo "初動最適化: 起動直後は自inboxだけ確認し、未読が無ければ即待機。task_assigned を受けたら repo 名で即 cmd 起票し、詳細調査は家老へ委ねよ。"
+            ;;
+        karo|karo[1-9]*|karo_gashira)
+            echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は最小分解、report_received は report YAML を正本として dashboard 更新と cmd_done 通知を先に終えよ。"
+            ;;
+        ashigaru*)
+            echo "初動最適化: 起動直後は自inbox/task だけ確認し、未読も task も無ければ即待機。着手後も自task と対象ファイルに限定して動け。"
+            ;;
+        gunshi)
+            echo "初動最適化: 起動直後は自inbox/task だけ確認し、未読が無ければ即待機。相談が来た時だけ必要最小限の資料を読め。"
+            ;;
+        *)
+            echo "初動最適化: 起動直後は自inbox/task の最小確認だけを行い、全体探索は実タスク受領後まで遅らせよ。"
+            ;;
+    esac
 }
 
 # CLIの準備完了をスクリーン内容で確認（pane_current_command の誤判定を回避）
@@ -1546,6 +1598,7 @@ if [ "$SETUP_ONLY" = false ]; then
         local _pane="$1" _agent="$2" _cli="$3"
         auto_skip_codex_update_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_codex_workspace_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
+        auto_dismiss_codex_rate_limit_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_gemini_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_retry_gemini_busy_tmux "$_pane" "$_agent" "$_cli"
     }

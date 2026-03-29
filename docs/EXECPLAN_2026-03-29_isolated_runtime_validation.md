@@ -41,6 +41,11 @@
 - [x] (2026-03-29 19:1x JST) 実機で `Do you trust the contents of this directory?` が update prompt 判定へ誤爆し、`No, quit` へ落ちる問題を再現・修正。
 - [x] (2026-03-29 19:2x JST) 1 本目の top-level task について `shogun -> karo -> ashigaru1/2 -> karo -> shogun` の完了経路を確認。
 - [x] (2026-03-29 19:2x JST) 2 本目の top-level task を投入し、少なくとも `shogun -> karo` までの再現性を確認。
+- [x] (2026-03-29 20:2x JST) 実 Codex の多様タスク再試験で、将軍が初動で `projects.yaml` / `dashboard.md` まで広く探索し、家老も完了処理で sample/test/log を過読することを観測。
+- [x] (2026-03-29 20:3x JST) `shutsujin_departure.sh` の bootstrap 文面へ役職別の「初動最適化」directive を追加し、起動直後の探索対象を自 inbox / 自 task 中心へ絞った。
+- [x] (2026-03-29 20:3x JST) 実 Codex pane に出た `Approaching rate limits` / `Keep current model` prompt へ対処する自動dismiss を launcher 側と watcher 側へ追加。
+- [x] (2026-03-29 20:4x JST) 実 Codex pane に出た `You've hit your usage limit` prompt を観測し、watcher から `gpt-5.1-codex-mini` への切替入力を自動送信する改善を追加。
+- [x] (2026-03-29 20:4x JST) ただし hard usage-limit 自体は外部 quota 制約であり、`Shogunate-test` 上の実 task / 共同開発タスクはこの時点では再開不能なことを確認。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -73,6 +78,14 @@
   Evidence: 修正途中の実行で `real_codex_startup.log` が `各エージェントに指示書を読み込ませ中...` 直後に止まり、再試験で `bootstrap 未配信でも継続` 分岐を入れると最後まで起動した。
 - Observation: 実 task を `queue/inbox/shogun.yaml` へ投入しても、未認証のままでは message は `read: false` のまま残り、`queue/reports/karo_report.yaml` は生成されない。
   Evidence: `msg_20260329_180458_ed4bb65d` を投入後、10 秒以上待っても inbox は未読のままで report 不在だった。
+- Observation: 実 Codex の将軍は、初動命令だけでは `config/projects.yaml` / `dashboard.md` / repo-wide search まで寄り道しやすく、最初の `task_assigned` 着手が 1 分以上遅れた。
+  Evidence: `Shogunate-test` pane capture で、task 投入前後に `projects.yaml`, `dashboard.md`, repo listing へ広く探索していた。
+- Observation: 家老は report 受領後も `logs/daily`, `streaks.yaml.sample`, `test_karo_done_to_shogun_bridge.bats` など補助資料へ寄り道し、`cmd_done` まで閉じるのが遅かった。
+  Evidence: `goza-no-ma:0.1` pane capture と `queue/inbox/karo.yaml` の unread 滞留で確認した。
+- Observation: Codex は `Approaching rate limits` prompt を会話中に差し込み、未読処理より prompt 応答を優先させるため、watcher が nudge しても task が進まないことがある。
+  Evidence: pane capture に `Approaching rate limits` と `Keep current model (never show again)` が表示され、task unread が残留した。
+- Observation: さらに `You've hit your usage limit` が出ると、`1. Switch to gpt-5.1-codex-mini` を送っても即時復帰せず、外部 quota 回復時刻まで hard-block する場合がある。
+  Evidence: `Shogunate-test` の将軍 pane に `You've hit your usage limit ... try again at 10:46 PM` が出続け、watcher log では `Switching Codex to mini after usage-limit prompt` を繰り返しても `queue/inbox/shogun.yaml` が未読のままだった。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -96,6 +109,12 @@
 - Decision: Codex の workspace trust prompt は update prompt と別処理に分け、常に `1. Yes, continue` を送る。
   Rationale: 実機では trust prompt が bootstrap 前に現れ、generic `Press enter to continue` 条件だと `2=No, quit` で Codex を落としてしまうため。
   Date/Author: 2026-03-29 / Codex
+- Decision: bootstrap へ役職別の「初動最適化」文面を追加し、起動直後の探索対象を自 inbox / 自 task と役職指示書に限定する。
+  Rationale: 実 task 投入前の寄り道探索が長く、将軍・家老とも event-driven へ戻るまで遅かったため。
+  Date/Author: 2026-03-29 / Codex
+- Decision: `scripts/inbox_watcher.sh` は unread 起動前に Codex の rate-limit / usage-limit prompt を検知し、必要に応じて `3` または `1` を送ってから nudge を続行する。
+  Rationale: launcher 起動時だけでは runtime 中に出る Codex UI prompt を除去できず、未読処理が止まるため。
+  Date/Author: 2026-03-29 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -114,13 +133,16 @@
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。
   - E2E bats は test helper 実体が repo に無いため、この環境では補強できなかった。
   - `Shogunate-test` での 2 本目 task は家老着手まで確認済みだが、最終 `cmd_done` までの追跡は今回省略した。
+  - 多様タスク再試験の最終盤は、Codex アカウントの hard usage-limit により `shogun` が 2026-03-29 22:46 JST まで外部ブロックされたため、共同開発タスク着手までは到達できなかった。
 - Lessons:
   - WSL の `/mnt/d` 配下で tmux を使う検証は、socket を Linux 側 filesystem へ逃がす前提で考えた方が早い。
   - bare command 解決に依存する CLI 起動は、tmux pane shell の PATH 差異で検証が揺れる。隔離検証では絶対パスが安全。
   - 実 Codex 検証では「pane が起動した」だけでは不十分で、認証待ちか prompt ready かを screen content と runtime log の両方で分けて観測する必要がある。
   - 認証済み state を local `CODEX_HOME` へ複製すれば、repo-local state 分離を保ったまま実 WSL Codex を使える。
   - update prompt と trust prompt を混同すると、実機だけで Codex が即終了する。prompt 判定は generic 文言より選択肢の固有文言で切る方が安全。
+  - Codex の runtime blocker は auth / trust だけではなく、rate-limit warning と hard usage-limit もある。前者は code で捌けるが、後者は外部 quota が戻るまで repo 側だけでは突破できない。
 - Against Purpose:
   - 「隔離コピーで実起動し、複数 task の流れを確認する」という目的は mock Codex で達成。
   - 「実 Codex で task を回す」という追加目的は、未認証環境のため task 完了までは未達。ただし阻害要因の切り分けと起動導線の改善は完了。
   - その後の認証済み WSL 実機検証により、少なくとも 1 本は end-to-end 完了、2 本目も再委譲再現まで確認できた。
+  - 追加の多様タスク / 共同開発再試験では、初動遅延と Codex prompt 割り込みへの改善までは完了したが、最終的な共同開発タスクは hard usage-limit に阻まれた。

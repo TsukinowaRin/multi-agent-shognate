@@ -699,6 +699,46 @@ YAML
     ! grep -q "send-keys.*C-c" "$MOCK_LOG"
 }
 
+@test "T-CODEX-010b: send_wakeup は Codex rate-limit prompt を dismiss してから nudge する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\nSwitch to gpt-5.1-codex-mini\n3. Keep current model (never show again)'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010c: send_wakeup_with_escape も Codex rate-limit prompt を dismiss する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\nKeep current model (never show again)'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 4
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010d: send_wakeup は Codex usage-limit prompt で mini 切替を選ぶ" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s\n%s" "You'\''ve hit your usage limit" "Switch to gpt-5.1-codex-mini" "1. Switch to gpt-5.1-codex-mini")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+}
+
 # --- T-CODEX-011: clear_command auto-recovery injection ---
 
 @test "T-CODEX-011: process_unread injects auto-recovery task and sends inbox nudge after clear_command" {

@@ -86,3 +86,13 @@ setup_file() {
     run bats_search 'auto_accept_codex_workspace_trust_prompt_tmux|Do you trust the contents of this directory|1\\. Yes, continue|Would you like to update' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "tmux 起動は役職別の初動最適化 directive を bootstrap に含める" {
+    run bats_search 'startup_fastpath_directive|初動最適化: 起動直後は自inboxだけ確認|repo 名で即 cmd 起票|report YAML を正本として|自inbox/task だけ確認' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は Codex の rate-limit prompt も自動dismissする" {
+    run bats_search "auto_dismiss_codex_rate_limit_prompt_tmux|Approaching rate limits|You've hit your usage limit|Keep current model \\(never show again\\)|mini へ自動切替" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}

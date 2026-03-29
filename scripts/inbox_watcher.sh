@@ -171,6 +171,36 @@ mux_capture_pane_tail() {
     timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -5
 }
 
+dismiss_codex_rate_limit_prompt_if_present() {
+    local effective_cli="${1:-}"
+    local pane_text
+
+    if [[ -z "$effective_cli" ]]; then
+        effective_cli=$(get_effective_cli_type)
+    fi
+    [[ "$effective_cli" == "codex" ]] || return 1
+
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -40 || true)
+    if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
+        echo "[$(date)] [SEND-KEYS] Switching Codex to mini after usage-limit prompt for $AGENT_ID" >&2
+        mux_send_text "1"
+        sleep 0.2
+        mux_send_enter
+        sleep 0.3
+        return 0
+    fi
+    if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model \(never show again\)"; then
+        echo "[$(date)] [SEND-KEYS] Dismissing Codex rate-limit prompt for $AGENT_ID" >&2
+        mux_send_text "3"
+        sleep 0.2
+        mux_send_enter
+        sleep 0.3
+        return 0
+    fi
+
+    return 1
+}
+
 get_effective_cli_type() {
     local pane_cli_raw=""
     local pane_cli=""
@@ -630,12 +660,16 @@ agent_is_busy() {
 send_wakeup() {
     local unread_count="$1"
     local nudge
+    local effective_cli
     nudge=$(get_wakeup_text "$unread_count")
+    effective_cli=$(get_effective_cli_type)
 
     if [ "${FINAL_ESCALATION_ONLY:-0}" = "1" ]; then
         echo "[$(date)] [SKIP] FINAL_ESCALATION_ONLY=1, suppressing normal nudge for $AGENT_ID" >&2
         return 0
     fi
+
+    dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || true
 
     # 優先度1: Agent self-watch — nudge不要（エージェントが自分で気づく）
     if agent_has_self_watch; then
@@ -683,6 +717,8 @@ send_wakeup_with_escape() {
         echo "[$(date)] [SKIP] FINAL_ESCALATION_ONLY=1, suppressing phase2 nudge for $AGENT_ID" >&2
         return 0
     fi
+
+    dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || true
 
     if agent_has_self_watch; then
         return 0

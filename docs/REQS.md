@@ -3,6 +3,31 @@
 最終更新: 2026-03-29
 出典: 直近ユーザープロンプト
 
+## 追補（2026-03-29: 隔離コピーでの実起動・代表タスク検証）
+### 要求
+1. ワークスペース内に隔離された新しいフォルダを作成し、その中へこの fork の最新コード一式をコピーすること。
+2. 検証は元の作業ツリーを直接使わず、隔離コピー側で行うこと。
+3. 隔離コピー側で実際に runtime を起動し、少なくとも将軍からの代表タスク投入と、その配送・処理・完了反映までを確認すること。
+4. 代表タスクは複数本投入し、少なくとも単発タスクと並列実行タスクを含めること。
+5. 実行時の session 名、runtime ディレクトリ、HOME/Gradle 系の一時領域は、必要に応じて隔離コピー側へ閉じ込めること。
+6. 結果は docs に記録し、成功条件と未解決リスクを次回再開できる粒度で残すこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `mkdir -p <workspace-local sandbox>` と、元 repo からのコピーコマンド
+   - 期待結果: ワークスペース内に隔離コピーが作成され、主要ファイル (`shutsujin_departure.sh`, `config/`, `instructions/`, `scripts/`) が存在する。
+2. コマンド: `bash shutsujin_departure.sh -s`
+   - 実行場所: 隔離コピー直下
+   - 期待結果: `goza-no-ma` 本体と Android 互換 session が起動し、致命エラーで停止しない。
+3. コマンド: `tmux list-sessions`
+   - 期待結果: 少なくとも `goza-no-ma`, `shogun`, `gunshi`, `multiagent` が見える。
+4. コマンド: 代表タスク投入用の `queue/inbox/shogun.yaml` または対応 queue 更新
+   - 期待結果: 将軍がタスクを受理し、必要に応じて家老・足軽へ配布される。
+5. コマンド: `bats tests/e2e/e2e_inbox_delivery.bats tests/e2e/e2e_parallel_tasks.bats`
+   - 実行場所: 隔離コピー直下
+   - 期待結果: 環境依存で skip があっても、少なくとも runtime 実検証結果と矛盾しない形で通るか、失敗理由を説明できる。
+6. コマンド: `tmux capture-pane ...`, `queue/...`, `dashboard.md`, `status/...`
+   - 期待結果: 代表タスクの進行と完了が観測できる。
+
 ## 追補（2026-03-29: upstream 最新コードの統合）
 ### 要求
 1. `upstream/main` の最新コミット `3dafe0a` をこの fork へ取り込み、現在の fork 独自機能と両立するよう統合すること。

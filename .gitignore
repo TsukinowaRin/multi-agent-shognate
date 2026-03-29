@@ -171,6 +171,13 @@
 !.github/copilot-instructions.md
 !.github/workflows/
 !.github/workflows/*.yml
+!android/
+!android/**
+.claude/settings.local.json
+android/.android-user-home/
+android/.android-home/
+android/.gradle-home/
+android/.home/
 
 # queue は実行時データを基本的に追跡しない
 !queue/

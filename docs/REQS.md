@@ -1,7 +1,30 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-17
+最終更新: 2026-03-29
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-29: upstream 最新コードの統合）
+### 要求
+1. `upstream/main` の最新コミット `3dafe0a` をこの fork へ取り込み、現在の fork 独自機能と両立するよう統合すること。
+2. upstream 側の更新は、少なくとも Android 側の `SSH/Settings/Agents` 修正、`ratelimit_check.sh`、`shutsujin_departure.sh`、`karo` 系 instructions 更新、追加された `reports/` を反映すること。
+3. この fork 独自の Android release 導線、portable install / uninstall、追加 CLI 対応、既存 docs 運用を壊さないこと。
+4. 統合方針と衝突解消内容を docs に記録し、次回以降も再開しやすい状態にすること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `git merge --no-ff --no-edit upstream/main`
+   - 期待結果: `codex/upstream-sync-2026-03-29` 上で merge が完了し、未解決 conflict が残らない。
+2. コマンド: `bash -n shutsujin_departure.sh scripts/ratelimit_check.sh`
+   - 期待結果: 統合後も構文エラーがない。
+3. コマンド: `./gradlew :app:assembleDebug`
+   - 実行場所: `android/`
+   - 期待結果: Android 側の upstream 修正を取り込んだ状態で debug build が成功する。
+4. コマンド: `bats tests/unit/test_interactive_agent_runner.bats`
+   - 期待結果: この fork 独自導線に関係する代表 Bats テストが通る。
+5. コマンド: `python3 -m pytest tests/unit/test_update_manager.py`
+   - 期待結果: `pytest` がある環境では PASS する。
+   - 代替: `pytest` が無い環境では `python3 -m unittest tests.unit.test_update_manager` で PASS する。
+6. コマンド: `git diff --check`
+   - 期待結果: 空白エラーや conflict marker が残らない。
 
 ## 追補（2026-03-17: multi-CLI 運用スクリプトの opencode / kilo / gemini 対応）
 ### 要求

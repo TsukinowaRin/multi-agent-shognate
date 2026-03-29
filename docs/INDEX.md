@@ -13,6 +13,7 @@
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - portable install / uninstaller 事故対応、修正内容、使うべき release、release asset naming の引き継ぎ。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-03-29_upstream_v441_sync.md` - upstream `main` の v4.4.1 系更新をこの fork の独自機能と両立させて統合する計画。
 - `docs/EXECPLAN_2026-03-25_android_host_update.md` - Android APK から host 側 Shogunate 更新を停止後に安全適用する実行計画（完了）。
 - `docs/EXECPLAN_2026-03-17_codex_role_isolation.md` - Codex の model / reasoning state を role ごとに repo-local `CODEX_HOME` へ分離する実行計画（完了）。
 - `docs/EXECPLAN_2026-03-17_multi_cli_gaps.md` - `inbox_watcher.sh` / `switch_cli.sh` / `ratelimit_check.sh` に残る opencode / kilo / gemini 未対応箇所の修正計画（完了）。

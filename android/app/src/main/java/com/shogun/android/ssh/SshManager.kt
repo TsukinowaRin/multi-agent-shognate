@@ -13,6 +13,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import com.shogun.android.util.AppLogger
+import java.io.File
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -65,7 +66,7 @@ class SshManager private constructor() {
             lastHost = host
             lastPort = port
             lastUser = user
-            lastKeyPath = privateKeyPath
+            lastKeyPath = privateKeyPath.trim()
             lastPassword = password
             connectInternal()
         }
@@ -104,22 +105,24 @@ class SshManager private constructor() {
     private fun connectInternalOnce(usePublicKey: Boolean): Result<Unit> {
         return try {
             val trimmedPassword = lastPassword.trim()
-            val trimmedKeyPath = lastKeyPath.trim()
             val jsch = JSch()
-            if (usePublicKey && trimmedKeyPath.isNotBlank()) {
-                jsch.addIdentity(trimmedKeyPath)
+            val privateKeyIdentity = if (usePublicKey) loadPrivateKeyIdentity() else null
+            if (privateKeyIdentity != null) {
+                val (identityName, privateKeyBytes) = privateKeyIdentity
+                val passphraseBytes = trimmedPassword.takeIf { it.isNotEmpty() }?.toByteArray()
+                jsch.addIdentity(identityName, privateKeyBytes, null, passphraseBytes)
             }
             val newSession = jsch.getSession(lastUser, lastHost, lastPort)
             val config = Properties()
             config["StrictHostKeyChecking"] = "no"
             config["MaxAuthTries"] = "2"
-            config["PreferredAuthentications"] = if (usePublicKey) {
+            config["PreferredAuthentications"] = if (privateKeyIdentity != null) {
                 "publickey"
             } else {
                 "keyboard-interactive,password"
             }
             newSession.setConfig(config)
-            if (!usePublicKey && trimmedPassword.isNotEmpty()) {
+            if (privateKeyIdentity == null && trimmedPassword.isNotEmpty()) {
                 newSession.setPassword(trimmedPassword)
             }
             var passwordAttempted = false
@@ -147,6 +150,7 @@ class SshManager private constructor() {
                 }
             }
             newSession.userInfo = userInfo
+            // No aggressive keepalive. Mobile / VPN latency causes false positives.
             newSession.connect(10000)
             session = newSession
             val testResult = execCommandInternal(newSession, "echo ssh_exec_ok")
@@ -271,6 +275,15 @@ class SshManager private constructor() {
             }
             Result.failure(lastError ?: Exception("再接続失敗（${maxAttempts}回試行）"))
         }
+
+    private fun loadPrivateKeyIdentity(): Pair<String, ByteArray>? {
+        val keyPath = lastKeyPath.trim()
+        if (keyPath.isBlank()) return null
+
+        val keyFile = File(keyPath)
+        require(keyFile.isFile) { "SSH秘密鍵が見つかりませぬ: $keyPath" }
+        return keyPath to keyFile.readBytes()
+    }
 
     suspend fun uploadScreenshot(context: Context, imageUri: Uri, projectPath: String = ""): Result<String> =
         withContext(Dispatchers.IO) {

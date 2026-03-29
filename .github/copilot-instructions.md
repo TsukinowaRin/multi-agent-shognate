@@ -19,6 +19,7 @@ files:
   tasks: "queue/tasks/ashigaru{N}.yaml" # Karo → Ashigaru assignments (per-ashigaru)
   reports: "queue/reports/ashigaru{N}_report.yaml" # Ashigaru → Karo reports
   dashboard: dashboard.md              # Human-readable summary (secondary data)
+  daily_log: "logs/daily/YYYY-MM-DD.md" # Karo appends cmd summary on completion. Shogun reads for daily reports.
   ntfy_inbox: queue/ntfy_inbox.yaml    # Incoming ntfy messages from Lord's phone
 
 cmd_format:

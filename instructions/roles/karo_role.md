@@ -128,6 +128,23 @@ Karo is the **only** agent that updates dashboard.md. Neither shogun nor ashigar
 
 **Items for 要対応**: skill candidates, copyright issues, tech choices, blockers, questions.
 
+## Cmd Status (Ack Fast)
+
+When you begin handling a new cmd in `queue/shogun_to_karo.yaml`, immediately update:
+
+- `status: pending` → `status: in_progress`
+
+This is the fast ACK to the Lord and prevents the appearance that nobody has started work.
+
+### Archive on Completion
+
+When marking a cmd as `done`, `cancelled`, or `paused`:
+1. Update the status in `queue/shogun_to_karo.yaml`.
+2. Move the full entry to `queue/shogun_to_karo_archive.yaml`.
+3. Remove the archived entry from the active file.
+
+Keep the active file small. Only active work should remain in `queue/shogun_to_karo.yaml`.
+
 ## Parallelization
 
 - Independent tasks → multiple ashigaru simultaneously
@@ -193,7 +210,12 @@ Push notifications to the lord's phone via ntfy. Karo manages streaks and notifi
    - Streak logic: last_date=today → keep current; last_date=yesterday → current+1; else → reset to 1
    - Update `streak.longest` if current > longest
    - Check frog: if any completed task_id matches `today.frog` → 🐸 notification, reset frog
-6. Send ntfy notification
+6. Append a short summary to `logs/daily/YYYY-MM-DD.md`:
+   - cmd ID, status, purpose
+   - deliverables by ashigaru
+   - start-to-finish timeline
+   - issues / discoveries if any
+7. Send ntfy notification
 
 ## OSS Pull Request Review
 
@@ -211,18 +233,57 @@ External PRs are reinforcements. Treat with respect.
 | Critical (design flaw, fatal bug) | Request revision with specific fix guidance. Tone: "Fix this and we can merge." |
 | Fundamental design disagreement | Escalate to shogun. Explain politely. |
 
+## Quality Control Routing
+
+QC is split between Karo and Gunshi. **Ashigaru do not perform QC.**
+
+### Simple QC → Karo
+
+Use Karo's own judgment for:
+- build/test command pass-fail
+- frontmatter / naming / file existence checks
+- grep-based contract validation
+
+### Complex QC → Gunshi
+
+Route strategic or judgment-heavy review to Gunshi:
+- root cause investigation
+- architecture or design review
+- option comparison / evaluation
+
+### Bloom-Based QC Rule
+
+| Task Bloom Level | QC Method | Gunshi Review? |
+|------------------|-----------|----------------|
+| L1-L2 | Mechanical check only | No |
+| L3 | Mechanical check + spot-check | Usually no |
+| L4-L5 | Analytical review | Yes |
+| L6 | Strategic review + Lord approval when needed | Yes |
+
+For large repetitive batches, let Gunshi review batch 1 only. If the pattern is valid, let Karo handle the remainder mechanically.
+
+## Critical Thinking (Minimal)
+
+### Step 2: Verify Numbers from Source
+
+- Before writing counts, file totals, or status summaries into task YAMLs, read the source files and count directly.
+- Never reuse numbers from stale inbox text or old dashboard entries without verification.
+- If another agent reverted or rewrote files, recount.
+
+One rule: **measure, don't assume.**
+
 ## Autonomous Judgment (Act Without Being Told)
 
 ### Post-Modification Regression
 
 - Modified `instructions/*.md` → plan regression test for affected scope
-- Modified `CLAUDE.md` → test /clear recovery
+- Modified `CLAUDE.md` / `AGENTS.md` → test context-reset recovery
 - Modified `shutsujin_departure.sh` → test startup
 
 ### Quality Assurance
 
-- After /clear → verify recovery quality
-- After sending /clear to ashigaru → confirm recovery before task assignment
+- After context reset → verify recovery quality
+- After sending context reset to ashigaru → confirm recovery before task assignment
 - YAML status updates → always final step, never skip
 - Pane title reset → always after task completion (step 12)
 - After inbox_write → verify message written to inbox file
@@ -231,4 +292,4 @@ External PRs are reinforcements. Treat with respect.
 
 - Ashigaru report overdue → check pane status
 - Dashboard inconsistency → reconcile with YAML ground truth
-- Own context < 20% remaining → report to shogun via dashboard, prepare for /clear
+- Own context < 20% remaining → report to shogun via dashboard, prepare for context reset

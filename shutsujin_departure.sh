@@ -1404,7 +1404,7 @@ if [ "$SETUP_ONLY" = false ]; then
 
     # 軍師: CLI Adapter経由でコマンド構築
     _gunshi_cli_type="claude"
-    _gunshi_cmd="claude --model opus --dangerously-skip-permissions"
+    _gunshi_cmd="claude --model opus --effort max --dangerously-skip-permissions"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         _gunshi_cli_type=$(resolve_cli_type_for_agent "gunshi")
         _gunshi_cmd=$(build_cli_command_with_type "gunshi" "$_gunshi_cli_type")
@@ -1427,7 +1427,7 @@ if [ "$SETUP_ONLY" = false ]; then
         _agent="${MULTIAGENT_IDS[$_idx]}"
         if [[ "$_agent" == karo* ]]; then
             _agent_cli_type="claude"
-            _agent_cmd="claude --model opus --dangerously-skip-permissions"
+            _agent_cmd="claude --model opus --effort max --dangerously-skip-permissions"
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
                 _agent_cli_type=$(resolve_cli_type_for_agent "$_agent")
                 _agent_cmd=$(build_cli_command_with_type "$_agent" "$_agent_cli_type")
@@ -1437,16 +1437,16 @@ if [ "$SETUP_ONLY" = false ]; then
             _ashi_num="${_agent#ashigaru}"
             _agent_cli_type="claude"
             if [ "$KESSEN_MODE" = true ]; then
-                _agent_cmd="claude --model opus --dangerously-skip-permissions"
+                _agent_cmd="claude --model opus --effort max --dangerously-skip-permissions"
             elif [ "${_ashi_num:-0}" -le 4 ]; then
-                _agent_cmd="claude --model sonnet --dangerously-skip-permissions"
+                _agent_cmd="claude --model sonnet --effort max --dangerously-skip-permissions"
             else
-                _agent_cmd="claude --model opus --dangerously-skip-permissions"
+                _agent_cmd="claude --model opus --effort max --dangerously-skip-permissions"
             fi
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
                 _agent_cli_type=$(resolve_cli_type_for_agent "$_agent")
                 if [ "$KESSEN_MODE" = true ] && [ "$_agent_cli_type" = "claude" ]; then
-                    _agent_cmd="claude --model opus --dangerously-skip-permissions"
+                    _agent_cmd="claude --model opus --effort max --dangerously-skip-permissions"
                 else
                     _agent_cmd=$(build_cli_command_with_type "$_agent" "$_agent_cli_type")
                 fi

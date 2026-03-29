@@ -129,6 +129,25 @@ Therefore:
 - **Karo still must not manually inbox the Shogun for normal completion**
 - **Shogun must treat `cmd_done` as the signal to read `dashboard.md` and report to the Lord immediately**
 
+### Karo Relay Discipline
+
+During normal `report_received` handling, Karo must assume the relay daemon is responsible for forwarding `cmd_done`.
+
+Therefore, after the final ashigaru report arrives:
+
+1. Read the relevant `queue/reports/ashigaru*_report.yaml`
+2. Close the cmd in `queue/shogun_to_karo.yaml`
+3. Update `dashboard.md`
+4. Stop
+
+Do **not** audit relay internals during ordinary completion:
+
+- no reading `scripts/karo_done_to_shogun_bridge_daemon.sh`
+- no reading `queue/runtime/karo_done_to_shogun.tsv`
+- no reading `scripts/ntfy.sh`, `saytask/streaks.yaml*`, or `*.sample` unless the cmd explicitly requires it
+
+If the relay appears broken, record that as a blocker in `dashboard.md` after closing what can be closed. Normal completion should stay on the happy path.
+
 ## File Operation Rule
 
 **Always Read before Write/Edit.** Claude Code rejects Write/Edit on unread files.

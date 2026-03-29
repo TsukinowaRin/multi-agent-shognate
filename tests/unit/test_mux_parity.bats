@@ -88,7 +88,7 @@ setup_file() {
 }
 
 @test "tmux 起動は役職別の初動最適化 directive を bootstrap に含める" {
-    run bats_search 'startup_fastpath_directive|初動最適化: 起動直後は自inboxだけ確認|repo 名で即 cmd 起票|report YAML を正本として|自inbox/task だけ確認' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search 'startup_fastpath_directive|初動最適化: 起動直後は自inboxだけ確認|repo 名で即 cmd 起票|report YAML を正本として|cmd close を最優先|bridge/ntfy/streaks/sample は異常時以外読むな|自inbox/task だけ確認' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 

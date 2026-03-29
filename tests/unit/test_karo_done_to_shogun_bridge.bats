@@ -10,13 +10,23 @@ setup() {
 
   cat > "$TEST_TMP/queue/shogun_to_karo.yaml" <<'YAML'
 - id: cmd_300
+  timestamp: "2026-03-13T22:33:00+09:00"
   status: done
   purpose: 点呼結果を報告する
   command: |
     全軍に点呼を取れ
 - id: cmd_301
+  timestamp: "2026-03-13T22:40:00+09:00"
   status: pending
   purpose: 未完了
+YAML
+
+  cat > "$TEST_TMP/queue/shogun_to_karo_archive.yaml" <<'YAML'
+commands:
+  - id: cmd_250
+    timestamp: "2026-03-12T21:00:00+09:00"
+    status: done
+    purpose: 過去の完了cmd
 YAML
 
   cat > "$TEST_TMP/dashboard.md" <<'MD'
@@ -60,6 +70,7 @@ SH
   export MAS_QUEUE_DIR="$TEST_TMP/queue"
   export MAS_RUNTIME_DIR="$TEST_TMP/queue/runtime"
   export MAS_SHOGUN_TO_KARO_FILE="$TEST_TMP/queue/shogun_to_karo.yaml"
+  export MAS_SHOGUN_TO_KARO_ARCHIVE_FILE="$TEST_TMP/queue/shogun_to_karo_archive.yaml"
   export MAS_SHOGUN_INBOX_FILE="$TEST_TMP/queue/inbox/shogun.yaml"
   export MAS_DASHBOARD_FILE="$TEST_TMP/dashboard.md"
   export MAS_KARO_DONE_TO_SHOGUN_STATE="$TEST_TMP/queue/runtime/karo_done_to_shogun.tsv"
@@ -86,7 +97,7 @@ import sys, yaml
 p = sys.argv[1]
 with open(p, encoding='utf-8') as fh:
     data = yaml.safe_load(fh)
-data.append({'id':'cmd_302','status':'done','purpose':'結果を上申する'})
+data.append({'id':'cmd_302','timestamp':'2026-03-13T23:00:00+09:00','status':'done','purpose':'結果を上申する'})
 with open(p,'w',encoding='utf-8') as fh:
     yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
 PY
@@ -97,6 +108,56 @@ PY
   [ "$status" -eq 0 ]
 }
 
+@test "karo_done_to_shogun_bridge: archive へ移した done cmd も shogun inbox へ通知する" {
+  python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py" >/dev/null
+  python3 - <<'PY' "$MAS_SHOGUN_TO_KARO_ARCHIVE_FILE"
+import sys, yaml
+p = sys.argv[1]
+with open(p, encoding='utf-8') as fh:
+    data = yaml.safe_load(fh) or {}
+cmds = data.get('commands', []) or []
+cmds.append({
+    'id': 'cmd_350',
+    'timestamp': '2026-03-13T23:30:00+09:00',
+    'status': 'done',
+    'purpose': 'archive 側の完了通知',
+})
+data['commands'] = cmds
+with open(p, 'w', encoding='utf-8') as fh:
+    yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
+PY
+  run python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "sent" ]]
+  run bats_search "cmd_350|archive 側の完了通知" "$MAS_SHOGUN_INBOX_FILE" "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  [ "$status" -eq 0 ]
+}
+
+@test "karo_done_to_shogun_bridge: 同じ cmd_id でも timestamp が違えば別完了として通知する" {
+  python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py" >/dev/null
+  python3 - <<'PY' "$MAS_SHOGUN_TO_KARO_ARCHIVE_FILE"
+import sys, yaml
+p = sys.argv[1]
+with open(p, encoding='utf-8') as fh:
+    data = yaml.safe_load(fh) or {}
+cmds = data.get('commands', []) or []
+cmds.append({
+    'id': 'cmd_250',
+    'timestamp': '2026-03-13T23:45:00+09:00',
+    'status': 'done',
+    'purpose': '再利用 cmd_id の新規完了',
+})
+data['commands'] = cmds
+with open(p, 'w', encoding='utf-8') as fh:
+    yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
+PY
+  run python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "sent" ]]
+  run bats_search "cmd_250|再利用 cmd_id の新規完了|2026-03-13T23:45:00\\+09:00" "$MAS_SHOGUN_INBOX_FILE" "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  [ "$status" -eq 0 ]
+}
+
 @test "karo_done_to_shogun_bridge: 既通知済みdoneは重複通知しない" {
   python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py" >/dev/null
   python3 - <<'PY' "$MAS_SHOGUN_TO_KARO_FILE" "$MAS_SHOGUN_INBOX_FILE"
@@ -104,7 +165,7 @@ import sys, yaml
 cmdp, inboxp = sys.argv[1:]
 with open(cmdp, encoding='utf-8') as fh:
     data = yaml.safe_load(fh)
-data.append({'id':'cmd_303','status':'done','purpose':'二重通知防止'})
+data.append({'id':'cmd_303','timestamp':'2026-03-13T23:59:00+09:00','status':'done','purpose':'二重通知防止'})
 with open(cmdp,'w',encoding='utf-8') as fh:
     yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
 with open(inboxp, encoding='utf-8') as fh:

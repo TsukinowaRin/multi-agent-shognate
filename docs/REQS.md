@@ -1,7 +1,26 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-29
+最終更新: 2026-03-30
 出典: 直近ユーザープロンプト
+
+## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
+### 要求
+1. `Shogunate-test` 上で、実 `codex` による単発 task を `shogun -> karo -> ashigaru -> karo -> shogun` の `cmd_done` 返却まで再確認すること。
+2. handoff 推奨の共同開発 task を実行し、`playground/queue_summary/` に新規ファイル作成と `python3 -m unittest` 成功まで進めること。
+3. 実運用で見つかった遅延・欠落を repo 側の修正へ戻し、少なくとも家老の終盤寄り道と `cmd_done` relay 欠落を改善すること。
+4. 上記の結果と残リスクを docs に残し、次回再開点を明確にすること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `TMUX_TMPDIR=/tmp/Shogunate-test bash shutsujin_departure.sh -c`
+   - 期待結果: 5/5 agent 起動、bootstrap-delivered、watcher 起動まで成功する。
+2. コマンド: `bash scripts/inbox_write.sh shogun "<single-task>" task_assigned user`
+   - 期待結果: `queue/shogun_to_karo.yaml` 起票、`queue/tasks/ashigaru*.yaml`、`queue/reports/ashigaru*_report.yaml`、`queue/inbox/shogun.yaml` の `cmd_done` まで確認できる。
+3. コマンド: `bash scripts/inbox_write.sh shogun "<collab-task>" task_assigned user`
+   - 期待結果: `playground/queue_summary/app.py`, `playground/queue_summary/README.md`, `playground/queue_summary/tests/test_app.py` が作成され、`dashboard.md` に戦果が反映される。
+4. コマンド: `cd playground/queue_summary && python3 -m unittest`
+   - 期待結果: 3 tests が PASS する。
+5. コマンド: `bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/unit/test_mux_parity.bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: 家老終盤最適化と archive relay 修正を含めて PASS する。
 
 ## 追補（2026-03-29: 実Codexでの実起動・認証待ち観測・改善）
 ### 要求

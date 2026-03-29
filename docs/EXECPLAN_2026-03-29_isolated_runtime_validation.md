@@ -46,6 +46,10 @@
 - [x] (2026-03-29 20:3x JST) 実 Codex pane に出た `Approaching rate limits` / `Keep current model` prompt へ対処する自動dismiss を launcher 側と watcher 側へ追加。
 - [x] (2026-03-29 20:4x JST) 実 Codex pane に出た `You've hit your usage limit` prompt を観測し、watcher から `gpt-5.1-codex-mini` への切替入力を自動送信する改善を追加。
 - [x] (2026-03-29 20:4x JST) ただし hard usage-limit 自体は外部 quota 制約であり、`Shogunate-test` 上の実 task / 共同開発タスクはこの時点では再開不能なことを確認。
+- [x] (2026-03-30 01:4x JST) `Shogunate-test` で単発 task を再試験し、家老の `report_received` 終盤寄り道を抑える instruction / bootstrap 文面を追加。
+- [x] (2026-03-30 01:4x JST) `scripts/karo_done_to_shogun_bridge.py` が active queue しか見ず archive 済み `done` を拾えない不具合を修正し、`cmd_id+timestamp` 識別へ更新。
+- [x] (2026-03-30 01:5x JST) 修正後の `Shogunate-test` で単発 task が再び `cmd_done` まで返ることを確認。
+- [x] (2026-03-30 01:5x JST) handoff 推奨の共同開発 task を完了し、`playground/queue_summary/` に CLI / README / tests を生成、`python3 -m unittest` 3件 PASS を確認。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -86,6 +90,12 @@
   Evidence: pane capture に `Approaching rate limits` と `Keep current model (never show again)` が表示され、task unread が残留した。
 - Observation: さらに `You've hit your usage limit` が出ると、`1. Switch to gpt-5.1-codex-mini` を送っても即時復帰せず、外部 quota 回復時刻まで hard-block する場合がある。
   Evidence: `Shogunate-test` の将軍 pane に `You've hit your usage limit ... try again at 10:46 PM` が出続け、watcher log では `Switching Codex to mini after usage-limit prompt` を繰り返しても `queue/inbox/shogun.yaml` が未読のままだった。
+- Observation: `karo_done_to_shogun_bridge.py` は active `queue/shogun_to_karo.yaml` しか見ないため、家老が `done` cmd を archive へ移した後は `noop empty` となり `cmd_done` relay が欠落した。
+  Evidence: `Shogunate-test/logs/karo_done_to_shogun_bridge.log` が `noop empty` を繰り返す一方で、`queue/shogun_to_karo_archive.yaml` には `status: done` の `cmd_002` が存在した。
+- Observation: 家老の終盤遅延は bridge script 自体より、instruction 上の read scope が広過ぎることでも悪化していた。
+  Evidence: 修正前は `streaks.yaml.sample` / bridge script / relay state TSV へ寄り道したが、`report_received` fast closure を追加後は `dashboard` 更新と archive 化まで一直線で進んだ。
+- Observation: 共同開発 task では `ashigaru1` が `app.py` + tests、`ashigaru2` が README を担当する 2 段分割で、標準ライブラリのみの CLI + `python3 -m unittest` 成功まで通った。
+  Evidence: `playground/queue_summary/app.py`, `playground/queue_summary/README.md`, `playground/queue_summary/tests/test_app.py` が生成され、`python3 -m unittest` が `Ran 3 tests ... OK` を返した。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -115,6 +125,12 @@
 - Decision: `scripts/inbox_watcher.sh` は unread 起動前に Codex の rate-limit / usage-limit prompt を検知し、必要に応じて `3` または `1` を送ってから nudge を続行する。
   Rationale: launcher 起動時だけでは runtime 中に出る Codex UI prompt を除去できず、未読処理が止まるため。
   Date/Author: 2026-03-29 / Codex
+- Decision: 家老の `report_received` fast path は「relevant report YAML / parent cmd / dashboard.md」へ read scope を限定し、bridge / ntfy / streaks / sample は異常時以外読まない。
+  Rationale: 終盤の不要探索で `cmd_done` 返却が遅れ、実検証の throughput を落としていたため。
+  Date/Author: 2026-03-30 / Codex
+- Decision: `karo_done_to_shogun_bridge.py` は active queue と archive file の両方を監視し、state key は `cmd_id+timestamp` とする。
+  Rationale: 家老が `done` cmd を archive へ移す運用と両立しつつ、`cmd_001` のような再利用 ID でも別 run の完了を relay できるようにするため。
+  Date/Author: 2026-03-30 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -128,12 +144,14 @@
   - sign-in menu 検知と `bootstrap 未配信でも継続` を追加し、runtime 起動自体は最後まで完了するようになった。
   - 認証済み WSL Codex を使う `Shogunate-test` 実機検証では、1 本目の task を end-to-end で完了できた。
   - 2 本目の task も `shogun -> karo` の再委譲まで進み、同じ経路が再利用できることを確認した。
+  - 2026-03-30 の再開検証で、単発 task は修正後に再度 `cmd_done` まで完了した。
+  - handoff 推奨の共同開発 task では `playground/queue_summary/` に `app.py` / `README.md` / `tests/test_app.py` を生成し、`python3 -m unittest` 3件 PASS まで確認した。
+  - `scripts/karo_done_to_shogun_bridge.py` の archive relay 欠落を修正し、実機でも `cmd_done` が将軍 inbox へ戻ることを確認した。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。
   - E2E bats は test helper 実体が repo に無いため、この環境では補強できなかった。
-  - `Shogunate-test` での 2 本目 task は家老着手まで確認済みだが、最終 `cmd_done` までの追跡は今回省略した。
-  - 多様タスク再試験の最終盤は、Codex アカウントの hard usage-limit により `shogun` が 2026-03-29 22:46 JST まで外部ブロックされたため、共同開発タスク着手までは到達できなかった。
+  - 長時間連続運用で rate-limit / usage-limit が再発した場合の throughput 低下は、引き続き外部 quota 依存で残る。
 - Lessons:
   - WSL の `/mnt/d` 配下で tmux を使う検証は、socket を Linux 側 filesystem へ逃がす前提で考えた方が早い。
   - bare command 解決に依存する CLI 起動は、tmux pane shell の PATH 差異で検証が揺れる。隔離検証では絶対パスが安全。
@@ -141,8 +159,10 @@
   - 認証済み state を local `CODEX_HOME` へ複製すれば、repo-local state 分離を保ったまま実 WSL Codex を使える。
   - update prompt と trust prompt を混同すると、実機だけで Codex が即終了する。prompt 判定は generic 文言より選択肢の固有文言で切る方が安全。
   - Codex の runtime blocker は auth / trust だけではなく、rate-limit warning と hard usage-limit もある。前者は code で捌けるが、後者は外部 quota が戻るまで repo 側だけでは突破できない。
+  - bridge daemon は active queue 前提にせず、archive 運用とセットで設計しないと `cmd_done` が静かに欠落する。
+  - `report_received` の closure 手順は「何を読むか」だけでなく「何を読まないか」まで明示した方が、Codex の寄り道を抑えやすい。
 - Against Purpose:
   - 「隔離コピーで実起動し、複数 task の流れを確認する」という目的は mock Codex で達成。
   - 「実 Codex で task を回す」という追加目的は、未認証環境のため task 完了までは未達。ただし阻害要因の切り分けと起動導線の改善は完了。
   - その後の認証済み WSL 実機検証により、少なくとも 1 本は end-to-end 完了、2 本目も再委譲再現まで確認できた。
-  - 追加の多様タスク / 共同開発再試験では、初動遅延と Codex prompt 割り込みへの改善までは完了したが、最終的な共同開発タスクは hard usage-limit に阻まれた。
+  - 2026-03-30 の再開検証により、単発 task と共同開発 task の両方で end-to-end 完了を再確認し、当初 handoff の成功条件 1〜4 はこの時点で満たせた。

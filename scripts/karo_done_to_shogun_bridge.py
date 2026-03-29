@@ -35,6 +35,25 @@ def save_state(path: Path, ids):
             fh.write(f"{cmd_id}\n")
 
 
+def command_identity(cmd: dict) -> str:
+    cmd_id = str(cmd.get("id", "")).strip()
+    timestamp = str(cmd.get("timestamp", "")).strip()
+    if not cmd_id:
+        return ""
+    return f"{cmd_id}\t{timestamp}" if timestamp else cmd_id
+
+
+def state_contains(state, cmd: dict) -> bool:
+    identity = command_identity(cmd)
+    if not identity:
+        return False
+    if identity in state:
+        return True
+    cmd_id = str(cmd.get("id", "")).strip()
+    # Backward compatibility for older state files that stored only cmd_id.
+    return bool(cmd_id and cmd_id in state and "\t" not in identity)
+
+
 def inbox_already_mentions(inbox_path: Path, cmd_id: str) -> bool:
     data = load_yaml(inbox_path) or {}
     for msg in data.get("messages", []) or []:
@@ -59,10 +78,25 @@ def normalize_commands(data):
     if isinstance(data, list):
         return [x for x in data if isinstance(x, dict)]
     if isinstance(data, dict):
-        queue = data.get("queue", [])
+        queue = data.get("queue")
+        if queue is None:
+            queue = data.get("commands", [])
         if isinstance(queue, list):
             return [x for x in queue if isinstance(x, dict)]
     return []
+
+
+def collect_commands(*paths: Path):
+    commands = []
+    seen = set()
+    for path in paths:
+        for cmd in normalize_commands(load_yaml(path) or []):
+            identity = command_identity(cmd)
+            if not identity or identity in seen:
+                continue
+            seen.add(identity)
+            commands.append(cmd)
+    return commands
 
 
 def main() -> int:
@@ -70,22 +104,25 @@ def main() -> int:
     queue_dir = Path(os.environ.get("MAS_QUEUE_DIR", root / "queue"))
     runtime_dir = Path(os.environ.get("MAS_RUNTIME_DIR", queue_dir / "runtime"))
     cmd_file = Path(os.environ.get("MAS_SHOGUN_TO_KARO_FILE", queue_dir / "shogun_to_karo.yaml"))
+    archive_file = Path(
+        os.environ.get("MAS_SHOGUN_TO_KARO_ARCHIVE_FILE", queue_dir / "shogun_to_karo_archive.yaml")
+    )
     shogun_inbox = Path(os.environ.get("MAS_SHOGUN_INBOX_FILE", queue_dir / "inbox" / "shogun.yaml"))
     dashboard = Path(os.environ.get("MAS_DASHBOARD_FILE", root / "dashboard.md"))
     state_file = Path(os.environ.get("MAS_KARO_DONE_TO_SHOGUN_STATE", runtime_dir / "karo_done_to_shogun.tsv"))
     inbox_write = os.environ.get("MAS_INBOX_WRITE_SCRIPT", str(root / "scripts" / "inbox_write.sh"))
     target_agent = os.environ.get("MAS_SHOGUN_TARGET_AGENT", "shogun")
 
-    cmds = normalize_commands(load_yaml(cmd_file) or [])
+    cmds = collect_commands(cmd_file, archive_file)
     shogun_inbox.parent.mkdir(parents=True, exist_ok=True)
     if not shogun_inbox.exists():
         shogun_inbox.write_text("messages: []\n", encoding="utf-8")
 
     if not state_file.exists():
         existing_done = {
-            str(cmd.get("id", "")).strip()
+            command_identity(cmd)
             for cmd in cmds
-            if str(cmd.get("status", "")).strip().lower() in DONE_STATUSES and str(cmd.get("id", "")).strip()
+            if str(cmd.get("status", "")).strip().lower() in DONE_STATUSES and command_identity(cmd)
         }
         save_state(state_file, existing_done)
         if existing_done:
@@ -102,17 +139,18 @@ def main() -> int:
 
     for cmd in cmds:
         cmd_id = str(cmd.get("id", "")).strip()
+        identity = command_identity(cmd)
         if not cmd_id:
             continue
         status = str(cmd.get("status", "")).strip().lower()
         if status not in DONE_STATUSES:
             skipped_not_done.append(cmd_id)
             continue
-        if cmd_id in state:
+        if state_contains(state, cmd):
             already_sent.append(cmd_id)
             continue
         if inbox_already_mentions(shogun_inbox, cmd_id):
-            state.add(cmd_id)
+            state.add(identity)
             already_notified.append(cmd_id)
             continue
 
@@ -128,7 +166,7 @@ def main() -> int:
             check=True,
             cwd=str(root),
         )
-        state.add(cmd_id)
+        state.add(identity)
         newly_sent.append(cmd_id)
 
     save_state(state_file, state)

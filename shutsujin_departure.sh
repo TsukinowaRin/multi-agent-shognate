@@ -383,7 +383,7 @@ startup_fastpath_directive() {
             echo "初動最適化: 起動直後は自inboxだけ確認し、未読が無ければ即待機。task_assigned を受けたら repo 名で即 cmd 起票し、詳細調査は家老へ委ねよ。"
             ;;
         karo|karo[1-9]*|karo_gashira)
-            echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は最小分解、report_received は report YAML を正本として dashboard 更新と cmd_done 通知を先に終えよ。"
+            echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は最小分解、report_received は report YAML を正本として dashboard 更新と cmd close を最優先せよ。bridge/ntfy/streaks/sample は異常時以外読むな。"
             ;;
         ashigaru*)
             echo "初動最適化: 起動直後は自inbox/task だけ確認し、未読も task も無ければ即待機。着手後も自task と対象ファイルに限定して動け。"

@@ -129,6 +129,36 @@ Karo is the **only** agent that updates dashboard.md. Neither shogun nor ashigar
 
 **Items for 要対応**: skill candidates, copyright issues, tech choices, blockers, questions.
 
+## Fast Closure on `report_received`
+
+When `queue/inbox/karo.yaml` receives `type: report_received`, close the cmd in the narrowest possible scope.
+
+Read only these sources unless they are missing or contradictory:
+
+1. `queue/inbox/karo.yaml` — identify the unread `report_received`
+2. The referenced `queue/reports/ashigaru*_report.yaml`
+3. The parent cmd entry in `queue/shogun_to_karo.yaml`
+4. `dashboard.md`
+
+Default closure order:
+
+1. Mark the inbox message `read: true`
+2. Read the report YAML and validate against the cmd `purpose` / `acceptance_criteria`
+3. Update `dashboard.md`
+4. Close the cmd (`done` / archive) so the relay can emit `cmd_done`
+5. Stop and return to inbox wait
+
+Unless completion actually fails, do **not** inspect:
+
+- `scripts/karo_done_to_shogun_bridge_daemon.sh`
+- `queue/runtime/karo_done_to_shogun.tsv`
+- `scripts/ntfy.sh`
+- `saytask/streaks.yaml*`
+- `*.sample`
+- unrelated tests / docs / logs
+
+The completion relay is infrastructure. Karo's job is to close the cmd cleanly, not to audit the relay implementation during normal completion.
+
 ## Cmd Status (Ack Fast)
 
 When you begin handling a new cmd in `queue/shogun_to_karo.yaml`, immediately update:
@@ -426,6 +456,25 @@ Therefore:
 - **Karo still must not manually inbox the Shogun for normal completion**
 - **Shogun must treat `cmd_done` as the signal to read `dashboard.md` and report to the Lord immediately**
 
+### Karo Relay Discipline
+
+During normal `report_received` handling, Karo must assume the relay daemon is responsible for forwarding `cmd_done`.
+
+Therefore, after the final ashigaru report arrives:
+
+1. Read the relevant `queue/reports/ashigaru*_report.yaml`
+2. Close the cmd in `queue/shogun_to_karo.yaml`
+3. Update `dashboard.md`
+4. Stop
+
+Do **not** audit relay internals during ordinary completion:
+
+- no reading `scripts/karo_done_to_shogun_bridge_daemon.sh`
+- no reading `queue/runtime/karo_done_to_shogun.tsv`
+- no reading `scripts/ntfy.sh`, `saytask/streaks.yaml*`, or `*.sample` unless the cmd explicitly requires it
+
+If the relay appears broken, record that as a blocker in `dashboard.md` after closing what can be closed. Normal completion should stay on the happy path.
+
 ## File Operation Rule
 
 **Always Read before Write/Edit.** Claude Code rejects Write/Edit on unread files.
@@ -505,6 +554,16 @@ On every wakeup (regardless of reason), scan ALL `queue/reports/ashigaru*_report
 Cross-reference with dashboard.md — process any reports not yet reflected.
 
 **Why**: Ashigaru inbox messages may be delayed. Report files are already written and scannable as a safety net.
+
+### Karo Report Wake Scope
+
+When the wakeup reason is `report_received`, keep the read scope narrow:
+
+1. relevant report YAML
+2. parent cmd in `queue/shogun_to_karo.yaml`
+3. `dashboard.md`
+
+Do not wander into bridge scripts, relay state TSVs, notification helpers, `streaks.yaml`, `*.sample`, or unrelated docs unless completion genuinely fails. The goal of a report wakeup is closure, not exploration.
 
 ## Foreground Block Prevention (24-min Freeze Lesson)
 

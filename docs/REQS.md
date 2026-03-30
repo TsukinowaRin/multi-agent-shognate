@@ -380,10 +380,11 @@
 
 ## 追補（2026-03-13: 将軍→家老 伝達経路の自己修復）
 ### 要求
-1. `shogun` が `queue/shogun_to_karo.yaml` に新しい `pending/assigned` 命令を書いたのに `karo` へ `inbox_write` し忘れても、システム側が自動で `karo` inbox へ橋渡しすること。
+1. `shogun` が `queue/shogun_to_karo.yaml` に新しい `pending/assigned` 命令を書いたのに `karo` へ `inbox_write` し忘れても、システム側が自動で `karo` inbox へ橋渡しすること。`queue/shogun_to_karo.yaml` は直列 list 形式と `commands:` 形式の両方を受理すること。
 2. `karo` への通知は `queue/inbox/karo.yaml` に `cmd_new` として記録され、重複送信されないこと。
-3. `watcher_supervisor.sh` は `goza-no-ma` 本体 session の `@agent_id` を正本として `karo` / `ashigaruN` の watcher を維持すること。
-4. この自己修復経路は `Gemini` 将軍でも `Codex` 家老でも有効で、モデル側が `inbox_write` を忘れても伝達経路が止まらないこと。
+3. 同じ `cmd_id` を再利用しても、`timestamp` が異なれば別命令として通知されること。
+4. `watcher_supervisor.sh` は `goza-no-ma` 本体 session の `@agent_id` を正本として `karo` / `ashigaruN` の watcher を維持すること。
+5. この自己修復経路は `Gemini` 将軍でも `Codex` 家老でも有効で、モデル側が `inbox_write` を忘れても伝達経路が止まらないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `python3 -m py_compile scripts/shogun_to_karo_bridge.py`
@@ -391,9 +392,9 @@
 2. コマンド: `bash -n shutsujin_departure.sh scripts/watcher_supervisor.sh scripts/shogun_to_karo_bridge_daemon.sh`
    - 期待結果: bridge / supervisor / 起動導線に構文エラーがない。
 3. コマンド: `bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_mux_parity.bats tests/unit/test_cli_adapter.bats`
-   - 期待結果: `pending` 命令の inbox 橋渡し、重複抑止、tmux pane 解決の回帰が PASS する。
+   - 期待結果: `commands:` 形式の `pending` 命令の inbox 橋渡し、`cmd_id+timestamp` 単位の重複抑止、tmux pane 解決の回帰が PASS する。
 4. コマンド: `python3 scripts/shogun_to_karo_bridge.py`
-   - 期待結果: 新規 `pending/assigned` 命令がある時は `sent\tcmd_xxx`、無い時は `noop` を返す。
+   - 期待結果: 新規 `pending/assigned` 命令がある時は `sent\tcmd_xxx`、無い時は `noop` を返す。通知文には `timestamp` が含まれ、再利用 `cmd_id` の誤抑止を避けられる。
 
 ## 追補（2026-03-13: 御座の間の構成追従とGemini起動安定化）
 ### 要求

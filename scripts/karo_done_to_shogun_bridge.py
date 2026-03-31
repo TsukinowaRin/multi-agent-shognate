@@ -43,6 +43,32 @@ def command_identity(cmd: dict) -> str:
     return f"{cmd_id}\t{timestamp}" if timestamp else cmd_id
 
 
+def upgrade_legacy_state(state, cmds):
+    unique_identity_by_id = {}
+    duplicates = set()
+
+    for cmd in cmds:
+        identity = command_identity(cmd)
+        if not identity:
+            continue
+        cmd_id = str(cmd.get("id", "")).strip()
+        if cmd_id in unique_identity_by_id:
+            duplicates.add(cmd_id)
+            continue
+        unique_identity_by_id[cmd_id] = identity
+
+    for cmd_id in duplicates:
+        unique_identity_by_id.pop(cmd_id, None)
+
+    upgraded = set()
+    for entry in state:
+        if "\t" in entry:
+            upgraded.add(entry)
+            continue
+        upgraded.add(unique_identity_by_id.get(entry, entry))
+    return upgraded
+
+
 def state_contains(state, cmd: dict) -> bool:
     identity = command_identity(cmd)
     if not identity:
@@ -51,7 +77,7 @@ def state_contains(state, cmd: dict) -> bool:
         return True
     cmd_id = str(cmd.get("id", "")).strip()
     # Backward compatibility for older state files that stored only cmd_id.
-    return bool(cmd_id and cmd_id in state and "\t" not in identity)
+    return bool(cmd_id and "\t" not in identity and cmd_id in state)
 
 
 def inbox_already_mentions(inbox_path: Path, cmd: dict) -> bool:
@@ -136,7 +162,7 @@ def main() -> int:
             print("noop\tempty")
         return 0
 
-    state = load_state(state_file)
+    state = upgrade_legacy_state(load_state(state_file), cmds)
     newly_sent = []
     already_sent = []
     already_notified = []

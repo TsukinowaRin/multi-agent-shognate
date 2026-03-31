@@ -220,3 +220,18 @@ PY
   run bats_search "cmd_250|2026-03-14T00:05:00\\+09:00|再利用 cmd_id の別完了" "$MAS_SHOGUN_INBOX_FILE" "$MAS_KARO_DONE_TO_SHOGUN_STATE"
   [ "$status" -eq 0 ]
 }
+
+@test "karo_done_to_shogun_bridge: legacy state が cmd_id 単独でも timestamp 付き state へ昇格して再送しない" {
+  printf 'cmd_250\ncmd_300\n' > "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+
+  run python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "already_sent=cmd_300,cmd_250" || "$output" =~ "already_sent=cmd_250,cmd_300" ]]
+
+  run bats_search $'cmd_250\t2026-03-12T21:00:00\\+09:00' "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  [ "$status" -eq 0 ]
+  run bats_search $'cmd_300\t2026-03-13T22:33:00\\+09:00' "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  [ "$status" -eq 0 ]
+  run bats_search "cmd_done" "$MAS_SHOGUN_INBOX_FILE"
+  [ "$status" -eq 1 ]
+}

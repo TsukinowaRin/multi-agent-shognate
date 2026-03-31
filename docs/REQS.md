@@ -365,7 +365,7 @@
 ### 要求
 1. 将軍起点の `cmd_xxx` が家老側で `done/completed/closed` になったら、将軍が殿へ自発的に完了報告できること。
 2. 家老自身は従来どおり `dashboard.md` 更新を主経路とし、完了 relay は system 側が補完すること。
-3. relay は `queue/inbox/shogun.yaml` に `type: cmd_done` として記録され、同じ `cmd_xxx` を重複通知しないこと。`cmd_id` 再利用時は `timestamp` が異なれば別完了として扱うこと。
+3. relay は `queue/inbox/shogun.yaml` に `type: cmd_done` として記録され、同じ `cmd_xxx` を重複通知しないこと。`cmd_id` 再利用時は `timestamp` が異なれば別完了として扱うこと。旧 `cmd_id` 単独 state から更新しても既存完了を再送しないこと。
 4. 将軍 role は `cmd_done` 受信時に `dashboard.md` を再読し、対象 cmd の結果を殿へ即時上申すること。
 
 ### 受け入れ条件（観測可能）

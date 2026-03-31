@@ -365,7 +365,7 @@
 ### 要求
 1. 将軍起点の `cmd_xxx` が家老側で `done/completed/closed` になったら、将軍が殿へ自発的に完了報告できること。
 2. 家老自身は従来どおり `dashboard.md` 更新を主経路とし、完了 relay は system 側が補完すること。
-3. relay は `queue/inbox/shogun.yaml` に `type: cmd_done` として記録され、同じ `cmd_xxx` を重複通知しないこと。
+3. relay は `queue/inbox/shogun.yaml` に `type: cmd_done` として記録され、同じ `cmd_xxx` を重複通知しないこと。`cmd_id` 再利用時は `timestamp` が異なれば別完了として扱うこと。
 4. 将軍 role は `cmd_done` 受信時に `dashboard.md` を再読し、対象 cmd の結果を殿へ即時上申すること。
 
 ### 受け入れ条件（観測可能）
@@ -374,9 +374,9 @@
 2. コマンド: `bash -n shutsujin_departure.sh scripts/karo_done_to_shogun_bridge_daemon.sh`
    - 期待結果: bridge daemon と起動導線に構文エラーがない。
 3. コマンド: `bats tests/unit/test_karo_done_to_shogun_bridge.bats`
-   - 期待結果: 初回 prime、新規完了通知、重複抑止が PASS する。
+   - 期待結果: 初回 prime、新規完了通知、`cmd_id+timestamp` 単位の重複抑止が PASS する。
 4. コマンド: `python3 scripts/karo_done_to_shogun_bridge.py`
-   - 期待結果: 新規完了 cmd がある時は `sent\tcmd_xxx`、無い時は `noop\t...` を返す。
+   - 期待結果: 新規完了 cmd がある時は `sent\tcmd_xxx`、無い時は `noop\t...` を返す。通知文には `timestamp` が含まれ、再利用 `cmd_id` の誤抑止を避けられる。
 
 ## 追補（2026-03-13: 将軍→家老 伝達経路の自己修復）
 ### 要求

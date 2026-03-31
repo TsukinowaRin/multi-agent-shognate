@@ -54,12 +54,17 @@ def state_contains(state, cmd: dict) -> bool:
     return bool(cmd_id and cmd_id in state and "\t" not in identity)
 
 
-def inbox_already_mentions(inbox_path: Path, cmd_id: str) -> bool:
+def inbox_already_mentions(inbox_path: Path, cmd: dict) -> bool:
+    cmd_id = str(cmd.get("id", "")).strip()
+    timestamp = str(cmd.get("timestamp", "")).strip()
     data = load_yaml(inbox_path) or {}
     for msg in data.get("messages", []) or []:
         if msg.get("type") != "cmd_done":
             continue
-        if cmd_id in str(msg.get("content", "")):
+        content = str(msg.get("content", ""))
+        if not cmd_id or cmd_id not in content:
+            continue
+        if not timestamp or timestamp in content:
             return True
     return False
 
@@ -149,14 +154,17 @@ def main() -> int:
         if state_contains(state, cmd):
             already_sent.append(cmd_id)
             continue
-        if inbox_already_mentions(shogun_inbox, cmd_id):
+        if inbox_already_mentions(shogun_inbox, cmd):
             state.add(identity)
             already_notified.append(cmd_id)
             continue
 
         purpose = str(cmd.get("purpose", "")).strip()
+        timestamp = str(cmd.get("timestamp", "")).strip()
         summary = extract_dashboard_summary(dashboard, cmd_id)
         content = f"[cmd:{cmd_id}] 家老より完了報告。dashboard.md を確認し、殿へ結果を上申せよ。"
+        if timestamp:
+            content += f" 時刻: {timestamp}"
         if purpose:
             content += f" 目的: {purpose}。"
         if summary:

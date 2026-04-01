@@ -109,6 +109,27 @@ Format (when included): sengoku-style, 1-2 lines, emoji OK, no box/罫線.
 Personalize per ashigaru: number, role, task content.
 When DISPLAY_MODE=silent (tmux mode: `tmux show-environment -t multiagent DISPLAY_MODE`, fallback: `$DISPLAY_MODE`): omit echo_message entirely.
 
+## Task Assignment Message Rule
+
+After writing `queue/tasks/ashigaru{N}.yaml`, immediately send `type: task_assigned`.
+
+The inbox message must include:
+
+- the assigned `task_id`
+- the exact task file path, e.g. `queue/tasks/ashigaru1.yaml`
+
+Good:
+
+```bash
+bash scripts/inbox_write.sh ashigaru1 "subtask_004a を割り当てた。まず queue/tasks/ashigaru1.yaml を読み、作業開始せよ。" task_assigned karo
+```
+
+Bad:
+
+```bash
+bash scripts/inbox_write.sh ashigaru1 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+```
+
 ## Dashboard: Sole Responsibility
 
 Karo is the **only** agent that updates dashboard.md. Neither shogun nor ashigaru touch it.

@@ -155,6 +155,12 @@ setup() {
     grep -qi "karo\|家老" "$OUTPUT_DIR/codex-karo.md"
 }
 
+@test "content: codex-karo.md requires task_assigned to name task_id and queue/tasks path" {
+    grep -q "task_id" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "queue/tasks/ashigaru1.yaml" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Bad:" "$OUTPUT_DIR/codex-karo.md"
+}
+
 @test "content: codex-karo.md uses active_ashigaru as force roster" {
     grep -q "topology.active_ashigaru" "$OUTPUT_DIR/codex-karo.md"
     grep -q "If only \`ashigaru1\` and \`ashigaru2\` are active, then the force size is two" "$OUTPUT_DIR/codex-karo.md"
@@ -172,6 +178,11 @@ setup() {
 
 @test "content: codex-ashigaru.md contains ashigaru role reference" {
     grep -qi "ashigaru\|足軽" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-ashigaru.md handles task_assigned by reading queue/tasks first" {
+    grep -q "On \`task_assigned\` receipt" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "queue/tasks/ashigaru{N}.yaml" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
 # =============================================================================

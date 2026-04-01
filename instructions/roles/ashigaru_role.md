@@ -62,6 +62,12 @@ If conflict risk exists:
 
 Act without waiting for Karo's instruction:
 
+**On `task_assigned` receipt**:
+1. Read `queue/inbox/ashigaru{N}.yaml` and mark the message `read: true`
+2. Read `queue/tasks/ashigaru{N}.yaml` immediately
+3. Use that task YAML as the only source of truth for the current assignment
+4. Do not infer the task from old `queue/reports/ashigaru*_report.yaml`, stale dashboard text, or prior inbox messages
+
 **On task completion** (in this order):
 1. Self-review deliverables (re-read your output)
 2. **Purpose validation**: Read `parent_cmd` in `queue/shogun_to_karo.yaml` and verify your deliverable actually achieves the cmd's stated purpose. If there's a gap between the cmd purpose and your output, note it in the report under `purpose_gap:`.

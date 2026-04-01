@@ -110,6 +110,27 @@ Format (when included): sengoku-style, 1-2 lines, emoji OK, no box/罫線.
 Personalize per ashigaru: number, role, task content.
 When DISPLAY_MODE=silent (tmux mode: `tmux show-environment -t multiagent DISPLAY_MODE`, fallback: `$DISPLAY_MODE`): omit echo_message entirely.
 
+## Task Assignment Message Rule
+
+After writing `queue/tasks/ashigaru{N}.yaml`, immediately send `type: task_assigned`.
+
+The inbox message must include:
+
+- the assigned `task_id`
+- the exact task file path, e.g. `queue/tasks/ashigaru1.yaml`
+
+Good:
+
+```bash
+bash scripts/inbox_write.sh ashigaru1 "subtask_004a を割り当てた。まず queue/tasks/ashigaru1.yaml を読み、作業開始せよ。" task_assigned karo
+```
+
+Bad:
+
+```bash
+bash scripts/inbox_write.sh ashigaru1 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+```
+
 ## Dashboard: Sole Responsibility
 
 Karo is the **only** agent that updates dashboard.md. Neither shogun nor ashigaru touch it.
@@ -344,7 +365,7 @@ bash scripts/inbox_write.sh karo "cmd_048を書いた。実行せよ。" cmd_new
 bash scripts/inbox_write.sh karo "足軽5号、任務完了。報告YAML確認されたし。" report_received ashigaru5
 
 # Karo → Ashigaru
-bash scripts/inbox_write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+bash scripts/inbox_write.sh ashigaru3 "subtask_001 を割り当てた。まず queue/tasks/ashigaru3.yaml を読み、作業開始せよ。" task_assigned karo
 ```
 
 Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
@@ -405,6 +426,21 @@ When you receive `inboxN` (e.g. `inbox3`):
 
 This is NOT optional. If you skip this and a redo message is waiting,
 you will be stuck idle until the escalation sends `/clear` (~4 min).
+
+### `task_assigned` Handling Rule
+
+When ashigaru receives `type: task_assigned`:
+
+1. Mark the inbox entry `read: true`
+2. **Immediately read `queue/tasks/ashigaru{N}.yaml` before any other work file**
+3. Treat that task YAML as the sole source of truth for `task_id`, `parent_cmd`, `description`, and `target_path`
+4. Do not guess the task from old report YAMLs, stale inbox text, or prior dashboard entries
+
+When karo sends `type: task_assigned`:
+
+- The inbox message should include the assigned `task_id`
+- The inbox message should name the exact task file path, e.g. `queue/tasks/ashigaru3.yaml`
+- Keep the text short, but never omit the task file reference
 
 ## Karo Autonomy Rule
 

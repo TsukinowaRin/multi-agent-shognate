@@ -57,6 +57,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動と watcher supervisor は clone 横断しない絶対pathで daemon を管理する" {
+    run bats_search '\$SCRIPT_DIR/scripts/inbox_watcher\.sh |\$SCRIPT_DIR/scripts/watcher_supervisor\.sh|\$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon\.sh|\$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon\.sh|inotifywait\.\*\$\{SCRIPT_DIR\}/queue/inbox|\$SCRIPT_DIR/scripts/ntfy_listener\.sh|\$SCRIPT_DIR/scripts/goza_layout_autosave\.sh' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "runtime 同期は goza 本体を優先し Android 互換 target は fallback とする" {
     run bats_search 'has-session", "-t", "goza-no-ma"|list-panes", "-s", "-t", "goza-no-ma"|shogun:main|gunshi:main|multiagent:agents' "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
     [ "$status" -eq 0 ]

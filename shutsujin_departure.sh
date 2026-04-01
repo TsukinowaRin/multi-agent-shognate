@@ -530,7 +530,7 @@ start_goza_layout_autosave() {
     local autosave_script="$SCRIPT_DIR/scripts/goza_layout_autosave.sh"
     [ -x "$autosave_script" ] || return 0
     mkdir -p "$SCRIPT_DIR/logs"
-    pkill -f "scripts/goza_layout_autosave.sh ${session} " >/dev/null 2>&1 || true
+    pkill -f "$autosave_script ${session} " >/dev/null 2>&1 || true
     nohup env GOZA_SIGNATURE_FILE="$GOZA_SIGNATURE_FILE" bash "$autosave_script" "$session" "$GOZA_LAYOUT_FILE" \
         >> "$SCRIPT_DIR/logs/goza_layout_autosave.log" 2>&1 &
     disown
@@ -1138,7 +1138,7 @@ if [ -f "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" ]; then
     fi
 fi
 save_goza_layout "$GOZA_SESSION_NAME"
-pkill -f "scripts/goza_layout_autosave.sh ${GOZA_SESSION_NAME} " >/dev/null 2>&1 || true
+pkill -f "$SCRIPT_DIR/scripts/goza_layout_autosave.sh ${GOZA_SESSION_NAME} " >/dev/null 2>&1 || true
 tmux kill-session -t "$GOZA_SESSION_NAME" 2>/dev/null && log_info "  └─ 御座の間、撤収完了" || log_info "  └─ 御座の間は存在せず"
 tmux kill-session -t multiagent 2>/dev/null && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
 tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
@@ -1789,11 +1789,11 @@ NINJA_EOF
     done
 
     # 既存のwatcher/supervisor/bridgeと孤児inotifywaitをkill
-    pkill -f "inbox_watcher.sh" 2>/dev/null || true
-    pkill -f "watcher_supervisor.sh" 2>/dev/null || true
-    pkill -f "shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
-    pkill -f "karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
-    pkill -f "inotifywait.*queue/inbox" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh " 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/scripts/watcher_supervisor.sh" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
+    pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
     sleep 1
 
     if command -v inotifywait >/dev/null 2>&1; then
@@ -1826,7 +1826,7 @@ NINJA_EOF
     fi
 
     if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then
-        pkill -f "runtime_cli_pref_daemon.sh" 2>/dev/null || true
+        pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
         nohup env MAS_RUNTIME_PREF_SYNC_INTERVAL="${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}" \
             bash "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" \
             >> "$SCRIPT_DIR/logs/runtime_cli_pref_sync.log" 2>&1 &
@@ -1852,7 +1852,7 @@ fi
 # ═══════════════════════════════════════════════════════════════════════════════
 NTFY_TOPIC=$(grep 'ntfy_topic:' ./config/settings.yaml 2>/dev/null | awk '{print $2}' | tr -d '"' || true)
 if [ -n "$NTFY_TOPIC" ]; then
-    pkill -f "ntfy_listener.sh" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/scripts/ntfy_listener.sh" 2>/dev/null || true
     [ ! -f ./queue/ntfy_inbox.yaml ] && echo "inbox:" > ./queue/ntfy_inbox.yaml
     nohup bash "$SCRIPT_DIR/scripts/ntfy_listener.sh" &>/dev/null &
     disown

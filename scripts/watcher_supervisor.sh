@@ -193,12 +193,12 @@ start_watcher_if_missing() {
     ensure_inbox_file "$agent"
     pane_exists "$pane" || return 0
 
-    if pgrep -f "scripts/inbox_watcher.sh ${agent} ${pane} " >/dev/null 2>&1; then
+    if pgrep -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} ${pane} " >/dev/null 2>&1; then
         return 0
     fi
 
-    if pgrep -f "scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1; then
-        pkill -f "scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1 || true
+    if pgrep -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1; then
+        pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1 || true
         sleep 0.2
     fi
 
@@ -206,7 +206,7 @@ start_watcher_if_missing() {
     # WSL の /mnt/* 配下では inotify を取りこぼすことがあるため、
     # timeout tick でも unread を処理する安全網を有効にして起動する。
     nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=1 ASW_DISABLE_NORMAL_NUDGE=0 \
-        bash scripts/inbox_watcher.sh "$agent" "$pane" "$cli" "tmux" >> "$log_file" 2>&1 &
+        bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$agent" "$pane" "$cli" "tmux" >> "$log_file" 2>&1 &
 }
 
 cleanup_stale_watchers() {
@@ -221,7 +221,7 @@ cleanup_stale_watchers() {
             agent_in_karo_list "$agent" && continue
             kill "$pid" >/dev/null 2>&1 || true
         fi
-    done < <(pgrep -af "scripts/inbox_watcher.sh" || true)
+    done < <(pgrep -af "$SCRIPT_DIR/scripts/inbox_watcher.sh" || true)
 }
 
 while true; do

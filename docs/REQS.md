@@ -8,6 +8,7 @@
 1. レートリミットなど外部 quota 依存ではない、repo 起因の不具合を継続して探すこと。
 2. inbox 書き込み系で本文内容により壊れるケースがないか確認し、再現するなら修正すること。
 3. 実 runtime の長時間運用を妨げるログ肥大や監視ノイズがあれば、運用上の実害として修正すること。
+4. 同一ワークスペース内の clone / sandbox を並行利用しても、起動時の cleanup が別 clone の daemon を巻き込まないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
@@ -22,6 +23,8 @@
    - 期待結果: 既定では `noop` を stdout へ出さない。
 5. コマンド: `bats tests/unit/test_bridge_daemons.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/test_inbox_write.bats`
    - 期待結果: bridge daemon の no-op 抑止と bridge / inbox_write の回帰を含めて PASS する。
+6. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: watcher / daemon 管理が `$SCRIPT_DIR/scripts/...` の絶対 path ベースに更新され、関連回帰が PASS する。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

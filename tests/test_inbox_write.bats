@@ -405,6 +405,33 @@ EOF
 }
 
 # =============================================================================
+# T-011b: triple single quotes を含む本文
+# =============================================================================
+
+@test "T-011b: content with triple single quotes → write succeeds and restores exact text" {
+    SPECIAL_CONTENT="前置き ''' 中身
+次の行も維持する"
+
+    run bash "$TEST_INBOX_WRITE" "test_agent" "$SPECIAL_CONTENT"
+    [ "$status" -eq 0 ]
+
+    python3 <<EOF
+import yaml
+
+with open('$TEST_INBOX_DIR/test_agent.yaml', encoding='utf-8') as f:
+    data = yaml.safe_load(f)
+
+msg = data['messages'][0]
+expected_content = """前置き ''' 中身
+次の行も維持する"""
+
+assert msg['content'] == expected_content, f'Content mismatch: {msg["content"]!r}'
+
+print('T-011b: PASS')
+EOF
+}
+
+# =============================================================================
 # T-012: inbox初期化 — ディレクトリ自動作成
 # =============================================================================
 

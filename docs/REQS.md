@@ -1,7 +1,27 @@
 # Requirements (Normalized)
 
-最終更新: 2026-03-30
+最終更新: 2026-04-01
 出典: 直近ユーザープロンプト
+
+## 追補（2026-04-01: 継続バグ探索と運用ノイズ抑制）
+### 要求
+1. レートリミットなど外部 quota 依存ではない、repo 起因の不具合を継続して探すこと。
+2. inbox 書き込み系で本文内容により壊れるケースがないか確認し、再現するなら修正すること。
+3. 実 runtime の長時間運用を妨げるログ肥大や監視ノイズがあれば、運用上の実害として修正すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
+   - 期待結果: `SyntaxError` にならず exit code 0 で完了する。
+2. コマンド: `bats tests/test_inbox_write.bats`
+   - 期待結果: triple single quotes を含む本文の回帰を含めて PASS する。
+3. コマンド: `bash scripts/shogun_to_karo_bridge_daemon.sh --once`
+   - 前提: queue が no-op 状態
+   - 期待結果: 既定では `noop` を stdout へ出さない。
+4. コマンド: `bash scripts/karo_done_to_shogun_bridge_daemon.sh --once`
+   - 前提: queue が no-op 状態
+   - 期待結果: 既定では `noop` を stdout へ出さない。
+5. コマンド: `bats tests/unit/test_bridge_daemons.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/test_inbox_write.bats`
+   - 期待結果: bridge daemon の no-op 抑止と bridge / inbox_write の回帰を含めて PASS する。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

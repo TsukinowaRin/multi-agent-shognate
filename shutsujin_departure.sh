@@ -1130,8 +1130,11 @@ log_info "🧹 既存の陣を撤収中..."
 if [ -f "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" ]; then
     if tmux has-session -t "$GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t shogun 2>/dev/null || tmux has-session -t gunshi 2>/dev/null || tmux has-session -t multiagent 2>/dev/null; then
         log_info "💾 前回CLI設定を同期中..."
-        if python3 "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" >/tmp/mas_runtime_cli_sync.log 2>&1; then
-            tail -n 1 /tmp/mas_runtime_cli_sync.log 2>/dev/null || true
+        _runtime_sync_once_log="$SCRIPT_DIR/queue/runtime/runtime_cli_pref_sync_once.log"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        : > "$_runtime_sync_once_log"
+        if python3 "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" >"$_runtime_sync_once_log" 2>&1; then
+            tail -n 1 "$_runtime_sync_once_log" 2>/dev/null || true
         else
             log_info "  └─ runtime CLI同期は失敗しましたが出陣は継続"
         fi
@@ -1828,6 +1831,7 @@ NINJA_EOF
     if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then
         pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
         nohup env MAS_RUNTIME_PREF_SYNC_INTERVAL="${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}" \
+            MAS_RUNTIME_PREF_SYNC_LOG="$SCRIPT_DIR/logs/runtime_cli_pref_sync.log" \
             bash "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" \
             >> "$SCRIPT_DIR/logs/runtime_cli_pref_sync.log" 2>&1 &
         disown

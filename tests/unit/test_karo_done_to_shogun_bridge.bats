@@ -235,3 +235,33 @@ PY
   run bats_search "cmd_done" "$MAS_SHOGUN_INBOX_FILE"
   [ "$status" -eq 1 ]
 }
+
+@test "karo_done_to_shogun_bridge: 重複 cmd_id の no-op 出力は timestamp 付きで区別する" {
+  python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py" >/dev/null
+  python3 - <<'PY' "$MAS_SHOGUN_TO_KARO_ARCHIVE_FILE"
+import sys, yaml
+p = sys.argv[1]
+with open(p, encoding='utf-8') as fh:
+    data = yaml.safe_load(fh) or {}
+cmds = data.get('commands', []) or []
+cmds.append({
+    'id': 'cmd_250',
+    'timestamp': '2026-03-13T23:45:00+09:00',
+    'status': 'done',
+    'purpose': '再利用 cmd_id の新規完了',
+})
+data['commands'] = cmds
+with open(p, 'w', encoding='utf-8') as fh:
+    yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
+PY
+  printf 'cmd_250\t2026-03-12T21:00:00+09:00\ncmd_250\t2026-03-13T23:45:00+09:00\ncmd_300\t2026-03-13T22:33:00+09:00\n' > "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+
+  run python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "already_sent=cmd_250@2026-03-12T21:00:00+09:00,cmd_300,cmd_250@2026-03-13T23:45:00+09:00" || \
+     "$output" =~ "already_sent=cmd_250@2026-03-12T21:00:00+09:00,cmd_250@2026-03-13T23:45:00+09:00,cmd_300" || \
+     "$output" =~ "already_sent=cmd_300,cmd_250@2026-03-12T21:00:00+09:00,cmd_250@2026-03-13T23:45:00+09:00" || \
+     "$output" =~ "already_sent=cmd_300,cmd_250@2026-03-13T23:45:00+09:00,cmd_250@2026-03-12T21:00:00+09:00" || \
+     "$output" =~ "already_sent=cmd_250@2026-03-13T23:45:00+09:00,cmd_300,cmd_250@2026-03-12T21:00:00+09:00" || \
+     "$output" =~ "already_sent=cmd_250@2026-03-13T23:45:00+09:00,cmd_250@2026-03-12T21:00:00+09:00,cmd_300" ]]
+}

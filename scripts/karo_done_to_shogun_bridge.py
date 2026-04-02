@@ -130,6 +130,31 @@ def collect_commands(*paths: Path):
     return commands
 
 
+def format_status_entries(cmds):
+    counts = {}
+    for cmd in cmds:
+        cmd_id = str(cmd.get("id", "")).strip()
+        if not cmd_id:
+            continue
+        counts[cmd_id] = counts.get(cmd_id, 0) + 1
+
+    labels = []
+    seen = set()
+    for cmd in cmds:
+        cmd_id = str(cmd.get("id", "")).strip()
+        if not cmd_id:
+            continue
+        timestamp = str(cmd.get("timestamp", "")).strip()
+        label = cmd_id
+        if counts.get(cmd_id, 0) > 1 and timestamp:
+            label = f"{cmd_id}@{timestamp}"
+        if label in seen:
+            continue
+        seen.add(label)
+        labels.append(label)
+    return labels
+
+
 def main() -> int:
     root = Path(os.environ.get("MAS_PROJECT_ROOT", Path(__file__).resolve().parents[1]))
     queue_dir = Path(os.environ.get("MAS_QUEUE_DIR", root / "queue"))
@@ -178,11 +203,11 @@ def main() -> int:
             skipped_not_done.append(cmd_id)
             continue
         if state_contains(state, cmd):
-            already_sent.append(cmd_id)
+            already_sent.append(cmd)
             continue
         if inbox_already_mentions(shogun_inbox, cmd):
             state.add(identity)
-            already_notified.append(cmd_id)
+            already_notified.append(cmd)
             continue
 
         purpose = str(cmd.get("purpose", "")).strip()
@@ -201,16 +226,16 @@ def main() -> int:
             cwd=str(root),
         )
         state.add(identity)
-        newly_sent.append(cmd_id)
+        newly_sent.append(cmd)
 
     save_state(state_file, state)
 
     if newly_sent:
-        print("sent\t" + ",".join(newly_sent))
+        print("sent\t" + ",".join(format_status_entries(newly_sent)))
     elif already_notified:
-        print("noop\talready_notified=" + ",".join(already_notified))
+        print("noop\talready_notified=" + ",".join(format_status_entries(already_notified)))
     elif already_sent:
-        print("noop\talready_sent=" + ",".join(already_sent))
+        print("noop\talready_sent=" + ",".join(format_status_entries(already_sent)))
     elif skipped_not_done:
         print("noop\tno_completed")
     else:

@@ -11,6 +11,7 @@
 4. 同一ワークスペース内の clone / sandbox を並行利用しても、起動時の cleanup が別 clone の daemon を巻き込まないこと。
 5. 同一ワークスペース内の clone / sandbox を並行利用しても、runtime CLI 同期ログが `/tmp` 共有で衝突しないこと。
 6. watcher の `send-keys` 系は text 送信だけで成功扱いせず、`Enter` 失敗も送達失敗として検知すること。
+7. `TMUX_TMPDIR` を使う起動では、socket 用ディレクトリが未作成でも default socket へフォールバックせず、指定先を使うこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
@@ -31,6 +32,8 @@
    - 期待結果: `runtime_cli_pref_daemon.sh` と `shutsujin_departure.sh` から `/tmp/mas_runtime_cli_sync*.log` 参照が消え、回帰が PASS する。
 8. コマンド: `bats tests/unit/test_send_wakeup.bats`
    - 期待結果: `send_wakeup` と `send_cli_command` は `Enter` 送信失敗でも exit code 1 を返し、回帰が PASS する。
+9. コマンド: `TMUX_TMPDIR=/tmp/nonexistent_probe tmux -L probe new-session -d ...`
+   - 期待結果: 起動前に `TMUX_TMPDIR` を作る導線があり、`shutsujin_departure.sh` から default socket へ黙って落ちない。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

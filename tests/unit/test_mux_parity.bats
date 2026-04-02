@@ -12,6 +12,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux起動は TMUX_TMPDIR が指定されていれば事前に作成する" {
+    run bats_search 'ensure_tmux_tmpdir|mkdir -p "\$tmux_tmp"|chmod 700 "\$tmux_tmp"|TMUX_TMPDIR' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux起動入口は shutsujin_departure.sh のみを使う" {
     run bats_search "Usage:|./shutsujin_departure\.sh|tmux attach-session|cgo" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/README.md"
     [ "$status" -eq 0 ]

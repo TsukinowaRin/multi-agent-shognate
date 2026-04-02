@@ -14,6 +14,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+ensure_tmux_tmpdir() {
+    local tmux_tmp="${TMUX_TMPDIR:-}"
+    [ -n "$tmux_tmp" ] || return 0
+    mkdir -p "$tmux_tmp"
+    chmod 700 "$tmux_tmp" 2>/dev/null || true
+}
+
+ensure_tmux_tmpdir
+
 # 言語設定を読み取り（デフォルト: ja）
 LANG_SETTING="ja"
 if [ -f "./config/settings.yaml" ]; then

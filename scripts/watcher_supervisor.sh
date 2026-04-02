@@ -120,6 +120,16 @@ agent_in_karo_list() {
     return 1
 }
 
+agent_is_supervised() {
+    local target="$1"
+    case "$target" in
+        shogun|gunshi) return 0 ;;
+    esac
+    agent_in_active_list "$target" && return 0
+    agent_in_karo_list "$target" && return 0
+    return 1
+}
+
 pane_exists() {
     local pane="$1"
     tmux display-message -p -t "$pane" "#{pane_id}" >/dev/null 2>&1
@@ -216,9 +226,7 @@ cleanup_stale_watchers() {
         cmd="${line#* }"
         if [[ "$cmd" =~ scripts/inbox_watcher\.sh[[:space:]]+([a-zA-Z0-9_]+)[[:space:]] ]]; then
             agent="${BASH_REMATCH[1]}"
-            [ "$agent" = "shogun" ] && continue
-            agent_in_active_list "$agent" && continue
-            agent_in_karo_list "$agent" && continue
+            agent_is_supervised "$agent" && continue
             kill "$pid" >/dev/null 2>&1 || true
         fi
     done < <(pgrep -af "$SCRIPT_DIR/scripts/inbox_watcher.sh" || true)

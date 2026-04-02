@@ -75,6 +75,8 @@ MOCK
     # Default mock control variables
     export MOCK_CAPTURE_PANE=""
     export MOCK_SENDKEYS_RC=0
+    export MOCK_SENDKEYS_TEXT_RC=""
+    export MOCK_SENDKEYS_ENTER_RC=""
     export MOCK_PANE_CLI=""
 
     # Test harness: sets up mocks, then sources the REAL inbox_watcher.sh
@@ -99,6 +101,15 @@ tmux() {
         return 0
     fi
     if echo "\$*" | grep -q "send-keys"; then
+        if echo "\$*" | grep -q " Enter"; then
+            if [ -n "\${MOCK_SENDKEYS_ENTER_RC:-}" ]; then
+                return "\${MOCK_SENDKEYS_ENTER_RC}"
+            fi
+        else
+            if [ -n "\${MOCK_SENDKEYS_TEXT_RC:-}" ]; then
+                return "\${MOCK_SENDKEYS_TEXT_RC}"
+            fi
+        fi
         return \${MOCK_SENDKEYS_RC:-0}
     fi
     if echo "\$*" | grep -q "show-options"; then
@@ -178,6 +189,13 @@ MOCK
     echo "$output" | grep -qi "WARNING\|failed"
 }
 
+@test "T-SW-004b: send_wakeup returns 1 when Enter send fails" {
+    run bash -c "MOCK_SENDKEYS_ENTER_RC=1; source '$TEST_HARNESS' && send_wakeup 2"
+    [ "$status" -eq 1 ]
+
+    echo "$output" | grep -qi "Enter failed\|WARNING"
+}
+
 # --- T-SW-005: no paste-buffer or set-buffer used ---
 
 @test "T-SW-005: nudge delivery does NOT use paste-buffer or set-buffer" {
@@ -255,6 +273,13 @@ MOCK
 
     grep -q "send-keys.*/model opus" "$MOCK_LOG"
     grep -q "send-keys.*Enter" "$MOCK_LOG"
+}
+
+@test "T-SW-009b: send_cli_command returns 1 when Enter send fails" {
+    run bash -c "MOCK_SENDKEYS_ENTER_RC=1; source '$TEST_HARNESS' && send_cli_command '/model opus'"
+    [ "$status" -eq 1 ]
+
+    echo "$output" | grep -qi "Enter failed\|WARNING"
 }
 
 # --- T-SW-010: nudge content format ---

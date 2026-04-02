@@ -171,6 +171,24 @@ mux_capture_pane_tail() {
     timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -5
 }
 
+send_text_and_enter() {
+    local text="$1"
+    local action_label="${2:-send-keys}"
+
+    if ! mux_send_text "$text"; then
+        echo "[$(date)] WARNING: ${action_label} text failed or timed out for $AGENT_ID" >&2
+        return 1
+    fi
+
+    sleep 0.3
+    if ! mux_send_enter; then
+        echo "[$(date)] WARNING: ${action_label} Enter failed or timed out for $AGENT_ID" >&2
+        return 1
+    fi
+
+    return 0
+}
+
 dismiss_codex_rate_limit_prompt_if_present() {
     local effective_cli="${1:-}"
     local pane_text
@@ -451,9 +469,9 @@ send_cli_command() {
                     return 0
                 fi
                 echo "[$(date)] [SEND-KEYS] Codex /clear→/new: starting new conversation for $AGENT_ID" >&2
-                mux_send_text "/new"
-                sleep 0.3
-                mux_send_enter
+                if ! send_text_and_enter "/new" "Codex /new"; then
+                    return 1
+                fi
                 sleep 3
                 return 0
             fi
@@ -468,9 +486,9 @@ send_cli_command() {
                 echo "[$(date)] [SEND-KEYS] Copilot /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 2
-                mux_send_text "copilot --yolo"
-                sleep 0.3
-                mux_send_enter
+                if ! send_text_and_enter "copilot --yolo" "Copilot restart"; then
+                    return 1
+                fi
                 sleep 3
                 return 0
             fi
@@ -484,9 +502,9 @@ send_cli_command() {
                 echo "[$(date)] [SEND-KEYS] Gemini /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 1
-                mux_send_text "${GEMINI_RESTART_CMD:-gemini --yolo}"
-                sleep 0.3
-                mux_send_enter
+                if ! send_text_and_enter "${GEMINI_RESTART_CMD:-gemini --yolo}" "Gemini restart"; then
+                    return 1
+                fi
                 sleep 2
                 return 0
             fi
@@ -500,9 +518,9 @@ send_cli_command() {
                 echo "[$(date)] [SEND-KEYS] OpenCode /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 1
-                mux_send_text "${OPENCODE_RESTART_CMD:-opencode}"
-                sleep 0.3
-                mux_send_enter
+                if ! send_text_and_enter "${OPENCODE_RESTART_CMD:-opencode}" "OpenCode restart"; then
+                    return 1
+                fi
                 sleep 2
                 return 0
             fi
@@ -516,9 +534,9 @@ send_cli_command() {
                 echo "[$(date)] [SEND-KEYS] Kilo /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 1
-                mux_send_text "${KILO_RESTART_CMD:-kilo}"
-                sleep 0.3
-                mux_send_enter
+                if ! send_text_and_enter "${KILO_RESTART_CMD:-kilo}" "Kilo restart"; then
+                    return 1
+                fi
                 sleep 2
                 return 0
             fi
@@ -532,9 +550,9 @@ send_cli_command() {
                 echo "[$(date)] [SEND-KEYS] LocalAPI /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 1
-                mux_send_text "${LOCALAPI_RESTART_CMD:-python3 scripts/localapi_repl.py}"
-                sleep 0.3
-                mux_send_enter
+                if ! send_text_and_enter "${LOCALAPI_RESTART_CMD:-python3 scripts/localapi_repl.py}" "LocalAPI restart"; then
+                    return 1
+                fi
                 sleep 2
                 return 0
             fi
@@ -559,9 +577,9 @@ send_cli_command() {
         mux_send_ctrl_c
         sleep 0.5
     fi
-    mux_send_text "$actual_cmd"
-    sleep 0.3
-    mux_send_enter
+    if ! send_text_and_enter "$actual_cmd" "CLI command"; then
+        return 1
+    fi
 
     # /clear needs extra wait time before follow-up
     if [[ "$actual_cmd" == "/clear" ]]; then
@@ -691,9 +709,7 @@ send_wakeup() {
 
     # 優先度3: tmux send-keys（テキストとEnterを分離 — Codex TUI対策）
     echo "[$(date)] [SEND-KEYS] Sending nudge to $PANE_TARGET for $AGENT_ID" >&2
-    if mux_send_text "$nudge"; then
-        sleep 0.3
-        mux_send_enter
+    if send_text_and_enter "$nudge" "send-keys"; then
         echo "[$(date)] Wake-up sent to $AGENT_ID (${unread_count} unread)" >&2
         return 0
     fi
@@ -747,9 +763,7 @@ send_wakeup_with_escape() {
         sleep 0.5
         c_ctrl_state="sent"
     fi
-    if mux_send_text "$nudge"; then
-        sleep 0.3
-        mux_send_enter
+    if send_text_and_enter "$nudge" "Escape+nudge"; then
         echo "[$(date)] Escape+nudge sent to $AGENT_ID (${unread_count} unread, cli=$effective_cli, C-c=$c_ctrl_state)" >&2
         return 0
     fi
@@ -816,8 +830,9 @@ for s in data.get('specials', []):
             fi
             cmd=$(normalize_special_command "$msg_type" "$msg_content")
             if [ -n "$cmd" ]; then
-                send_cli_command "$cmd" "special"
-                [ "$msg_type" = "clear_command" ] && clear_sent=1
+                if send_cli_command "$cmd" "special"; then
+                    [ "$msg_type" = "clear_command" ] && clear_sent=1
+                fi
             fi
         done <<< "$specials"
     fi

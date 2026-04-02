@@ -87,6 +87,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動は prompt自動処理と bootstrap 配信で text+Enter の両方を確認する" {
+    run bats_search 'tmux_send_text_and_enter|bootstrap-send-failed|Codex update prompt: Enter send failed|Codex workspace trust prompt|Codex rate-limit prompt|Gemini trust prompt' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は bootstrap 未配信でも全体を abort しない" {
     run bats_search 'if ! deliver_bootstrap_tmux .*_bootstrap_failed=1|bootstrap 未配信のまま継続' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

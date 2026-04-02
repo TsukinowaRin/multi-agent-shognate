@@ -12,6 +12,7 @@
 5. 同一ワークスペース内の clone / sandbox を並行利用しても、runtime CLI 同期ログが `/tmp` 共有で衝突しないこと。
 6. watcher の `send-keys` 系は text 送信だけで成功扱いせず、`Enter` 失敗も送達失敗として検知すること。
 7. `TMUX_TMPDIR` を使う起動では、socket 用ディレクトリが未作成でも default socket へフォールバックせず、指定先を使うこと。
+8. 起動時の prompt 自動処理と bootstrap 配信でも、text 送信だけで成功扱いせず、`Enter` 失敗を検知すること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
@@ -34,6 +35,8 @@
    - 期待結果: `send_wakeup` と `send_cli_command` は `Enter` 送信失敗でも exit code 1 を返し、回帰が PASS する。
 9. コマンド: `TMUX_TMPDIR=/tmp/nonexistent_probe tmux -L probe new-session -d ...`
    - 期待結果: 起動前に `TMUX_TMPDIR` を作る導線があり、`shutsujin_departure.sh` から default socket へ黙って落ちない。
+10. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `tmux_send_text_and_enter` と `bootstrap-send-failed` が導入され、prompt 自動処理と bootstrap 配信の text+Enter 厳密化を含めて PASS する。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

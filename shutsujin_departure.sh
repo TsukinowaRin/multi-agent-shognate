@@ -183,6 +183,33 @@ log_war() {
 run_pending_update_request "$@"
 run_startup_update_check "$@"
 
+tmux_send_text_and_enter() {
+    local pane_target="$1"
+    local text="$2"
+    local action_label="${3:-tmux send-keys}"
+    local literal_mode="${4:-0}"
+
+    if [ "$literal_mode" = "1" ]; then
+        tmux send-keys -l -t "$pane_target" "$text" >/dev/null 2>&1 || {
+            echo "[WARN] ${action_label}: text send failed for ${pane_target}" >&2
+            return 1
+        }
+    else
+        tmux send-keys -t "$pane_target" "$text" >/dev/null 2>&1 || {
+            echo "[WARN] ${action_label}: text send failed for ${pane_target}" >&2
+            return 1
+        }
+    fi
+
+    sleep 0.3
+    tmux send-keys -t "$pane_target" Enter >/dev/null 2>&1 || {
+        echo "[WARN] ${action_label}: Enter send failed for ${pane_target}" >&2
+        return 1
+    }
+
+    return 0
+}
+
 # Gemini CLI 初回の trust folder プロンプトを自動承認する（1回のみ）
 auto_accept_gemini_trust_prompt_tmux() {
     local pane_target="$1"
@@ -196,8 +223,7 @@ auto_accept_gemini_trust_prompt_tmux() {
     for i in {1..20}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -60 || true)"
         if echo "$pane_text" | grep -q "Do you trust this folder"; then
-            tmux send-keys -t "$pane_target" "1"
-            tmux send-keys -t "$pane_target" Enter
+            tmux_send_text_and_enter "$pane_target" "1" "Gemini trust prompt" || return 1
             log_info "  └─ ${agent_id}: Gemini trust prompt を自動承認"
             sleep 1
             return 0
@@ -220,8 +246,7 @@ auto_retry_gemini_busy_tmux() {
     for i in {1..20}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
         if echo "$pane_text" | grep -q "We are currently experiencing high demand"; then
-            tmux send-keys -t "$pane_target" "1"
-            tmux send-keys -t "$pane_target" Enter
+            tmux_send_text_and_enter "$pane_target" "1" "Gemini high-demand retry" || return 1
             log_info "  └─ ${agent_id}: Gemini high-demand を自動再試行"
             sleep 2
             return 0
@@ -243,13 +268,18 @@ auto_skip_codex_update_prompt_tmux() {
     for i in {1..20}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
         if echo "$pane_text" | grep -qiE "Update available|Update now|Skip until next version|Skip this version|Would you like to update"; then
-            tmux send-keys -t "$pane_target" "2"
-            tmux send-keys -t "$pane_target" Enter
+            tmux_send_text_and_enter "$pane_target" "2" "Codex update prompt" || return 1
             sleep 2
             pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
             if echo "$pane_text" | grep -qiE "Update available|Update now|Skip until next version|Skip this version|Would you like to update"; then
-                tmux send-keys -t "$pane_target" Down
-                tmux send-keys -t "$pane_target" Enter
+                tmux send-keys -t "$pane_target" Down >/dev/null 2>&1 || {
+                    echo "[WARN] Codex update prompt: Down send failed for ${pane_target}" >&2
+                    return 1
+                }
+                tmux send-keys -t "$pane_target" Enter >/dev/null 2>&1 || {
+                    echo "[WARN] Codex update prompt: Enter send failed for ${pane_target}" >&2
+                    return 1
+                }
             fi
             log_info "  └─ ${agent_id}: Codex update prompt を自動スキップ"
             sleep 1
@@ -272,8 +302,7 @@ auto_accept_codex_workspace_trust_prompt_tmux() {
     for i in {1..20}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
         if echo "$pane_text" | grep -qiE "Do you trust the contents of this directory|1\\. Yes, continue|2\\. No, quit"; then
-            tmux send-keys -t "$pane_target" "1"
-            tmux send-keys -t "$pane_target" Enter
+            tmux_send_text_and_enter "$pane_target" "1" "Codex workspace trust prompt" || return 1
             log_info "  └─ ${agent_id}: Codex workspace trust prompt を自動承認"
             sleep 2
             return 0
@@ -295,15 +324,13 @@ auto_dismiss_codex_rate_limit_prompt_tmux() {
     for i in {1..45}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -120 || true)"
         if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
-            tmux send-keys -t "$pane_target" "1"
-            tmux send-keys -t "$pane_target" Enter
+            tmux_send_text_and_enter "$pane_target" "1" "Codex usage-limit prompt" || return 1
             log_info "  └─ ${agent_id}: Codex usage-limit prompt で mini へ自動切替"
             sleep 2
             return 0
         fi
         if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model \(never show again\)"; then
-            tmux send-keys -t "$pane_target" "3"
-            tmux send-keys -t "$pane_target" Enter
+            tmux_send_text_and_enter "$pane_target" "3" "Codex rate-limit prompt" || return 1
             log_info "  └─ ${agent_id}: Codex rate-limit prompt を自動dismiss"
             sleep 2
             return 0
@@ -487,9 +514,10 @@ deliver_bootstrap_tmux() {
     msg="$(cat "$bootstrap_file")"
     # -l: リテラル送信（日本語・特殊文字をキーシーケンスと誤解釈させない）
     # sleep: CLI がテキストをバッファに受け取ってから Enter を送る
-    tmux send-keys -l -t "$pane_target" "$msg"
-    sleep 0.3
-    tmux send-keys -t "$pane_target" Enter
+    if ! tmux_send_text_and_enter "$pane_target" "$msg" "bootstrap delivery" "1"; then
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "text or enter send failed"
+        return 1
+    fi
     append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-delivered" "send-keys literal + enter"
 }
 

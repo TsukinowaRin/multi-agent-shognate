@@ -10,6 +10,7 @@
 #   T-SW-004: send_wakeup — send-keys failure → return 1
 #   T-SW-005: send_wakeup — no paste-buffer or set-buffer used
 #   T-SW-006: agent_has_self_watch — detects inotifywait process
+#   T-SW-006b: agent_has_self_watch — queries exact INBOX path
 #   T-SW-007: agent_has_self_watch — no inotifywait → returns 1
 #   T-SW-008: send_cli_command — /clear uses send-keys
 #   T-SW-009: send_cli_command — /model uses send-keys
@@ -78,6 +79,8 @@ MOCK
     export MOCK_SENDKEYS_TEXT_RC=""
     export MOCK_SENDKEYS_ENTER_RC=""
     export MOCK_PANE_CLI=""
+    export MOCK_PGREP_LOG="$TEST_TMPDIR/pgrep_calls.log"
+    > "$MOCK_PGREP_LOG"
 
     # Test harness: sets up mocks, then sources the REAL inbox_watcher.sh
     # __INBOX_WATCHER_TESTING__=1 skips arg parsing, inotifywait check, and main loop.
@@ -221,6 +224,11 @@ MOCK
     chmod +x "$MOCK_PGREP"
 
     run bash -c "source '$TEST_HARNESS' && agent_has_self_watch"
+    [ "$status" -eq 0 ]
+}
+
+@test "T-SW-006b: agent_has_self_watch queries exact INBOX path" {
+    run grep -nE 'escape_extended_regex|inbox_path=.*INBOX|pgrep -f "inotifywait\.\*\$\{inbox_pattern\}"' "$WATCHER_SCRIPT"
     [ "$status" -eq 0 ]
 }
 

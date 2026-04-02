@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-04-01
+最終更新: 2026-04-02
 出典: 直近ユーザープロンプト
 
 ## 追補（2026-04-01: 継続バグ探索と運用ノイズ抑制）
@@ -13,6 +13,8 @@
 6. watcher の `send-keys` 系は text 送信だけで成功扱いせず、`Enter` 失敗も送達失敗として検知すること。
 7. `TMUX_TMPDIR` を使う起動では、socket 用ディレクトリが未作成でも default socket へフォールバックせず、指定先を使うこと。
 8. 起動時の prompt 自動処理と bootstrap 配信でも、text 送信だけで成功扱いせず、`Enter` 失敗を検知すること。
+9. pane の shell 初期化と各エージェント CLI 起動コマンド投入でも、text 送信だけで成功扱いせず、失敗時は起動を継続しないこと。
+10. self-watch 判定は agent 名の suffix 一致ではなく、当該 watcher の `INBOX` 実 path を使って別 clone の `inotifywait` を誤検知しないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
@@ -37,6 +39,10 @@
    - 期待結果: 起動前に `TMUX_TMPDIR` を作る導線があり、`shutsujin_departure.sh` から default socket へ黙って落ちない。
 10. コマンド: `bats tests/unit/test_mux_parity.bats`
    - 期待結果: `tmux_send_text_and_enter` と `bootstrap-send-failed` が導入され、prompt 自動処理と bootstrap 配信の text+Enter 厳密化を含めて PASS する。
+11. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `tmux_send_text_and_enter_or_die` が導入され、pane shell prep と CLI launch の失敗を fail-fast で扱う回帰を含めて PASS する。
+12. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: `agent_has_self_watch` は `inbox/${AGENT_ID}.yaml` の汎用 pattern ではなく、`INBOX` 実 path を使った `pgrep` で回帰が PASS する。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

@@ -92,6 +92,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動は pane shell prep と CLI launch でも text+Enter を厳密確認する" {
+    run bats_search 'tmux_send_text_and_enter_or_die|pane shell prep|shogun CLI launch|gunshi CLI launch|CLI launch' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は bootstrap 未配信でも全体を abort しない" {
     run bats_search 'if ! deliver_bootstrap_tmux .*_bootstrap_failed=1|bootstrap 未配信のまま継続' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

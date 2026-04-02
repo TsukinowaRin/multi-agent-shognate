@@ -146,6 +146,10 @@ is_valid_cli_type() {
     esac
 }
 
+escape_extended_regex() {
+    printf '%s' "$1" | sed -e 's/[][(){}.^$*+?|\\]/\\&/g'
+}
+
 mux_send_text() {
     local text="$1"
     timeout 5 tmux send-keys -t "$PANE_TARGET" "$text" 2>/dev/null
@@ -601,7 +605,9 @@ agent_has_self_watch() {
         return 1
     fi
 
-    local my_pgid pid pid_pgid
+    local my_pgid pid pid_pgid inbox_path inbox_pattern
+    inbox_path="${INBOX:-${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/inbox/${AGENT_ID}.yaml}"
+    inbox_pattern=$(escape_extended_regex "$inbox_path")
     my_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
     while IFS= read -r pid; do
         pid="${pid%% *}"
@@ -610,7 +616,7 @@ agent_has_self_watch() {
         if [[ -z "$my_pgid" || -z "$pid_pgid" || "$pid_pgid" != "$my_pgid" ]]; then
             return 0
         fi
-    done < <(pgrep -f "inotifywait.*inbox/${AGENT_ID}.yaml" 2>/dev/null || true)
+    done < <(pgrep -f "inotifywait.*${inbox_pattern}" 2>/dev/null || true)
     return 1
 }
 

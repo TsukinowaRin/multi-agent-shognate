@@ -210,6 +210,18 @@ tmux_send_text_and_enter() {
     return 0
 }
 
+tmux_send_text_and_enter_or_die() {
+    local pane_target="$1"
+    local text="$2"
+    local action_label="$3"
+    local literal_mode="${4:-0}"
+
+    if ! tmux_send_text_and_enter "$pane_target" "$text" "$action_label" "$literal_mode"; then
+        echo "[ERROR] ${action_label}: delivery failed for ${pane_target}" >&2
+        exit 1
+    fi
+}
+
 # Gemini CLI 初回の trust folder プロンプトを自動承認する（1回のみ）
 auto_accept_gemini_trust_prompt_tmux() {
     local pane_target="$1"
@@ -1479,7 +1491,7 @@ for _agent in "${BACKEND_AGENT_IDS[@]}"; do
     tmux set-option -p -t "$_pane" @model_name "$(resolve_model_display_name "$_agent")"
     tmux set-option -p -t "$_pane" @current_task ""
     tmux select-pane -t "$_pane" -T "$_agent" >/dev/null 2>&1 || true
-    tmux send-keys -t "$_pane" "cd \"$(pwd)\" && export PS1='${_prompt}' && clear" Enter
+    tmux_send_text_and_enter_or_die "$_pane" "cd \"$(pwd)\" && export PS1='${_prompt}' && clear" "pane shell prep"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         tmux set-option -p -t "$_pane" @agent_cli "$(resolve_cli_type_for_agent "$_agent")"
     fi
@@ -1551,13 +1563,11 @@ if [ "$SETUP_ONLY" = false ]; then
     generate_bootstrap_file "shogun" "$_shogun_cli_type"
     printf "shogun\t%s\n" "$_shogun_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
-        tmux send-keys -t "$SHOGUN_TARGET" "MAX_THINKING_TOKENS=0 $_shogun_cmd"
-        tmux send-keys -t "$SHOGUN_TARGET" C-m
+        tmux_send_text_and_enter_or_die "$SHOGUN_TARGET" "MAX_THINKING_TOKENS=0 $_shogun_cmd" "shogun CLI launch"
         tmux set-option -p -t "$SHOGUN_TARGET" @model_name "$(resolve_model_display_name "shogun")"
         log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type") / thinking無効）、召喚完了"
     else
-        tmux send-keys -t "$SHOGUN_TARGET" "$_shogun_cmd"
-        tmux send-keys -t "$SHOGUN_TARGET" C-m
+        tmux_send_text_and_enter_or_die "$SHOGUN_TARGET" "$_shogun_cmd" "shogun CLI launch"
         tmux set-option -p -t "$SHOGUN_TARGET" @model_name "$(resolve_model_display_name "shogun")"
         log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type")）、召喚完了"
     fi
@@ -1572,8 +1582,7 @@ if [ "$SETUP_ONLY" = false ]; then
     tmux set-option -p -t "$GUNSHI_TARGET" @agent_cli "$_gunshi_cli_type"
     generate_bootstrap_file "gunshi" "$_gunshi_cli_type"
     printf "gunshi\t%s\n" "$_gunshi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
-    tmux send-keys -t "$GUNSHI_TARGET" "$_gunshi_cmd"
-    tmux send-keys -t "$GUNSHI_TARGET" C-m
+    tmux_send_text_and_enter_or_die "$GUNSHI_TARGET" "$_gunshi_cmd" "gunshi CLI launch"
     tmux set-option -p -t "$GUNSHI_TARGET" @model_name "$(resolve_model_display_name "gunshi")"
     log_info "  └─ 軍師（$(resolve_cli_summary "gunshi" "$_gunshi_cli_type")）、召喚完了"
 
@@ -1618,8 +1627,7 @@ if [ "$SETUP_ONLY" = false ]; then
         [ -n "$_pane_target" ] || continue
         tmux set-option -p -t "$_pane_target" @agent_cli "$_agent_cli_type"
         generate_bootstrap_file "$_agent" "$_agent_cli_type"
-        tmux send-keys -t "$_pane_target" "$_agent_cmd"
-        tmux send-keys -t "$_pane_target" C-m
+        tmux_send_text_and_enter_or_die "$_pane_target" "$_agent_cmd" "${_agent} CLI launch"
         printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
         MULTIAGENT_CLI["$_agent"]="$_agent_cli_type"
         tmux set-option -p -t "$_pane_target" @model_name "$(resolve_model_display_name "$_agent")"

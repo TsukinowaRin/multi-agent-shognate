@@ -205,17 +205,17 @@ dismiss_codex_rate_limit_prompt_if_present() {
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -40 || true)
     if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
         echo "[$(date)] [SEND-KEYS] Switching Codex to mini after usage-limit prompt for $AGENT_ID" >&2
-        mux_send_text "1"
-        sleep 0.2
-        mux_send_enter
+        if ! send_text_and_enter "1" "Codex usage-limit prompt"; then
+            return 2
+        fi
         sleep 0.3
         return 0
     fi
     if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model \(never show again\)"; then
         echo "[$(date)] [SEND-KEYS] Dismissing Codex rate-limit prompt for $AGENT_ID" >&2
-        mux_send_text "3"
-        sleep 0.2
-        mux_send_enter
+        if ! send_text_and_enter "3" "Codex rate-limit prompt"; then
+            return 2
+        fi
         sleep 0.3
         return 0
     fi
@@ -693,7 +693,14 @@ send_wakeup() {
         return 0
     fi
 
-    dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || true
+    dismiss_codex_rate_limit_prompt_if_present "$effective_cli"
+    case $? in
+        0|1) ;;
+        *)
+            echo "[$(date)] WARNING: Codex prompt dismiss failed for $AGENT_ID" >&2
+            return 1
+            ;;
+    esac
 
     # 優先度1: Agent self-watch — nudge不要（エージェントが自分で気づく）
     if agent_has_self_watch; then
@@ -740,7 +747,14 @@ send_wakeup_with_escape() {
         return 0
     fi
 
-    dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || true
+    dismiss_codex_rate_limit_prompt_if_present "$effective_cli"
+    case $? in
+        0|1) ;;
+        *)
+            echo "[$(date)] WARNING: Codex prompt dismiss failed for $AGENT_ID" >&2
+            return 1
+            ;;
+    esac
 
     if agent_has_self_watch; then
         return 0

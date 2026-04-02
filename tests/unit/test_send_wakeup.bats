@@ -35,6 +35,8 @@
 #   T-CODEX-008: pane @agent_cli=codex overrides stale CLI_TYPE (/clear→/new)
 #   T-CODEX-009: normalize_special_command rejects invalid model_switch payload
 #   T-CODEX-010: unresolved CLI type falls back to codex-safe path
+#   T-CODEX-010b2: rate-limit prompt dismiss failure aborts send_wakeup
+#   T-CODEX-010c2: rate-limit prompt dismiss failure aborts send_wakeup_with_escape
 #   T-CODEX-011: clear_command処理でauto-recovery task_assignedを自動投入
 #   T-CODEX-012: auto-recovery task_assignedは重複投入しない
 #   T-COPILOT-001: send_cli_command — copilot /clear → Ctrl-C + restart
@@ -745,6 +747,21 @@ YAML
     grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
 }
 
+@test "T-CODEX-010b2: send_wakeup は Codex rate-limit prompt dismiss 失敗時に abort する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_SENDKEYS_ENTER_RC=1
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\nKeep current model (never show again)'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 1 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    ! grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+    echo "$output" | grep -qi "prompt dismiss failed\|Enter failed"
+}
+
 @test "T-CODEX-010c: send_wakeup_with_escape も Codex rate-limit prompt を dismiss する" {
     run bash -c '
         MOCK_PANE_CLI="codex"
@@ -757,6 +774,22 @@ YAML
     grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
     grep -q "send-keys.*Escape" "$MOCK_LOG"
     grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010c2: send_wakeup_with_escape は Codex rate-limit prompt dismiss 失敗時に abort する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_SENDKEYS_ENTER_RC=1
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\nKeep current model (never show again)'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 4
+    '
+    [ "$status" -eq 1 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox4" "$MOCK_LOG"
+    echo "$output" | grep -qi "prompt dismiss failed\|Enter failed"
 }
 
 @test "T-CODEX-010d: send_wakeup は Codex usage-limit prompt で mini 切替を選ぶ" {

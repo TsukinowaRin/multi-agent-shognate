@@ -15,6 +15,7 @@
 8. 起動時の prompt 自動処理と bootstrap 配信でも、text 送信だけで成功扱いせず、`Enter` 失敗を検知すること。
 9. pane の shell 初期化と各エージェント CLI 起動コマンド投入でも、text 送信だけで成功扱いせず、失敗時は起動を継続しないこと。
 10. self-watch 判定は agent 名の suffix 一致ではなく、当該 watcher の `INBOX` 実 path を使って別 clone の `inotifywait` を誤検知しないこと。
+11. Codex の rate-limit / usage-limit prompt 自動dismissでも、text 送信だけで成功扱いせず、失敗時は nudge / escalation へ進まないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
@@ -43,6 +44,8 @@
    - 期待結果: `tmux_send_text_and_enter_or_die` が導入され、pane shell prep と CLI launch の失敗を fail-fast で扱う回帰を含めて PASS する。
 12. コマンド: `bats tests/unit/test_send_wakeup.bats`
    - 期待結果: `agent_has_self_watch` は `inbox/${AGENT_ID}.yaml` の汎用 pattern ではなく、`INBOX` 実 path を使った `pgrep` で回帰が PASS する。
+13. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: Codex rate-limit / usage-limit prompt dismiss は `send_text_and_enter` で送達確認され、失敗時は `send_wakeup` / `send_wakeup_with_escape` が abort して回帰が PASS する。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

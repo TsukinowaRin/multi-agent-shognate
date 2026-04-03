@@ -204,6 +204,10 @@ dismiss_codex_rate_limit_prompt_if_present() {
 
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -40 || true)
     if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
+        if ! echo "$pane_text" | grep -qiE "gpt-5\.1-codex-mini|Switch to .*mini|1\. Switch"; then
+            echo "[$(date)] [SKIP] Hard Codex usage-limit prompt detected for $AGENT_ID; no mini switch option present" >&2
+            return 3
+        fi
         echo "[$(date)] [SEND-KEYS] Switching Codex to mini after usage-limit prompt for $AGENT_ID" >&2
         if ! send_text_and_enter "1" "Codex usage-limit prompt"; then
             return 2
@@ -685,6 +689,7 @@ send_wakeup() {
     local unread_count="$1"
     local nudge
     local effective_cli
+    local prompt_rc=0
     nudge=$(get_wakeup_text "$unread_count")
     effective_cli=$(get_effective_cli_type)
 
@@ -693,9 +698,13 @@ send_wakeup() {
         return 0
     fi
 
-    dismiss_codex_rate_limit_prompt_if_present "$effective_cli"
-    case $? in
+    dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || prompt_rc=$?
+    case "$prompt_rc" in
         0|1) ;;
+        3)
+            echo "[$(date)] [SKIP] Hard Codex usage-limit prompt blocks $AGENT_ID; suppressing nudge" >&2
+            return 0
+            ;;
         *)
             echo "[$(date)] WARNING: Codex prompt dismiss failed for $AGENT_ID" >&2
             return 1
@@ -737,6 +746,7 @@ send_wakeup() {
 send_wakeup_with_escape() {
     local unread_count="$1"
     local nudge
+    local prompt_rc=0
     nudge=$(get_wakeup_text "$unread_count")
     local effective_cli
     effective_cli=$(get_effective_cli_type)
@@ -747,9 +757,13 @@ send_wakeup_with_escape() {
         return 0
     fi
 
-    dismiss_codex_rate_limit_prompt_if_present "$effective_cli"
-    case $? in
+    dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || prompt_rc=$?
+    case "$prompt_rc" in
         0|1) ;;
+        3)
+            echo "[$(date)] [SKIP] Hard Codex usage-limit prompt blocks $AGENT_ID; suppressing Escape+nudge" >&2
+            return 0
+            ;;
         *)
             echo "[$(date)] WARNING: Codex prompt dismiss failed for $AGENT_ID" >&2
             return 1

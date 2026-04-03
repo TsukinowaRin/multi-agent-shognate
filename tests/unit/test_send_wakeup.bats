@@ -747,6 +747,19 @@ YAML
     grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
 }
 
+@test "T-CODEX-010b0: send_wakeup は Codex 通常画面では no-prompt を許容して nudge する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'normal codex idle screen'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+}
+
 @test "T-CODEX-010b2: send_wakeup は Codex rate-limit prompt dismiss 失敗時に abort する" {
     run bash -c '
         MOCK_PANE_CLI="codex"
@@ -772,6 +785,20 @@ YAML
     [ "$status" -eq 0 ]
 
     grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010c0: send_wakeup_with_escape は Codex 通常画面では no-prompt を許容して継続する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'normal codex idle screen'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 4
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
     grep -q "send-keys.*Escape" "$MOCK_LOG"
     grep -q "send-keys.*inbox4" "$MOCK_LOG"
 }
@@ -803,6 +830,35 @@ YAML
 
     grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
     grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010d2: send_wakeup は hard usage-limit prompt では 1 を送らず nudge も抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+    ! grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    echo "$output" | grep -qi "Hard Codex usage-limit prompt"
+}
+
+@test "T-CODEX-010d3: send_wakeup_with_escape は hard usage-limit prompt では Escape+nudge を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 1
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
+    ! grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    echo "$output" | grep -qi "Hard Codex usage-limit prompt"
 }
 
 # --- T-CODEX-011: clear_command auto-recovery injection ---

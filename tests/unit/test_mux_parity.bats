@@ -82,6 +82,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux clean start は shogun_to_karo の active queue を空に戻す" {
+    run bats_search 'queue/shogun_to_karo\.yaml|commands: \[\]|pending cmd を再通知' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は bootstrap 配信結果と auth-required を runtime log へ残す" {
     run bats_search 'GOZA_BOOTSTRAP_LOG|goza_bootstrap_\$\{GOZA_BOOTSTRAP_RUN_ID\}\.log|status=auth-required|status=bootstrap-delivered' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
@@ -113,6 +118,6 @@ setup_file() {
 }
 
 @test "tmux 起動は Codex の rate-limit prompt も自動dismissする" {
-    run bats_search "auto_dismiss_codex_rate_limit_prompt_tmux|Approaching rate limits|You've hit your usage limit|Keep current model \\(never show again\\)|mini へ自動切替" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search "auto_dismiss_codex_rate_limit_prompt_tmux|Approaching rate limits|You've hit your usage limit|Keep current model \\(never show again\\)|gpt-5\\.1-codex-mini|hard usage-limit prompt|mini へ自動切替" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }

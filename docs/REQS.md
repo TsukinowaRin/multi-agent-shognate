@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-04-02
+最終更新: 2026-04-03
 出典: 直近ユーザープロンプト
 
 ## 追補（2026-04-01: 継続バグ探索と運用ノイズ抑制）
@@ -18,6 +18,9 @@
 11. Codex の rate-limit / usage-limit prompt 自動dismissでも、text 送信だけで成功扱いせず、失敗時は nudge / escalation へ進まないこと。
 12. bridge の `sent` / `already_sent` / `already_notified` 出力は、再利用 `cmd_id` が混ざる場合でも重複 `cmd_id` をそのまま並べず、必要なら timestamp 付きで識別できること。
 13. `watcher_supervisor.sh` の stale watcher cleanup は `gunshi` を誤って stale 扱いせず、実際に監督対象外になった watcher だけを kill すること。
+14. Codex watcher の rate-limit prompt dismiss は、prompt が存在しない通常画面で `return 1` しても watcher 自体を落とさず、そのまま通常 nudge / escalation を継続できること。
+15. `shutsujin_departure.sh -c` の clean start は `queue/shogun_to_karo.yaml` の active queue を空に戻し、前回 run の pending cmd を karo へ再通知しないこと。
+16. Codex の `You've hit your usage limit ... try again at ...` prompt は、mini 切替 option が無い hard block 画面では `1` を自動送信せず、watcher / startup の両方が誤入力ループに入らないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
@@ -52,6 +55,12 @@
    - 期待結果: 再利用 `cmd_id` を含む no-op 出力でも `cmd_id@timestamp` で区別され、重複列挙が回帰しない。
 15. コマンド: `bats tests/unit/test_watcher_supervisor.bats`
    - 期待結果: `cleanup_stale_watchers` は `gunshi` / `karo` / active ashigaru watcher を kill せず、監督対象外の watcher だけを kill する。
+16. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: Codex 通常画面では `send_wakeup` / `send_wakeup_with_escape` が no-prompt を許容し、watcher が `dismiss_codex_rate_limit_prompt_if_present` の `return 1` で落ちない回帰が PASS する。
+17. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: clean start で `queue/shogun_to_karo.yaml` を `commands: []` に戻す導線が存在し、stale `cmd_new` 再送防止の回帰が PASS する。
+18. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: hard usage-limit prompt では `1` や `inboxN` を送らず、startup も `gpt-5.1-codex-mini` option 有無を見て分岐する回帰が PASS する。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

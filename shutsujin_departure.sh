@@ -336,6 +336,10 @@ auto_dismiss_codex_rate_limit_prompt_tmux() {
     for i in {1..45}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -120 || true)"
         if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
+            if ! echo "$pane_text" | grep -qiE "gpt-5\.1-codex-mini|Switch to .*mini|1\. Switch"; then
+                log_info "  └─ ${agent_id}: Codex hard usage-limit prompt を検知（mini切替不可のため自動入力せず待機）"
+                return 0
+            fi
             tmux_send_text_and_enter "$pane_target" "1" "Codex usage-limit prompt" || return 1
             log_info "  └─ ${agent_id}: Codex usage-limit prompt で mini へ自動切替"
             sleep 2
@@ -1295,6 +1299,12 @@ EOF
     for agent in shogun gunshi "${KARO_AGENTS[@]}" "${KNOWN_ASHIGARU[@]}"; do
         echo "messages: []" > "./queue/inbox/${agent}.yaml"
     done
+
+    # 将軍→家老の active queue も clean start で空に戻す。
+    # ここを残すと bridge が前回 run の pending cmd を再通知してしまう。
+    cat > "./queue/shogun_to_karo.yaml" << 'EOF'
+commands: []
+EOF
 
     log_success "✅ 陣払い完了"
 else

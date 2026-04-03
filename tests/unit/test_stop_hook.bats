@@ -14,6 +14,7 @@
 #   T-HOOK-006: 中立メッセージ → inbox_write呼ばれない
 #   T-HOOK-007: last_assistant_message空 → inbox_write呼ばれない
 #   T-HOOK-008: inbox未読あり → block JSON出力
+#   T-HOOK-008b: inbox未読summaryに quotes があっても block JSON出力
 #   T-HOOK-009: inbox未読なし + 完了メッセージ → exit 0 + 通知あり
 #   T-HOOK-010: inbox未読あり + 完了メッセージ → block + 通知あり
 
@@ -114,6 +115,22 @@ YAML
     [ "$status" -eq 0 ]
     echo "$output" | grep -q '"decision"'
     echo "$output" | grep -q '"block"'
+}
+
+@test "T-HOOK-008b: unread inbox summary with quotes does not crash" {
+    cat > "$TEST_TMP/queue/inbox/ashigaru1.yaml" << 'YAML'
+messages:
+  - id: msg_001
+    from: karo
+    type: task_assigned
+    content: "quote: \"abc'''xyz\" and slash \\ test"
+    read: false
+YAML
+    run_hook '{"stop_hook_active": false, "last_assistant_message": ""}'
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q '"decision"'
+    echo "$output" | grep -q '"block"'
+    ! echo "$output" | grep -qi "SyntaxError"
 }
 
 @test "T-HOOK-009: no unread + completion message exits 0 with notification" {

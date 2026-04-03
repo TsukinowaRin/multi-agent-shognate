@@ -222,6 +222,27 @@ tmux_send_text_and_enter_or_die() {
     fi
 }
 
+record_runtime_blocker_notice_tmux() {
+    local agent_id="$1"
+    local issue="$2"
+    local detail="${3:-}"
+    local notice_script="${MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT:-$SCRIPT_DIR/scripts/runtime_blocker_notice.py}"
+
+    if [ ! -f "$notice_script" ]; then
+        return 0
+    fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if python3 "$notice_script" --project-root "$SCRIPT_DIR" --agent "$agent_id" --issue "$issue" --detail "$detail" >/dev/null 2>&1; then
+        log_info "  └─ ${agent_id}: runtime blocked notice を dashboard に記録"
+    else
+        log_warn "  └─ ${agent_id}: runtime blocked notice の記録に失敗"
+    fi
+    return 0
+}
+
 # Gemini CLI 初回の trust folder プロンプトを自動承認する（1回のみ）
 auto_accept_gemini_trust_prompt_tmux() {
     local pane_target="$1"
@@ -337,6 +358,7 @@ auto_dismiss_codex_rate_limit_prompt_tmux() {
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -120 || true)"
         if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
             if ! echo "$pane_text" | grep -qiE "gpt-5\.1-codex-mini|Switch to .*mini|1\. Switch"; then
+                record_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
                 log_info "  └─ ${agent_id}: Codex hard usage-limit prompt を検知（mini切替不可のため自動入力せず待機）"
                 return 0
             fi

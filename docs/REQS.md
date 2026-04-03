@@ -1752,3 +1752,17 @@
    - 期待結果: Android 設定画面の本体更新 UI を含めてもアプリがビルドできる。
 4. コマンド: `rg -n "queue-update|apply-pending|stop_and_apply_update|本体更新|停止してRelease更新|停止してUpstream取込" scripts/update_manager.py scripts/stop_and_apply_update.sh shutsujin_departure.sh android/app/src/main/java/com/shogun/android/viewmodel/SettingsViewModel.kt android/app/src/main/java/com/shogun/android/ui/SettingsScreen.kt README.md README_ja.md`
    - 期待結果: host 側 pending update 導線と Android UI / docs の接点が揃っている。
+
+## 追補（2026-04-04: Codex hard usage-limit の blocked 状態可視化）
+### 要求
+1. `shogun` など Codex pane が `You've hit your usage limit` の hard block に入った場合、watcher と startup は誤入力せず blocked 状態を `dashboard.md` に記録すること。
+2. blocked 記録は同一内容で重複しないこと。
+3. `dashboard.md` が日本語版でも bilingual 版でも、要対応セクションへ追記できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `python3 -m unittest tests.unit.test_runtime_blocker_notice`
+   - 期待結果: dashboard 新規作成、`なし` 置換、重複抑止、bilingual heading 対応が PASS する。
+2. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: hard usage-limit で `1` / nudge を送らず、notice helper 呼び出し回帰が PASS する。
+3. コマンド: `rg -n "record_runtime_blocker_notice|record_runtime_blocker_notice_tmux|codex-hard-usage-limit|runtime_blocker_notice.py" scripts/inbox_watcher.sh shutsujin_departure.sh`
+   - 期待結果: watcher と startup の両方から blocked notice 記録導線が見える。

@@ -846,6 +846,33 @@ YAML
     echo "$output" | grep -qi "Hard Codex usage-limit prompt"
 }
 
+@test "T-CODEX-010d2b: send_wakeup は hard usage-limit prompt を dashboard 通知へ記録する" {
+    export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice.log"
+    export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice.py"
+    cat > "$MOCK_NOTICE_SCRIPT" <<'MOCK'
+#!/usr/bin/env python3
+import os
+import sys
+
+with open(os.environ["NOTICE_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(" ".join(sys.argv[1:]) + "\n")
+MOCK
+    chmod +x "$MOCK_NOTICE_SCRIPT"
+
+    run bash -c '
+        export MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT="'"$MOCK_NOTICE_SCRIPT"'"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q -- '--agent test_agent --issue codex-hard-usage-limit' "$NOTICE_LOG"
+    grep -q -- '--detail You'\''ve hit your usage limit' "$NOTICE_LOG"
+    ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+}
+
 @test "T-CODEX-010d3: send_wakeup_with_escape は hard usage-limit prompt では Escape+nudge を抑止する" {
     run bash -c '
         MOCK_PANE_CLI="codex"

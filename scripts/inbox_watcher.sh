@@ -193,6 +193,29 @@ send_text_and_enter() {
     return 0
 }
 
+record_runtime_blocker_notice() {
+    local issue="${1:-}"
+    local detail="${2:-}"
+    local project_root="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+    local notice_script="${MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT:-${project_root}/scripts/runtime_blocker_notice.py}"
+
+    if [ ! -f "$notice_script" ]; then
+        return 0
+    fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "[$(date)] [WARN] python3 not available; runtime blocker notice skipped for $AGENT_ID" >&2
+        return 0
+    fi
+
+    if python3 "$notice_script" --project-root "$project_root" --agent "$AGENT_ID" --issue "$issue" --detail "$detail" >/dev/null 2>&1; then
+        echo "[$(date)] [INFO] runtime blocker notice recorded for $AGENT_ID ($issue)" >&2
+        return 0
+    fi
+
+    echo "[$(date)] [WARN] runtime blocker notice failed for $AGENT_ID ($issue)" >&2
+    return 0
+}
+
 dismiss_codex_rate_limit_prompt_if_present() {
     local effective_cli="${1:-}"
     local pane_text
@@ -205,6 +228,7 @@ dismiss_codex_rate_limit_prompt_if_present() {
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -40 || true)
     if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
         if ! echo "$pane_text" | grep -qiE "gpt-5\.1-codex-mini|Switch to .*mini|1\. Switch"; then
+            record_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
             echo "[$(date)] [SKIP] Hard Codex usage-limit prompt detected for $AGENT_ID; no mini switch option present" >&2
             return 3
         fi

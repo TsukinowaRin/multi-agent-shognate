@@ -121,3 +121,8 @@ setup_file() {
     run bats_search "auto_dismiss_codex_rate_limit_prompt_tmux|Approaching rate limits|You've hit your usage limit|Keep current model \\(never show again\\)|gpt-5\\.1-codex-mini|hard usage-limit prompt|mini へ自動切替" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "tmux 起動は hard usage-limit を dashboard blocked notice に記録する" {
+    run bats_search 'record_runtime_blocker_notice_tmux|runtime_blocker_notice\.py|codex-hard-usage-limit|dashboard に記録' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}

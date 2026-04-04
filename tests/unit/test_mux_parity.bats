@@ -143,6 +143,11 @@ setup_file() {
 }
 
 @test "tmux 起動は Codex auth-required を dashboard blocked notice に記録して除去する" {
-    run bats_search 'record_runtime_blocker_notice_tmux|clear_runtime_blocker_notice_tmux|codex-auth-required|dashboard に記録|dashboard から除去' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search 'record_runtime_blocker_notice_tmux|clear_runtime_blocker_notice_tmux|codex-auth-required|dashboard に記録|dashboard から除去|Login server error: Login cancelled|failed to start login server' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は Codex process が node でない間は bootstrap を保留する" {
+    run bats_search 'codex_process_running_tmux|pane_current_command|cli-not-running|Keeping bootstrap pending' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }

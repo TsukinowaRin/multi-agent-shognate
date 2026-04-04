@@ -447,7 +447,15 @@ codex_auth_prompt_detected_tmux() {
     local pane_text
 
     pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -120 || true)"
-    echo "$pane_text" | grep -qiE "Finish signing in via your browser|open the following link to authenticate|Sign in with ChatGPT|Sign in with Device Code|Provide your own API key|auth\\.openai\\.com/oauth/authorize"
+    echo "$pane_text" | grep -qiE "Finish signing in via your browser|open the following link to authenticate|Sign in with ChatGPT|Sign in with Device Code|Provide your own API key|auth\\.openai\\.com/oauth/authorize|Login server error: Login cancelled|account/login/start failed|failed to start login server"
+}
+
+codex_process_running_tmux() {
+    local pane_target="$1"
+    local current_command=""
+
+    current_command="$(tmux display-message -p -t "$pane_target" "#{pane_current_command}" 2>/dev/null || true)"
+    [ "$current_command" = "node" ]
 }
 
 append_bootstrap_status_log() {
@@ -613,6 +621,11 @@ deliver_bootstrap_tmux() {
             record_runtime_blocker_notice_tmux "$agent_id" "codex-auth-required" "Codex authentication prompt detected before bootstrap delivery."
             echo "[WARN] Codex authentication prompt detected in '$pane_target' for '$agent_id'. Skipping bootstrap until login completes." >&2
             append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "auth-required" "codex authentication prompt detected"
+            return 1
+        fi
+        if [ "$cli_type" = "codex" ] && ! codex_process_running_tmux "$pane_target"; then
+            echo "[WARN] Codex process is not running in '$pane_target' for '$agent_id'. Keeping bootstrap pending." >&2
+            append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "cli-not-running" "codex pane current command is not node"
             return 1
         fi
         clear_runtime_blocker_notice_tmux "$agent_id" "codex-auth-required" "Codex auth prompt not detected during bootstrap delivery."

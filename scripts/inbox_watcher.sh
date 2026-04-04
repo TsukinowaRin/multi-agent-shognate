@@ -306,7 +306,13 @@ dismiss_codex_rate_limit_prompt_if_present() {
 
 codex_auth_prompt_detected() {
     local pane_text="${1:-}"
-    printf '%s' "$pane_text" | grep -qiE "Finish signing in via your browser|open the following link to authenticate|Sign in with ChatGPT|Sign in with Device Code|Provide your own API key|auth\\.openai\\.com/oauth/authorize|Press Enter to continue"
+    printf '%s' "$pane_text" | grep -qiE "Finish signing in via your browser|open the following link to authenticate|Sign in with ChatGPT|Sign in with Device Code|Provide your own API key|auth\\.openai\\.com/oauth/authorize|Press Enter to continue|Login server error: Login cancelled|account/login/start failed|failed to start login server"
+}
+
+codex_process_running() {
+    local current_command=""
+    current_command=$(timeout 2 tmux display-message -p -t "$PANE_TARGET" "#{pane_current_command}" 2>/dev/null || true)
+    [ "$current_command" = "node" ]
 }
 
 bootstrap_ready_pattern() {
@@ -341,6 +347,9 @@ deliver_pending_bootstrap_if_ready() {
 
     if [[ "$effective_cli" == "codex" ]] && codex_auth_prompt_detected "$pane_text"; then
         record_runtime_blocker_notice "codex-auth-required" "$pane_text"
+        return 0
+    fi
+    if [[ "$effective_cli" == "codex" ]] && ! codex_process_running; then
         return 0
     fi
     clear_runtime_blocker_notice "codex-auth-required" "$pane_text"

@@ -1767,10 +1767,11 @@
 6. Codex auth prompt により bootstrap 未配信で止まった agent も、watcher と startup の両方から blocked 状態を `dashboard.md` に記録できること。
 7. auth prompt 解消後に bootstrap が再配信されたら、stale auth notice も `dashboard.md` から除去できること。
 8. 同じ agent / issue の blocked notice は detail が変わっても追記で増殖させず、既存 1 行を更新すること。
+9. 過去 run で残った同一 agent / issue の blocked notice 重複も、新しい record / clear のタイミングで自動的に 1 行へ正規化されること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `python3 -m unittest tests.unit.test_runtime_blocker_notice`
-   - 期待結果: hard usage-limit / auth-required の notice 作成、`なし` 置換、重複抑止、同一 agent / issue の detail 更新時 1 行置換、bilingual heading 対応、clear 時の `なし` 復元、not_found 時の timestamp 不変が PASS する。
+   - 期待結果: hard usage-limit / auth-required の notice 作成、`なし` 置換、重複抑止、同一 agent / issue の detail 更新時 1 行置換、既存重複の自動正規化、bilingual heading 対応、clear 時の `なし` 復元、not_found 時の timestamp 不変が PASS する。
 2. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
    - 期待結果: hard usage-limit で `1` / nudge を送らず、auth prompt 中の pending bootstrap は notice 記録、normal 画面や bootstrap 再配信成功時に stale notice clear が走る回帰が PASS する。
 3. コマンド: `rg -n "record_runtime_blocker_notice|record_runtime_blocker_notice_tmux|codex-hard-usage-limit|codex-auth-required|runtime_blocker_notice.py" scripts/inbox_watcher.sh shutsujin_departure.sh`

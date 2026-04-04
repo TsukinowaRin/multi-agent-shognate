@@ -219,6 +219,43 @@ class RuntimeBlockerNoticeTests(unittest.TestCase):
         self.assertNotIn("Sign in with ChatGPT", text)
         self.assertIn("最終更新: 2026-04-04 09:53", text)
 
+    def test_record_normalizes_preexisting_duplicate_blocked_notices(self):
+        self.dashboard.write_text(
+            "\n".join(
+                [
+                    "# 📊 戦況報告",
+                    "最終更新: 2026-04-04 09:54",
+                    "",
+                    runtime_blocker_notice.ACTION_REQUIRED_HEADING,
+                    "- [runtime-blocked/shogun] Codex auth prompt を検知。ログイン完了待ち。 詳細: Sign in with ChatGPT",
+                    "- [runtime-blocked/karo] Codex auth prompt を検知。ログイン完了待ち。 詳細: Sign in with ChatGPT",
+                    "- [runtime-blocked/shogun] Codex auth prompt を検知。ログイン完了待ち。 詳細: Finish signing in via your browser",
+                    "",
+                    "## 🔄 進行中 - 只今、戦闘中でござる",
+                    "なし",
+                    "",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        status = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "karo",
+            "codex-auth-required",
+            "Finish signing in via your browser",
+            "2026-04-04 09:55",
+        )
+
+        self.assertEqual(status, "updated")
+        text = self.dashboard.read_text(encoding="utf-8")
+        self.assertEqual(text.count("[runtime-blocked/shogun]"), 1)
+        self.assertEqual(text.count("[runtime-blocked/karo]"), 1)
+        self.assertIn("Finish signing in via your browser", text)
+        self.assertNotIn("詳細: Sign in with ChatGPT\n- [runtime-blocked/karo]", text)
+        self.assertIn("最終更新: 2026-04-04 09:55", text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 ACTION_REQUIRED_HEADING = "## 🚨 要対応 - 殿のご判断をお待ちしております"
 ACTION_REQUIRED_HEADING_ALT = "## 🚨 要対応 - 殿のご判断をお待ちしております (Action Required - Awaiting Lord's Decision)"
+RUNTIME_BLOCKED_PATTERN = re.compile(r"^- \[runtime-blocked/(?P<agent>[^\]]+)\] (?P<message>.+)$")
 
 
 def dashboard_template(timestamp_text: str) -> list[str]:
@@ -73,6 +74,40 @@ def matches_notice(line: str, agent: str, issue: str) -> bool:
     return stripped == f"{prefix}{issue}"
 
 
+def notice_identity(line: str) -> tuple[str, str] | None:
+    match = RUNTIME_BLOCKED_PATTERN.match(line.strip())
+    if not match:
+        return None
+    agent = match.group("agent")
+    message = match.group("message")
+    if message.startswith("Codex hard usage-limit prompt"):
+        return agent, "codex-hard-usage-limit"
+    if message.startswith("Codex auth prompt"):
+        return agent, "codex-auth-required"
+    return agent, message.split(" 詳細:", 1)[0].strip()
+
+
+def compact_body(body: list[str]) -> list[str]:
+    return [line for line in body if line.strip() and line.strip() != "なし"]
+
+
+def normalize_action_required_body(body: list[str]) -> list[str]:
+    compact = compact_body(body)
+    last_index_by_identity: dict[tuple[str, str], int] = {}
+    for idx, line in enumerate(compact):
+        identity = notice_identity(line)
+        if identity is not None:
+            last_index_by_identity[identity] = idx
+
+    normalized: list[str] = []
+    for idx, line in enumerate(compact):
+        identity = notice_identity(line)
+        if identity is not None and last_index_by_identity.get(identity) != idx:
+            continue
+        normalized.append(line)
+    return normalized
+
+
 def find_section_bounds(lines: list[str], headings: tuple[str, ...]) -> tuple[int, int]:
     start = -1
     end = len(lines)
@@ -116,17 +151,13 @@ def ensure_notice(dashboard_path: Path, agent: str, issue: str, detail: str, tim
     notice = format_notice(agent, issue, detail)
     start, end = find_section_bounds(lines, (ACTION_REQUIRED_HEADING, ACTION_REQUIRED_HEADING_ALT))
     body = lines[start + 1:end]
-
-    if any(line.strip() == notice for line in body):
-        return "duplicate"
+    compact_existing = compact_body(body)
+    normalized_body = normalize_action_required_body(body)
+    had_exact_notice = any(line.strip() == notice for line in normalized_body)
     matched_existing = False
 
-    update_last_updated(lines, timestamp_text)
     filtered_body = []
-    for line in body:
-        stripped = line.strip()
-        if not stripped or stripped == "なし":
-            continue
+    for line in normalized_body:
         if matches_notice(line, agent, issue):
             if not matched_existing:
                 filtered_body.append(notice)
@@ -135,6 +166,11 @@ def ensure_notice(dashboard_path: Path, agent: str, issue: str, detail: str, tim
         filtered_body.append(line)
     if not matched_existing:
         filtered_body.append(notice)
+
+    if had_exact_notice and filtered_body == normalized_body and normalized_body == compact_existing:
+        return "duplicate"
+
+    update_last_updated(lines, timestamp_text)
     lines[start + 1:end] = filtered_body + [""]
 
     dashboard_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
@@ -149,13 +185,13 @@ def clear_notice(dashboard_path: Path, agent: str, issue: str, timestamp_text: s
 
     start, end = find_section_bounds(lines, (ACTION_REQUIRED_HEADING, ACTION_REQUIRED_HEADING_ALT))
     body = lines[start + 1:end]
-
-    existing_body = [line for line in body if line.strip() and line.strip() != "なし"]
+    normalized_body = normalize_action_required_body(body)
+    existing_body = compact_body(body)
     filtered_body = [
-        line for line in body if line.strip() and not matches_notice(line, agent, issue) and line.strip() != "なし"
+        line for line in normalized_body if not matches_notice(line, agent, issue)
     ]
 
-    if len(filtered_body) == len(existing_body):
+    if len(filtered_body) == len(normalized_body) and normalized_body == existing_body:
         return "not_found"
 
     update_last_updated(lines, timestamp_text)

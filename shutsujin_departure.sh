@@ -610,10 +610,12 @@ deliver_bootstrap_tmux() {
     ready_rc=$?
     if [ "$ready_rc" -ne 0 ]; then
         if [ "$ready_rc" -eq 2 ]; then
+            record_runtime_blocker_notice_tmux "$agent_id" "codex-auth-required" "Codex authentication prompt detected before bootstrap delivery."
             echo "[WARN] Codex authentication prompt detected in '$pane_target' for '$agent_id'. Skipping bootstrap until login completes." >&2
             append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "auth-required" "codex authentication prompt detected"
             return 1
         fi
+        clear_runtime_blocker_notice_tmux "$agent_id" "codex-auth-required" "Codex auth prompt not detected during bootstrap delivery."
         echo "[WARN] CLI '$cli_type' not ready in '$pane_target' after 30s, sending bootstrap anyway" >&2
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-timeout" "sending bootstrap anyway after 30s"
     fi
@@ -628,6 +630,7 @@ deliver_bootstrap_tmux() {
     fi
     rm -f "$pending_file"
     : > "$delivered_file"
+    clear_runtime_blocker_notice_tmux "$agent_id" "codex-auth-required" "Codex auth prompt cleared before bootstrap delivery."
     append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-delivered" "send-keys literal + enter"
 }
 

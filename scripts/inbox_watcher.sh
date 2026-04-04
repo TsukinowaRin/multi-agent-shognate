@@ -340,8 +340,10 @@ deliver_pending_bootstrap_if_ready() {
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
 
     if [[ "$effective_cli" == "codex" ]] && codex_auth_prompt_detected "$pane_text"; then
+        record_runtime_blocker_notice "codex-auth-required" "$pane_text"
         return 0
     fi
+    clear_runtime_blocker_notice "codex-auth-required" "$pane_text"
     if agent_is_busy; then
         return 0
     fi
@@ -360,6 +362,7 @@ deliver_pending_bootstrap_if_ready() {
 
     rm -f "$pending_file"
     : > "$delivered_file"
+    clear_runtime_blocker_notice "codex-auth-required" "$pane_text"
     echo "[$(date)] [INFO] bootstrap retried and delivered for $AGENT_ID" >&2
     return 0
 }

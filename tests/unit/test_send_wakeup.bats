@@ -934,6 +934,67 @@ MOCK
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
+@test "T-CODEX-015a: watcher は auth prompt 中の pending bootstrap を dashboard 通知へ記録する" {
+    export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice_auth.log"
+    export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice_auth.py"
+    cat > "$MOCK_NOTICE_SCRIPT" <<'MOCK'
+#!/usr/bin/env python3
+import os
+import sys
+
+with open(os.environ["NOTICE_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(" ".join(sys.argv[1:]) + "\n")
+MOCK
+    chmod +x "$MOCK_NOTICE_SCRIPT"
+
+    run bash -c '
+        export MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT="'"$MOCK_NOTICE_SCRIPT"'"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\n1. Sign in with ChatGPT\nPress Enter to continue'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q -- '--action record --agent test_agent --issue codex-auth-required' "$NOTICE_LOG"
+    ! grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015b: watcher は bootstrap 再配信成功時に auth notice を除去する" {
+    export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice_auth_clear.log"
+    export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice_auth_clear.py"
+    cat > "$MOCK_NOTICE_SCRIPT" <<'MOCK'
+#!/usr/bin/env python3
+import os
+import sys
+
+with open(os.environ["NOTICE_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(" ".join(sys.argv[1:]) + "\n")
+MOCK
+    chmod +x "$MOCK_NOTICE_SCRIPT"
+
+    run bash -c '
+        export MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT="'"$MOCK_NOTICE_SCRIPT"'"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\nfor shortcuts'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q -- '--action clear --agent test_agent --issue codex-auth-required' "$NOTICE_LOG"
+}
+
 # --- T-CODEX-011: clear_command auto-recovery injection ---
 
 @test "T-CODEX-011: process_unread injects auto-recovery task and sends inbox nudge after clear_command" {

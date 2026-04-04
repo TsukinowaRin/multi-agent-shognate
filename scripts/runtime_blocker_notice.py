@@ -51,6 +51,8 @@ def normalize_detail(detail: str) -> str:
 def format_notice(agent: str, issue: str, detail: str) -> str:
     if issue == "codex-hard-usage-limit":
         base = f"- [runtime-blocked/{agent}] Codex hard usage-limit prompt を検知。人手で再開判断が必要。"
+    elif issue == "codex-auth-required":
+        base = f"- [runtime-blocked/{agent}] Codex auth prompt を検知。ログイン完了待ち。"
     else:
         base = f"- [runtime-blocked/{agent}] {issue}"
     normalized = normalize_detail(detail)
@@ -66,6 +68,8 @@ def matches_notice(line: str, agent: str, issue: str) -> bool:
         return False
     if issue == "codex-hard-usage-limit":
         return "Codex hard usage-limit prompt" in stripped
+    if issue == "codex-auth-required":
+        return "Codex auth prompt" in stripped
     return stripped == f"{prefix}{issue}"
 
 

@@ -1760,14 +1760,16 @@
 3. `dashboard.md` が日本語版でも bilingual 版でも、要対応セクションへ追記できること。
 4. hard block が解消した後は stale blocked notice を `dashboard.md` から除去できること。
 5. duplicate / not_found の no-op ケースでは `dashboard.md` を無駄に書き換えないこと。
+6. Codex auth prompt により bootstrap 未配信で止まった agent も、watcher と startup の両方から blocked 状態を `dashboard.md` に記録できること。
+7. auth prompt 解消後に bootstrap が再配信されたら、stale auth notice も `dashboard.md` から除去できること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `python3 -m unittest tests.unit.test_runtime_blocker_notice`
-   - 期待結果: dashboard 新規作成、`なし` 置換、重複抑止、bilingual heading 対応、clear 時の `なし` 復元、not_found 時の timestamp 不変が PASS する。
+   - 期待結果: hard usage-limit / auth-required の notice 作成、`なし` 置換、重複抑止、bilingual heading 対応、clear 時の `なし` 復元、not_found 時の timestamp 不変が PASS する。
 2. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
-   - 期待結果: hard usage-limit で `1` / nudge を送らず、normal 画面で stale notice clear が走る回帰が PASS する。
-3. コマンド: `rg -n "record_runtime_blocker_notice|record_runtime_blocker_notice_tmux|codex-hard-usage-limit|runtime_blocker_notice.py" scripts/inbox_watcher.sh shutsujin_departure.sh`
-   - 期待結果: watcher と startup の両方から blocked notice 記録導線が見える。
+   - 期待結果: hard usage-limit で `1` / nudge を送らず、auth prompt 中の pending bootstrap は notice 記録、normal 画面や bootstrap 再配信成功時に stale notice clear が走る回帰が PASS する。
+3. コマンド: `rg -n "record_runtime_blocker_notice|record_runtime_blocker_notice_tmux|codex-hard-usage-limit|codex-auth-required|runtime_blocker_notice.py" scripts/inbox_watcher.sh shutsujin_departure.sh`
+   - 期待結果: watcher と startup の両方から hard usage-limit / auth-required の blocked notice 記録導線が見える。
 
 ## 追補（2026-04-04: 出陣スクリプトの二重起動ガード）
 ### 要求

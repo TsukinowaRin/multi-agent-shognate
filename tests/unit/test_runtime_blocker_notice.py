@@ -174,6 +174,27 @@ class RuntimeBlockerNoticeTests(unittest.TestCase):
         text = self.dashboard.read_text(encoding="utf-8")
         self.assertIn("最終更新: 2026-04-04 09:40", text)
 
+    def test_auth_required_notice_round_trip(self):
+        first = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "karo",
+            "codex-auth-required",
+            "Sign in with ChatGPT",
+            "2026-04-04 09:50",
+        )
+        cleared = runtime_blocker_notice.clear_notice(
+            self.dashboard,
+            "karo",
+            "codex-auth-required",
+            "2026-04-04 09:51",
+        )
+
+        self.assertEqual(first, "updated")
+        self.assertEqual(cleared, "cleared")
+        text = self.dashboard.read_text(encoding="utf-8")
+        self.assertNotIn("Codex auth prompt", text)
+        self.assertIn("最終更新: 2026-04-04 09:51", text)
+
 
 if __name__ == "__main__":
     unittest.main()

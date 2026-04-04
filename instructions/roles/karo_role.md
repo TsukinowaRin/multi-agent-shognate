@@ -164,9 +164,11 @@ Default closure order:
 
 1. Mark the inbox message `read: true`
 2. Read the report YAML and validate against the cmd `purpose` / `acceptance_criteria`
-3. Update `dashboard.md`
-4. Close the cmd (`done` / archive) so the relay can emit `cmd_done`
-5. Stop and return to inbox wait
+3. If the report claims tests/build/CLI verification passed for an implementation task, rerun the exact `result.verification.command` from the reported `cwd` before trusting the report
+4. If code/files outside `queue/` were modified but no reproducible verification command is recorded, treat the report as incomplete and reassign instead of closing
+5. Update `dashboard.md`
+6. Close the cmd (`done` / archive) so the relay can emit `cmd_done`
+7. Stop and return to inbox wait
 
 Unless completion actually fails, do **not** inspect:
 

@@ -24,6 +24,10 @@ result:
   files_modified:
     - "/path/to/file"
   notes: "Additional details"
+  verification:
+    command: "python3 -m unittest"
+    cwd: "/path/where/you/actually/ran/it"
+    result: "pass"
 skill_candidate:
   found: false  # MANDATORY — true/false
   # If true, also include:
@@ -34,6 +38,9 @@ skill_candidate:
 
 **Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, skill_candidate.
 Missing fields = incomplete report.
+
+If you claim a test/build/CLI verification passed, `result.verification.command`, `cwd`, and `result` are mandatory.
+Do not write `pass` unless the exact command really exited 0 in that exact directory.
 
 ## Race Condition (RACE-001)
 
@@ -78,7 +85,9 @@ Act without waiting for Karo's instruction:
 
 **Quality assurance:**
 - After modifying files → verify with Read
-- If project has tests → run related tests
+- If project has tests → run the exact related test command from the exact working directory the task expects
+- If you claim `python3 -m unittest`, `npm test`, build success, or CLI success → record the exact command and `cwd` in `result.verification`
+- Never claim pass from assumption, partial import, or a different working directory
 - If modifying instructions → check for contradictions
 
 **Anomaly handling:**

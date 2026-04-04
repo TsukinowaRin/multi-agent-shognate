@@ -62,6 +62,9 @@
 - [x] (2026-04-04 18:2x JST) shell 戻り Codex pane の再起動時に、既配信扱いの `bootstrap_<agent>.delivered` を外して `bootstrap_<agent>.pending` を復元し、再ログイン後の bootstrap 再試行を可能にした。
 - [x] (2026-04-04 18:3x JST) `runtime_blocker_notice.py` が auth prompt / hard usage-limit の detail を issue 別の安定要約へ正規化し、pane capture の揺れだけで `dashboard.md` と watcher log を更新し続けないようにした。
 - [x] (2026-04-04 20:4x JST) `runtime_blocker_notice.py` が壊れた `dashboard.md` の骨格も自動修復し、garbled auth detail と duplicate section を残さないようにした。
+- [x] (2026-04-04 21:2x JST) main repo の実 Codex runtime で `cmd_001`, `cmd_002` を連続投入し、どちらも `shogun -> karo -> ashigaru -> karo -> shogun` の `cmd_done` 返却と将軍報告まで完了した。
+- [x] (2026-04-04 21:4x JST) 共同開発 task `cmd_003` では `runtime_sandboxes/live_validation_probe/` へのファイル生成自体は成功した一方、report が主張した `python3 -m unittest` 成功を再現できず、verification contract 不足を実 runtime で確認した。
+- [x] (2026-04-04 21:5x JST) 足軽 report に exact verification command / cwd / result を必須化し、家老が implementation task close 前に reported command を rerun する instruction 契約と build_system 回帰を追加した。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -130,6 +133,10 @@
   Evidence: 実 runtime の `dashboard.md` は `wc -l` で 3 行しかない状態から始まり、その後の helper 実行で `# 📊 戦況報告` は戻っても `## 🛠️ 生成されたスキル` 以降が重複していた。修正後は `python3 scripts/runtime_blocker_notice.py --project-root . --agent shogun --issue codex-auth-required ...` 実行後に、`dashboard.md` の既知 section が 1 回ずつの骨格へ戻り、garbled auth detail も generic detail へ正規化された。
 - Observation: `shutsujin_departure.sh` が `watcher_supervisor` を background 起動しただけでは、初回 tick の前に runtime 観測を始めると「watcher 起動完了」と表示されていても実 watcher log がまだ増えていないことがあった。
   Evidence: fresh startup 直後の `logs/inbox_watcher_ashigaru2.log` に新しい `inbox_watcher started` 行が出ず、`timeout 3 bash scripts/watcher_supervisor.sh` を foreground で手動実行した瞬間に watcher start と restart log が追記された。
+- Observation: main repo で auth 済み pane を使うと、`cmd_001` と `cmd_002` は連続で `cmd_done` まで完了し、`queue/shogun_to_karo_archive.yaml` と `queue/inbox/shogun.yaml` に終端状態が残った。
+  Evidence: `queue/shogun_to_karo_archive.yaml` に `cmd_001` / `cmd_002` の `status: done`、`queue/inbox/shogun.yaml` に対応する `cmd_done` があり、shogun pane capture に完了報告が残った。
+- Observation: 共同開発 task `cmd_003` の足軽 report は `python3 -m unittest` 成功を主張したが、実際に `runtime_sandboxes/live_validation_probe` で同コマンドを実行すると `ModuleNotFoundError: No module named 'runtime_sandboxes'` で失敗した。
+  Evidence: `queue/reports/ashigaru1_report.yaml` の `notes` と、`cd runtime_sandboxes/live_validation_probe && python3 -m unittest` の実行結果が矛盾した。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -207,6 +214,9 @@
 - Decision: Gemini alias 同期は `alias -> base_model` の 2 段書き換えをやめ、最終的に settings へ保存したい `base_model` を直接比較する。
   Rationale: alias 表示は pane footer 用であり、settings 側は base model を持っていれば十分なので、毎回 changed 判定になる必要がないため。
   Date/Author: 2026-04-04 / Codex
+- Decision: implementation 系 task の close 契約は、report 要約の自然言語ではなく `result.verification.command` / `cwd` / `result` を正本とし、家老が reported command を rerun してから close する。
+  Rationale: 実 runtime の共同開発 task で、足軽 report が test pass を主張しても実コマンドが失敗する false-positive を確認し、report 文面だけでは品質を担保できないと分かったため。
+  Date/Author: 2026-04-04 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -233,11 +243,14 @@
   - shell に戻った Codex pane は `watcher_supervisor` / `inbox_watcher` の双方から restart command を再投入できるようになり、実観測でも `logs/inbox_watcher_ashigaru2.log` に `restarted shell-returned Codex pane` を確認した。
   - startup は `WATCHER_SUPERVISOR_ONCE=1` の同期 tick を挟むようになり、初回 watcher 起動を detached supervisor の初回 loop に依存しない形へ寄せた。
   - `runtime_cli_pref_daemon` の no-op / unchanged は既定で静かになり、Gemini alias 同期後の 2 回目 sync は `unchanged` 扱いへ戻せた。
+  - main repo の auth 済み実 Codex runtime では、`cmd_001` と `cmd_002` の 2 本を連続で `cmd_done` まで完了できた。
+  - 共同開発 task `cmd_003` の実観測から、検証結果の虚偽報告を instruction / protocol 契約で抑止する必要があることを特定し、exact command/cwd 記録と karo rerun-before-close を導入した。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。
   - E2E bats は test helper 実体が repo に無いため、この環境では補強できなかった。
   - 長時間連続運用で rate-limit / usage-limit が再発した場合の throughput 低下は、引き続き外部 quota 依存で残る。
+  - `cmd_003` 自体は旧 instruction のまま進行した task なので、新しい verification contract が live runtime で closure を止められるかは次回 task で再確認が必要。
 - Lessons:
   - WSL の `/mnt/d` 配下で tmux を使う検証は、socket を Linux 側 filesystem へ逃がす前提で考えた方が早い。
   - bare command 解決に依存する CLI 起動は、tmux pane shell の PATH 差異で検証が揺れる。隔離検証では絶対パスが安全。

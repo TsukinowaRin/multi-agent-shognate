@@ -185,6 +185,17 @@ setup() {
     grep -q "queue/tasks/ashigaru{N}.yaml" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
+@test "content: codex-ashigaru.md requires exact verification command and cwd before claiming pass" {
+    grep -q "result.verification.command" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "result.verification.cwd" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Do not write \`pass\` unless the exact command really exited 0 in that exact directory" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-karo.md reruns reported verification before closing implementation cmd" {
+    grep -q "rerun the exact \`result.verification.command\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "treat the report as incomplete and reassign instead of closing" "$OUTPUT_DIR/codex-karo.md"
+}
+
 # =============================================================================
 # 内容検証テスト — CLI固有セクション
 # =============================================================================

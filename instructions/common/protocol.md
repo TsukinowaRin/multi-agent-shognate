@@ -187,3 +187,18 @@ bash scripts/inbox_write.sh karo "足軽{N}号、任務完了でござる。報�
 
 That's it. No state checking, no retry, no delivery verification.
 The inbox_write guarantees persistence. inbox_watcher handles delivery.
+
+## Verification Contract For Implementation Tasks
+
+When an ashigaru claims a test, build, or CLI verification passed:
+
+1. The report must record the exact command in `result.verification.command`
+2. The report must record the exact working directory in `result.verification.cwd`
+3. The report must record the observed result in `result.verification.result`
+4. "It should pass" or "module import looked fine" is not verification
+
+When karo closes an implementation cmd after `report_received`:
+
+1. Re-run the reported verification command from the reported working directory
+2. If the command fails, do not mark the cmd done
+3. If the report omits reproducible verification for modified code/files, treat the report as incomplete

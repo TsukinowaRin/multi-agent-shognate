@@ -330,6 +330,21 @@ bash scripts/inbox_write.sh karo "足軽{N}号、任務完了でござる。報�
 That's it. No state checking, no retry, no delivery verification.
 The inbox_write guarantees persistence. inbox_watcher handles delivery.
 
+## Verification Contract For Implementation Tasks
+
+When an ashigaru claims a test, build, or CLI verification passed:
+
+1. The report must record the exact command in `result.verification.command`
+2. The report must record the exact working directory in `result.verification.cwd`
+3. The report must record the observed result in `result.verification.result`
+4. "It should pass" or "module import looked fine" is not verification
+
+When karo closes an implementation cmd after `report_received`:
+
+1. Re-run the reported verification command from the reported working directory
+2. If the command fails, do not mark the cmd done
+3. If the report omits reproducible verification for modified code/files, treat the report as incomplete
+
 # Task Flow
 
 ## Workflow: Shogun → Karo → Ashigaru
@@ -394,6 +409,18 @@ When the wakeup reason is `report_received`, keep the read scope narrow:
 3. `dashboard.md`
 
 Do not wander into bridge scripts, relay state TSVs, notification helpers, `streaks.yaml`, `*.sample`, or unrelated docs unless completion genuinely fails. The goal of a report wakeup is closure, not exploration.
+
+### Implementation Cmd Closure Rule
+
+For implementation or file-generation work, "report says tests passed" is not enough.
+
+Karo must:
+
+1. read `result.verification.command` and `result.verification.cwd`
+2. rerun that command from that directory
+3. close the cmd only if the rerun actually succeeds
+
+If the report has modified code/files but lacks reproducible verification metadata, treat it as incomplete and send it back instead of closing.
 
 ## Foreground Block Prevention (24-min Freeze Lesson)
 

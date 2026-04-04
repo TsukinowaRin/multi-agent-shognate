@@ -94,6 +94,21 @@
 5. コマンド: `bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/unit/test_mux_parity.bats tests/unit/test_send_wakeup.bats`
    - 期待結果: 家老終盤最適化と archive relay 修正を含めて PASS する。
 
+## 追補（2026-04-04: 共同開発 task の検証虚偽を防ぐ）
+### 要求
+1. 足軽が test / build / CLI 動作確認の成功を主張する場合、`result.verification` に再現可能な検証情報を必ず残すこと。
+2. `result.verification` には、少なくとも `command`, `cwd`, `result` を含め、どのディレクトリで何を実行して成功したか第三者が再現できること。
+3. 家老は implementation 系 task を close する前に、report に記載された `result.verification.command` を `result.verification.cwd` で再実行し、成功した場合のみ close すること。
+4. `queue/` 以外のファイルを変更した implementation task で、再現可能な検証情報が無い report は incomplete 扱いにし、完了扱いで閉じないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh`
+   - 期待結果: generated instructions が更新され、verification contract が各 CLI 向け generated 文書へ反映される。
+2. コマンド: `bats tests/unit/test_build_system.bats`
+   - 期待結果: 足軽に exact verification command / cwd 記録を要求し、家老に rerun-before-close を要求する回帰を含めて PASS する。
+3. コマンド: `cd runtime_sandboxes/live_validation_probe && python3 -m unittest`
+   - 期待結果: report が `pass` を主張していても、実行に失敗するケースを再現でき、instruction 契約強化の必要性を説明できる。
+
 ## 追補（2026-03-29: 実Codexでの実起動・認証待ち観測・改善）
 ### 要求
 1. mock ではなく実 `codex` CLI を使って、隔離コピー側で runtime を起動すること。

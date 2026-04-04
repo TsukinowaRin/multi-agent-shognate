@@ -50,6 +50,9 @@
 - [x] (2026-03-30 01:4x JST) `scripts/karo_done_to_shogun_bridge.py` が active queue しか見ず archive 済み `done` を拾えない不具合を修正し、`cmd_id+timestamp` 識別へ更新。
 - [x] (2026-03-30 01:5x JST) 修正後の `Shogunate-test` で単発 task が再び `cmd_done` まで返ることを確認。
 - [x] (2026-03-30 01:5x JST) handoff 推奨の共同開発 task を完了し、`playground/queue_summary/` に CLI / README / tests を生成、`python3 -m unittest` 3件 PASS を確認。
+- [x] (2026-04-04 15:5x JST) Codex auth prompt に当たった agent の bootstrap を `.pending` marker として保持し、watcher が auth 解消後に literal 再配信できるようにした。
+- [x] (2026-04-04 15:5x JST) `bash shutsujin_departure.sh -c` の最終案内を auth pending に追随させ、「全員 ready」と誤表示しないことを main repo 実行で確認した。
+- [x] (2026-04-04 15:5x JST) `flock` が tmux server へ継承されて直列再起動まで塞ぐ問題を再現し、lock dir 方式へ置き換えて直列成功・並列拒否の両方を確認した。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -96,6 +99,10 @@
   Evidence: 修正前は `streaks.yaml.sample` / bridge script / relay state TSV へ寄り道したが、`report_received` fast closure を追加後は `dashboard` 更新と archive 化まで一直線で進んだ。
 - Observation: 共同開発 task では `ashigaru1` が `app.py` + tests、`ashigaru2` が README を担当する 2 段分割で、標準ライブラリのみの CLI + `python3 -m unittest` 成功まで通った。
   Evidence: `playground/queue_summary/app.py`, `playground/queue_summary/README.md`, `playground/queue_summary/tests/test_app.py` が生成され、`python3 -m unittest` が `Ran 3 tests ... OK` を返した。
+- Observation: auth-required を skip だけで終えると、ログイン後も bootstrap が未配信のまま取り残され、pane が ready に戻っても初動に入れない。
+  Evidence: main repo の `bash shutsujin_departure.sh -c` で auth prompt を検知した run では、watcher 側に再送処理が無い限り初動文面が pane へ入らなかった。
+- Observation: `flock` 方式の起動 lock は file descriptor を引き継いだ tmux server が保持し続け、先行起動終了後の直列再実行まで「実行中」扱いにしうる。
+  Evidence: `lsof .shogunate/locks/shutsujin.lock` で tmux の FD 保持を確認し、直列 2 回実行で 2 回目が誤って lock に弾かれた。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -131,6 +138,15 @@
 - Decision: `karo_done_to_shogun_bridge.py` は active queue と archive file の両方を監視し、state key は `cmd_id+timestamp` とする。
   Rationale: 家老が `done` cmd を archive へ移す運用と両立しつつ、`cmd_001` のような再利用 ID でも別 run の完了を relay できるようにするため。
   Date/Author: 2026-03-30 / Codex
+- Decision: auth prompt にぶつかった bootstrap は失敗扱いで捨てず、`queue/runtime/bootstrap_<agent>.pending` として保持して watcher に再配信させる。
+  Rationale: 実運用では起動後にユーザーがログインを完了することがあり、その時点で runtime を立て直さなくても初動へ戻れる方が実用的なため。
+  Date/Author: 2026-04-04 / Codex
+- Decision: bootstrap 再配信は `tmux send-keys -l` の literal 送信を使い、通常の nudge と分けて扱う。
+  Rationale: 初動文面は複数行・記号入りであり、通常の key sequence 送信だと崩れるため。
+  Date/Author: 2026-04-04 / Codex
+- Decision: 出陣スクリプトの二重起動ガードは `flock` ではなく lock dir + pid file へ置き換える。
+  Rationale: tmux server への FD 継承で lock 解放タイミングが読めず、直列再起動まで不安定になるため。
+  Date/Author: 2026-04-04 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -147,6 +163,9 @@
   - 2026-03-30 の再開検証で、単発 task は修正後に再度 `cmd_done` まで完了した。
   - handoff 推奨の共同開発 task では `playground/queue_summary/` に `app.py` / `README.md` / `tests/test_app.py` を生成し、`python3 -m unittest` 3件 PASS まで確認した。
   - `scripts/karo_done_to_shogun_bridge.py` の archive relay 欠落を修正し、実機でも `cmd_done` が将軍 inbox へ戻ることを確認した。
+  - 2026-04-04 の main repo 実行では、auth prompt が残っていても runtime 全体は最後まで起動し、最終案内が auth pending を正しく表示した。
+  - 同日の watcher 単体回帰では、pending bootstrap を auth 解消後に literal 再配信し、`.pending` から `.delivered` へ進める経路を確認した。
+  - 二重起動ガードは lock dir 方式へ更新し、直列 2 回実行は成功、並列実行は後続だけ fail-fast する状態にできた。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。

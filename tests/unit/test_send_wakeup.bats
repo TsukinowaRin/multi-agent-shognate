@@ -915,6 +915,25 @@ MOCK
     echo "$output" | grep -qi "Hard Codex usage-limit prompt"
 }
 
+@test "T-CODEX-015: watcher は auth 解消後に pending bootstrap を literal 再配信する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\nfor shortcuts'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
 # --- T-CODEX-011: clear_command auto-recovery injection ---
 
 @test "T-CODEX-011: process_unread injects auto-recovery task and sends inbox nudge after clear_command" {

@@ -1773,9 +1773,32 @@
 ### 要求
 1. `shutsujin_departure.sh` が並列に 2 回以上起動された場合、後続起動は tmux session を壊す前に停止すること。
 2. 停止時は「既に別の `shutsujin_departure.sh` が実行中」と明示すること。
+3. 長寿命子プロセスへ lock を引き継いで、直列の再起動まで誤って塞がないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bats tests/unit/test_mux_parity.bats`
-   - 期待結果: `flock` による二重起動ガードの静的回帰が PASS する。
+   - 期待結果: lock dir による二重起動ガードの静的回帰が PASS する。
 2. コマンド: `python3 - <<'PY' ...` で `bash shutsujin_departure.sh -s` を並列実行
    - 期待結果: 後続起動が exit 1 で停止し、`既に別の shutsujin_departure.sh が実行中` を出す。
+3. コマンド: `python3 - <<'PY' ...` で `bash shutsujin_departure.sh -s` を直列に 2 回実行
+   - 期待結果: 1 回目完了後の 2 回目は lock 残骸に阻害されず、両方 exit 0 で完了する。
+
+## 追補（2026-04-04: Codex 認証待ち後の bootstrap 再配信）
+### 要求
+1. `shutsujin_departure.sh -c` 実行時に Codex pane が認証待ち画面なら、bootstrap を誤送信せず pending として保持すること。
+2. 認証待ちの agent が通常画面へ戻った後は、watcher が pending bootstrap を自動再配信できること。
+3. bootstrap 再配信は literal 送信で行い、改行や記号を含む初動文面を壊さないこと。
+4. startup 完了メッセージは、auth 待ちで bootstrap 未配信の agent が残っている場合に「全員 ready」と誤案内しないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: pending bootstrap 再配信と startup の auth 待ち案内を含む回帰が PASS する。
+2. コマンド: `bash shutsujin_departure.sh -c`
+   - 前提: 少なくとも 1 pane が `Sign in with ChatGPT` などの Codex 認証待ち画面にいる。
+   - 期待結果: runtime は最後まで起動し、最終案内に「一部エージェントは認証待ちで初動命令が未配信です。ログイン完了後は watcher が bootstrap を再試行します。」が出る。
+3. コマンド: `ls queue/runtime/bootstrap_*.pending`
+   - 前提: startup 時点で auth 待ち agent が存在する。
+   - 期待結果: 該当 agent の pending marker が残る。
+4. コマンド: watcher 経由で `deliver_pending_bootstrap_if_ready` を実行
+   - 前提: `queue/runtime/bootstrap_<agent>.pending` があり、pane が通常の Codex 画面へ復帰している。
+   - 期待結果: `.pending` が消え `.delivered` が作成され、bootstrap 本文は literal + Enter で送信される。

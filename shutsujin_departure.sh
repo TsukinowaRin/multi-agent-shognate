@@ -23,15 +23,30 @@ ensure_tmux_tmpdir() {
 
 acquire_startup_lock() {
     local lock_root="$SCRIPT_DIR/.shogunate/locks"
-    local lock_file="$lock_root/shutsujin.lock"
-
-    command -v flock >/dev/null 2>&1 || return 0
+    local lock_dir="$lock_root/shutsujin.lock.d"
+    local pid_file="$lock_dir/pid"
+    local _attempt
+    local holder_pid=""
 
     mkdir -p "$lock_root"
-    exec 9>"$lock_file"
-    if flock -n 9; then
-        return 0
-    fi
+    for _attempt in 1 2 3 4; do
+        if mkdir "$lock_dir" 2>/dev/null; then
+            printf '%s\n' "$$" > "$pid_file"
+            STARTUP_LOCK_DIR="$lock_dir"
+            trap 'rm -rf "${STARTUP_LOCK_DIR:-}"' EXIT INT TERM
+            return 0
+        fi
+
+        holder_pid=""
+        if [ -f "$pid_file" ]; then
+            holder_pid="$(tr -d '\r' < "$pid_file" | head -n1)"
+        fi
+        if [ -n "$holder_pid" ] && ! kill -0 "$holder_pid" 2>/dev/null; then
+            rm -rf "$lock_dir"
+            continue
+        fi
+        sleep 0.5
+    done
 
     echo -e "\033[1;31m【ERROR】\033[0m 既に別の shutsujin_departure.sh が実行中です。" >&2
     echo "  二重起動を避けるため停止しました。先行プロセスの完了後に再実行してください。" >&2
@@ -459,6 +474,8 @@ generate_bootstrap_file() {
     local cli_type="$2"
     local bootstrap_dir="$SCRIPT_DIR/queue/runtime"
     local bootstrap_file="$bootstrap_dir/bootstrap_${agent_id}.md"
+    local pending_file="$bootstrap_dir/bootstrap_${agent_id}.pending"
+    local delivered_file="$bootstrap_dir/bootstrap_${agent_id}.delivered"
     local role_instruction_file=""
     local optimized_instruction_file=""
     local lang_rule="" event_rule="" report_rule="" linkage_rule="" startup_fastpath=""
@@ -497,6 +514,8 @@ generate_bootstrap_file() {
 
     mkdir -p "$bootstrap_dir"
     echo "$startup_msg" > "$bootstrap_file"
+    : > "$pending_file"
+    rm -f "$delivered_file"
 }
 
 startup_fastpath_directive() {
@@ -569,6 +588,8 @@ deliver_bootstrap_tmux() {
     local agent_id="$2"
     local cli_type="${3:-claude}"
     local bootstrap_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.md"
+    local pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.pending"
+    local delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.delivered"
 
     if [ ! -f "$bootstrap_file" ]; then
         echo "[WARN] bootstrap file not found for $agent_id: $bootstrap_file" >&2
@@ -605,6 +626,8 @@ deliver_bootstrap_tmux() {
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "text or enter send failed"
         return 1
     fi
+    rm -f "$pending_file"
+    : > "$delivered_file"
     append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-delivered" "send-keys literal + enter"
 }
 
@@ -656,6 +679,7 @@ start_goza_layout_autosave() {
     mkdir -p "$SCRIPT_DIR/logs"
     pkill -f "$autosave_script ${session} " >/dev/null 2>&1 || true
     nohup env GOZA_SIGNATURE_FILE="$GOZA_SIGNATURE_FILE" bash "$autosave_script" "$session" "$GOZA_LAYOUT_FILE" \
+        9>&- \
         >> "$SCRIPT_DIR/logs/goza_layout_autosave.log" 2>&1 &
     disown
 }
@@ -1731,16 +1755,16 @@ if [ "$SETUP_ONLY" = false ]; then
         auto_accept_gemini_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_retry_gemini_busy_tmux "$_pane" "$_agent" "$_cli"
     }
-    _cli_gate_handler "$SHOGUN_TARGET" "shogun" "$_shogun_cli_type" &
+    { _cli_gate_handler "$SHOGUN_TARGET" "shogun" "$_shogun_cli_type"; } 9>&- &
     _gemini_pids+=($!)
-    _cli_gate_handler "$GUNSHI_TARGET" "gunshi" "$_gunshi_cli_type" &
+    { _cli_gate_handler "$GUNSHI_TARGET" "gunshi" "$_gunshi_cli_type"; } 9>&- &
     _gemini_pids+=($!)
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
         _pane_target="${AGENT_PANES[$_agent]:-}"
         [ -n "$_pane_target" ] || continue
         _pane_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
-        _cli_gate_handler "$_pane_target" "$_agent" "$_pane_cli" &
+        { _cli_gate_handler "$_pane_target" "$_agent" "$_pane_cli"; } 9>&- &
         _gemini_pids+=($!)
     done
     for _pid in "${_gemini_pids[@]}"; do
@@ -1927,6 +1951,7 @@ NINJA_EOF
 
     if command -v inotifywait >/dev/null 2>&1; then
         nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
+            9>&- \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 &
         disown
         _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
@@ -1939,6 +1964,7 @@ NINJA_EOF
     if [ -x "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" ]; then
         nohup env MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL="${MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL:-2}" \
             bash "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" \
+            9>&- \
             >> "$SCRIPT_DIR/logs/shogun_to_karo_bridge.log" 2>&1 &
         disown
         log_info "📨 将軍→家老 命令ブリッジを起動中..."
@@ -1948,6 +1974,7 @@ NINJA_EOF
     if [ -x "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" ]; then
         nohup env MAS_KARO_DONE_TO_SHOGUN_INTERVAL="${MAS_KARO_DONE_TO_SHOGUN_INTERVAL:-2}" \
             bash "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" \
+            9>&- \
             >> "$SCRIPT_DIR/logs/karo_done_to_shogun_bridge.log" 2>&1 &
         disown
         log_info "📨 家老→将軍 完了報告ブリッジを起動中..."
@@ -1959,6 +1986,7 @@ NINJA_EOF
         nohup env MAS_RUNTIME_PREF_SYNC_INTERVAL="${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}" \
             MAS_RUNTIME_PREF_SYNC_LOG="$SCRIPT_DIR/logs/runtime_cli_pref_sync.log" \
             bash "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" \
+            9>&- \
             >> "$SCRIPT_DIR/logs/runtime_cli_pref_sync.log" 2>&1 &
         disown
         log_info "💾 live CLI設定の自動同期を起動中..."
@@ -1977,6 +2005,14 @@ NINJA_EOF
     echo ""
 fi
 
+CURRENT_BOOTSTRAP_PENDING_COUNT=0
+if [ "$SETUP_ONLY" = false ]; then
+    for _agent in shogun gunshi "${MULTIAGENT_IDS[@]}"; do
+        [ -f "$SCRIPT_DIR/queue/runtime/bootstrap_${_agent}.pending" ] || continue
+        CURRENT_BOOTSTRAP_PENDING_COUNT=$((CURRENT_BOOTSTRAP_PENDING_COUNT + 1))
+    done
+fi
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 6.8: ntfy入力リスナー起動
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1984,7 +2020,7 @@ NTFY_TOPIC=$(grep 'ntfy_topic:' ./config/settings.yaml 2>/dev/null | awk '{print
 if [ -n "$NTFY_TOPIC" ]; then
     pkill -f "$SCRIPT_DIR/scripts/ntfy_listener.sh" 2>/dev/null || true
     [ ! -f ./queue/ntfy_inbox.yaml ] && echo "inbox:" > ./queue/ntfy_inbox.yaml
-    nohup bash "$SCRIPT_DIR/scripts/ntfy_listener.sh" &>/dev/null &
+    nohup bash "$SCRIPT_DIR/scripts/ntfy_listener.sh" 9>&- &>/dev/null &
     disown
     log_info "📱 ntfy入力リスナー起動 (topic: $NTFY_TOPIC)"
 else
@@ -2069,8 +2105,13 @@ echo "  │                                                          │"
 echo "  │  Android アプリ互換の補助 session:                        │"
 echo "  │     shogun:main / gunshi:main / multiagent:0            │"
 echo "  │                                                          │"
-echo "  │  ※ 各エージェントは指示書を読み込み済み。                 │"
-echo "  │    すぐに命令を開始できます。                             │"
+if [ "$SETUP_ONLY" = false ] && [ "${CURRENT_BOOTSTRAP_PENDING_COUNT:-0}" -gt 0 ]; then
+    echo "  │  ※ 一部エージェントは認証待ちで初動命令が未配信です。     │"
+    echo "  │    ログイン完了後は watcher が bootstrap を再試行します。 │"
+else
+    echo "  │  ※ 各エージェントは指示書を読み込み済み。                 │"
+    echo "  │    すぐに命令を開始できます。                             │"
+fi
 echo "  └──────────────────────────────────────────────────────────┘"
 echo ""
 echo "  ════════════════════════════════════════════════════════════"

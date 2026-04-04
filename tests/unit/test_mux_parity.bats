@@ -17,8 +17,8 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "tmux起動入口は flock による二重起動ガードを持つ" {
-    run bats_search 'acquire_startup_lock|flock -n 9|shutsujin\.lock|別の shutsujin_departure\.sh が実行中' "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "tmux起動入口は lock dir による二重起動ガードを持つ" {
+    run bats_search 'acquire_startup_lock|mkdir "\$lock_dir"|shutsujin\.lock\.d|kill -0 "\$holder_pid"|別の shutsujin_departure\.sh が実行中' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -109,6 +109,11 @@ setup_file() {
 
 @test "tmux 起動は bootstrap 未配信でも全体を abort しない" {
     run bats_search 'if ! deliver_bootstrap_tmux .*_bootstrap_failed=1|bootstrap 未配信のまま継続' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は bootstrap pending marker を作り、auth 後の watcher 再配信を前提にする" {
+    run bats_search 'pending_file=.*bootstrap_|deliver_pending_bootstrap_if_ready|watcher が bootstrap を再試行' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
     [ "$status" -eq 0 ]
 }
 

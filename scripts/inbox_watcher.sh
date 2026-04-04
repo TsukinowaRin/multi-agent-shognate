@@ -155,6 +155,11 @@ mux_send_text() {
     timeout 5 tmux send-keys -t "$PANE_TARGET" "$text" 2>/dev/null
 }
 
+mux_send_text_literal() {
+    local text="$1"
+    timeout 5 tmux send-keys -l -t "$PANE_TARGET" "$text" 2>/dev/null
+}
+
 mux_send_enter() {
     timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
 }
@@ -180,6 +185,24 @@ send_text_and_enter() {
     local action_label="${2:-send-keys}"
 
     if ! mux_send_text "$text"; then
+        echo "[$(date)] WARNING: ${action_label} text failed or timed out for $AGENT_ID" >&2
+        return 1
+    fi
+
+    sleep 0.3
+    if ! mux_send_enter; then
+        echo "[$(date)] WARNING: ${action_label} Enter failed or timed out for $AGENT_ID" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+send_literal_text_and_enter() {
+    local text="$1"
+    local action_label="${2:-send-keys}"
+
+    if ! mux_send_text_literal "$text"; then
         echo "[$(date)] WARNING: ${action_label} text failed or timed out for $AGENT_ID" >&2
         return 1
     fi
@@ -279,6 +302,66 @@ dismiss_codex_rate_limit_prompt_if_present() {
     fi
 
     return 1
+}
+
+codex_auth_prompt_detected() {
+    local pane_text="${1:-}"
+    printf '%s' "$pane_text" | grep -qiE "Finish signing in via your browser|open the following link to authenticate|Sign in with ChatGPT|Sign in with Device Code|Provide your own API key|auth\\.openai\\.com/oauth/authorize|Press Enter to continue"
+}
+
+bootstrap_ready_pattern() {
+    case "${1:-}" in
+        claude) printf '%s\n' '(claude code|Claude Code|╰|/model|for shortcuts)' ;;
+        codex) printf '%s\n' '(openai codex|Codex|context left|/model|for shortcuts|Press Ctrl|Working|esc to interrupt|% left)' ;;
+        gemini) printf '%s\n' '(gemini|Gemini|type your message|Tips to get|yolo mode|Working|esc to interrupt|Initializing the Agent)' ;;
+        copilot) printf '%s\n' '(copilot|GitHub Copilot|/model)' ;;
+        kimi) printf '%s\n' '(kimi|moonshot|/model)' ;;
+        localapi) printf '%s\n' '(localapi|LocalAPI|ready:|\\$)' ;;
+        opencode) printf '%s\n' '(opencode|OpenCode|/model|ready:)' ;;
+        kilo) printf '%s\n' '(kilo|Kilo|/model|ready:)' ;;
+        *) printf '%s\n' '(claude|codex|gemini|copilot|kimi|localapi|opencode|kilo|ready:)' ;;
+    esac
+}
+
+deliver_pending_bootstrap_if_ready() {
+    local runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime"
+    local bootstrap_file="$runtime_dir/bootstrap_${AGENT_ID}.md"
+    local pending_file="$runtime_dir/bootstrap_${AGENT_ID}.pending"
+    local delivered_file="$runtime_dir/bootstrap_${AGENT_ID}.delivered"
+    local effective_cli=""
+    local pane_text=""
+    local ready_pattern=""
+    local msg=""
+
+    [ -f "$bootstrap_file" ] || return 0
+    [ -f "$pending_file" ] || return 0
+
+    effective_cli=$(get_effective_cli_type)
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
+
+    if [[ "$effective_cli" == "codex" ]] && codex_auth_prompt_detected "$pane_text"; then
+        return 0
+    fi
+    if agent_is_busy; then
+        return 0
+    fi
+
+    ready_pattern=$(bootstrap_ready_pattern "$effective_cli")
+    if ! printf '%s' "$pane_text" | grep -qiE "$ready_pattern"; then
+        return 0
+    fi
+
+    msg=$(cat "$bootstrap_file" 2>/dev/null || true)
+    [ -n "$msg" ] || return 0
+
+    if ! send_literal_text_and_enter "$msg" "bootstrap retry"; then
+        return 1
+    fi
+
+    rm -f "$pending_file"
+    : > "$delivered_file"
+    echo "[$(date)] [INFO] bootstrap retried and delivered for $AGENT_ID" >&2
+    return 0
 }
 
 get_effective_cli_type() {
@@ -1008,6 +1091,7 @@ process_unread_once() {
 if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
 
 # ─── Startup: process any existing unread messages ───
+deliver_pending_bootstrap_if_ready || true
 process_unread_once
 
 # ─── Main loop: event-driven via inotifywait ───
@@ -1030,6 +1114,8 @@ while true; do
     # rc=2: timeout (30s safety net for WSL2 inotify gaps)
     # All cases: check for unread, then loop back to inotifywait (re-watches new inode)
     sleep 0.3
+
+    deliver_pending_bootstrap_if_ready || true
 
     if [ "$rc" -eq 2 ]; then
         if [ "${ASW_PROCESS_TIMEOUT:-1}" = "1" ]; then

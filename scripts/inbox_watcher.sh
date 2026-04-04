@@ -306,6 +306,29 @@ dismiss_codex_rate_limit_prompt_if_present() {
     return 1
 }
 
+maintain_codex_runtime_prompt() {
+    local effective_cli="${1:-}"
+    local prompt_rc=0
+
+    if [[ -z "$effective_cli" ]]; then
+        effective_cli=$(get_effective_cli_type)
+    fi
+
+    dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || prompt_rc=$?
+    case "$prompt_rc" in
+        0|1|3)
+            return 0
+            ;;
+        2)
+            echo "[$(date)] [WARN] failed to dismiss Codex runtime prompt for $AGENT_ID" >&2
+            return 0
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+}
+
 codex_auth_prompt_detected() {
     local pane_text="${1:-}"
     printf '%s' "$pane_text" | grep -qiE "Finish signing in via your browser|open the following link to authenticate|Sign in with ChatGPT|Sign in with Device Code|Provide your own API key|auth\\.openai\\.com/oauth/authorize|Press Enter to continue|Login server error: Login cancelled|account/login/start failed|failed to start login server"
@@ -1168,6 +1191,7 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
 
 # ─── Startup: process any existing unread messages ───
 recover_shell_returned_codex_if_needed || true
+maintain_codex_runtime_prompt || true
 deliver_pending_bootstrap_if_ready || true
 process_unread_once
 
@@ -1193,6 +1217,7 @@ while true; do
     sleep 0.3
 
     recover_shell_returned_codex_if_needed || true
+    maintain_codex_runtime_prompt || true
     deliver_pending_bootstrap_if_ready || true
 
     if [ "$rc" -eq 2 ]; then

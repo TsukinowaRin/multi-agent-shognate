@@ -1099,6 +1099,16 @@ MOCK
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
+@test "T-CODEX-015f: watcher は unread が無くても idle loop で Codex runtime prompt を掃除する" {
+    run bash -c '
+        grep -q "maintain_codex_runtime_prompt" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
+        grep -q "dismiss_codex_rate_limit_prompt_if_present" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
+        grep -q "process_unread_once" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
+        grep -q "while true; do" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh"
+    '
+    [ "$status" -eq 0 ]
+}
+
 # --- T-CODEX-011: clear_command auto-recovery injection ---
 
 @test "T-CODEX-011: process_unread injects auto-recovery task and sends inbox nudge after clear_command" {

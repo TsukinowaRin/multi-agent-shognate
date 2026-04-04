@@ -29,6 +29,7 @@
 20. `shutsujin_departure.sh -c` の clean start は bridge state も初期化し、`queue/shogun_to_karo_archive.yaml` に残る前回 run の `done` cmd を restart 直後に `cmd_done` として再配送しないこと。
 21. `sync_runtime_cli_preferences.py` は Codex footer や help 行の `context left` / `% left` を model と誤認して `left` を settings へ保存しないこと。
 22. Codex 起動コマンド生成は、settings に `left` などの UI 断片が紛れ込んでいても `--model left` を付けず、invalid codex model を launch 時に無視すること。
+23. Codex watcher は unread が無い idle 待機中でも runtime prompt を巡回し、`Approaching rate limits` / `Keep current model` / `Hide future rate limit` 系 prompt を task 到来前に掃除できること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
@@ -81,6 +82,8 @@
    - 期待結果: clean start が `queue/runtime/shogun_to_karo_bridge.tsv` と `queue/runtime/karo_done_to_shogun.tsv` を消し、archive 側の旧完了再配送防止の回帰を含めて PASS する。
 23. コマンド: `bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_cli_adapter.bats`
    - 期待結果: `context left` を codex model と誤同期せず、`left` が settings にあっても `build_cli_command` は `--model left` を付けずに PASS する。
+24. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: watcher startup / idle loop が `maintain_codex_runtime_prompt` を通して unread 0 の待機中でも Codex runtime prompt を掃除できる回帰を含めて PASS する。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

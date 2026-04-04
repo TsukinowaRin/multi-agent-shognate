@@ -515,6 +515,20 @@ YAML
     [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
+@test "build_cli_command: codex に UI 断片 left が入っていても --model を付けない" {
+    cat > "${TEST_TMP}/settings_codex_invalid_model.yaml" << 'YAML'
+cli:
+  default: codex
+  agents:
+    ashigaru2:
+      type: codex
+      model: left
+YAML
+    load_adapter_with "${TEST_TMP}/settings_codex_invalid_model.yaml"
+    result=$(build_cli_command "ashigaru2")
+    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/ashigaru2 && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/ashigaru2 NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+}
+
 @test "build_cli_command: copilot → copilot --yolo" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru7")

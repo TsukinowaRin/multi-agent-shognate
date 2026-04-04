@@ -14,8 +14,23 @@ GEMINI_ALIAS_PATH = Path(os.environ.get("MAS_GEMINI_SUMMARY_PATH", ROOT / "queue
 TMUX_BIN = os.environ.get("TMUX_BIN", "tmux")
 VERBOSE_NOOP = os.environ.get("MAS_RUNTIME_PREF_VERBOSE_NOOP", "0") == "1"
 
-CODEX_RE = re.compile(r"\b([A-Za-z0-9][A-Za-z0-9._/-]*)\b(?:\s+(none|low|medium|high))?\s+[·•]")
+CODEX_STATUS_RE = re.compile(
+    r"^\s*([A-Za-z0-9][A-Za-z0-9._/-]*)"
+    r"(?:\s+(none|low|medium|high))?"
+    r"\s+[·•]\s+\d+%\s+left\b",
+    re.IGNORECASE,
+)
 MODEL_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]*$")
+INVALID_CODEX_MODEL_TOKENS = {
+    "left",
+    "context",
+    "working",
+    "run",
+    "use",
+    "model",
+    "shortcuts",
+    "press",
+}
 
 
 def run_tmux(*args: str) -> subprocess.CompletedProcess[str]:
@@ -175,15 +190,29 @@ def is_valid_gemini_model(model: str) -> bool:
 def parse_codex_state(text: str) -> dict[str, str]:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     for line in reversed(lines[-40:]):
-        match = CODEX_RE.search(line)
+        match = CODEX_STATUS_RE.search(line)
         if not match:
             continue
         model = match.group(1).strip()
         effort = (match.group(2) or "auto").strip().lower()
-        if model.startswith("/") or model in {"Run", "Working", "Use"}:
+        if model.startswith("/") or model.lower() in INVALID_CODEX_MODEL_TOKENS:
             continue
         return {"model": model, "reasoning_effort": effort}
     return {}
+
+
+def is_valid_codex_model(model: str) -> bool:
+    value = (model or "").strip()
+    if not value:
+        return True
+    lower = value.lower()
+    if lower in {"auto", "default"}:
+        return True
+    if lower in INVALID_CODEX_MODEL_TOKENS:
+        return False
+    if value.startswith("/"):
+        return False
+    return bool(MODEL_TOKEN_RE.match(value))
 
 
 def parse_gemini_state(text: str) -> dict[str, str]:
@@ -285,6 +314,11 @@ def main() -> int:
             continue
 
         if cli_type == "codex":
+            current_model = str(agent_cfg.get("model", "") or "")
+            if current_model and not is_valid_codex_model(current_model):
+                agent_cfg["model"] = "default"
+                changed_any = True
+                warning = f"{warning}; invalid-codex-model-reset={current_model}".strip("; ")
             state = parse_codex_state(text)
             if apply_codex(agent_cfg, state):
                 changed_any = True

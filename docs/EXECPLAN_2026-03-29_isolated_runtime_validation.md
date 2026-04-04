@@ -67,6 +67,9 @@
 - [x] (2026-04-04 21:5x JST) 足軽 report に exact verification command / cwd / result を必須化し、家老が implementation task close 前に reported command を rerun する instruction 契約と build_system 回帰を追加した。
 - [x] (2026-04-04 21:4x JST) clean start 後の main repo runtime で、old archive `cmd_003` が `karo_done_to_shogun_bridge` から再度 `cmd_done` として将軍 inbox へ戻ることを確認し、bridge state 持ち越しが restart 直後の stale replay を起こすと切り分けた。
 - [x] (2026-04-04 21:5x JST) `shutsujin_departure.sh -c` が `queue/runtime/shogun_to_karo_bridge.tsv` と `queue/runtime/karo_done_to_shogun.tsv` を消すようにし、clean start 時の old archive replay 防止回帰を追加した。
+- [x] (2026-04-04 22:0x JST) burn-in 2 本目で ashigaru2 pane が `codex --model left` で起動し、`The 'left' model ... account` 風の error で task 受領後に停止することを再現した。
+- [x] (2026-04-04 22:0x JST) `sync_runtime_cli_preferences.py` の Codex parser が `context left` / `% left` を model と誤認しないよう修正し、起動側も invalid codex model を無視する回帰を追加した。
+- [x] (2026-04-04 22:0x JST) 修正後の clean start で ashigaru2 pane の起動コマンドから `--model left` が消え、pane footer が `model: gpt-5.4` に戻ることを実機確認した。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -141,6 +144,10 @@
   Evidence: `queue/reports/ashigaru1_report.yaml` の `notes` と、`cd runtime_sandboxes/live_validation_probe && python3 -m unittest` の実行結果が矛盾した。
 - Observation: clean start 後でも `queue/shogun_to_karo_archive.yaml` の old `cmd_003` が `cmd_done` として将軍 inbox に再配送され、新しい task より先に stale 完了報告を処理し始めた。
   Evidence: `queue/inbox/shogun.yaml` に `msg_20260404_214258_4657c810` の `cmd_done` が再出現し、`queue/shogun_to_karo.yaml` は空なのに shogun pane が `cmd_003` の後始末を始めた。
+- Observation: burn-in 2 本目で ashigaru2 pane は `codex --model left` で起動しており、pane capture に `The 'left' model ... account` 風の JSON error が出て task unread を処理できなかった。
+  Evidence: `tmux capture-pane -pt goza-no-ma:overview.4 -S -200` に `NO_UPDATE_NOTIFIER=1 codex --model left ...` と error text が残り、`queue/inbox/ashigaru2.yaml` の `task_assigned` が unread のまま滞留した。
+- Observation: `sync_runtime_cli_preferences.py` の `parse_codex_state()` は `context left · /model to change` や `% left` からも `left` を抜けてしまう。
+  Evidence: 実 regex probe で `context left · /model to change` と `% left · ...` の両方が `('left', None)` に match した。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -224,6 +231,9 @@
 - Decision: `shutsujin_departure.sh -c` は queue だけでなく bridge state も捨て、restart 後は archive を再 prime させる。
   Rationale: active queue を空にしても `karo_done_to_shogun.tsv` を持ち越すと、clean start 直後に old archive `done` が新着 `cmd_done` として shogun inbox へ戻り、fresh run の初動を汚すため。
   Date/Author: 2026-04-04 / Codex
+- Decision: Codex runtime preference sync は `% left` を含む status line だけを parse 対象とし、`left` / `context` など UI 断片は invalid codex model として settings 保存も launch 時指定も拒否する。
+  Rationale: 実 burn-in で ashigaru2 が `--model left` に壊れ、auth や usage-limit ではない model corruption で停止したため。
+  Date/Author: 2026-04-04 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -253,6 +263,7 @@
   - main repo の auth 済み実 Codex runtime では、`cmd_001` と `cmd_002` の 2 本を連続で `cmd_done` まで完了できた。
   - 共同開発 task `cmd_003` の実観測から、検証結果の虚偽報告を instruction / protocol 契約で抑止する必要があることを特定し、exact command/cwd 記録と karo rerun-before-close を導入した。
   - clean start で old archive `cmd_done` が shogun inbox へ戻る replay も確認し、bridge state を clean start で捨てる修正を追加した。
+  - burn-in 2 本目で見つかった `--model left` corruption も修正し、ashigaru2 の fresh start が `model: gpt-5.4` へ戻ることを実機確認した。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。

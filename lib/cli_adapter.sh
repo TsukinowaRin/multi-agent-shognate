@@ -206,6 +206,18 @@ _cli_adapter_is_valid_gemini_model() {
     esac
 }
 
+_cli_adapter_is_valid_codex_model() {
+    local model
+    model="$(_cli_adapter_normalize_lower "${1:-}")"
+    case "$model" in
+        ""|auto|default) return 0 ;;
+        left|context|working|run|use|model|shortcuts|press) return 1 ;;
+        /*) return 1 ;;
+        [a-z0-9][a-z0-9._/-]*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 _cli_adapter_read_raw_gemini_thinking_level() {
     local agent_id="$1"
     _cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_level" "")"
@@ -395,6 +407,9 @@ build_cli_command_with_type() {
             local codex_home
             codex_home="$(_cli_adapter_codex_home "$agent_id")"
             local cmd="mkdir -p $(_cli_adapter_shell_quote "$codex_home") && CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 codex"
+            if ! _cli_adapter_is_valid_codex_model "$configured_model"; then
+                configured_model="default"
+            fi
             if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
                 cmd="$cmd --model $configured_model"
             fi

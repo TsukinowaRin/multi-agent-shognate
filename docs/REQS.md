@@ -1768,3 +1768,14 @@
    - 期待結果: hard usage-limit で `1` / nudge を送らず、normal 画面で stale notice clear が走る回帰が PASS する。
 3. コマンド: `rg -n "record_runtime_blocker_notice|record_runtime_blocker_notice_tmux|codex-hard-usage-limit|runtime_blocker_notice.py" scripts/inbox_watcher.sh shutsujin_departure.sh`
    - 期待結果: watcher と startup の両方から blocked notice 記録導線が見える。
+
+## 追補（2026-04-04: 出陣スクリプトの二重起動ガード）
+### 要求
+1. `shutsujin_departure.sh` が並列に 2 回以上起動された場合、後続起動は tmux session を壊す前に停止すること。
+2. 停止時は「既に別の `shutsujin_departure.sh` が実行中」と明示すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `flock` による二重起動ガードの静的回帰が PASS する。
+2. コマンド: `python3 - <<'PY' ...` で `bash shutsujin_departure.sh -s` を並列実行
+   - 期待結果: 後続起動が exit 1 で停止し、`既に別の shutsujin_departure.sh が実行中` を出す。

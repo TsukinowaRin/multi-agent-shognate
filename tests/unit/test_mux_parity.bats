@@ -17,6 +17,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux起動入口は flock による二重起動ガードを持つ" {
+    run bats_search 'acquire_startup_lock|flock -n 9|shutsujin\.lock|別の shutsujin_departure\.sh が実行中' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux起動入口は shutsujin_departure.sh のみを使う" {
     run bats_search "Usage:|./shutsujin_departure\.sh|tmux attach-session|cgo" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/README.md"
     [ "$status" -eq 0 ]

@@ -21,7 +21,25 @@ ensure_tmux_tmpdir() {
     chmod 700 "$tmux_tmp" 2>/dev/null || true
 }
 
+acquire_startup_lock() {
+    local lock_root="$SCRIPT_DIR/.shogunate/locks"
+    local lock_file="$lock_root/shutsujin.lock"
+
+    command -v flock >/dev/null 2>&1 || return 0
+
+    mkdir -p "$lock_root"
+    exec 9>"$lock_file"
+    if flock -n 9; then
+        return 0
+    fi
+
+    echo -e "\033[1;31m【ERROR】\033[0m 既に別の shutsujin_departure.sh が実行中です。" >&2
+    echo "  二重起動を避けるため停止しました。先行プロセスの完了後に再実行してください。" >&2
+    exit 1
+}
+
 ensure_tmux_tmpdir
+acquire_startup_lock
 
 # 言語設定を読み取り（デフォルト: ja）
 LANG_SETTING="ja"

@@ -12,6 +12,7 @@ SETTINGS_PATH = Path(os.environ.get("MAS_SETTINGS_PATH", ROOT / "config/settings
 SUMMARY_PATH = Path(os.environ.get("MAS_RUNTIME_PREFS_SUMMARY_PATH", ROOT / "queue/runtime/runtime_cli_prefs.tsv"))
 GEMINI_ALIAS_PATH = Path(os.environ.get("MAS_GEMINI_SUMMARY_PATH", ROOT / "queue/runtime/gemini_aliases.tsv"))
 TMUX_BIN = os.environ.get("TMUX_BIN", "tmux")
+VERBOSE_NOOP = os.environ.get("MAS_RUNTIME_PREF_VERBOSE_NOOP", "0") == "1"
 
 CODEX_RE = re.compile(r"\b([A-Za-z0-9][A-Za-z0-9._/-]*)\b(?:\s+(none|low|medium|high))?\s+[·•]")
 MODEL_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]*$")
@@ -217,14 +218,14 @@ def apply_gemini(agent_cfg: dict, state: dict[str, str], alias_map: dict[str, di
     model = state.get("model", "")
     if not model:
         return False, warning
-    if agent_cfg.get("model") != model:
-        agent_cfg["model"] = model
-        changed = True
-    if model in alias_map:
+    if model == "auto":
+        warning = "Gemini footer が Auto 表示のため thinking 設定は据え置き"
+    elif model in alias_map:
         row = alias_map[model]
         base_model = (row.get("base_model") or "").strip()
-        if base_model and agent_cfg.get("model") != base_model:
-            agent_cfg["model"] = base_model
+        desired_model = base_model or model
+        if agent_cfg.get("model") != desired_model:
+            agent_cfg["model"] = desired_model
             changed = True
         level = (row.get("thinking_level") or "").strip().lower()
         budget = (row.get("thinking_budget") or "").strip()
@@ -241,8 +242,10 @@ def apply_gemini(agent_cfg: dict, state: dict[str, str], alias_map: dict[str, di
             if agent_cfg.get("thinking_budget") != parsed_budget:
                 agent_cfg["thinking_budget"] = parsed_budget
                 changed = True
-    elif model == "auto":
-        warning = "Gemini footer が Auto 表示のため thinking 設定は据え置き"
+    else:
+        if agent_cfg.get("model") != model:
+            agent_cfg["model"] = model
+            changed = True
     return changed, warning
 
 
@@ -255,7 +258,8 @@ def main() -> int:
     SUMMARY_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not targets:
         SUMMARY_PATH.write_text("status\tskipped\treason\tno-running-tmux-agents\n", encoding="utf-8")
-        print("[INFO] no running tmux agent panes; runtime preference sync skipped")
+        if VERBOSE_NOOP:
+            print("[INFO] no running tmux agent panes; runtime preference sync skipped")
         return 0
 
     changed_any = False
@@ -309,7 +313,7 @@ def main() -> int:
     if changed_any:
         save_yaml(SETTINGS_PATH, cfg)
         print(f"[INFO] runtime CLI preferences synced: {SETTINGS_PATH}")
-    else:
+    elif VERBOSE_NOOP:
         print("[INFO] runtime CLI preferences unchanged")
 
     SUMMARY_PATH.write_text("\n".join(rows) + "\n", encoding="utf-8")

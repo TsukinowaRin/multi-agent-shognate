@@ -116,8 +116,40 @@ SH
 
   run python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
   run bats_search "no-running-tmux-agents" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
+}
+
+@test "sync_runtime_cli_preferences: no-op は verbose 指定時のみ stdout に出す" {
+  cat > "$TEST_TMP/tmux" <<'SH'
+#!/usr/bin/env bash
+exit 1
+SH
+  chmod +x "$TEST_TMP/tmux"
+
+  run env MAS_RUNTIME_PREF_VERBOSE_NOOP=1 python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no running tmux agent panes; runtime preference sync skipped"* ]]
+}
+
+@test "sync_runtime_cli_preferences: unchanged は既定で stdout を汚さない" {
+  run python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"runtime CLI preferences synced"* ]]
+
+  run python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "sync_runtime_cli_preferences: unchanged は verbose 指定時のみ stdout に出す" {
+  run python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
+  [ "$status" -eq 0 ]
+
+  run env MAS_RUNTIME_PREF_VERBOSE_NOOP=1 python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"runtime CLI preferences unchanged"* ]]
 }
 
 @test "sync_runtime_cli_preferences: type は live pane から自動上書きしない" {

@@ -10,6 +10,8 @@
 3. 実 runtime の長時間運用を妨げるログ肥大や監視ノイズがあれば、運用上の実害として修正すること。
 4. 同一ワークスペース内の clone / sandbox を並行利用しても、起動時の cleanup が別 clone の daemon を巻き込まないこと。
 5. 同一ワークスペース内の clone / sandbox を並行利用しても、runtime CLI 同期ログが `/tmp` 共有で衝突しないこと。
+5.1. `runtime_cli_pref_daemon` は同期結果が unchanged / no-running-tmux-agents の no-op 時に、既定では stdout を毎秒汚さないこと。
+5.2. Gemini alias を settings へ同期した後の次回 sync では、同じ alias/state で毎回 changed 扱いにならないこと。
 6. watcher の `send-keys` 系は text 送信だけで成功扱いせず、`Enter` 失敗も送達失敗として検知すること。
 7. `TMUX_TMPDIR` を使う起動では、socket 用ディレクトリが未作成でも default socket へフォールバックせず、指定先を使うこと。
 8. 起動時の prompt 自動処理と bootstrap 配信でも、text 送信だけで成功扱いせず、`Enter` 失敗を検知すること。
@@ -39,6 +41,8 @@
    - 期待結果: watcher / daemon 管理が `$SCRIPT_DIR/scripts/...` の絶対 path ベースに更新され、関連回帰が PASS する。
 7. コマンド: `bats tests/unit/test_runtime_cli_pref_daemon.bats tests/unit/test_mux_parity.bats`
    - 期待結果: `runtime_cli_pref_daemon.sh` と `shutsujin_departure.sh` から `/tmp/mas_runtime_cli_sync*.log` 参照が消え、回帰が PASS する。
+7.1. コマンド: `bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_runtime_cli_pref_daemon.bats`
+   - 期待結果: no-op / unchanged は既定で stdout を汚さず、verbose 指定時のみ出力し、Gemini alias 同期後の 2 回目は unchanged 扱いで PASS する。
 8. コマンド: `bats tests/unit/test_send_wakeup.bats`
    - 期待結果: `send_wakeup` と `send_cli_command` は `Enter` 送信失敗でも exit code 1 を返し、回帰が PASS する。
 9. コマンド: `TMUX_TMPDIR=/tmp/nonexistent_probe tmux -L probe new-session -d ...`

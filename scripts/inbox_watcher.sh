@@ -199,6 +199,7 @@ run_runtime_blocker_notice() {
     local detail="${3:-}"
     local project_root="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
     local notice_script="${MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT:-${project_root}/scripts/runtime_blocker_notice.py}"
+    local result=""
 
     if [ ! -f "$notice_script" ]; then
         return 0
@@ -208,14 +209,27 @@ run_runtime_blocker_notice() {
         return 0
     fi
 
-    if python3 "$notice_script" --project-root "$project_root" --action "$action" --agent "$AGENT_ID" --issue "$issue" --detail "$detail" >/dev/null 2>&1; then
-        if [ "$action" = "clear" ]; then
-            echo "[$(date)] [INFO] runtime blocker notice cleared for $AGENT_ID ($issue)" >&2
-        else
-            echo "[$(date)] [INFO] runtime blocker notice recorded for $AGENT_ID ($issue)" >&2
-        fi
-        return 0
+    result=$(python3 "$notice_script" --project-root "$project_root" --action "$action" --agent "$AGENT_ID" --issue "$issue" --detail "$detail" 2>/dev/null || true)
+    if [ -n "$result" ]; then
+        result=$(printf '%s' "$result" | tr -d '\r' | tail -n 1)
     fi
+
+    case "$result" in
+        updated)
+            echo "[$(date)] [INFO] runtime blocker notice recorded for $AGENT_ID ($issue)" >&2
+            return 0
+            ;;
+        duplicate)
+            return 0
+            ;;
+        cleared)
+            echo "[$(date)] [INFO] runtime blocker notice cleared for $AGENT_ID ($issue)" >&2
+            return 0
+            ;;
+        not_found)
+            return 0
+            ;;
+    esac
 
     echo "[$(date)] [WARN] runtime blocker notice ${action} failed for $AGENT_ID ($issue)" >&2
     return 0

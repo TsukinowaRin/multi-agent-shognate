@@ -229,6 +229,7 @@ run_runtime_blocker_notice_tmux() {
     local issue="$2"
     local detail="${3:-}"
     local notice_script="${MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT:-$SCRIPT_DIR/scripts/runtime_blocker_notice.py}"
+    local result=""
 
     if [ ! -f "$notice_script" ]; then
         return 0
@@ -237,15 +238,29 @@ run_runtime_blocker_notice_tmux() {
         return 0
     fi
 
-    if python3 "$notice_script" --project-root "$SCRIPT_DIR" --action "$action" --agent "$agent_id" --issue "$issue" --detail "$detail" >/dev/null 2>&1; then
-        if [ "$action" = "clear" ]; then
-            log_info "  └─ ${agent_id}: runtime blocked notice を dashboard から除去"
-        else
-            log_info "  └─ ${agent_id}: runtime blocked notice を dashboard に記録"
-        fi
-    else
-        log_warn "  └─ ${agent_id}: runtime blocked notice の ${action} に失敗"
+    result=$(python3 "$notice_script" --project-root "$SCRIPT_DIR" --action "$action" --agent "$agent_id" --issue "$issue" --detail "$detail" 2>/dev/null || true)
+    if [ -n "$result" ]; then
+        result=$(printf '%s' "$result" | tr -d '\r' | tail -n 1)
     fi
+
+    case "$result" in
+        updated)
+            log_info "  └─ ${agent_id}: runtime blocked notice を dashboard に記録"
+            return 0
+            ;;
+        duplicate)
+            return 0
+            ;;
+        cleared)
+            log_info "  └─ ${agent_id}: runtime blocked notice を dashboard から除去"
+            return 0
+            ;;
+        not_found)
+            return 0
+            ;;
+    esac
+
+    log_warn "  └─ ${agent_id}: runtime blocked notice の ${action} に失敗"
     return 0
 }
 

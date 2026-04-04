@@ -77,7 +77,7 @@ class RuntimeBlockerNoticeTests(unittest.TestCase):
         self.assertEqual(second, "duplicate")
         text = self.dashboard.read_text(encoding="utf-8")
         self.assertEqual(text.count("[runtime-blocked/shogun]"), 1)
-        self.assertIn("最終更新: 2026-04-04 09:32", text)
+        self.assertIn("最終更新: 2026-04-04 09:31", text)
 
     def test_updates_bilingual_dashboard_heading(self):
         self.dashboard.write_text(
@@ -143,6 +143,36 @@ class RuntimeBlockerNoticeTests(unittest.TestCase):
         self.assertIn("最終更新: 2026-04-04 09:34", text)
         self.assertNotIn("[runtime-blocked/shogun]", text)
         self.assertIn(f"{runtime_blocker_notice.ACTION_REQUIRED_HEADING}\nなし\n", text)
+
+    def test_clear_notice_not_found_keeps_existing_timestamp(self):
+        self.dashboard.write_text(
+            "\n".join(
+                [
+                    "# 📊 戦況報告",
+                    "最終更新: 2026-04-04 09:40",
+                    "",
+                    runtime_blocker_notice.ACTION_REQUIRED_HEADING,
+                    "なし",
+                    "",
+                    "## 🔄 進行中 - 只今、戦闘中でござる",
+                    "なし",
+                    "",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        status = runtime_blocker_notice.clear_notice(
+            self.dashboard,
+            "shogun",
+            "codex-hard-usage-limit",
+            "2026-04-04 09:41",
+        )
+
+        self.assertEqual(status, "not_found")
+        text = self.dashboard.read_text(encoding="utf-8")
+        self.assertIn("最終更新: 2026-04-04 09:40", text)
 
 
 if __name__ == "__main__":

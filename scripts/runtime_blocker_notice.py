@@ -109,15 +109,14 @@ def ensure_notice(dashboard_path: Path, agent: str, issue: str, detail: str, tim
         dashboard_path.parent.mkdir(parents=True, exist_ok=True)
         lines = dashboard_template(timestamp_text)
 
-    update_last_updated(lines, timestamp_text)
     notice = format_notice(agent, issue, detail)
     start, end = find_section_bounds(lines, (ACTION_REQUIRED_HEADING, ACTION_REQUIRED_HEADING_ALT))
     body = lines[start + 1:end]
 
     if any(line.strip() == notice for line in body):
-        dashboard_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         return "duplicate"
 
+    update_last_updated(lines, timestamp_text)
     filtered_body = [line for line in body if line.strip() and line.strip() != "なし"]
     filtered_body.append(notice)
     lines[start + 1:end] = filtered_body + [""]
@@ -130,21 +129,20 @@ def clear_notice(dashboard_path: Path, agent: str, issue: str, timestamp_text: s
     if dashboard_path.exists():
         lines = dashboard_path.read_text(encoding="utf-8").splitlines()
     else:
-        dashboard_path.parent.mkdir(parents=True, exist_ok=True)
-        lines = dashboard_template(timestamp_text)
+        return "not_found"
 
-    update_last_updated(lines, timestamp_text)
     start, end = find_section_bounds(lines, (ACTION_REQUIRED_HEADING, ACTION_REQUIRED_HEADING_ALT))
     body = lines[start + 1:end]
 
+    existing_body = [line for line in body if line.strip() and line.strip() != "なし"]
     filtered_body = [
         line for line in body if line.strip() and not matches_notice(line, agent, issue) and line.strip() != "なし"
     ]
 
-    if len(filtered_body) == len([line for line in body if line.strip() and line.strip() != "なし"]):
-        dashboard_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    if len(filtered_body) == len(existing_body):
         return "not_found"
 
+    update_last_updated(lines, timestamp_text)
     replacement_body = filtered_body if filtered_body else ["なし"]
     lines[start + 1:end] = replacement_body + [""]
     dashboard_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")

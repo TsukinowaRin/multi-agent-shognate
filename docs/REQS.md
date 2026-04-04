@@ -1759,10 +1759,11 @@
 2. blocked 記録は同一内容で重複しないこと。
 3. `dashboard.md` が日本語版でも bilingual 版でも、要対応セクションへ追記できること。
 4. hard block が解消した後は stale blocked notice を `dashboard.md` から除去できること。
+5. duplicate / not_found の no-op ケースでは `dashboard.md` を無駄に書き換えないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `python3 -m unittest tests.unit.test_runtime_blocker_notice`
-   - 期待結果: dashboard 新規作成、`なし` 置換、重複抑止、bilingual heading 対応、clear 時の `なし` 復元が PASS する。
+   - 期待結果: dashboard 新規作成、`なし` 置換、重複抑止、bilingual heading 対応、clear 時の `なし` 復元、not_found 時の timestamp 不変が PASS する。
 2. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
    - 期待結果: hard usage-limit で `1` / nudge を送らず、normal 画面で stale notice clear が走る回帰が PASS する。
 3. コマンド: `rg -n "record_runtime_blocker_notice|record_runtime_blocker_notice_tmux|codex-hard-usage-limit|runtime_blocker_notice.py" scripts/inbox_watcher.sh shutsujin_departure.sh`

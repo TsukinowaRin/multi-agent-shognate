@@ -24,6 +24,7 @@
 15. `shutsujin_departure.sh -c` の clean start は `queue/shogun_to_karo.yaml` の active queue を空に戻し、前回 run の pending cmd を karo へ再通知しないこと。
 16. Codex の `You've hit your usage limit ... try again at ...` prompt は、mini 切替 option が無い hard block 画面では `1` を自動送信せず、watcher / startup の両方が誤入力ループに入らないこと。
 17. Codex pane が一度 bootstrap 配信済みの後で shell へ戻った場合でも、runtime は restart 前に `bootstrap_<agent>.pending` を復元し、`bootstrap_<agent>.delivered` を外して再ログイン後の bootstrap 再試行を可能にすること。
+18. `runtime_blocker_notice.py` は auth prompt / hard usage-limit の detail を安定した要約へ正規化し、同じ blocker を pane capture の揺れだけで毎回 `updated` 扱いしないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
@@ -68,6 +69,8 @@
    - 期待結果: hard usage-limit prompt では `1` や `inboxN` を送らず、startup も `gpt-5.1-codex-mini` option 有無を見て分岐する回帰が PASS する。
 19. コマンド: `bats tests/unit/test_watcher_supervisor.bats tests/unit/test_send_wakeup.bats`
    - 期待結果: shell-return recovery の回帰で、restart 前に `bootstrap_<agent>.pending` が復元され `bootstrap_<agent>.delivered` が削除されることを含めて PASS する。
+20. コマンド: `python3 -m unittest tests.unit.test_runtime_blocker_notice`
+   - 期待結果: noisy な auth prompt / hard usage-limit capture を渡しても issue 別の安定 detail へ正規化され、同じ blocker は `duplicate` 扱いで PASS する。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

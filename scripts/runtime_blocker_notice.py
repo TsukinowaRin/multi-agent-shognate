@@ -49,6 +49,45 @@ def normalize_detail(detail: str) -> str:
     return compact[:180]
 
 
+def normalize_issue_detail(issue: str, detail: str) -> str:
+    compact = normalize_detail(detail)
+    if not compact:
+        return ""
+
+    lower = compact.lower()
+    if issue == "codex-auth-required":
+        if (
+            "login server error" in lower
+            or "account/login/start failed" in lower
+            or "failed to start login server" in lower
+        ):
+            return "Login server error / failed to start login server"
+        if (
+            "finish signing in via your browser" in lower
+            or "open the following link to authenticate" in lower
+            or "auth.openai.com/oauth/authorize" in lower
+        ):
+            return "Finish signing in via your browser"
+        if (
+            "sign in with chatgpt" in lower
+            or "sign in with device code" in lower
+            or "provide your own api key" in lower
+            or "press enter to continue" in lower
+        ):
+            return "Sign in with ChatGPT / Device Code / API key menu"
+        return compact
+
+    if issue == "codex-hard-usage-limit":
+        match = re.search(r"try again at [^.]+(?:\.)?", compact, flags=re.IGNORECASE)
+        if match:
+            return match.group(0)
+        if "you've hit your usage limit" in lower:
+            return "You've hit your usage limit"
+        return compact
+
+    return compact
+
+
 def format_notice(agent: str, issue: str, detail: str) -> str:
     if issue == "codex-hard-usage-limit":
         base = f"- [runtime-blocked/{agent}] Codex hard usage-limit prompt を検知。人手で再開判断が必要。"
@@ -56,7 +95,7 @@ def format_notice(agent: str, issue: str, detail: str) -> str:
         base = f"- [runtime-blocked/{agent}] Codex auth prompt を検知。ログイン完了待ち。"
     else:
         base = f"- [runtime-blocked/{agent}] {issue}"
-    normalized = normalize_detail(detail)
+    normalized = normalize_issue_detail(issue, detail)
     if normalized:
         base += f" 詳細: {normalized}"
     return base

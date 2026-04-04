@@ -219,6 +219,52 @@ class RuntimeBlockerNoticeTests(unittest.TestCase):
         self.assertNotIn("Sign in with ChatGPT", text)
         self.assertIn("最終更新: 2026-04-04 09:53", text)
 
+    def test_auth_required_detail_is_normalized_for_noisy_same_prompt(self):
+        first = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "shogun",
+            "codex-auth-required",
+            "Welcome to Codex\nSign in with ChatGPT\nPress Enter to continue",
+            "2026-04-04 10:00",
+        )
+        second = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "shogun",
+            "codex-auth-required",
+            "+***+. Welcome to Codex Sign in with ChatGPT Press Enter to continue",
+            "2026-04-04 10:01",
+        )
+
+        self.assertEqual(first, "updated")
+        self.assertEqual(second, "duplicate")
+        text = self.dashboard.read_text(encoding="utf-8")
+        self.assertEqual(text.count("[runtime-blocked/shogun]"), 1)
+        self.assertIn("Sign in with ChatGPT / Device Code / API key menu", text)
+        self.assertIn("最終更新: 2026-04-04 10:00", text)
+
+    def test_hard_usage_limit_detail_is_normalized_for_same_retry_time(self):
+        first = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "karo",
+            "codex-hard-usage-limit",
+            "++++ You've hit your usage limit\ntry again at Apr 4th, 2026 12:47 AM.",
+            "2026-04-04 10:10",
+        )
+        second = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "karo",
+            "codex-hard-usage-limit",
+            "You've hit your usage limit ... try again at Apr 4th, 2026 12:47 AM.",
+            "2026-04-04 10:11",
+        )
+
+        self.assertEqual(first, "updated")
+        self.assertEqual(second, "duplicate")
+        text = self.dashboard.read_text(encoding="utf-8")
+        self.assertEqual(text.count("[runtime-blocked/karo]"), 1)
+        self.assertIn("try again at Apr 4th, 2026 12:47 AM.", text)
+        self.assertIn("最終更新: 2026-04-04 10:10", text)
+
     def test_record_normalizes_preexisting_duplicate_blocked_notices(self):
         self.dashboard.write_text(
             "\n".join(

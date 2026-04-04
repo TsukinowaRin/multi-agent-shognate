@@ -60,6 +60,7 @@
 - [x] (2026-04-04 17:1x JST) 実 runtime で Codex update 完了後の shell 戻り pane に watcher が pending bootstrap を再送し、`--no-alt-screen【初動命令】...` の混線を起こすことを確認し、`pane_current_command=node` を満たさない限り Codex bootstrap を再送しない回帰を追加した。
 - [x] (2026-04-04 18:0x JST) `watcher_supervisor.sh` と `inbox_watcher.sh` の両方に shell 戻り Codex pane の再起動導線を追加し、startup 側は `WATCHER_SUPERVISOR_ONCE=1` の同期 tick 後に常駐 supervisor を立てる形へ更新した。
 - [x] (2026-04-04 18:2x JST) shell 戻り Codex pane の再起動時に、既配信扱いの `bootstrap_<agent>.delivered` を外して `bootstrap_<agent>.pending` を復元し、再ログイン後の bootstrap 再試行を可能にした。
+- [x] (2026-04-04 18:3x JST) `runtime_blocker_notice.py` が auth prompt / hard usage-limit の detail を issue 別の安定要約へ正規化し、pane capture の揺れだけで `dashboard.md` と watcher log を更新し続けないようにした。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -122,6 +123,8 @@
   Evidence: 実 pane に `error: unexpected argument '--no-alt-screen【初動命令】あなたはashigaru2...` が残り、同時に `logs/inbox_watcher_ashigaru2.log` に `bootstrap retried and delivered` が出ていた。
 - Observation: shell 戻り pane の自動再起動だけでは、過去 run で `bootstrap_<agent>.delivered` が残っていると、再ログイン後に bootstrap が再送されず auth menu で停止し続けた。
   Evidence: 実 runtime で `queue/runtime/bootstrap_ashigaru2.delivered` が残り `bootstrap_ashigaru2.pending` が無い状態から pane を shell に落とすと、再起動後は `node` に戻っても bootstrap marker が復元されなかった。修正後は同条件で `WATCHER_SUPERVISOR_ONCE=1 bash scripts/watcher_supervisor.sh` 実行後に `bootstrap_ashigaru2.pending` が再作成され、`bootstrap_ashigaru2.delivered` が消えた。
+- Observation: blocked notice helper 自体は duplicate を返せても、auth prompt の pane capture が毎回少しずつ揺れると detail 差分で `updated` 扱いになり、`dashboard.md` の `最終更新` と watcher log の `runtime blocker notice recorded ...` が 30 秒ごとに増え続けた。
+  Evidence: `logs/inbox_watcher_shogun.log` に同じ `codex-auth-required` の `recorded` 行が連続し、既存 `dashboard.md` の shogun notice detail には sign-in menu 以外の garbled text が混ざっていた。helper 修正後は noisy な prompt 文字列 2 種を `python3 -m unittest tests.unit.test_runtime_blocker_notice` で同一 blocker として `duplicate` 判定できることを確認した。
 - Observation: `shutsujin_departure.sh` が `watcher_supervisor` を background 起動しただけでは、初回 tick の前に runtime 観測を始めると「watcher 起動完了」と表示されていても実 watcher log がまだ増えていないことがあった。
   Evidence: fresh startup 直後の `logs/inbox_watcher_ashigaru2.log` に新しい `inbox_watcher started` 行が出ず、`timeout 3 bash scripts/watcher_supervisor.sh` を foreground で手動実行した瞬間に watcher start と restart log が追記された。
 
@@ -188,6 +191,9 @@
   Date/Author: 2026-04-04 / Codex
 - Decision: shell-return recovery が Codex 再起動を行う前に、当該 agent の `bootstrap_<agent>.pending` を再武装し、`bootstrap_<agent>.delivered` を除去する。
   Rationale: いったん初動命令を配信した agent でも、Codex 再起動後は auth / trust prompt を経て再び bootstrap 再試行が必要になるため、既配信 marker を残したままだと post-login の復帰導線が失われるため。
+  Date/Author: 2026-04-04 / Codex
+- Decision: `runtime_blocker_notice.py` は issue ごとに detail を正規化し、`codex-auth-required` は login menu / browser auth / login server error、`codex-hard-usage-limit` は retry 時刻などの安定要約だけを保持する。
+  Rationale: watcher が毎周生の pane capture を渡すと detail が揺れやすく、同じ blocker でも helper が `updated` を返して dashboard 更新と log 出力が止まらなくなるため。
   Date/Author: 2026-04-04 / Codex
 - Decision: `sync_runtime_cli_preferences.py` は changed が無い run を既定では無言にし、verbose が必要な時だけ env で no-op 出力を有効化する。
   Rationale: daemon 常駐時の log 増加を防ぎつつ、調査時だけ挙動を見られるようにするため。

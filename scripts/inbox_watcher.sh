@@ -86,6 +86,8 @@ LAST_CLEAR_TS=${LAST_CLEAR_TS:-0}
 ESCALATE_PHASE1=${ESCALATE_PHASE1:-120}
 ESCALATE_PHASE2=${ESCALATE_PHASE2:-240}
 ESCALATE_COOLDOWN=${ESCALATE_COOLDOWN:-300}
+LAST_CLI_RESTART_TS=${LAST_CLI_RESTART_TS:-0}
+CLI_RESTART_COOLDOWN=${CLI_RESTART_COOLDOWN:-30}
 
 # ─── Phase feature flags (cmd_107 Phase 1/2/3) ───
 # ASW_PHASE:
@@ -315,6 +317,55 @@ codex_process_running() {
     [ "$current_command" = "node" ]
 }
 
+recover_shell_returned_codex_if_needed() {
+    local effective_cli="${1:-}"
+    local current_command=""
+    local pane_text=""
+    local restart_cmd=""
+    local now=0
+
+    if [[ -z "$effective_cli" ]]; then
+        effective_cli=$(get_effective_cli_type)
+    fi
+    [[ "$effective_cli" == "codex" ]] || return 0
+
+    current_command=$(timeout 2 tmux display-message -p -t "$PANE_TARGET" "#{pane_current_command}" 2>/dev/null || true)
+    if [[ "$current_command" == "node" ]]; then
+        LAST_CLI_RESTART_TS=0
+        return 0
+    fi
+
+    case "$current_command" in
+        bash|sh|zsh|fish) ;;
+        *) return 0 ;;
+    esac
+
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
+    if codex_auth_prompt_detected "$pane_text"; then
+        return 0
+    fi
+
+    now=$(date +%s)
+    if [ "${LAST_CLI_RESTART_TS:-0}" -gt 0 ] && [ $((now - LAST_CLI_RESTART_TS)) -lt "$CLI_RESTART_COOLDOWN" ]; then
+        return 0
+    fi
+
+    if ! declare -F build_cli_command_with_type >/dev/null 2>&1; then
+        return 0
+    fi
+    restart_cmd=$(build_cli_command_with_type "$AGENT_ID" "$effective_cli" 2>/dev/null || true)
+    [ -n "$restart_cmd" ] || return 0
+
+    if send_text_and_enter "$restart_cmd" "Codex CLI restart"; then
+        LAST_CLI_RESTART_TS=$now
+        echo "[$(date)] [INFO] restarted shell-returned Codex pane for $AGENT_ID" >&2
+        return 0
+    fi
+
+    echo "[$(date)] [WARN] failed to restart shell-returned Codex pane for $AGENT_ID" >&2
+    return 0
+}
+
 bootstrap_ready_pattern() {
     case "${1:-}" in
         claude) printf '%s\n' '(claude code|Claude Code|╰|/model|for shortcuts)' ;;
@@ -343,6 +394,7 @@ deliver_pending_bootstrap_if_ready() {
     [ -f "$pending_file" ] || return 0
 
     effective_cli=$(get_effective_cli_type)
+    recover_shell_returned_codex_if_needed "$effective_cli"
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
 
     if [[ "$effective_cli" == "codex" ]] && codex_auth_prompt_detected "$pane_text"; then
@@ -1103,6 +1155,7 @@ process_unread_once() {
 if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
 
 # ─── Startup: process any existing unread messages ───
+recover_shell_returned_codex_if_needed || true
 deliver_pending_bootstrap_if_ready || true
 process_unread_once
 
@@ -1127,6 +1180,7 @@ while true; do
     # All cases: check for unread, then loop back to inotifywait (re-watches new inode)
     sleep 0.3
 
+    recover_shell_returned_codex_if_needed || true
     deliver_pending_bootstrap_if_ready || true
 
     if [ "$rc" -eq 2 ]; then

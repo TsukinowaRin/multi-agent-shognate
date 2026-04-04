@@ -1051,6 +1051,21 @@ MOCK
     ! grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
 }
 
+@test "T-CODEX-015e: watcher は shell に戻った Codex pane を再起動する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+        recover_shell_returned_codex_if_needed
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
 # --- T-CODEX-011: clear_command auto-recovery injection ---
 
 @test "T-CODEX-011: process_unread injects auto-recovery task and sends inbox nudge after clear_command" {

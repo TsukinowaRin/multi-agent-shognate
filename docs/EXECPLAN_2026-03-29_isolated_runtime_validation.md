@@ -58,6 +58,7 @@
 - [x] (2026-04-04 16:4x JST) `runtime_cli_pref_sync.log` が unchanged を毎秒吐き、Gemini alias 同期後も毎回 changed 扱いになることを確認し、no-op 時の stdout 抑止と alias 同期の idempotent 化を追加した。
 - [x] (2026-04-04 17:0x JST) `runtime_blocker_notice.py` が過去 run の duplicate notice を残したまま `duplicate` / `not_found` を返すケースを確認し、record / clear 時に同一 agent / issue を自動正規化する回帰を追加した。
 - [x] (2026-04-04 17:1x JST) 実 runtime で Codex update 完了後の shell 戻り pane に watcher が pending bootstrap を再送し、`--no-alt-screen【初動命令】...` の混線を起こすことを確認し、`pane_current_command=node` を満たさない限り Codex bootstrap を再送しない回帰を追加した。
+- [x] (2026-04-04 18:0x JST) `watcher_supervisor.sh` と `inbox_watcher.sh` の両方に shell 戻り Codex pane の再起動導線を追加し、startup 側は `WATCHER_SUPERVISOR_ONCE=1` の同期 tick 後に常駐 supervisor を立てる形へ更新した。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -118,6 +119,8 @@
   Evidence: `logs/runtime_cli_pref_sync.log` に `[INFO] runtime CLI preferences unchanged` が大量に残り、再現コマンドでも 2 回目の sync が `unchanged` ではなく `synced` を返した。
 - Observation: Codex pane が update 完了や launch error で shell に戻ると、watcher の bootstrap retry は screen text だけで ready と誤認し、pending bootstrap を shell へ打ち込んでしまった。
   Evidence: 実 pane に `error: unexpected argument '--no-alt-screen【初動命令】あなたはashigaru2...` が残り、同時に `logs/inbox_watcher_ashigaru2.log` に `bootstrap retried and delivered` が出ていた。
+- Observation: `shutsujin_departure.sh` が `watcher_supervisor` を background 起動しただけでは、初回 tick の前に runtime 観測を始めると「watcher 起動完了」と表示されていても実 watcher log がまだ増えていないことがあった。
+  Evidence: fresh startup 直後の `logs/inbox_watcher_ashigaru2.log` に新しい `inbox_watcher started` 行が出ず、`timeout 3 bash scripts/watcher_supervisor.sh` を foreground で手動実行した瞬間に watcher start と restart log が追記された。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -174,6 +177,12 @@
 - Decision: Codex の pending bootstrap 再送と startup の bootstrap 配信では、screen text だけでなく `#{pane_current_command}` が `node` であることも確認し、shell 戻り pane には送らない。
   Rationale: auth / update / usage error の後に Codex が終了して shell に戻るケースでは、screen text だけでは ready と非-ready を分け切れず、bootstrap 混線の実害が出るため。
   Date/Author: 2026-04-04 / Codex
+- Decision: Codex shell-return の自動回復は `watcher_supervisor` と `inbox_watcher` の両方に持たせ、前者を高速経路、後者を timeout tick の保険とする。
+  Rationale: detached supervisor の初回起動確認だけに頼ると実環境差で回復開始が遅れるため、per-agent watcher 側にも restart command を持たせた方が実用上安全なため。
+  Date/Author: 2026-04-04 / Codex
+- Decision: `shutsujin_departure.sh` は常駐 supervisor の前に `WATCHER_SUPERVISOR_ONCE=1` を同期実行し、初回 watcher 起動と shell-return recovery の最初の 1 回を startup 成功条件に含める。
+  Rationale: background process のスケジュール待ちに依存すると「起動完了」と実際の監視開始時刻がずれるため。
+  Date/Author: 2026-04-04 / Codex
 - Decision: `sync_runtime_cli_preferences.py` は changed が無い run を既定では無言にし、verbose が必要な時だけ env で no-op 出力を有効化する。
   Rationale: daemon 常駐時の log 増加を防ぎつつ、調査時だけ挙動を見られるようにするため。
   Date/Author: 2026-04-04 / Codex
@@ -203,6 +212,8 @@
   - 同一 agent / issue の auth notice は detail が変わっても 1 行更新に揃え、dashboard 上で増殖しないようにした。
   - record / clear のたびに要対応セクション内の既存 duplicate blocked notice も自動で 1 行へ正規化されるようになり、過去 run の残骸が dashboard に残り続けにくくなった。
   - Codex process が shell に戻った pane では pending bootstrap を保留するようにし、`codex --no-alt-screen` コマンド行へ初動命令が混線する実害を止めた。
+  - shell に戻った Codex pane は `watcher_supervisor` / `inbox_watcher` の双方から restart command を再投入できるようになり、実観測でも `logs/inbox_watcher_ashigaru2.log` に `restarted shell-returned Codex pane` を確認した。
+  - startup は `WATCHER_SUPERVISOR_ONCE=1` の同期 tick を挟むようになり、初回 watcher 起動を detached supervisor の初回 loop に依存しない形へ寄せた。
   - `runtime_cli_pref_daemon` の no-op / unchanged は既定で静かになり、Gemini alias 同期後の 2 回目 sync は `unchanged` 扱いへ戻せた。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。

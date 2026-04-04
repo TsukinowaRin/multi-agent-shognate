@@ -151,3 +151,13 @@ setup_file() {
     run bats_search 'codex_process_running_tmux|pane_current_command|cli-not-running|Keeping bootstrap pending' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "watcher は shell に戻った Codex pane を restart command で再起動する" {
+    run bats_search 'recover_shell_returned_codex_if_needed|LAST_CLI_RESTART_TS|Codex CLI restart|restarted shell-returned Codex pane' "$PROJECT_ROOT/scripts/inbox_watcher.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は watcher_supervisor を one-shot 初期tickしてから常駐化する" {
+    run bats_search 'WATCHER_SUPERVISOR_ONCE=1|watcher_supervisor\.sh' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}

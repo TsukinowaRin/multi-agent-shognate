@@ -8,6 +8,8 @@ cd "$SCRIPT_DIR"
 
 mkdir -p logs
 
+CLI_RESTART_COOLDOWN="${CLI_RESTART_COOLDOWN:-30}"
+
 if [ -f "$SCRIPT_DIR/lib/inbox_path.sh" ]; then
     # shellcheck source=/dev/null
     source "$SCRIPT_DIR/lib/inbox_path.sh"
@@ -194,6 +196,80 @@ resolve_cli_type() {
     fi
 }
 
+restart_state_file() {
+    local agent="$1"
+    printf '%s\n' "$SCRIPT_DIR/queue/runtime/cli_restart_${agent}.state"
+}
+
+clear_restart_state() {
+    local agent="$1"
+    rm -f "$(restart_state_file "$agent")"
+}
+
+restart_cooldown_active() {
+    local agent="$1"
+    local state_file
+    local last_ts
+    local now
+
+    state_file="$(restart_state_file "$agent")"
+    [ -f "$state_file" ] || return 1
+
+    last_ts="$(awk 'NR==1{print $1}' "$state_file" 2>/dev/null || true)"
+    [[ "$last_ts" =~ ^[0-9]+$ ]] || return 1
+    now="$(date +%s)"
+    [ $((now - last_ts)) -lt "$CLI_RESTART_COOLDOWN" ]
+}
+
+mark_restart_attempt() {
+    local agent="$1"
+    local pane="$2"
+    local cli="$3"
+
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    printf '%s\t%s\t%s\n' "$(date +%s)" "$pane" "$cli" > "$(restart_state_file "$agent")"
+}
+
+restart_shell_returned_codex_if_needed() {
+    local agent="$1"
+    local pane="$2"
+    local cli=""
+    local current_command=""
+    local cmd=""
+
+    pane_exists "$pane" || return 0
+    cli="$(resolve_cli_type "$agent" "$pane")"
+    [ "$cli" = "codex" ] || return 0
+
+    current_command="$(tmux display-message -p -t "$pane" "#{pane_current_command}" 2>/dev/null | tr -d '\r' | head -n1)"
+    if [ "$current_command" = "node" ]; then
+        clear_restart_state "$agent"
+        return 0
+    fi
+
+    case "$current_command" in
+        bash|sh|zsh|fish) ;;
+        *) return 0 ;;
+    esac
+
+    if restart_cooldown_active "$agent"; then
+        return 0
+    fi
+
+    if ! declare -F build_cli_command_with_type >/dev/null 2>&1; then
+        return 0
+    fi
+    cmd="$(build_cli_command_with_type "$agent" "$cli" 2>/dev/null || true)"
+    [ -n "$cmd" ] || return 0
+
+    if tmux send-keys -t "$pane" "$cmd" Enter >/dev/null 2>&1; then
+        mark_restart_attempt "$agent" "$pane" "$cli"
+        echo "[$(date)] restarted shell-returned codex pane for ${agent} on ${pane}" >&2
+    else
+        echo "[$(date)] [WARN] failed to restart shell-returned codex pane for ${agent} on ${pane}" >&2
+    fi
+}
+
 start_watcher_if_missing() {
     local agent="$1"
     local pane="$2"
@@ -232,29 +308,45 @@ cleanup_stale_watchers() {
     done < <(pgrep -af "$SCRIPT_DIR/scripts/inbox_watcher.sh" || true)
 }
 
+supervisor_tick() {
+    local pane=""
+    refresh_active_ashigaru
+    refresh_karo_agents
+    cleanup_stale_watchers
+
+    pane="$(resolve_agent_pane_target "shogun")"
+    [ -n "$pane" ] && restart_shell_returned_codex_if_needed "shogun" "$pane"
+    [ -n "$pane" ] && start_watcher_if_missing "shogun" "$pane" "logs/inbox_watcher_shogun.log"
+    pane="$(resolve_agent_pane_target "gunshi")"
+    [ -n "$pane" ] && restart_shell_returned_codex_if_needed "gunshi" "$pane"
+    [ -n "$pane" ] && start_watcher_if_missing "gunshi" "$pane" "logs/inbox_watcher_gunshi.log"
+    for karo_agent in "${KARO_AGENTS[@]}"; do
+        pane="$(resolve_agent_pane_target "$karo_agent")"
+        [ -n "$pane" ] || continue
+        restart_shell_returned_codex_if_needed "$karo_agent" "$pane"
+        start_watcher_if_missing "$karo_agent" "$pane" "logs/inbox_watcher_${karo_agent}.log"
+    done
+    for agent in "${ACTIVE_ASHIGARU[@]}"; do
+        pane="$(resolve_agent_pane_target "$agent")"
+        [ -n "$pane" ] || continue
+        restart_shell_returned_codex_if_needed "$agent" "$pane"
+        start_watcher_if_missing "$agent" "$pane" "logs/inbox_watcher_${agent}.log"
+    done
+}
+
+if [ "${WATCHER_SUPERVISOR_ONCE:-0}" = "1" ]; then
+    if command -v inotifywait >/dev/null 2>&1; then
+        supervisor_tick
+    fi
+    exit 0
+fi
+
 while true; do
     if ! command -v inotifywait >/dev/null 2>&1; then
         sleep 30
         continue
     fi
 
-    refresh_active_ashigaru
-    refresh_karo_agents
-    cleanup_stale_watchers
-
-    pane="$(resolve_agent_pane_target "shogun")"
-    [ -n "$pane" ] && start_watcher_if_missing "shogun" "$pane" "logs/inbox_watcher_shogun.log"
-    pane="$(resolve_agent_pane_target "gunshi")"
-    [ -n "$pane" ] && start_watcher_if_missing "gunshi" "$pane" "logs/inbox_watcher_gunshi.log"
-    for karo_agent in "${KARO_AGENTS[@]}"; do
-        pane="$(resolve_agent_pane_target "$karo_agent")"
-        [ -n "$pane" ] || continue
-        start_watcher_if_missing "$karo_agent" "$pane" "logs/inbox_watcher_${karo_agent}.log"
-    done
-    for agent in "${ACTIVE_ASHIGARU[@]}"; do
-        pane="$(resolve_agent_pane_target "$agent")"
-        [ -n "$pane" ] || continue
-        start_watcher_if_missing "$agent" "$pane" "logs/inbox_watcher_${agent}.log"
-    done
+    supervisor_tick
     sleep 5
 done

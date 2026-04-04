@@ -1769,14 +1769,18 @@
 8. 同じ agent / issue の blocked notice は detail が変わっても追記で増殖させず、既存 1 行を更新すること。
 9. 過去 run で残った同一 agent / issue の blocked notice 重複も、新しい record / clear のタイミングで自動的に 1 行へ正規化されること。
 10. Codex process が update 完了や引数エラーで shell へ戻った pane では、watcher / startup は pending bootstrap を再送せず、`codex --...【初動命令】...` のような混線を起こさないこと。
+11. Codex pane が shell へ戻ったままになった場合、runtime は自動で Codex 起動コマンドを再投入し、手動再起動なしでも auth menu / prompt ready へ戻せること。
+12. `shutsujin_departure.sh` は watcher_supervisor を常駐起動する前に one-shot tick を 1 回同期実行し、初回 watcher 起動を background process の初回スケジュールに依存させないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `python3 -m unittest tests.unit.test_runtime_blocker_notice`
    - 期待結果: hard usage-limit / auth-required の notice 作成、`なし` 置換、重複抑止、同一 agent / issue の detail 更新時 1 行置換、既存重複の自動正規化、bilingual heading 対応、clear 時の `なし` 復元、not_found 時の timestamp 不変が PASS する。
 2. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
-   - 期待結果: hard usage-limit で `1` / nudge を送らず、auth prompt 中の pending bootstrap は notice 記録、normal 画面や bootstrap 再配信成功時に stale notice clear が走り、Codex process が `node` でない shell 戻り pane には pending bootstrap を再送しない回帰が PASS する。
+   - 期待結果: hard usage-limit で `1` / nudge を送らず、auth prompt 中の pending bootstrap は notice 記録、normal 画面や bootstrap 再配信成功時に stale notice clear が走り、Codex process が `node` でない shell 戻り pane には pending bootstrap を再送せず、restart command を再投入する回帰が PASS する。
 3. コマンド: `rg -n "record_runtime_blocker_notice|record_runtime_blocker_notice_tmux|codex-hard-usage-limit|codex-auth-required|runtime_blocker_notice.py" scripts/inbox_watcher.sh shutsujin_departure.sh`
    - 期待結果: watcher と startup の両方から hard usage-limit / auth-required の blocked notice 記録導線が見える。
+4. コマンド: `bats tests/unit/test_watcher_supervisor.bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `watcher_supervisor` の Codex shell-return 再起動、`inbox_watcher` の Codex restart command、startup の one-shot supervisor tick を含めて PASS する。
 
 ## 追補（2026-04-04: 出陣スクリプトの二重起動ガード）
 ### 要求

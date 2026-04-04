@@ -51,3 +51,65 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == "2003" ]]
 }
+
+@test "watcher_supervisor: shell に戻った codex pane を cooldown 付きで再起動する" {
+  run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
+    TEST_PROJECT="$TEST_TMP/project"
+    tmux() {
+      if [[ "$*" == *"display-message -p -t %4 #{pane_id}"* ]]; then
+        echo "%4"
+        return 0
+      fi
+      if [[ "$*" == *"show-options -p -t %4 -v @agent_cli"* ]]; then
+        echo "codex"
+        return 0
+      fi
+      if [[ "$*" == *"display-message -p -t %4 #{pane_current_command}"* ]]; then
+        echo "bash"
+        return 0
+      fi
+      if [[ "$1" == "send-keys" ]]; then
+        echo "$*" >> "$TEST_TMP/send_keys.log"
+        return 0
+      fi
+      return 0
+    }
+    build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+    source "$SUPERVISOR_SNIPPET"
+    SCRIPT_DIR="$TEST_PROJECT"
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    restart_shell_returned_codex_if_needed ashigaru2 %4
+    cat "$TEST_TMP/send_keys.log"
+    test -f "$SCRIPT_DIR/queue/runtime/cli_restart_ashigaru2.state"
+  '
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"send-keys -t %4 codex --search --no-alt-screen Enter"* ]]
+}
+
+@test "watcher_supervisor: codex pane が node に戻ったら restart state を消す" {
+  run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
+    TEST_PROJECT="$TEST_TMP/project"
+    tmux() {
+      if [[ "$*" == *"display-message -p -t %4 #{pane_id}"* ]]; then
+        echo "%4"
+        return 0
+      fi
+      if [[ "$*" == *"show-options -p -t %4 -v @agent_cli"* ]]; then
+        echo "codex"
+        return 0
+      fi
+      if [[ "$*" == *"display-message -p -t %4 #{pane_current_command}"* ]]; then
+        echo "node"
+        return 0
+      fi
+      return 0
+    }
+    source "$SUPERVISOR_SNIPPET"
+    SCRIPT_DIR="$TEST_PROJECT"
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    printf "123\t%%4\tcodex\n" > "$SCRIPT_DIR/queue/runtime/cli_restart_ashigaru2.state"
+    restart_shell_returned_codex_if_needed ashigaru2 %4
+    test ! -f "$SCRIPT_DIR/queue/runtime/cli_restart_ashigaru2.state"
+  '
+  [ "$status" -eq 0 ]
+}

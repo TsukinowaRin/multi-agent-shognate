@@ -1966,6 +1966,8 @@ NINJA_EOF
     sleep 1
 
     if command -v inotifywait >/dev/null 2>&1; then
+        env WATCHER_SUPERVISOR_ONCE=1 MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
+            >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
         nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
             9>&- \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 &

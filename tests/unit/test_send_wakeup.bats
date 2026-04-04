@@ -1058,7 +1058,13 @@ MOCK
         MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
         source "'"$TEST_HARNESS"'"
         build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
         recover_shell_returned_codex_if_needed
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
     '
     [ "$status" -eq 0 ]
 

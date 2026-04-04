@@ -317,6 +317,17 @@ codex_process_running() {
     [ "$current_command" = "node" ]
 }
 
+rearm_bootstrap_pending_for_restart() {
+    local runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime"
+    local bootstrap_file="$runtime_dir/bootstrap_${AGENT_ID}.md"
+    local pending_file="$runtime_dir/bootstrap_${AGENT_ID}.pending"
+    local delivered_file="$runtime_dir/bootstrap_${AGENT_ID}.delivered"
+
+    [ -f "$bootstrap_file" ] || return 0
+    : > "$pending_file"
+    rm -f "$delivered_file"
+}
+
 recover_shell_returned_codex_if_needed() {
     local effective_cli="${1:-}"
     local current_command=""
@@ -356,6 +367,7 @@ recover_shell_returned_codex_if_needed() {
     restart_cmd=$(build_cli_command_with_type "$AGENT_ID" "$effective_cli" 2>/dev/null || true)
     [ -n "$restart_cmd" ] || return 0
 
+    rearm_bootstrap_pending_for_restart
     if send_text_and_enter "$restart_cmd" "Codex CLI restart"; then
         LAST_CLI_RESTART_TS=$now
         echo "[$(date)] [INFO] restarted shell-returned Codex pane for $AGENT_ID" >&2

@@ -230,6 +230,17 @@ mark_restart_attempt() {
     printf '%s\t%s\t%s\n' "$(date +%s)" "$pane" "$cli" > "$(restart_state_file "$agent")"
 }
 
+rearm_bootstrap_pending_for_restart() {
+    local agent="$1"
+    local bootstrap_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.md"
+    local pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.pending"
+    local delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.delivered"
+
+    [ -f "$bootstrap_file" ] || return 0
+    : > "$pending_file"
+    rm -f "$delivered_file"
+}
+
 restart_shell_returned_codex_if_needed() {
     local agent="$1"
     local pane="$2"
@@ -262,6 +273,7 @@ restart_shell_returned_codex_if_needed() {
     cmd="$(build_cli_command_with_type "$agent" "$cli" 2>/dev/null || true)"
     [ -n "$cmd" ] || return 0
 
+    rearm_bootstrap_pending_for_restart "$agent"
     if tmux send-keys -t "$pane" "$cmd" Enter >/dev/null 2>&1; then
         mark_restart_attempt "$agent" "$pane" "$cli"
         echo "[$(date)] restarted shell-returned codex pane for ${agent} on ${pane}" >&2

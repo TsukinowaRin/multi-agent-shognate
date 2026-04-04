@@ -78,9 +78,13 @@ EOF
     source "$SUPERVISOR_SNIPPET"
     SCRIPT_DIR="$TEST_PROJECT"
     mkdir -p "$SCRIPT_DIR/queue/runtime"
+    printf "%s\n" "【初動命令】ready:ashigaru2" > "$SCRIPT_DIR/queue/runtime/bootstrap_ashigaru2.md"
+    : > "$SCRIPT_DIR/queue/runtime/bootstrap_ashigaru2.delivered"
     restart_shell_returned_codex_if_needed ashigaru2 %4
     cat "$TEST_TMP/send_keys.log"
     test -f "$SCRIPT_DIR/queue/runtime/cli_restart_ashigaru2.state"
+    test -f "$SCRIPT_DIR/queue/runtime/bootstrap_ashigaru2.pending"
+    test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_ashigaru2.delivered"
   '
   [ "$status" -eq 0 ]
   [[ "$output" == *"send-keys -t %4 codex --search --no-alt-screen Enter"* ]]

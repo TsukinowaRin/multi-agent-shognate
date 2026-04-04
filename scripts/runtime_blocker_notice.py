@@ -119,10 +119,22 @@ def ensure_notice(dashboard_path: Path, agent: str, issue: str, detail: str, tim
 
     if any(line.strip() == notice for line in body):
         return "duplicate"
+    matched_existing = False
 
     update_last_updated(lines, timestamp_text)
-    filtered_body = [line for line in body if line.strip() and line.strip() != "なし"]
-    filtered_body.append(notice)
+    filtered_body = []
+    for line in body:
+        stripped = line.strip()
+        if not stripped or stripped == "なし":
+            continue
+        if matches_notice(line, agent, issue):
+            if not matched_existing:
+                filtered_body.append(notice)
+                matched_existing = True
+            continue
+        filtered_body.append(line)
+    if not matched_existing:
+        filtered_body.append(notice)
     lines[start + 1:end] = filtered_body + [""]
 
     dashboard_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")

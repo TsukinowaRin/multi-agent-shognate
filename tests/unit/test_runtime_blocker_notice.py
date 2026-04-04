@@ -195,6 +195,30 @@ class RuntimeBlockerNoticeTests(unittest.TestCase):
         self.assertNotIn("Codex auth prompt", text)
         self.assertIn("最終更新: 2026-04-04 09:51", text)
 
+    def test_same_agent_issue_updates_detail_in_place(self):
+        first = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "shogun",
+            "codex-auth-required",
+            "Sign in with ChatGPT",
+            "2026-04-04 09:52",
+        )
+        second = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "shogun",
+            "codex-auth-required",
+            "Finish signing in via your browser",
+            "2026-04-04 09:53",
+        )
+
+        self.assertEqual(first, "updated")
+        self.assertEqual(second, "updated")
+        text = self.dashboard.read_text(encoding="utf-8")
+        self.assertEqual(text.count("[runtime-blocked/shogun]"), 1)
+        self.assertIn("Finish signing in via your browser", text)
+        self.assertNotIn("Sign in with ChatGPT", text)
+        self.assertIn("最終更新: 2026-04-04 09:53", text)
+
 
 if __name__ == "__main__":
     unittest.main()

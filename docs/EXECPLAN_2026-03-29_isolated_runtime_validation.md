@@ -54,6 +54,7 @@
 - [x] (2026-04-04 15:5x JST) `bash shutsujin_departure.sh -c` の最終案内を auth pending に追随させ、「全員 ready」と誤表示しないことを main repo 実行で確認した。
 - [x] (2026-04-04 15:5x JST) `flock` が tmux server へ継承されて直列再起動まで塞ぐ問題を再現し、lock dir 方式へ置き換えて直列成功・並列拒否の両方を確認した。
 - [x] (2026-04-04 16:2x JST) hard usage-limit だけでなく Codex auth prompt も `dashboard.md` の blocked notice へ載せ、bootstrap 再配信成功時に自動で除去する回帰を追加した。
+- [x] (2026-04-04 16:3x JST) 実 runtime で auth notice が同一 agent / issue でも detail 違いで増殖することを確認し、1 notice 1行へ置換更新するよう修正した。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -106,6 +107,8 @@
   Evidence: `lsof .shogunate/locks/shutsujin.lock` で tmux の FD 保持を確認し、直列 2 回実行で 2 回目が誤って lock に弾かれた。
 - Observation: auth-required は bootstrap log と startup stdout にしか残らず、runtime 継続中に殿が `dashboard.md` だけ見ても誰がログイン待ちなのか分からなかった。
   Evidence: 既存の blocked notice は `codex-hard-usage-limit` しか扱っておらず、`codex-auth-required` 導線が watcher / startup のどちらにも無かった。
+- Observation: blocked notice を detail 文字列込みの完全一致でしか dedupe していないと、同じ agent / issue でも startup と watcher の detail 差分で行が増殖する。
+  Evidence: 実 `bash shutsujin_departure.sh -c` 後の `dashboard.md` に、`runtime-blocked/shogun` の auth notice が detail 違いで複数行残った。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -153,6 +156,9 @@
 - Decision: auth-required も hard usage-limit と同じ blocked notice helper に載せ、bootstrap 再配信成功時に clear する。
   Rationale: 起動後の運用面では「quota block」と「login待ち」はどちらも人手対応が要る blocked state であり、dashboard 上で同じ場所に集約した方が判断しやすいため。
   Date/Author: 2026-04-04 / Codex
+- Decision: blocked notice の重複判定は「同じ agent / issue の既存行があるか」で行い、detail が変わった場合は追記ではなく 1 行置換にする。
+  Rationale: detail は最新状態を反映したいが、同一 blocker が複数行に増えると dashboard の実用性を落とすため。
+  Date/Author: 2026-04-04 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -173,6 +179,7 @@
   - 同日の watcher 単体回帰では、pending bootstrap を auth 解消後に literal 再配信し、`.pending` から `.delivered` へ進める経路を確認した。
   - 二重起動ガードは lock dir 方式へ更新し、直列 2 回実行は成功、並列実行は後続だけ fail-fast する状態にできた。
   - `codex-auth-required` も dashboard blocked notice へ記録し、bootstrap 再配信成功時に stale notice を除去する回帰を追加した。
+  - 同一 agent / issue の auth notice は detail が変わっても 1 行更新に揃え、dashboard 上で増殖しないようにした。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。

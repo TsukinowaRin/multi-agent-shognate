@@ -59,6 +59,16 @@ def format_notice(agent: str, issue: str, detail: str) -> str:
     return base
 
 
+def matches_notice(line: str, agent: str, issue: str) -> bool:
+    stripped = line.strip()
+    prefix = f"- [runtime-blocked/{agent}] "
+    if not stripped.startswith(prefix):
+        return False
+    if issue == "codex-hard-usage-limit":
+        return "Codex hard usage-limit prompt" in stripped
+    return stripped == f"{prefix}{issue}"
+
+
 def find_section_bounds(lines: list[str], headings: tuple[str, ...]) -> tuple[int, int]:
     start = -1
     end = len(lines)
@@ -116,10 +126,36 @@ def ensure_notice(dashboard_path: Path, agent: str, issue: str, detail: str, tim
     return "updated"
 
 
+def clear_notice(dashboard_path: Path, agent: str, issue: str, timestamp_text: str) -> str:
+    if dashboard_path.exists():
+        lines = dashboard_path.read_text(encoding="utf-8").splitlines()
+    else:
+        dashboard_path.parent.mkdir(parents=True, exist_ok=True)
+        lines = dashboard_template(timestamp_text)
+
+    update_last_updated(lines, timestamp_text)
+    start, end = find_section_bounds(lines, (ACTION_REQUIRED_HEADING, ACTION_REQUIRED_HEADING_ALT))
+    body = lines[start + 1:end]
+
+    filtered_body = [
+        line for line in body if line.strip() and not matches_notice(line, agent, issue) and line.strip() != "なし"
+    ]
+
+    if len(filtered_body) == len([line for line in body if line.strip() and line.strip() != "なし"]):
+        dashboard_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        return "not_found"
+
+    replacement_body = filtered_body if filtered_body else ["なし"]
+    lines[start + 1:end] = replacement_body + [""]
+    dashboard_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    return "cleared"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-root", default=str(ROOT))
     parser.add_argument("--dashboard")
+    parser.add_argument("--action", choices=("record", "clear"), default="record")
     parser.add_argument("--agent", required=True)
     parser.add_argument("--issue", required=True)
     parser.add_argument("--detail", default="")
@@ -128,7 +164,10 @@ def main() -> int:
     project_root = Path(args.project_root)
     dashboard_path = Path(args.dashboard) if args.dashboard else project_root / "dashboard.md"
     timestamp_text = datetime.now().strftime("%Y-%m-%d %H:%M")
-    status = ensure_notice(dashboard_path, args.agent, args.issue, args.detail, timestamp_text)
+    if args.action == "clear":
+        status = clear_notice(dashboard_path, args.agent, args.issue, timestamp_text)
+    else:
+        status = ensure_notice(dashboard_path, args.agent, args.issue, args.detail, timestamp_text)
     print(status)
     return 0
 

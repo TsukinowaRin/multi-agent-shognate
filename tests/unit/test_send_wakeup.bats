@@ -869,8 +869,35 @@ MOCK
     [ "$status" -eq 0 ]
 
     grep -q -- '--agent test_agent --issue codex-hard-usage-limit' "$NOTICE_LOG"
+    grep -q -- '--action record' "$NOTICE_LOG"
     grep -q -- '--detail You'\''ve hit your usage limit' "$NOTICE_LOG"
     ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010d2c: send_wakeup は Codex 通常画面で stale blocked notice を除去する" {
+    export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice_clear.log"
+    export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice_clear.py"
+    cat > "$MOCK_NOTICE_SCRIPT" <<'MOCK'
+#!/usr/bin/env python3
+import os
+import sys
+
+with open(os.environ["NOTICE_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(" ".join(sys.argv[1:]) + "\n")
+MOCK
+    chmod +x "$MOCK_NOTICE_SCRIPT"
+
+    run bash -c '
+        export MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT="'"$MOCK_NOTICE_SCRIPT"'"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'normal codex idle screen'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q -- '--action clear --agent test_agent --issue codex-hard-usage-limit' "$NOTICE_LOG"
+    grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010d3: send_wakeup_with_escape は hard usage-limit prompt では Escape+nudge を抑止する" {

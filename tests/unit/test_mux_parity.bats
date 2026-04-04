@@ -126,3 +126,8 @@ setup_file() {
     run bats_search 'record_runtime_blocker_notice_tmux|runtime_blocker_notice\.py|codex-hard-usage-limit|dashboard に記録' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "tmux 起動は hard usage-limit 解消後に dashboard blocked notice を除去する" {
+    run bats_search 'clear_runtime_blocker_notice_tmux|--action "\$action"|dashboard から除去|codex-hard-usage-limit' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}

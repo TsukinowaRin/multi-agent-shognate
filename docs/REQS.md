@@ -1758,11 +1758,12 @@
 1. `shogun` など Codex pane が `You've hit your usage limit` の hard block に入った場合、watcher と startup は誤入力せず blocked 状態を `dashboard.md` に記録すること。
 2. blocked 記録は同一内容で重複しないこと。
 3. `dashboard.md` が日本語版でも bilingual 版でも、要対応セクションへ追記できること。
+4. hard block が解消した後は stale blocked notice を `dashboard.md` から除去できること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `python3 -m unittest tests.unit.test_runtime_blocker_notice`
-   - 期待結果: dashboard 新規作成、`なし` 置換、重複抑止、bilingual heading 対応が PASS する。
+   - 期待結果: dashboard 新規作成、`なし` 置換、重複抑止、bilingual heading 対応、clear 時の `なし` 復元が PASS する。
 2. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
-   - 期待結果: hard usage-limit で `1` / nudge を送らず、notice helper 呼び出し回帰が PASS する。
+   - 期待結果: hard usage-limit で `1` / nudge を送らず、normal 画面で stale notice clear が走る回帰が PASS する。
 3. コマンド: `rg -n "record_runtime_blocker_notice|record_runtime_blocker_notice_tmux|codex-hard-usage-limit|runtime_blocker_notice.py" scripts/inbox_watcher.sh shutsujin_departure.sh`
    - 期待結果: watcher と startup の両方から blocked notice 記録導線が見える。

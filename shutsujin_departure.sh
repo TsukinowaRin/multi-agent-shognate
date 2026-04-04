@@ -222,7 +222,9 @@ tmux_send_text_and_enter_or_die() {
     fi
 }
 
-record_runtime_blocker_notice_tmux() {
+run_runtime_blocker_notice_tmux() {
+    local action="$1"
+    shift
     local agent_id="$1"
     local issue="$2"
     local detail="${3:-}"
@@ -235,12 +237,24 @@ record_runtime_blocker_notice_tmux() {
         return 0
     fi
 
-    if python3 "$notice_script" --project-root "$SCRIPT_DIR" --agent "$agent_id" --issue "$issue" --detail "$detail" >/dev/null 2>&1; then
-        log_info "  └─ ${agent_id}: runtime blocked notice を dashboard に記録"
+    if python3 "$notice_script" --project-root "$SCRIPT_DIR" --action "$action" --agent "$agent_id" --issue "$issue" --detail "$detail" >/dev/null 2>&1; then
+        if [ "$action" = "clear" ]; then
+            log_info "  └─ ${agent_id}: runtime blocked notice を dashboard から除去"
+        else
+            log_info "  └─ ${agent_id}: runtime blocked notice を dashboard に記録"
+        fi
     else
-        log_warn "  └─ ${agent_id}: runtime blocked notice の記録に失敗"
+        log_warn "  └─ ${agent_id}: runtime blocked notice の ${action} に失敗"
     fi
     return 0
+}
+
+record_runtime_blocker_notice_tmux() {
+    run_runtime_blocker_notice_tmux "record" "$@"
+}
+
+clear_runtime_blocker_notice_tmux() {
+    run_runtime_blocker_notice_tmux "clear" "$@"
 }
 
 # Gemini CLI 初回の trust folder プロンプトを自動承認する（1回のみ）
@@ -362,11 +376,13 @@ auto_dismiss_codex_rate_limit_prompt_tmux() {
                 log_info "  └─ ${agent_id}: Codex hard usage-limit prompt を検知（mini切替不可のため自動入力せず待機）"
                 return 0
             fi
+            clear_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
             tmux_send_text_and_enter "$pane_target" "1" "Codex usage-limit prompt" || return 1
             log_info "  └─ ${agent_id}: Codex usage-limit prompt で mini へ自動切替"
             sleep 2
             return 0
         fi
+        clear_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
         if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model \(never show again\)"; then
             tmux_send_text_and_enter "$pane_target" "3" "Codex rate-limit prompt" || return 1
             log_info "  └─ ${agent_id}: Codex rate-limit prompt を自動dismiss"

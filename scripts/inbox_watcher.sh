@@ -193,9 +193,10 @@ send_text_and_enter() {
     return 0
 }
 
-record_runtime_blocker_notice() {
-    local issue="${1:-}"
-    local detail="${2:-}"
+run_runtime_blocker_notice() {
+    local action="${1:-record}"
+    local issue="${2:-}"
+    local detail="${3:-}"
     local project_root="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
     local notice_script="${MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT:-${project_root}/scripts/runtime_blocker_notice.py}"
 
@@ -207,12 +208,25 @@ record_runtime_blocker_notice() {
         return 0
     fi
 
-    if python3 "$notice_script" --project-root "$project_root" --agent "$AGENT_ID" --issue "$issue" --detail "$detail" >/dev/null 2>&1; then
-        echo "[$(date)] [INFO] runtime blocker notice recorded for $AGENT_ID ($issue)" >&2
+    if python3 "$notice_script" --project-root "$project_root" --action "$action" --agent "$AGENT_ID" --issue "$issue" --detail "$detail" >/dev/null 2>&1; then
+        if [ "$action" = "clear" ]; then
+            echo "[$(date)] [INFO] runtime blocker notice cleared for $AGENT_ID ($issue)" >&2
+        else
+            echo "[$(date)] [INFO] runtime blocker notice recorded for $AGENT_ID ($issue)" >&2
+        fi
         return 0
     fi
 
-    echo "[$(date)] [WARN] runtime blocker notice failed for $AGENT_ID ($issue)" >&2
+    echo "[$(date)] [WARN] runtime blocker notice ${action} failed for $AGENT_ID ($issue)" >&2
+    return 0
+}
+
+record_runtime_blocker_notice() {
+    run_runtime_blocker_notice "record" "${1:-}" "${2:-}"
+}
+
+clear_runtime_blocker_notice() {
+    run_runtime_blocker_notice "clear" "${1:-}" "${2:-}"
     return 0
 }
 
@@ -232,6 +246,7 @@ dismiss_codex_rate_limit_prompt_if_present() {
             echo "[$(date)] [SKIP] Hard Codex usage-limit prompt detected for $AGENT_ID; no mini switch option present" >&2
             return 3
         fi
+        clear_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
         echo "[$(date)] [SEND-KEYS] Switching Codex to mini after usage-limit prompt for $AGENT_ID" >&2
         if ! send_text_and_enter "1" "Codex usage-limit prompt"; then
             return 2
@@ -239,6 +254,7 @@ dismiss_codex_rate_limit_prompt_if_present() {
         sleep 0.3
         return 0
     fi
+    clear_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
     if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model \(never show again\)"; then
         echo "[$(date)] [SEND-KEYS] Dismissing Codex rate-limit prompt for $AGENT_ID" >&2
         if ! send_text_and_enter "3" "Codex rate-limit prompt"; then

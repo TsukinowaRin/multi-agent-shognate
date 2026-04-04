@@ -65,6 +65,8 @@
 - [x] (2026-04-04 21:2x JST) main repo の実 Codex runtime で `cmd_001`, `cmd_002` を連続投入し、どちらも `shogun -> karo -> ashigaru -> karo -> shogun` の `cmd_done` 返却と将軍報告まで完了した。
 - [x] (2026-04-04 21:4x JST) 共同開発 task `cmd_003` では `runtime_sandboxes/live_validation_probe/` へのファイル生成自体は成功した一方、report が主張した `python3 -m unittest` 成功を再現できず、verification contract 不足を実 runtime で確認した。
 - [x] (2026-04-04 21:5x JST) 足軽 report に exact verification command / cwd / result を必須化し、家老が implementation task close 前に reported command を rerun する instruction 契約と build_system 回帰を追加した。
+- [x] (2026-04-04 21:4x JST) clean start 後の main repo runtime で、old archive `cmd_003` が `karo_done_to_shogun_bridge` から再度 `cmd_done` として将軍 inbox へ戻ることを確認し、bridge state 持ち越しが restart 直後の stale replay を起こすと切り分けた。
+- [x] (2026-04-04 21:5x JST) `shutsujin_departure.sh -c` が `queue/runtime/shogun_to_karo_bridge.tsv` と `queue/runtime/karo_done_to_shogun.tsv` を消すようにし、clean start 時の old archive replay 防止回帰を追加した。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -137,6 +139,8 @@
   Evidence: `queue/shogun_to_karo_archive.yaml` に `cmd_001` / `cmd_002` の `status: done`、`queue/inbox/shogun.yaml` に対応する `cmd_done` があり、shogun pane capture に完了報告が残った。
 - Observation: 共同開発 task `cmd_003` の足軽 report は `python3 -m unittest` 成功を主張したが、実際に `runtime_sandboxes/live_validation_probe` で同コマンドを実行すると `ModuleNotFoundError: No module named 'runtime_sandboxes'` で失敗した。
   Evidence: `queue/reports/ashigaru1_report.yaml` の `notes` と、`cd runtime_sandboxes/live_validation_probe && python3 -m unittest` の実行結果が矛盾した。
+- Observation: clean start 後でも `queue/shogun_to_karo_archive.yaml` の old `cmd_003` が `cmd_done` として将軍 inbox に再配送され、新しい task より先に stale 完了報告を処理し始めた。
+  Evidence: `queue/inbox/shogun.yaml` に `msg_20260404_214258_4657c810` の `cmd_done` が再出現し、`queue/shogun_to_karo.yaml` は空なのに shogun pane が `cmd_003` の後始末を始めた。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -217,6 +221,9 @@
 - Decision: implementation 系 task の close 契約は、report 要約の自然言語ではなく `result.verification.command` / `cwd` / `result` を正本とし、家老が reported command を rerun してから close する。
   Rationale: 実 runtime の共同開発 task で、足軽 report が test pass を主張しても実コマンドが失敗する false-positive を確認し、report 文面だけでは品質を担保できないと分かったため。
   Date/Author: 2026-04-04 / Codex
+- Decision: `shutsujin_departure.sh -c` は queue だけでなく bridge state も捨て、restart 後は archive を再 prime させる。
+  Rationale: active queue を空にしても `karo_done_to_shogun.tsv` を持ち越すと、clean start 直後に old archive `done` が新着 `cmd_done` として shogun inbox へ戻り、fresh run の初動を汚すため。
+  Date/Author: 2026-04-04 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -245,6 +252,7 @@
   - `runtime_cli_pref_daemon` の no-op / unchanged は既定で静かになり、Gemini alias 同期後の 2 回目 sync は `unchanged` 扱いへ戻せた。
   - main repo の auth 済み実 Codex runtime では、`cmd_001` と `cmd_002` の 2 本を連続で `cmd_done` まで完了できた。
   - 共同開発 task `cmd_003` の実観測から、検証結果の虚偽報告を instruction / protocol 契約で抑止する必要があることを特定し、exact command/cwd 記録と karo rerun-before-close を導入した。
+  - clean start で old archive `cmd_done` が shogun inbox へ戻る replay も確認し、bridge state を clean start で捨てる修正を追加した。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。

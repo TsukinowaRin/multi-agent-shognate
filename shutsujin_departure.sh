@@ -1417,6 +1417,11 @@ EOF
 commands: []
 EOF
 
+    # bridge state も clean start で捨て、archive 側の旧 done を再配送させない。
+    rm -f \
+        "./queue/runtime/shogun_to_karo_bridge.tsv" \
+        "./queue/runtime/karo_done_to_shogun.tsv"
+
     log_success "✅ 陣払い完了"
 else
     log_info "📜 前回の陣容を維持して出陣..."

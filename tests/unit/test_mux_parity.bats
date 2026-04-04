@@ -92,6 +92,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux clean start は bridge state を消して archive 側の旧完了を再配送させない" {
+    run bats_search 'queue/runtime/shogun_to_karo_bridge\.tsv|queue/runtime/karo_done_to_shogun\.tsv|archive 側の旧 done を再配送させない' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は bootstrap 配信結果と auth-required を runtime log へ残す" {
     run bats_search 'GOZA_BOOTSTRAP_LOG|goza_bootstrap_\$\{GOZA_BOOTSTRAP_RUN_ID\}\.log|status=auth-required|status=bootstrap-delivered' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

@@ -11,34 +11,50 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 ACTION_REQUIRED_HEADING = "## 🚨 要対応 - 殿のご判断をお待ちしております"
 ACTION_REQUIRED_HEADING_ALT = "## 🚨 要対応 - 殿のご判断をお待ちしております (Action Required - Awaiting Lord's Decision)"
+MAIN_HEADING = "# 📊 戦況報告"
+MAIN_HEADING_ALT = "# 📊 戦況報告 (Battle Status Report)"
+IN_PROGRESS_HEADING = "## 🔄 進行中 - 只今、戦闘中でござる"
+IN_PROGRESS_HEADING_ALT = "## 🔄 進行中 - 只今、戦闘中でござる (In Progress - Currently in Battle)"
+TODAY_RESULTS_HEADING = "## ✅ 本日の戦果"
+SKILL_CANDIDATES_HEADING = "## 🎯 スキル化候補 - 承認待ち"
+GENERATED_SKILLS_HEADING = "## 🛠️ 生成されたスキル"
+WAITING_HEADING = "## ⏸️ 待機中"
+QUESTIONS_HEADING = "## ❓ 伺い事項"
 RUNTIME_BLOCKED_PATTERN = re.compile(r"^- \[runtime-blocked/(?P<agent>[^\]]+)\] (?P<message>.+)$")
 
 
-def dashboard_template(timestamp_text: str) -> list[str]:
+def dashboard_template(timestamp_text: str, *, bilingual: bool = False) -> list[str]:
+    main_heading = MAIN_HEADING_ALT if bilingual else MAIN_HEADING
+    last_updated = (
+        f"最終更新 (Last Updated): {timestamp_text}" if bilingual else f"最終更新: {timestamp_text}"
+    )
+    action_required_heading = ACTION_REQUIRED_HEADING_ALT if bilingual else ACTION_REQUIRED_HEADING
+    in_progress_heading = IN_PROGRESS_HEADING_ALT if bilingual else IN_PROGRESS_HEADING
+    none_text = "なし (None)" if bilingual else "なし"
     return [
-        "# 📊 戦況報告",
-        f"最終更新: {timestamp_text}",
+        main_heading,
+        last_updated,
         "",
-        ACTION_REQUIRED_HEADING,
-        "なし",
+        action_required_heading,
+        none_text,
         "",
-        "## 🔄 進行中 - 只今、戦闘中でござる",
-        "なし",
+        in_progress_heading,
+        none_text,
         "",
-        "## ✅ 本日の戦果",
+        TODAY_RESULTS_HEADING,
         "| 時刻 | 戦場 | 任務 | 結果 |",
         "|------|------|------|------|",
         "",
-        "## 🎯 スキル化候補 - 承認待ち",
+        SKILL_CANDIDATES_HEADING,
         "なし",
         "",
-        "## 🛠️ 生成されたスキル",
+        GENERATED_SKILLS_HEADING,
         "なし",
         "",
-        "## ⏸️ 待機中",
+        WAITING_HEADING,
         "なし",
         "",
-        "## ❓ 伺い事項",
+        QUESTIONS_HEADING,
         "なし",
         "",
     ]
@@ -75,7 +91,7 @@ def normalize_issue_detail(issue: str, detail: str) -> str:
             or "press enter to continue" in lower
         ):
             return "Sign in with ChatGPT / Device Code / API key menu"
-        return compact
+        return "Codex authentication prompt detected"
 
     if issue == "codex-hard-usage-limit":
         match = re.search(r"try again at [^.]+(?:\.)?", compact, flags=re.IGNORECASE)
@@ -83,7 +99,7 @@ def normalize_issue_detail(issue: str, detail: str) -> str:
             return match.group(0)
         if "you've hit your usage limit" in lower:
             return "You've hit your usage limit"
-        return compact
+        return "You've hit your usage limit"
 
     return compact
 
@@ -127,7 +143,11 @@ def notice_identity(line: str) -> tuple[str, str] | None:
 
 
 def compact_body(body: list[str]) -> list[str]:
-    return [line for line in body if line.strip() and line.strip() != "なし"]
+    return [line for line in body if line.strip() and line.strip() not in ("なし", "なし (None)")]
+
+
+def compact_generic_body(body: list[str]) -> list[str]:
+    return [line for line in body if line.strip()]
 
 
 def normalize_action_required_body(body: list[str]) -> list[str]:
@@ -145,6 +165,111 @@ def normalize_action_required_body(body: list[str]) -> list[str]:
             continue
         normalized.append(line)
     return normalized
+
+
+def extract_action_required_body(lines: list[str]) -> list[str]:
+    try:
+        start, end = find_section_bounds(lines[:], (ACTION_REQUIRED_HEADING, ACTION_REQUIRED_HEADING_ALT))
+    except Exception:
+        return []
+    if start == -1:
+        return []
+    return normalize_action_required_body(lines[start + 1:end])
+
+
+def extract_section_body(lines: list[str], headings: tuple[str, ...], *, compact_fn=compact_generic_body) -> list[str]:
+    start = -1
+    end = len(lines)
+    for idx, line in enumerate(lines):
+        if line.strip() in headings:
+            start = idx
+            break
+    if start == -1:
+        return []
+
+    for idx in range(start + 1, len(lines)):
+        if lines[idx].startswith("## "):
+            end = idx
+            break
+    return compact_fn(lines[start + 1:end])
+
+
+def dashboard_is_structurally_valid(lines: list[str]) -> bool:
+    def count_headings(candidates: tuple[str, ...]) -> int:
+        return sum(1 for line in lines if line.strip() in candidates)
+
+    has_main_heading = count_headings((MAIN_HEADING, MAIN_HEADING_ALT)) == 1
+    has_last_updated = any(
+        line.startswith("最終更新: ") or line.startswith("最終更新 (Last Updated): ")
+        for line in lines
+    )
+    has_action_required = count_headings((ACTION_REQUIRED_HEADING, ACTION_REQUIRED_HEADING_ALT)) == 1
+    has_in_progress = count_headings((IN_PROGRESS_HEADING, IN_PROGRESS_HEADING_ALT)) == 1
+    has_today_results = count_headings((TODAY_RESULTS_HEADING,)) == 1
+    has_skill_candidates = count_headings((SKILL_CANDIDATES_HEADING,)) == 1
+    has_generated_skills = count_headings((GENERATED_SKILLS_HEADING,)) == 1
+    has_waiting = count_headings((WAITING_HEADING,)) == 1
+    has_questions = count_headings((QUESTIONS_HEADING,)) == 1
+    return (
+        has_main_heading
+        and has_last_updated
+        and has_action_required
+        and has_in_progress
+        and has_today_results
+        and has_skill_candidates
+        and has_generated_skills
+        and has_waiting
+        and has_questions
+    )
+
+
+def repair_dashboard_lines(lines: list[str], timestamp_text: str) -> list[str]:
+    bilingual = any(line.strip() == MAIN_HEADING_ALT for line in lines) or any(
+        line.strip() == ACTION_REQUIRED_HEADING_ALT for line in lines
+    )
+    section_defaults = {
+        ACTION_REQUIRED_HEADING: ["なし (None)" if bilingual else "なし"],
+        IN_PROGRESS_HEADING: ["なし (None)" if bilingual else "なし"],
+        TODAY_RESULTS_HEADING: ["| 時刻 | 戦場 | 任務 | 結果 |", "|------|------|------|------|"],
+        SKILL_CANDIDATES_HEADING: ["なし"],
+        GENERATED_SKILLS_HEADING: ["なし"],
+        WAITING_HEADING: ["なし"],
+        QUESTIONS_HEADING: ["なし"],
+    }
+    section_bodies = {
+        ACTION_REQUIRED_HEADING: extract_action_required_body(lines) or section_defaults[ACTION_REQUIRED_HEADING],
+        IN_PROGRESS_HEADING: extract_section_body(lines, (IN_PROGRESS_HEADING, IN_PROGRESS_HEADING_ALT)) or section_defaults[IN_PROGRESS_HEADING],
+        TODAY_RESULTS_HEADING: extract_section_body(lines, (TODAY_RESULTS_HEADING,)) or section_defaults[TODAY_RESULTS_HEADING],
+        SKILL_CANDIDATES_HEADING: extract_section_body(lines, (SKILL_CANDIDATES_HEADING,)) or section_defaults[SKILL_CANDIDATES_HEADING],
+        GENERATED_SKILLS_HEADING: extract_section_body(lines, (GENERATED_SKILLS_HEADING,)) or section_defaults[GENERATED_SKILLS_HEADING],
+        WAITING_HEADING: extract_section_body(lines, (WAITING_HEADING,)) or section_defaults[WAITING_HEADING],
+        QUESTIONS_HEADING: extract_section_body(lines, (QUESTIONS_HEADING,)) or section_defaults[QUESTIONS_HEADING],
+    }
+
+    rebuilt = dashboard_template(timestamp_text, bilingual=bilingual)[:3]
+    ordered_headings = [
+        ACTION_REQUIRED_HEADING,
+        IN_PROGRESS_HEADING,
+        TODAY_RESULTS_HEADING,
+        SKILL_CANDIDATES_HEADING,
+        GENERATED_SKILLS_HEADING,
+        WAITING_HEADING,
+        QUESTIONS_HEADING,
+    ]
+    heading_labels = {
+        ACTION_REQUIRED_HEADING: ACTION_REQUIRED_HEADING_ALT if bilingual else ACTION_REQUIRED_HEADING,
+        IN_PROGRESS_HEADING: IN_PROGRESS_HEADING_ALT if bilingual else IN_PROGRESS_HEADING,
+        TODAY_RESULTS_HEADING: TODAY_RESULTS_HEADING,
+        SKILL_CANDIDATES_HEADING: SKILL_CANDIDATES_HEADING,
+        GENERATED_SKILLS_HEADING: GENERATED_SKILLS_HEADING,
+        WAITING_HEADING: WAITING_HEADING,
+        QUESTIONS_HEADING: QUESTIONS_HEADING,
+    }
+    for heading in ordered_headings:
+        rebuilt.append(heading_labels[heading])
+        rebuilt.extend(section_bodies[heading])
+        rebuilt.append("")
+    return rebuilt
 
 
 def find_section_bounds(lines: list[str], headings: tuple[str, ...]) -> tuple[int, int]:
@@ -183,6 +308,8 @@ def update_last_updated(lines: list[str], timestamp_text: str) -> None:
 def ensure_notice(dashboard_path: Path, agent: str, issue: str, detail: str, timestamp_text: str) -> str:
     if dashboard_path.exists():
         lines = dashboard_path.read_text(encoding="utf-8").splitlines()
+        if not dashboard_is_structurally_valid(lines):
+            lines = repair_dashboard_lines(lines, timestamp_text)
     else:
         dashboard_path.parent.mkdir(parents=True, exist_ok=True)
         lines = dashboard_template(timestamp_text)
@@ -219,6 +346,8 @@ def ensure_notice(dashboard_path: Path, agent: str, issue: str, detail: str, tim
 def clear_notice(dashboard_path: Path, agent: str, issue: str, timestamp_text: str) -> str:
     if dashboard_path.exists():
         lines = dashboard_path.read_text(encoding="utf-8").splitlines()
+        if not dashboard_is_structurally_valid(lines):
+            lines = repair_dashboard_lines(lines, timestamp_text)
     else:
         return "not_found"
 

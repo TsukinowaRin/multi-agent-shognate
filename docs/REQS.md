@@ -25,6 +25,7 @@
 16. Codex の `You've hit your usage limit ... try again at ...` prompt は、mini 切替 option が無い hard block 画面では `1` を自動送信せず、watcher / startup の両方が誤入力ループに入らないこと。
 17. Codex pane が一度 bootstrap 配信済みの後で shell へ戻った場合でも、runtime は restart 前に `bootstrap_<agent>.pending` を復元し、`bootstrap_<agent>.delivered` を外して再ログイン後の bootstrap 再試行を可能にすること。
 18. `runtime_blocker_notice.py` は auth prompt / hard usage-limit の detail を安定した要約へ正規化し、同じ blocker を pane capture の揺れだけで毎回 `updated` 扱いしないこと。
+19. `runtime_blocker_notice.py` は壊れた `dashboard.md` でも最低限の骨格を自動修復し、既知セクションの重複残骸を残さないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`
@@ -71,6 +72,8 @@
    - 期待結果: shell-return recovery の回帰で、restart 前に `bootstrap_<agent>.pending` が復元され `bootstrap_<agent>.delivered` が削除されることを含めて PASS する。
 20. コマンド: `python3 -m unittest tests.unit.test_runtime_blocker_notice`
    - 期待結果: noisy な auth prompt / hard usage-limit capture を渡しても issue 別の安定 detail へ正規化され、同じ blocker は `duplicate` 扱いで PASS する。
+21. コマンド: `python3 -m unittest tests.unit.test_runtime_blocker_notice`
+   - 期待結果: 先頭見出し欠落や duplicate section を含む `dashboard.md` でも、record 時に `# 📊 戦況報告` / `最終更新` / 既知 section が 1 回ずつの正しい骨格へ再構築されて PASS する。
 
 ## 追補（2026-03-30: Shogunate-test 実Codex検証の完了）
 ### 要求

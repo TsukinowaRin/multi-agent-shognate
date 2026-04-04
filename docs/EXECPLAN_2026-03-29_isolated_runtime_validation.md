@@ -61,6 +61,7 @@
 - [x] (2026-04-04 18:0x JST) `watcher_supervisor.sh` と `inbox_watcher.sh` の両方に shell 戻り Codex pane の再起動導線を追加し、startup 側は `WATCHER_SUPERVISOR_ONCE=1` の同期 tick 後に常駐 supervisor を立てる形へ更新した。
 - [x] (2026-04-04 18:2x JST) shell 戻り Codex pane の再起動時に、既配信扱いの `bootstrap_<agent>.delivered` を外して `bootstrap_<agent>.pending` を復元し、再ログイン後の bootstrap 再試行を可能にした。
 - [x] (2026-04-04 18:3x JST) `runtime_blocker_notice.py` が auth prompt / hard usage-limit の detail を issue 別の安定要約へ正規化し、pane capture の揺れだけで `dashboard.md` と watcher log を更新し続けないようにした。
+- [x] (2026-04-04 20:4x JST) `runtime_blocker_notice.py` が壊れた `dashboard.md` の骨格も自動修復し、garbled auth detail と duplicate section を残さないようにした。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -125,6 +126,8 @@
   Evidence: 実 runtime で `queue/runtime/bootstrap_ashigaru2.delivered` が残り `bootstrap_ashigaru2.pending` が無い状態から pane を shell に落とすと、再起動後は `node` に戻っても bootstrap marker が復元されなかった。修正後は同条件で `WATCHER_SUPERVISOR_ONCE=1 bash scripts/watcher_supervisor.sh` 実行後に `bootstrap_ashigaru2.pending` が再作成され、`bootstrap_ashigaru2.delivered` が消えた。
 - Observation: blocked notice helper 自体は duplicate を返せても、auth prompt の pane capture が毎回少しずつ揺れると detail 差分で `updated` 扱いになり、`dashboard.md` の `最終更新` と watcher log の `runtime blocker notice recorded ...` が 30 秒ごとに増え続けた。
   Evidence: `logs/inbox_watcher_shogun.log` に同じ `codex-auth-required` の `recorded` 行が連続し、既存 `dashboard.md` の shogun notice detail には sign-in menu 以外の garbled text が混ざっていた。helper 修正後は noisy な prompt 文字列 2 種を `python3 -m unittest tests.unit.test_runtime_blocker_notice` で同一 blocker として `duplicate` 判定できることを確認した。
+- Observation: `dashboard.md` が一度 3 行だけの中途半端な形に崩れると、旧 helper は heading の最低条件だけ満たしたファイルを valid 扱いし、末尾に duplicate section 残骸を抱えたまま運用が続いた。
+  Evidence: 実 runtime の `dashboard.md` は `wc -l` で 3 行しかない状態から始まり、その後の helper 実行で `# 📊 戦況報告` は戻っても `## 🛠️ 生成されたスキル` 以降が重複していた。修正後は `python3 scripts/runtime_blocker_notice.py --project-root . --agent shogun --issue codex-auth-required ...` 実行後に、`dashboard.md` の既知 section が 1 回ずつの骨格へ戻り、garbled auth detail も generic detail へ正規化された。
 - Observation: `shutsujin_departure.sh` が `watcher_supervisor` を background 起動しただけでは、初回 tick の前に runtime 観測を始めると「watcher 起動完了」と表示されていても実 watcher log がまだ増えていないことがあった。
   Evidence: fresh startup 直後の `logs/inbox_watcher_ashigaru2.log` に新しい `inbox_watcher started` 行が出ず、`timeout 3 bash scripts/watcher_supervisor.sh` を foreground で手動実行した瞬間に watcher start と restart log が追記された。
 
@@ -194,6 +197,9 @@
   Date/Author: 2026-04-04 / Codex
 - Decision: `runtime_blocker_notice.py` は issue ごとに detail を正規化し、`codex-auth-required` は login menu / browser auth / login server error、`codex-hard-usage-limit` は retry 時刻などの安定要約だけを保持する。
   Rationale: watcher が毎周生の pane capture を渡すと detail が揺れやすく、同じ blocker でも helper が `updated` を返して dashboard 更新と log 出力が止まらなくなるため。
+  Date/Author: 2026-04-04 / Codex
+- Decision: `runtime_blocker_notice.py` は既知 section の本文を抽出して `dashboard.md` 全体を再構築できるようにし、壊れた runtime 生成物も natural update の中で自己修復させる。
+  Rationale: `dashboard.md` は tracked file ではない runtime 生成物なので、別コマンドでの手動掃除に頼るより helper 自体が骨格を戻せる方が実運用で安全なため。
   Date/Author: 2026-04-04 / Codex
 - Decision: `sync_runtime_cli_preferences.py` は changed が無い run を既定では無言にし、verbose が必要な時だけ env で no-op 出力を有効化する。
   Rationale: daemon 常駐時の log 増加を防ぎつつ、調査時だけ挙動を見られるようにするため。

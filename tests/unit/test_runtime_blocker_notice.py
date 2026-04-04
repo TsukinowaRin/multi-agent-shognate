@@ -242,6 +242,20 @@ class RuntimeBlockerNoticeTests(unittest.TestCase):
         self.assertIn("Sign in with ChatGPT / Device Code / API key menu", text)
         self.assertIn("最終更新: 2026-04-04 10:00", text)
 
+    def test_auth_required_detail_falls_back_to_generic_when_capture_is_garbled(self):
+        status = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "shogun",
+            "codex-auth-required",
+            '__==+~+==~._ _+|||\\/===_*_,|*,, ,*;;/"|+*`',
+            "2026-04-04 10:05",
+        )
+
+        self.assertEqual(status, "updated")
+        text = self.dashboard.read_text(encoding="utf-8")
+        self.assertIn("Codex authentication prompt detected", text)
+        self.assertNotIn('__==+~+==~._', text)
+
     def test_hard_usage_limit_detail_is_normalized_for_same_retry_time(self):
         first = runtime_blocker_notice.ensure_notice(
             self.dashboard,
@@ -264,6 +278,89 @@ class RuntimeBlockerNoticeTests(unittest.TestCase):
         self.assertEqual(text.count("[runtime-blocked/karo]"), 1)
         self.assertIn("try again at Apr 4th, 2026 12:47 AM.", text)
         self.assertIn("最終更新: 2026-04-04 10:10", text)
+
+    def test_repair_malformed_dashboard_before_recording_notice(self):
+        self.dashboard.write_text(
+            "\n".join(
+                [
+                    "",
+                    runtime_blocker_notice.ACTION_REQUIRED_HEADING,
+                    "- [runtime-blocked/shogun] Codex auth prompt を検知。ログイン完了待ち。 詳細: noisy old text",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        status = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "karo",
+            "codex-auth-required",
+            "Sign in with ChatGPT",
+            "2026-04-04 10:20",
+        )
+
+        self.assertEqual(status, "updated")
+        text = self.dashboard.read_text(encoding="utf-8")
+        self.assertIn(runtime_blocker_notice.MAIN_HEADING, text)
+        self.assertIn("最終更新: 2026-04-04 10:20", text)
+        self.assertIn(runtime_blocker_notice.IN_PROGRESS_HEADING, text)
+        self.assertEqual(text.count("[runtime-blocked/shogun]"), 1)
+        self.assertEqual(text.count("[runtime-blocked/karo]"), 1)
+
+    def test_repair_normalizes_duplicate_trailing_sections(self):
+        self.dashboard.write_text(
+            "\n".join(
+                [
+                    runtime_blocker_notice.MAIN_HEADING,
+                    "最終更新: 2026-04-04 10:21",
+                    "",
+                    runtime_blocker_notice.ACTION_REQUIRED_HEADING,
+                    "- [runtime-blocked/shogun] Codex auth prompt を検知。ログイン完了待ち。 詳細: noisy old text",
+                    "",
+                    runtime_blocker_notice.IN_PROGRESS_HEADING,
+                    "なし",
+                    "",
+                    runtime_blocker_notice.TODAY_RESULTS_HEADING,
+                    "| 時刻 | 戦場 | 任務 | 結果 |",
+                    "|------|------|------|------|",
+                    "",
+                    runtime_blocker_notice.SKILL_CANDIDATES_HEADING,
+                    "なし",
+                    "",
+                    runtime_blocker_notice.GENERATED_SKILLS_HEADING,
+                    "なし",
+                    "",
+                    runtime_blocker_notice.WAITING_HEADING,
+                    "なし",
+                    "",
+                    runtime_blocker_notice.QUESTIONS_HEADING,
+                    "なし",
+                    "スキル化候補 - 承認待ち",
+                    "なし",
+                    "",
+                    runtime_blocker_notice.GENERATED_SKILLS_HEADING,
+                    "なし",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        status = runtime_blocker_notice.ensure_notice(
+            self.dashboard,
+            "karo",
+            "codex-auth-required",
+            "Sign in with ChatGPT",
+            "2026-04-04 10:22",
+        )
+
+        self.assertEqual(status, "updated")
+        text = self.dashboard.read_text(encoding="utf-8")
+        self.assertEqual(text.count(runtime_blocker_notice.SKILL_CANDIDATES_HEADING), 1)
+        self.assertEqual(text.count(runtime_blocker_notice.GENERATED_SKILLS_HEADING), 1)
+        self.assertEqual(text.count(runtime_blocker_notice.WAITING_HEADING), 1)
+        self.assertEqual(text.count(runtime_blocker_notice.QUESTIONS_HEADING), 1)
 
     def test_record_normalizes_preexisting_duplicate_blocked_notices(self):
         self.dashboard.write_text(

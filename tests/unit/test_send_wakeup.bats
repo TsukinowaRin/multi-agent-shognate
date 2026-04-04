@@ -752,6 +752,19 @@ YAML
     grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
 }
 
+@test "T-CODEX-010b1: send_wakeup は新しい Codex rate-limit prompt variant も dismiss してから nudge する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\n1. Switch to gpt-5.1-codex-mini\n2. Keep current model\n3. Keep… Hide future rate limit\nPress enter to continue'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+}
+
 @test "T-CODEX-010b0: send_wakeup は Codex 通常画面では no-prompt を許容して nudge する" {
     run bash -c '
         MOCK_PANE_CLI="codex"
@@ -784,6 +797,20 @@ YAML
     run bash -c '
         MOCK_PANE_CLI="codex"
         MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\nKeep current model (never show again)'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 4
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010c1: send_wakeup_with_escape も新しい Codex rate-limit prompt variant を dismiss する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\n1. Switch to gpt-5.1-codex-mini\n2. Keep current model\n3. Keep… Hide future rate limit\nPress enter to continue'"'"'
         source "'"$TEST_HARNESS"'"
         send_wakeup_with_escape 4
     '

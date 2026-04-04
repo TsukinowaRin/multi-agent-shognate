@@ -294,7 +294,7 @@ dismiss_codex_rate_limit_prompt_if_present() {
         return 0
     fi
     clear_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
-    if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model \(never show again\)"; then
+    if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model( \(never show again\))?|Hide future rate limit"; then
         echo "[$(date)] [SEND-KEYS] Dismissing Codex rate-limit prompt for $AGENT_ID" >&2
         if ! send_text_and_enter "3" "Codex rate-limit prompt"; then
             return 2

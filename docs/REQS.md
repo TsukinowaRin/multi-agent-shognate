@@ -17,7 +17,7 @@
 8. 起動時の prompt 自動処理と bootstrap 配信でも、text 送信だけで成功扱いせず、`Enter` 失敗を検知すること。
 9. pane の shell 初期化と各エージェント CLI 起動コマンド投入でも、text 送信だけで成功扱いせず、失敗時は起動を継続しないこと。
 10. self-watch 判定は agent 名の suffix 一致ではなく、当該 watcher の `INBOX` 実 path を使って別 clone の `inotifywait` を誤検知しないこと。
-11. Codex の rate-limit / usage-limit prompt 自動dismissでも、text 送信だけで成功扱いせず、失敗時は nudge / escalation へ進まないこと。
+11. Codex の rate-limit / usage-limit prompt 自動dismissでも、text 送信だけで成功扱いせず、`Keep current model` / `Hide future rate limit` を含む prompt variant も取りこぼさず、失敗時は nudge / escalation へ進まないこと。
 12. bridge の `sent` / `already_sent` / `already_notified` 出力は、再利用 `cmd_id` が混ざる場合でも重複 `cmd_id` をそのまま並べず、必要なら timestamp 付きで識別できること。
 13. `watcher_supervisor.sh` の stale watcher cleanup は `gunshi` を誤って stale 扱いせず、実際に監督対象外になった watcher だけを kill すること。
 14. Codex watcher の rate-limit prompt dismiss は、prompt が存在しない通常画面で `return 1` しても watcher 自体を落とさず、そのまま通常 nudge / escalation を継続できること。
@@ -60,7 +60,7 @@
 12. コマンド: `bats tests/unit/test_send_wakeup.bats`
    - 期待結果: `agent_has_self_watch` は `inbox/${AGENT_ID}.yaml` の汎用 pattern ではなく、`INBOX` 実 path を使った `pgrep` で回帰が PASS する。
 13. コマンド: `bats tests/unit/test_send_wakeup.bats`
-   - 期待結果: Codex rate-limit / usage-limit prompt dismiss は `send_text_and_enter` で送達確認され、失敗時は `send_wakeup` / `send_wakeup_with_escape` が abort して回帰が PASS する。
+   - 期待結果: Codex rate-limit / usage-limit prompt dismiss は `send_text_and_enter` で送達確認され、`Keep current model` / `Hide future rate limit` variant を含めて取りこぼさず、失敗時は `send_wakeup` / `send_wakeup_with_escape` が abort して回帰が PASS する。
 14. コマンド: `bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_karo_done_to_shogun_bridge.bats`
    - 期待結果: 再利用 `cmd_id` を含む no-op 出力でも `cmd_id@timestamp` で区別され、重複列挙が回帰しない。
 15. コマンド: `bats tests/unit/test_watcher_supervisor.bats`

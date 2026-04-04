@@ -431,7 +431,7 @@ auto_dismiss_codex_rate_limit_prompt_tmux() {
             return 0
         fi
         clear_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
-        if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model \(never show again\)"; then
+        if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model( \(never show again\))?|Hide future rate limit"; then
             tmux_send_text_and_enter "$pane_target" "3" "Codex rate-limit prompt" || return 1
             log_info "  └─ ${agent_id}: Codex rate-limit prompt を自動dismiss"
             sleep 2

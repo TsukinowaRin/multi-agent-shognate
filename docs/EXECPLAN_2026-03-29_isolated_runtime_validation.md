@@ -234,6 +234,9 @@
 - Decision: Codex runtime preference sync は `% left` を含む status line だけを parse 対象とし、`left` / `context` など UI 断片は invalid codex model として settings 保存も launch 時指定も拒否する。
   Rationale: 実 burn-in で ashigaru2 が `--model left` に壊れ、auth や usage-limit ではない model corruption で停止したため。
   Date/Author: 2026-04-04 / Codex
+- Decision: Codex の rate-limit prompt dismiss は `Approaching rate limits` だけでなく、`2. Keep current model` と `3. Hide future rate limit` を含む新しい prompt variant も検知対象に含める。
+  Rationale: 実 burn-in で karo pane に新 variant が出た際、watcher / startup の既存 regex が一致せず、dismiss が走らない repo bug を確認したため。
+  Date/Author: 2026-04-04 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -264,12 +267,14 @@
   - 共同開発 task `cmd_003` の実観測から、検証結果の虚偽報告を instruction / protocol 契約で抑止する必要があることを特定し、exact command/cwd 記録と karo rerun-before-close を導入した。
   - clean start で old archive `cmd_done` が shogun inbox へ戻る replay も確認し、bridge state を clean start で捨てる修正を追加した。
   - burn-in 2 本目で見つかった `--model left` corruption も修正し、ashigaru2 の fresh start が `model: gpt-5.4` へ戻ることを実機確認した。
+  - burn-in 継続中に出た新しい Codex rate-limit prompt variant も watcher / startup で dismiss できるようにし、`Keep current model` / `Hide future rate limit` 文言差分で止まらない回帰を追加した。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。
   - E2E bats は test helper 実体が repo に無いため、この環境では補強できなかった。
   - 長時間連続運用で rate-limit / usage-limit が再発した場合の throughput 低下は、引き続き外部 quota 依存で残る。
   - `cmd_003` 自体は旧 instruction のまま進行した task なので、新しい verification contract が live runtime で closure を止められるかは次回 task で再確認が必要。
+  - 新しい rate-limit prompt variant の live dismiss は対象回帰までは通したが、fresh runtime の burn-in 本番では次の task で再確認が必要。
 - Lessons:
   - WSL の `/mnt/d` 配下で tmux を使う検証は、socket を Linux 側 filesystem へ逃がす前提で考えた方が早い。
   - bare command 解決に依存する CLI 起動は、tmux pane shell の PATH 差異で検証が揺れる。隔離検証では絶対パスが安全。
@@ -277,6 +282,7 @@
   - 認証済み state を local `CODEX_HOME` へ複製すれば、repo-local state 分離を保ったまま実 WSL Codex を使える。
   - update prompt と trust prompt を混同すると、実機だけで Codex が即終了する。prompt 判定は generic 文言より選択肢の固有文言で切る方が安全。
   - Codex の runtime blocker は auth / trust だけではなく、rate-limit warning と hard usage-limit もある。前者は code で捌けるが、後者は外部 quota が戻るまで repo 側だけでは突破できない。
+  - Codex の rate-limit warning は prompt 文言が固定ではなく、選択肢表示の差分で regex を外すことがある。dismiss 判定は単一文言ではなく、選択肢セットも含めて持った方が安全。
   - bridge daemon は active queue 前提にせず、archive 運用とセットで設計しないと `cmd_done` が静かに欠落する。
   - `report_received` の closure 手順は「何を読むか」だけでなく「何を読まないか」まで明示した方が、Codex の寄り道を抑えやすい。
 - Against Purpose:

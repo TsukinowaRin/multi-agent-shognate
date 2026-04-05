@@ -21,6 +21,70 @@ ensure_tmux_tmpdir() {
     chmod 700 "$tmux_tmp" 2>/dev/null || true
 }
 
+RUNTIME_DAEMON_SESSION="${RUNTIME_DAEMON_SESSION:-goza-runtime}"
+
+build_tmux_runtime_daemon_command() {
+    local inner_cmd="$1"
+    local cmd=""
+    printf -v cmd 'cd %q && %s' "$SCRIPT_DIR" "$inner_cmd"
+    printf '%s\n' "$cmd"
+}
+
+start_tmux_runtime_daemon_window() {
+    local session_name="$1"
+    local window_name="$2"
+    local inner_cmd="$3"
+    local shell_cmd=""
+
+    shell_cmd="$(build_tmux_runtime_daemon_command "$inner_cmd")"
+    if tmux has-session -t "$session_name" 2>/dev/null; then
+        tmux new-window -d -t "$session_name" -n "$window_name" "$shell_cmd" >/dev/null 2>&1
+    else
+        tmux new-session -d -s "$session_name" -n "$window_name" "$shell_cmd" >/dev/null 2>&1
+    fi
+}
+
+restart_tmux_runtime_daemon_session() {
+    local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
+    local started=0
+
+    tmux kill-session -t "$session_name" 2>/dev/null || true
+
+    if command -v inotifywait >/dev/null 2>&1; then
+        start_tmux_runtime_daemon_window \
+            "$session_name" \
+            "watcher" \
+            "env MUX_TYPE=tmux bash \"$SCRIPT_DIR/scripts/watcher_supervisor.sh\" >> \"$SCRIPT_DIR/logs/watcher_supervisor.log\" 2>&1"
+        started=1
+    fi
+
+    if [ -x "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" ]; then
+        start_tmux_runtime_daemon_window \
+            "$session_name" \
+            "shogun-to-karo" \
+            "env MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL=\"${MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL:-2}\" bash \"$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh\" >> \"$SCRIPT_DIR/logs/shogun_to_karo_bridge.log\" 2>&1"
+        started=1
+    fi
+
+    if [ -x "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" ]; then
+        start_tmux_runtime_daemon_window \
+            "$session_name" \
+            "karo-to-shogun" \
+            "env MAS_KARO_DONE_TO_SHOGUN_INTERVAL=\"${MAS_KARO_DONE_TO_SHOGUN_INTERVAL:-2}\" bash \"$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh\" >> \"$SCRIPT_DIR/logs/karo_done_to_shogun_bridge.log\" 2>&1"
+        started=1
+    fi
+
+    if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then
+        start_tmux_runtime_daemon_window \
+            "$session_name" \
+            "runtime-pref" \
+            "env MAS_RUNTIME_PREF_SYNC_INTERVAL=\"${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}\" MAS_RUNTIME_PREF_SYNC_LOG=\"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" bash \"$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh\" >> \"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" 2>&1"
+        started=1
+    fi
+
+    [ "$started" -eq 1 ]
+}
+
 acquire_startup_lock() {
     local lock_root="$SCRIPT_DIR/.shogunate/locks"
     local lock_dir="$lock_root/shutsujin.lock.d"
@@ -1967,53 +2031,35 @@ NINJA_EOF
     pkill -f "$SCRIPT_DIR/scripts/watcher_supervisor.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
+    tmux kill-session -t "$RUNTIME_DAEMON_SESSION" 2>/dev/null || true
     pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
     sleep 1
 
     if command -v inotifywait >/dev/null 2>&1; then
         env WATCHER_SUPERVISOR_ONCE=1 MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
-        nohup env MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
-            9>&- \
-            >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 &
-        disown
+        restart_tmux_runtime_daemon_session "$RUNTIME_DAEMON_SESSION" || true
         _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
-        log_success "  └─ watcher_supervisor 起動完了"
+        log_success "  └─ watcher_supervisor 起動完了（tmux daemon session: ${RUNTIME_DAEMON_SESSION}）"
     else
         log_info "⚠️  inotifywait 未導入のため inbox_watcher はスキップ（sudo apt install -y inotify-tools）"
     fi
 
     if [ -x "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" ]; then
-        nohup env MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL="${MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL:-2}" \
-            bash "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" \
-            9>&- \
-            >> "$SCRIPT_DIR/logs/shogun_to_karo_bridge.log" 2>&1 &
-        disown
         log_info "📨 将軍→家老 命令ブリッジを起動中..."
-        log_success "  └─ shogun_to_karo_bridge_daemon 起動完了"
+        log_success "  └─ shogun_to_karo_bridge_daemon 起動完了（tmux daemon session）"
     fi
 
     if [ -x "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" ]; then
-        nohup env MAS_KARO_DONE_TO_SHOGUN_INTERVAL="${MAS_KARO_DONE_TO_SHOGUN_INTERVAL:-2}" \
-            bash "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" \
-            9>&- \
-            >> "$SCRIPT_DIR/logs/karo_done_to_shogun_bridge.log" 2>&1 &
-        disown
         log_info "📨 家老→将軍 完了報告ブリッジを起動中..."
-        log_success "  └─ karo_done_to_shogun_bridge_daemon 起動完了"
+        log_success "  └─ karo_done_to_shogun_bridge_daemon 起動完了（tmux daemon session）"
     fi
 
     if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then
         pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
-        nohup env MAS_RUNTIME_PREF_SYNC_INTERVAL="${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}" \
-            MAS_RUNTIME_PREF_SYNC_LOG="$SCRIPT_DIR/logs/runtime_cli_pref_sync.log" \
-            bash "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" \
-            9>&- \
-            >> "$SCRIPT_DIR/logs/runtime_cli_pref_sync.log" 2>&1 &
-        disown
         log_info "💾 live CLI設定の自動同期を起動中..."
-        log_success "  └─ runtime_cli_pref_daemon 起動完了"
+        log_success "  └─ runtime_cli_pref_daemon 起動完了（tmux daemon session）"
     fi
 
     # STEP 6.7 は廃止 — CLAUDE.md Session Start (step 1: tmux agent_id) で各自が自律的に

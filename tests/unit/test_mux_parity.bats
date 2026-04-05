@@ -166,3 +166,13 @@ setup_file() {
     run bats_search 'WATCHER_SUPERVISOR_ONCE=1|watcher_supervisor\.sh' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
+
+@test "tmux 起動は runtime daemon を tmux session で常駐化する" {
+    run bats_search 'RUNTIME_DAEMON_SESSION|restart_tmux_runtime_daemon_session|start_tmux_runtime_daemon_window|tmux new-session -d -s "\$session_name"|tmux new-window -d -t "\$session_name"|tmux kill-session -t "\$RUNTIME_DAEMON_SESSION"' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は watcher/bridge/runtime sync を nohup 常駐へ戻さない" {
+    run bats_search 'nohup env MUX_TYPE=tmux bash "\$SCRIPT_DIR/scripts/watcher_supervisor\.sh"|nohup env MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL|nohup env MAS_KARO_DONE_TO_SHOGUN_INTERVAL|nohup env MAS_RUNTIME_PREF_SYNC_INTERVAL' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -ne 0 ]
+}

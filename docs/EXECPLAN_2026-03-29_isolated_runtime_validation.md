@@ -70,6 +70,8 @@
 - [x] (2026-04-04 22:0x JST) burn-in 2 本目で ashigaru2 pane が `codex --model left` で起動し、`The 'left' model ... account` 風の error で task 受領後に停止することを再現した。
 - [x] (2026-04-04 22:0x JST) `sync_runtime_cli_preferences.py` の Codex parser が `context left` / `% left` を model と誤認しないよう修正し、起動側も invalid codex model を無視する回帰を追加した。
 - [x] (2026-04-04 22:0x JST) 修正後の clean start で ashigaru2 pane の起動コマンドから `--model left` が消え、pane footer が `model: gpt-5.4` に戻ることを実機確認した。
+- [x] (2026-04-05 13:0x JST) shared auth 導入後の live burn-in で、`karo` watcher の unread 停滞は unread 処理そのものではなく、`shutsujin_departure.sh` から起動した watcher / bridge / runtime sync が親シェル終了後に残らないことが主因と切り分けた。
+- [x] (2026-04-05 13:0x JST) 常駐系を `goza-runtime` tmux daemon session へ移し、fresh runtime 後も `karo` watcher が timeout tick を跨いで生存し、`queue/inbox/karo.yaml` の unread を既読化することを main repo 実行で確認した。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -148,6 +150,10 @@
   Evidence: `tmux capture-pane -pt goza-no-ma:overview.4 -S -200` に `NO_UPDATE_NOTIFIER=1 codex --model left ...` と error text が残り、`queue/inbox/ashigaru2.yaml` の `task_assigned` が unread のまま滞留した。
 - Observation: `sync_runtime_cli_preferences.py` の `parse_codex_state()` は `context left · /model to change` や `% left` からも `left` を抜けてしまう。
   Evidence: 実 regex probe で `context left · /model to change` と `% left · ...` の両方が `('left', None)` に match した。
+- Observation: shared auth 導入後の `bash shutsujin_departure.sh -c` では `goza-no-ma` の agent pane は生きていた一方、`logs/inbox_watcher_karo.log` は startup 行しか増えず、`queue/inbox/karo.yaml` の unread が残り続けた。
+  Evidence: `ps` では `watcher_supervisor.sh` / `inbox_watcher.sh` が残らず、foreground で `timeout 8 bash -x scripts/inbox_watcher.sh karo %1 codex tmux` を回すと unread 処理自体は正常に動いた。
+- Observation: 常駐系を `goza-runtime` tmux daemon session へ移した後は、`tmux list-windows -t goza-runtime` で `watcher`, `shogun-to-karo`, `karo-to-shogun` が残り、`karo` watcher が 30 秒 timeout ごとに unread を再処理して最終的に既読化した。
+  Evidence: `logs/inbox_watcher_karo.log` に `13:07:31`, `13:08:00` の unread 処理と `13:08:28` の `All messages read` が残り、`queue/inbox/karo.yaml` は `read: true` へ変わった。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -177,6 +183,9 @@
 - Decision: `scripts/inbox_watcher.sh` は unread 起動前に Codex の rate-limit / usage-limit prompt を検知し、必要に応じて `3` または `1` を送ってから nudge を続行する。
   Rationale: launcher 起動時だけでは runtime 中に出る Codex UI prompt を除去できず、未読処理が止まるため。
   Date/Author: 2026-03-29 / Codex
+- Decision: watcher / bridge / runtime sync の常駐系は `nohup/disown` ではなく、`goza-runtime` tmux daemon session の window として管理する。
+  Rationale: 起動元シェルや外側の process cleanup に巻き込まれず、fresh runtime 後も watcher timeout tick と bridge relay を継続させるため。
+  Date/Author: 2026-04-05 / Codex
 - Decision: 家老の `report_received` fast path は「relevant report YAML / parent cmd / dashboard.md」へ read scope を限定し、bridge / ntfy / streaks / sample は異常時以外読まない。
   Rationale: 終盤の不要探索で `cmd_done` 返却が遅れ、実検証の throughput を落としていたため。
   Date/Author: 2026-03-30 / Codex

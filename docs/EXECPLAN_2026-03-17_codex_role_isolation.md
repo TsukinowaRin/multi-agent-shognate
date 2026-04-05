@@ -1,5 +1,7 @@
 # ExecPlan: Codex Role Isolation
 
+> 2026-04-05 時点で、この計画は `docs/EXECPLAN_2026-04-05_codex_shared_auth.md` により一部更新された。現行方針は「role ごとの `CODEX_HOME` は維持しつつ、`auth.json` だけを共通化」である。
+
 ## Context
 - In this fork, different roles can use different Codex models and `reasoning_effort`.
 - The user explicitly wanted Shogun-side Codex tuning not to leak into VSCode Codex or unrelated Codex CLI sessions.

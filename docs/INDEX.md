@@ -15,6 +15,7 @@
 
 ## Plans (open)
 - `docs/EXECPLAN_2026-03-29_isolated_runtime_validation.md` - ワークスペース内 clone / sandbox で runtime を実起動し、実Codex認証待ち・trust prompt・rate-limit / usage-limit prompt・実タスク経路まで検証する計画。
+- `docs/EXECPLAN_2026-04-05_codex_shared_auth.md` - Codex の role local `CODEX_HOME` を保ちながら、`auth.json` だけを repo-local shared path で共通化する実行計画。
 - `docs/EXECPLAN_2026-03-29_upstream_v441_sync.md` - upstream `main` の v4.4.1 系更新をこの fork の独自機能と両立させて統合する計画。
 - `docs/EXECPLAN_2026-03-25_android_host_update.md` - Android APK から host 側 Shogunate 更新を停止後に安全適用する実行計画（完了）。
 - `docs/EXECPLAN_2026-03-17_codex_role_isolation.md` - Codex の model / reasoning state を role ごとに repo-local `CODEX_HOME` へ分離する実行計画（完了）。

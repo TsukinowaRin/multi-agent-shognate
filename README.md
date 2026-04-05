@@ -96,7 +96,7 @@ In this fork, every agent defaults to an unattended, no-approval-by-default mode
 | `kilo` | generated `opencode.json` sets `permission: allow` |
 | `localapi` | launches the local REPL directly without a separate approval layer |
 
-For Codex specifically, each role launches with its own repo-local `CODEX_HOME`. That keeps Shogun-side model or `reasoning_effort` choices from leaking into VSCode Codex or unrelated Codex CLI sessions.
+For Codex specifically, each role still launches with its own repo-local `CODEX_HOME`, but `auth.json` is shared by default from a repo-local shared path. That keeps login state common across roles while preserving role-specific model or `reasoning_effort` presets in the launch command instead of mixing the full runtime state with VSCode Codex or unrelated Codex CLI sessions.
 
 ### Local-provider support
 

@@ -249,7 +249,7 @@
 2. `claude` / `codex` / `copilot` / `kimi` / `gemini` は既存の bypass 系起動フラグを維持すること。
 3. `opencode` / `kilo` は project config の生成時に承認不要設定を既定出力し、確認プロンプトが出ない状態を正本とすること。
 4. README 英日には、この既定方針を CLI ごとに分かる形で記載すること。
-5. `codex` は role ごとに repo-local の `CODEX_HOME` を分離し、Shogunate 内の model / reasoning state が VSCode や別 Codex CLI へ波及しないこと。
+5. `codex` は role ごとに repo-local の `CODEX_HOME` を維持しつつ、`auth.json` だけは既定で repo-local shared path から共通利用できること。model / reasoning preset は launch command 側で role ごとに維持し、VSCode や別 Codex CLI へ full state を波及させないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_opencode_config.bats`
@@ -257,7 +257,23 @@
 2. コマンド: `rg -n "dangerously-skip-permissions|dangerously-bypass-approvals-and-sandbox|--yolo|permission: allow" README.md README_ja.md lib/cli_adapter.sh scripts/sync_opencode_config.py`
    - 期待結果: 既定の unattended 方針がコードと README に反映されている。
 3. コマンド: `bats tests/unit/test_cli_adapter.bats`
-   - 期待結果: Codex 起動コマンドが agent ごとに別 `CODEX_HOME` を持つことを含めて PASS する。
+   - 期待結果: Codex 起動コマンドが agent ごとに別 `CODEX_HOME` を持ちつつ、既定では `.shogunate/codex/shared/auth.json` を共通参照し、`shared_auth: false` と custom `shared_auth_file` も回帰込みで PASS する。
+
+## 追補（2026-04-05: Codex auth だけ共通化し role preset は維持）
+### 要求
+1. Codex は role ごとに別 `CODEX_HOME` を保ちつつ、`auth.json` だけは既定で repo-local shared path から共通利用できること。
+2. 既に role local `auth.json` が存在し shared auth が空の場合は、最初の起動時に shared auth へ seed してから共通利用へ移行できること。
+3. model / reasoning_effort は従来どおり role ごとの launch flag で決まり、auth 共有によって preset が混ざらないこと。
+4. shared auth path は settings で変更でき、必要なら `shared_auth: false` で旧動作へ戻せること。
+5. README 英日と ExecPlan は、`full CODEX_HOME shared` ではなく `auth-only shared` を正本として説明すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: shared auth 既定、`shared_auth: false`、custom `shared_auth_file`、role ごとの `CODEX_HOME` 維持、model / reasoning flag 維持を含めて PASS する。
+2. コマンド: `bash -n lib/cli_adapter.sh`
+   - 期待結果: `auth.json` 共通化の launch command 追加後も構文エラーがない。
+3. コマンド: `rg -n "shared_auth|shared_auth_file|auth.json|CODEX_HOME" lib/cli_adapter.sh config/settings.yaml README.md README_ja.md`
+   - 期待結果: 実装・既定設定・公開 docs が `auth-only shared` 方針で揃っている。
 
 ## 追補（2026-03-17: README 英日全面更新）
 ### 要求

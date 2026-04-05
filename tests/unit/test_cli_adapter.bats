@@ -80,6 +80,21 @@ cli:
   default: codex
 YAML
 
+    cat > "${TEST_TMP}/settings_codex_shared_auth_off.yaml" << 'YAML'
+cli:
+  default: codex
+  codex:
+    shared_auth: false
+YAML
+
+    cat > "${TEST_TMP}/settings_codex_shared_auth_custom.yaml" << 'YAML'
+cli:
+  default: codex
+  codex:
+    shared_auth: true
+    shared_auth_file: context/local/codex-auth/auth.json
+YAML
+
     # 空ファイル
     cat > "${TEST_TMP}/settings_empty.yaml" << 'YAML'
 YAML
@@ -295,6 +310,23 @@ load_adapter_with() {
     source "${PROJECT_ROOT}/lib/cli_adapter.sh"
 }
 
+assert_codex_shared_auth_bootstrap() {
+    local result="$1"
+    local agent_id="$2"
+    [[ "$result" == *"mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} ${PROJECT_ROOT}/.shogunate/codex/shared"* ]]
+    [[ "$result" == *"if [ -f ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json ] && [ ! -e ${PROJECT_ROOT}/.shogunate/codex/shared/auth.json ]; then cp ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json ${PROJECT_ROOT}/.shogunate/codex/shared/auth.json; fi"* ]]
+    [[ "$result" == *"ln -sfn ${PROJECT_ROOT}/.shogunate/codex/shared/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json"* ]]
+    [[ "$result" == *"CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} NO_UPDATE_NOTIFIER=1 codex"* ]]
+}
+
+assert_codex_shared_auth_custom_bootstrap() {
+    local result="$1"
+    local agent_id="$2"
+    [[ "$result" == *"mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} ${PROJECT_ROOT}/context/local/codex-auth"* ]]
+    [[ "$result" == *"cp ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json ${PROJECT_ROOT}/context/local/codex-auth/auth.json"* ]]
+    [[ "$result" == *"ln -sfn ${PROJECT_ROOT}/context/local/codex-auth/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json"* ]]
+}
+
 # =============================================================================
 # get_cli_type テスト
 # =============================================================================
@@ -476,43 +508,50 @@ YAML
 @test "build_cli_command: codex → NO_UPDATE_NOTIFIER=1 付きで起動" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru5")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/ashigaru5 && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/ashigaru5 NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    assert_codex_shared_auth_bootstrap "$result" "ashigaru5"
+    [[ "$result" == *"--search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
 }
 
 @test "build_cli_command: codex + explicit model → codex --model ... --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" {
     load_adapter_with "${TEST_TMP}/settings_codex_model.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --model gpt-5.3-codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    assert_codex_shared_auth_bootstrap "$result" "shogun"
+    [[ "$result" == *"codex --model gpt-5.3-codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
 }
 
 @test "build_cli_command: codex + reasoning_effort → -c model_reasoning_effort を付与" {
     load_adapter_with "${TEST_TMP}/settings_codex_reasoning.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex -c model_reasoning_effort='high' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    assert_codex_shared_auth_bootstrap "$result" "shogun"
+    [[ "$result" == *"codex -c model_reasoning_effort='high' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
 }
 
 @test "build_cli_command: codex + explicit model + reasoning_effort none を付与" {
     load_adapter_with "${TEST_TMP}/settings_codex_reasoning.yaml"
     result=$(build_cli_command "gunshi")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/gunshi && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/gunshi NO_UPDATE_NOTIFIER=1 codex --model gpt-5.4 -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    assert_codex_shared_auth_bootstrap "$result" "gunshi"
+    [[ "$result" == *"codex --model gpt-5.4 -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
 }
 
 @test "build_cli_command: shogun codex は未設定なら reasoning_effort を付けない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_defaults.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    assert_codex_shared_auth_bootstrap "$result" "shogun"
+    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
 }
 
 @test "build_cli_command: gunshi codex は未設定なら reasoning_effort を付けない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_defaults.yaml"
     result=$(build_cli_command "gunshi")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/gunshi && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/gunshi NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    assert_codex_shared_auth_bootstrap "$result" "gunshi"
+    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
 }
 
 @test "build_cli_command: codex + model auto → --model を付けない" {
     load_adapter_with "${TEST_TMP}/settings_codex_auto.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    assert_codex_shared_auth_bootstrap "$result" "shogun"
+    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
 }
 
 @test "build_cli_command: codex に UI 断片 left が入っていても --model を付けない" {
@@ -526,7 +565,21 @@ cli:
 YAML
     load_adapter_with "${TEST_TMP}/settings_codex_invalid_model.yaml"
     result=$(build_cli_command "ashigaru2")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/ashigaru2 && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/ashigaru2 NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    assert_codex_shared_auth_bootstrap "$result" "ashigaru2"
+    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+}
+
+@test "build_cli_command: codex shared_auth false なら agent local auth のみ使う" {
+    load_adapter_with "${TEST_TMP}/settings_codex_shared_auth_off.yaml"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+}
+
+@test "build_cli_command: codex shared_auth_file を custom path へ変更できる" {
+    load_adapter_with "${TEST_TMP}/settings_codex_shared_auth_custom.yaml"
+    result=$(build_cli_command "shogun")
+    assert_codex_shared_auth_custom_bootstrap "$result" "shogun"
+    [[ "$result" == *"CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
 }
 
 @test "build_cli_command: copilot → copilot --yolo" {
@@ -695,15 +748,18 @@ SH
 @test "build_cli_command_with_startup_prompt: codex は positional prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
     result=$(build_cli_command_with_startup_prompt "shogun" "codex" "ready:shogun")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen ready:shogun" ]
+    assert_codex_shared_auth_bootstrap "$result" "shogun"
+    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen ready:shogun" ]]
 }
 
-@test "build_cli_command: codex は agent ごとに CODEX_HOME を分離する" {
+@test "build_cli_command: codex は auth を共有しつつ agent ごとに CODEX_HOME を分離する" {
     load_adapter_with "${TEST_TMP}/settings_shogun_defaults.yaml"
     shogun_cmd=$(build_cli_command "shogun")
     gunshi_cmd=$(build_cli_command "gunshi")
     [[ "$shogun_cmd" == *"CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun"* ]]
     [[ "$gunshi_cmd" == *"CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/gunshi"* ]]
+    [[ "$shogun_cmd" == *"${PROJECT_ROOT}/.shogunate/codex/shared/auth.json"* ]]
+    [[ "$gunshi_cmd" == *"${PROJECT_ROOT}/.shogunate/codex/shared/auth.json"* ]]
 }
 
 @test "build_cli_command_with_startup_prompt: claude は positional prompt を付与する" {

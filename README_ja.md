@@ -98,7 +98,7 @@
 | `kilo` | 生成される `opencode.json` に `permission: allow` を入れる |
 | `localapi` | 別の承認レイヤーを持たず、local REPL を直接起動する |
 
-特に `Codex` については、各役職を repo-local の別 `CODEX_HOME` で起動するようにしてあります。これにより、将軍側で選んだ model や `reasoning_effort` が、VSCode の Codex や無関係な別 Codex CLI セッションへ漏れにくくなります。
+特に `Codex` については、各役職を repo-local の別 `CODEX_HOME` で起動しつつ、`auth.json` だけは既定で repo-local の共有パスから使うようにしてあります。これにより、ログイン状態は役職間で共通化しつつ、将軍側で選んだ model や `reasoning_effort` は launch command の preset として維持され、VSCode の Codex や無関係な別 Codex CLI セッションへ full state が漏れにくくなります。
 
 ### local provider 対応
 

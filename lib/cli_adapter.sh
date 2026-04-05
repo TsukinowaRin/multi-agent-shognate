@@ -172,6 +172,80 @@ _cli_adapter_codex_home() {
     printf '%s/.shogunate/codex/agents/%s' "$CLI_ADAPTER_PROJECT_ROOT" "$agent_id"
 }
 
+_cli_adapter_resolve_project_path() {
+    local raw_path="${1:-}"
+    case "$raw_path" in
+        "")
+            printf '%s\n' "$CLI_ADAPTER_PROJECT_ROOT"
+            ;;
+        /*)
+            printf '%s\n' "$raw_path"
+            ;;
+        *)
+            printf '%s/%s\n' "$CLI_ADAPTER_PROJECT_ROOT" "$raw_path"
+            ;;
+    esac
+}
+
+_cli_adapter_codex_shared_auth_enabled() {
+    local raw
+    raw="$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.codex.shared_auth" "true")")"
+    case "$raw" in
+        ""|1|true|yes|on)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+_cli_adapter_codex_auth_file_for_agent() {
+    local agent_id="$1"
+    printf '%s/auth.json\n' "$(_cli_adapter_codex_home "$agent_id")"
+}
+
+_cli_adapter_codex_shared_auth_file() {
+    local configured
+    configured="$(_cli_adapter_read_yaml "cli.codex.shared_auth_file" ".shogunate/codex/shared/auth.json")"
+    _cli_adapter_resolve_project_path "$configured"
+}
+
+_cli_adapter_prepare_codex_home_cmd() {
+    local agent_id="$1"
+    local codex_home
+    local role_auth_file
+    local shared_auth_file
+    local shared_auth_dir
+
+    codex_home="$(_cli_adapter_codex_home "$agent_id")"
+    if ! _cli_adapter_codex_shared_auth_enabled; then
+        printf 'mkdir -p %s\n' "$(_cli_adapter_shell_quote "$codex_home")"
+        return 0
+    fi
+
+    role_auth_file="$(_cli_adapter_codex_auth_file_for_agent "$agent_id")"
+    shared_auth_file="$(_cli_adapter_codex_shared_auth_file)"
+    if [[ "$shared_auth_file" == "$role_auth_file" ]]; then
+        printf 'mkdir -p %s\n' "$(_cli_adapter_shell_quote "$codex_home")"
+        return 0
+    fi
+    shared_auth_dir="$(dirname "$shared_auth_file")"
+
+    printf 'mkdir -p %s %s && if [ -f %s ] && [ ! -e %s ]; then cp %s %s; fi && if ! ln -sfn %s %s 2>/dev/null; then if [ -f %s ]; then cp %s %s; fi; fi\n' \
+        "$(_cli_adapter_shell_quote "$codex_home")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_dir")" \
+        "$(_cli_adapter_shell_quote "$role_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$role_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$role_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$role_auth_file")"
+}
+
 _cli_adapter_is_shogun() {
     [[ "${1:-}" == "shogun" ]]
 }
@@ -406,7 +480,8 @@ build_cli_command_with_type() {
         codex)
             local codex_home
             codex_home="$(_cli_adapter_codex_home "$agent_id")"
-            local cmd="mkdir -p $(_cli_adapter_shell_quote "$codex_home") && CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 codex"
+            local cmd
+            cmd="$(_cli_adapter_prepare_codex_home_cmd "$agent_id") && CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 codex"
             if ! _cli_adapter_is_valid_codex_model "$configured_model"; then
                 configured_model="default"
             fi

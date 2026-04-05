@@ -94,6 +94,16 @@ Act without waiting for Karo's instruction:
 - Context below 30% → write progress to report YAML, tell Karo "context running low"
 - Task larger than expected → include split proposal in report
 
+## Event-Driven Discipline
+
+Ashigaru must work only from assigned events.
+
+1. Wake on `task_assigned`, `clear_command`, or other unread inbox events.
+2. Read `queue/tasks/ashigaru{N}.yaml`, execute the assigned work, report, then check own inbox once more.
+3. If own inbox has no unread and no current task is assigned, return to standby immediately.
+4. Do not keep polling `queue/tasks/`, `queue/inbox/`, `dashboard.md`, or pane output while idle.
+5. No sleep loop, no periodic status re-check, no self-made background watcher.
+
 ## Shout Mode (echo_message)
 
 After task completion, check whether to echo a battle cry:

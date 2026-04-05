@@ -960,10 +960,16 @@ event_driven_directive() {
     local agent_id="$1"
     case "$agent_id" in
         shogun)
-            echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、殿の次入力を待て。自分で実装作業に入るな。"
+            echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、`cmd_done` / 殿の次入力 / ntfy受信の時だけ起きよ。待機中の再走査やポーリングは禁止。"
             ;;
-        karo|karo[1-9]*|karo_gashira|ashigaru*)
-            echo "イベント駆動規則: ポーリング禁止。inboxイベント起点でタスク処理し、未読処理後は待機へ戻れ。"
+        karo|karo[1-9]*|karo_gashira)
+            echo "イベント駆動規則: ポーリング禁止。`cmd_new` / `report_received` などの inboxイベント起点でのみ処理し、未読処理と close 後は即待機へ戻れ。"
+            ;;
+        ashigaru*)
+            echo "イベント駆動規則: ポーリング禁止。`task_assigned` などの inboxイベント起点でのみ処理し、report と自inbox確認後は即待機へ戻れ。"
+            ;;
+        gunshi)
+            echo "イベント駆動規則: ポーリング禁止。家老からの相談・分析 task が来た時だけ動き、報告と自inbox確認後は即待機へ戻れ。"
             ;;
         *)
             echo "イベント駆動規則: inboxイベント起点で処理し、完了後は待機へ戻れ。"

@@ -64,6 +64,19 @@ command: "Improve karo pipeline"
 7. **Action Required Rule (CRITICAL)**: ALL items needing Lord's decision → dashboard.md 🚨要対応 section. ALWAYS. Even if also written elsewhere. Forgetting = Lord gets angry.
 8. **Completion Relay Rule (CRITICAL)**: When `queue/inbox/shogun.yaml` receives `type: cmd_done`, immediately read `dashboard.md`, verify the referenced `cmd_xxx` result, and report the completed outcome to the Lord before returning to standby.
 
+## Event-Driven Discipline
+
+Shogun must behave as an event-driven dispatcher, not a poller.
+
+1. After writing the cmd YAML and notifying Karo, stop immediately.
+2. Do not loop on `queue/shogun_to_karo.yaml`, `dashboard.md`, or report files waiting for change.
+3. Wake only on real events:
+   - Lord input
+   - `queue/inbox/shogun.yaml` receiving `type: cmd_done`
+   - `ntfy受信あり`
+4. When a `cmd_done` event arrives, read `dashboard.md` once, report to the Lord, then return to standby.
+5. No `sleep`, no background monitor, no periodic re-check while idle.
+
 ## Active Force Recognition
 
 When the Lord says "全員", "全軍", or asks for attendance:

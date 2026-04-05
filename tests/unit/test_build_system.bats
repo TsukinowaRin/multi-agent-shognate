@@ -176,6 +176,12 @@ setup() {
     grep -q "If only \`ashigaru1\` and \`ashigaru2\` are active, then \"all ashigaru\" means those two" "$OUTPUT_DIR/codex-shogun.md"
 }
 
+@test "content: codex-shogun.md enforces event-driven dispatch and cmd_done wakeups" {
+    grep -q "event-driven dispatcher" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "\`type: cmd_done\`" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "No \`sleep\`, no background monitor, no periodic re-check while idle" "$OUTPUT_DIR/codex-shogun.md"
+}
+
 @test "content: codex-ashigaru.md contains ashigaru role reference" {
     grep -qi "ashigaru\|足軽" "$OUTPUT_DIR/codex-ashigaru.md"
 }
@@ -191,9 +197,28 @@ setup() {
     grep -q "Do not write \`pass\` unless the exact command really exited 0 in that exact directory" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
+@test "content: codex-ashigaru.md enforces event-driven standby after report" {
+    grep -q "Ashigaru must work only from assigned events" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "return to standby immediately" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "No sleep loop, no periodic status re-check" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
 @test "content: codex-karo.md reruns reported verification before closing implementation cmd" {
     grep -q "rerun the exact \`result.verification.command\`" "$OUTPUT_DIR/codex-karo.md"
     grep -q "treat the report as incomplete and reassign instead of closing" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md enforces inbox-driven wakeups only" {
+    grep -q "Karo must remain event-driven at all times" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "\`cmd_new\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "\`report_received\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not run sleep loops, pane polling, or ad-hoc background monitors" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-gunshi.md enforces event-driven standby after analysis" {
+    grep -q "Gunshi must also remain event-driven" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "return to standby immediately" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "No sleep loop, no periodic re-analysis" "$OUTPUT_DIR/codex-gunshi.md"
 }
 
 # =============================================================================

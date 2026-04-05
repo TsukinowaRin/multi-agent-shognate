@@ -20,6 +20,20 @@
 4. コマンド: `bash scripts/inbox_write.sh karo "<task>" task_assigned lord`
    - 期待結果: `logs/inbox_watcher_karo.log` に timeout tick 後の unread 処理が残り、最終的に `queue/inbox/karo.yaml` が `read: true` へ遷移する。
 
+## 追補（2026-04-05: 全エージェントのイベント駆動徹底）
+### 要求
+1. 将軍・家老・足軽・軍師の instruction は、全員が event-driven で待機へ戻ることを明示すること。
+2. idle 中の agent が `sleep` / polling / pane 再走査を自前で回す余地を role 文書に残さないこと。
+3. bootstrap 文面も role ごとに wake 条件を具体化し、`cmd_done`, `cmd_new`, `report_received`, `task_assigned` など inbox/event 起点でのみ動くよう案内すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh`
+   - 期待結果: generated instruction が更新され、event-driven 規則が各 role に反映される。
+2. コマンド: `bats tests/unit/test_build_system.bats`
+   - 期待結果: `codex-shogun.md`, `codex-karo.md`, `codex-ashigaru.md`, `codex-gunshi.md` に event-driven 規則が入る回帰を含めて PASS する。
+3. コマンド: `rg -n "イベント駆動規則" shutsujin_departure.sh`
+   - 期待結果: 将軍・家老・足軽・軍師それぞれに wake 条件つき directive が存在する。
+
 ## 追補（2026-04-01: 継続バグ探索と運用ノイズ抑制）
 ### 要求
 1. レートリミットなど外部 quota 依存ではない、repo 起因の不具合を継続して探すこと。

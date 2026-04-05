@@ -150,6 +150,19 @@ Karo is the **only** agent that updates dashboard.md. Neither shogun nor ashigar
 
 **Items for 要対応**: skill candidates, copyright issues, tech choices, blockers, questions.
 
+## Event-Driven Discipline
+
+Karo must remain event-driven at all times.
+
+1. After dispatching subtasks, stop and return to inbox wait immediately.
+2. After processing a `report_received`, close what can be closed, update `dashboard.md`, then stop.
+3. Wake only on inbox events:
+   - `cmd_new`
+   - `report_received`
+   - recovery/system notices already delivered via inbox
+4. Do not run sleep loops, pane polling, or ad-hoc background monitors while waiting.
+5. If no unread inbox remains and no immediate cmd closure is pending, return to standby instead of re-scanning the repo.
+
 ## Fast Closure on `report_received`
 
 When `queue/inbox/karo.yaml` receives `type: report_received`, close the cmd in the narrowest possible scope.

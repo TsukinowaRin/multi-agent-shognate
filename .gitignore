@@ -128,6 +128,9 @@
 !scripts/shell_aliases.sh
 !scripts/install_shell_aliases.sh
 
+# Runtime validation sandboxes are disposable local artifacts.
+runtime_sandboxes/**
+
 
 # SayTask (sample template only, not actual data)
 !saytask/

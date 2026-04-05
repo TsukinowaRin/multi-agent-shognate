@@ -11,6 +11,7 @@
 4. fresh runtime 後に `karo` などの watcher が timeout tick を跨いでも生き残り、`queue/inbox/<agent>.yaml` の unread を継続して処理できること。
 5. `watcher_supervisor.sh` は startup race で backend pane がまだ無くても `set -e` で即死せず、次 tick で watcher を起こせること。
 6. Codex の `› 1. Switch to gpt-5.1-…` だけが見える switch-confirm prompt も watcher / startup が検知し、`Enter` で確定できること。
+6.1. 上記 switch-confirm prompt と `Keep current model` / `Hide future rate limit` prompt は、pane 幅で改行・折返しされても compact 判定で検知できること。
 7. `shutsujin_departure.sh` は daemon session 起動後にも watcher one-shot seed を再実行し、fresh start 直後から `inbox-<agent>` tmux window を確保できること。
 8. `goza-runtime:watcher` は `WATCHER_SUPERVISOR_ONCE=1` を周期実行する daemon window とし、主監視が 1 回の race で止まらないこと。
 
@@ -27,6 +28,8 @@
    - 期待結果: pane 未生成状態でも exit code 1 で落ちず、pane が揃った後の tick で watcher を再起動できる。
 6. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_mux_parity.bats`
    - 期待結果: switch-only Codex confirm prompt の `Enter` 確定と、`watcher_supervisor` の pane 未生成耐性回帰を含めて PASS する。
+6.1. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: 折返し済み `switch-confirm` prompt と `Keep current model` prompt の compact 判定回帰を含めて PASS する。
 7. コマンド: `bash shutsujin_departure.sh -c && tmux list-windows -t goza-runtime`
    - 期待結果: fresh start 完了直後に `inbox-shogun`, `inbox-karo`, `inbox-ashigaru1` などの watcher window が現れる。
 8. コマンド: `bats tests/unit/test_mux_parity.bats`
@@ -73,6 +76,7 @@
 21. `sync_runtime_cli_preferences.py` は Codex footer や help 行の `context left` / `% left` を model と誤認して `left` を settings へ保存しないこと。
 22. Codex 起動コマンド生成は、settings に `left` などの UI 断片が紛れ込んでいても `--model left` を付けず、invalid codex model を launch 時に無視すること。
 23. Codex watcher は unread が無い idle 待機中でも runtime prompt を巡回し、`Approaching rate limits` / `Keep current model` / `Hide future rate limit` 系 prompt を task 到来前に掃除できること。
+24. Codex watcher / startup の prompt 判定は、`Press enter to confirm` や `Keep current model` が行途中で分断されても取りこぼさず、連続 task の前段で prompt 停滞を残さないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash scripts/inbox_write.sh testagent "aaa'''bbb" test_type test_from`

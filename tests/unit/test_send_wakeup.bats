@@ -778,6 +778,19 @@ YAML
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
+@test "T-CODEX-010b1c: watcher は折返しされた Codex switch-confirm prompt も Enter で確定する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'\n› 1. Swit…\n           Optim\n           ized\n           for\n           codex\n  2. Keep\n     current\n     model\n  3. Keep… Hide\n           futur\n           e\n           rate\n           limit\n\n  Press enter to c\n  onfirm or esc to go b\n  ack'"'"'
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
 @test "T-CODEX-010b0: send_wakeup は Codex 通常画面では no-prompt を許容して nudge する" {
     run bash -c '
         MOCK_PANE_CLI="codex"
@@ -804,6 +817,19 @@ YAML
     grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
     ! grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
     echo "$output" | grep -qi "prompt dismiss failed\|Enter failed"
+}
+
+@test "T-CODEX-010b2b: send_wakeup は折返しされた Keep current model prompt も dismiss してから nudge する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'\n⚠ Heads up\n  2. Keep\n     current\n     model\n  3. Keep… Hide\n           futur\n           e\n           rate\n           limit'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010c: send_wakeup_with_escape も Codex rate-limit prompt を dismiss する" {
@@ -1130,7 +1156,7 @@ MOCK
     run bash -c '
         grep -q "maintain_codex_runtime_prompt" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
         grep -q "dismiss_codex_rate_limit_prompt_if_present" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
-        grep -q "Press enter to confirm" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
+        grep -q "codex_switch_confirm_prompt_detected" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
         grep -q "process_unread_once" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
         grep -q "while true; do" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh"
     '

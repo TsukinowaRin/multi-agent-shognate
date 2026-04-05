@@ -183,7 +183,12 @@ setup_file() {
 }
 
 @test "tmux 起動は switch-only Codex confirm prompt を Enter で確定する" {
-    run bats_search 'Press enter to confirm|Codex switch-confirm prompt|tmux_send_enter_only' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search 'codex_switch_confirm_prompt_detected_tmux|Codex switch-confirm prompt|tmux_send_enter_only' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は折返しされた Codex Keep current model prompt も compact 判定で dismiss する" {
+    run bats_search 'codex_rate_limit_prompt_detected_tmux|codex_prompt_compact_text_tmux|hidefutureratelimit|keepcurrentmodel' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 

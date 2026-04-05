@@ -65,6 +65,8 @@
 - [x] (2026-04-04 21:2x JST) main repo の実 Codex runtime で `cmd_001`, `cmd_002` を連続投入し、どちらも `shogun -> karo -> ashigaru -> karo -> shogun` の `cmd_done` 返却と将軍報告まで完了した。
 - [x] (2026-04-04 21:4x JST) 共同開発 task `cmd_003` では `runtime_sandboxes/live_validation_probe/` へのファイル生成自体は成功した一方、report が主張した `python3 -m unittest` 成功を再現できず、verification contract 不足を実 runtime で確認した。
 - [x] (2026-04-04 21:5x JST) 足軽 report に exact verification command / cwd / result を必須化し、家老が implementation task close 前に reported command を rerun する instruction 契約と build_system 回帰を追加した。
+- [x] (2026-04-05 14:3x JST) main repo runtime の burn-in `cmd_900` で `shogun -> karo -> ashigaru1/2 -> karo -> shogun` の `cmd_done` 完走を再確認し、`runtime_sandboxes/burnin_probe_three/` に blocked 集計追加が反映された。
+- [x] (2026-04-05 14:5x JST) `karo` pane に出た折返し `switch-confirm` / `Keep current model` prompt が watcher / startup の行単位 `grep` を抜けることを再現し、compact 判定へ修正した。
 - [x] (2026-04-04 21:4x JST) clean start 後の main repo runtime で、old archive `cmd_003` が `karo_done_to_shogun_bridge` から再度 `cmd_done` として将軍 inbox へ戻ることを確認し、bridge state 持ち越しが restart 直後の stale replay を起こすと切り分けた。
 - [x] (2026-04-04 21:5x JST) `shutsujin_departure.sh -c` が `queue/runtime/shogun_to_karo_bridge.tsv` と `queue/runtime/karo_done_to_shogun.tsv` を消すようにし、clean start 時の old archive replay 防止回帰を追加した。
 - [x] (2026-04-04 22:0x JST) burn-in 2 本目で ashigaru2 pane が `codex --model left` で起動し、`The 'left' model ... account` 風の error で task 受領後に停止することを再現した。

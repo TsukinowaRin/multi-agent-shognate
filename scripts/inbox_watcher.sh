@@ -285,6 +285,20 @@ codex_usage_limit_switchable() {
     [[ "$compact_text" == *"gpt51codexmini"* || "$compact_text" == *"switchto"*mini* || "$compact_text" == *"1switch"* ]]
 }
 
+codex_switch_confirm_prompt_detected() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text "${1:-}")"
+    [[ "$compact_text" == *"pressentertoconfirm"* || "$compact_text" == *"esctogoback"* ]] || return 1
+    [[ "$compact_text" == *"switchto"* || "$compact_text" == *"optimizedforcodex"* ]] || return 1
+    [[ "$compact_text" == *"gpt51"* || "$compact_text" == *"mini"* || "$compact_text" == *"optimizedforcodex"* ]]
+}
+
+codex_rate_limit_prompt_detected() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text "${1:-}")"
+    [[ "$compact_text" == *"approachingratelimits"* || "$compact_text" == *"keepcurrentmodel"* || "$compact_text" == *"hidefutureratelimit"* ]]
+}
+
 dismiss_codex_rate_limit_prompt_if_present() {
     local effective_cli="${1:-}"
     local pane_text
@@ -310,8 +324,7 @@ dismiss_codex_rate_limit_prompt_if_present() {
         return 0
     fi
     clear_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
-    if echo "$pane_text" | grep -qiE "Press enter to confirm|esc to go b" &&
-       echo "$pane_text" | grep -qiE "Switch to .*gpt-5\.1|Switch to .*mini|Optimized"; then
+    if codex_switch_confirm_prompt_detected "$pane_text"; then
         echo "[$(date)] [SEND-KEYS] Confirming Codex switch prompt for $AGENT_ID" >&2
         if ! mux_send_enter; then
             echo "[$(date)] WARNING: Codex switch-confirm Enter failed or timed out for $AGENT_ID" >&2
@@ -320,7 +333,7 @@ dismiss_codex_rate_limit_prompt_if_present() {
         sleep 0.3
         return 0
     fi
-    if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model( \(never show again\))?|Hide future rate limit"; then
+    if codex_rate_limit_prompt_detected "$pane_text"; then
         echo "[$(date)] [SEND-KEYS] Dismissing Codex rate-limit prompt for $AGENT_ID" >&2
         if ! send_text_and_enter "3" "Codex rate-limit prompt"; then
             return 2

@@ -151,6 +151,20 @@ codex_usage_limit_switchable_tmux() {
     compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
     [[ "$compact_text" == *"gpt51codexmini"* || "$compact_text" == *"switchto"*mini* || "$compact_text" == *"1switch"* ]]
 }
+
+codex_switch_confirm_prompt_detected_tmux() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
+    [[ "$compact_text" == *"pressentertoconfirm"* || "$compact_text" == *"esctogoback"* ]] || return 1
+    [[ "$compact_text" == *"switchto"* || "$compact_text" == *"optimizedforcodex"* ]] || return 1
+    [[ "$compact_text" == *"gpt51"* || "$compact_text" == *"mini"* || "$compact_text" == *"optimizedforcodex"* ]]
+}
+
+codex_rate_limit_prompt_detected_tmux() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
+    [[ "$compact_text" == *"approachingratelimits"* || "$compact_text" == *"keepcurrentmodel"* || "$compact_text" == *"hidefutureratelimit"* ]]
+}
 acquire_startup_lock
 
 # 言語設定を読み取り（デフォルト: ja）
@@ -540,14 +554,13 @@ auto_dismiss_codex_rate_limit_prompt_tmux() {
             return 0
         fi
         clear_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
-        if echo "$pane_text" | grep -qiE "Press enter to confirm|esc to go b" &&
-           echo "$pane_text" | grep -qiE "Switch to .*gpt-5\.1|Switch to .*mini|Optimized"; then
+        if codex_switch_confirm_prompt_detected_tmux "$pane_text"; then
             tmux_send_enter_only "$pane_target" "Codex switch-confirm prompt" || return 1
             log_info "  └─ ${agent_id}: Codex switch-confirm prompt を Enter で確定"
             sleep 2
             return 0
         fi
-        if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model( \(never show again\))?|Hide future rate limit"; then
+        if codex_rate_limit_prompt_detected_tmux "$pane_text"; then
             tmux_send_text_and_enter "$pane_target" "3" "Codex rate-limit prompt" || return 1
             log_info "  └─ ${agent_id}: Codex rate-limit prompt を自動dismiss"
             sleep 2

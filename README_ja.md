@@ -294,6 +294,19 @@ bash scripts/focus_agent_pane.sh karo
 bash scripts/focus_agent_pane.sh gunshi
 ```
 
+alias を使いたい場合:
+
+```bash
+source scripts/shell_aliases.sh
+```
+
+永続化したい場合:
+
+```bash
+bash scripts/install_shell_aliases.sh
+source ~/.bashrc
+```
+
 ### runtime 正本と互換 session
 
 Android 連携に関わるので、ここは明示しておきます。

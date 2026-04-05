@@ -38,7 +38,7 @@ setup_file() {
 }
 
 @test "軍師 attach alias csg と御座の間 alias cgo を案内する" {
-    run bats_search "alias csg='bash .*focus_agent_pane\.sh gunshi'|alias cgo='bash .*goza_no_ma\.sh'|または: csg|cgo" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search "shell_aliases\.sh|install_shell_aliases\.sh|alias csg='bash .*focus_agent_pane\.sh gunshi'|alias cgo='bash .*goza_no_ma\.sh'|または: csg|cgo" "$PROJECT_ROOT/scripts/shell_aliases.sh" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 

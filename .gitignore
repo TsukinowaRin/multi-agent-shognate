@@ -125,6 +125,8 @@
 !scripts/prepublish_check.sh
 !scripts/upstream_sync.sh
 !scripts/update_manager.py
+!scripts/shell_aliases.sh
+!scripts/install_shell_aliases.sh
 
 
 # SayTask (sample template only, not actual data)

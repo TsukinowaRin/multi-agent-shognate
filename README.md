@@ -290,6 +290,19 @@ bash scripts/focus_agent_pane.sh karo
 bash scripts/focus_agent_pane.sh gunshi
 ```
 
+If you want the short aliases:
+
+```bash
+source scripts/shell_aliases.sh
+```
+
+To persist them:
+
+```bash
+bash scripts/install_shell_aliases.sh
+source ~/.bashrc
+```
+
 ### Runtime source of truth and compatibility sessions
 
 This matters for Android connectivity.

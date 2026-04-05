@@ -613,6 +613,20 @@
 3. コマンド: `rg -n "switch-client -t|attach-session -t \\$GOZA_SESSION|focus_agent_pane\\.sh|goza-no-ma" scripts/goza_no_ma.sh scripts/focus_agent_pane.sh shutsujin_departure.sh`
    - 期待結果: `cgo` が既存 session を開き、`css/csg/csm` が pane focus する実装が確認できる。
 
+## 追補（2026-04-05: shell alias の repo-local self-heal）
+### 要求
+1. `cgo` / `css` / `csg` / `csm` / `csst` は、現在の repo の script を向く alias として 1 回の `source` で定義できること。
+2. alias 永続化は managed block で行い、古い別 repo path を含む既存 alias を repo-local source へ置き換えられること。
+3. `first_setup.sh` と起動完了メッセージは、この alias repair 導線を案内すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/shell_aliases.sh scripts/install_shell_aliases.sh first_setup.sh shutsujin_departure.sh`
+   - 期待結果: alias helper / installer / 案内導線に構文エラーがない。
+2. コマンド: `bats tests/unit/test_shell_aliases.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: source による alias 定義、installer の stale alias 上書き、idempotent 更新、案内導線の回帰が PASS する。
+3. コマンド: `rg -n "shell_aliases\\.sh|install_shell_aliases\\.sh|alias cgo=|source .*shell_aliases\\.sh" scripts first_setup.sh README.md README_ja.md shutsujin_departure.sh`
+   - 期待結果: repo-local alias の single source と repair 導線が見える。
+
 ## 追補（2026-03-11: live CLI設定の次回起動反映）
 ### 要求
 1. 各 pane 内で変更した `model` や `reasoning/thinking` のうち、判別可能なものは起動中に約1秒以内で `config/settings.yaml` へ同期すること。

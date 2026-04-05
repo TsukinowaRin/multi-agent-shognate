@@ -154,6 +154,12 @@
   Evidence: `ps` では `watcher_supervisor.sh` / `inbox_watcher.sh` が残らず、foreground で `timeout 8 bash -x scripts/inbox_watcher.sh karo %1 codex tmux` を回すと unread 処理自体は正常に動いた。
 - Observation: 常駐系を `goza-runtime` tmux daemon session へ移した後は、`tmux list-windows -t goza-runtime` で `watcher`, `shogun-to-karo`, `karo-to-shogun` が残り、`karo` watcher が 30 秒 timeout ごとに unread を再処理して最終的に既読化した。
   Evidence: `logs/inbox_watcher_karo.log` に `13:07:31`, `13:08:00` の unread 処理と `13:08:28` の `All messages read` が残り、`queue/inbox/karo.yaml` は `read: true` へ変わった。
+- Observation: `WATCHER_SUPERVISOR_ONCE=1 bash scripts/watcher_supervisor.sh` は backend pane がまだ無い状態だと exit code 1 で落ち、通常常駐 supervisor も startup race で即死しうる。
+  Evidence: `tmux kill-session -t goza-no-ma ...; WATCHER_SUPERVISOR_ONCE=1 bash scripts/watcher_supervisor.sh; echo status:$?` で `status:1` を再現し、`supervisor_tick` 内の `pane="$(resolve_agent_pane_target ...)"` が `set -e` を踏むことを確認した。
+- Observation: Codex の mini switch prompt には `Approaching rate limits` や `Keep current model` が出ず、`› 1. Switch to gpt-5.1-…` と `Press enter to confirm` だけの variant がある。
+  Evidence: `tmux capture-pane -pt goza-no-ma:overview.3 | tail -n 40` と `.4` で switch-only prompt を確認し、既存 `dismiss_codex_rate_limit_prompt_if_present` の regex では未検知だった。
+- Observation: `WATCHER_SUPERVISOR_ONCE` が spawn した `inbox_watcher` は startup 中の bootstrap 再配信までは動くが、その後は残らず、`goza-runtime:watcher` だけが残って child watcher が消えることがあった。
+  Evidence: `logs/inbox_watcher_shogun.log` には `13:38:55` 前後の `inbox_watcher started` と `bootstrap retried and delivered` が出る一方、`ps -ef | grep '[i]nbox_watcher.sh'` は空で、`tmux list-windows -t goza-runtime` に per-agent watcher window が無かった。
 
 ## Decision Log
 - Decision: 隔離先は repo の外だが同一ワークスペース配下の sibling directory とする。
@@ -249,6 +255,21 @@
 - Decision: `scripts/inbox_watcher.sh` は unread 件数に関係なく startup / idle loop ごとに `maintain_codex_runtime_prompt` を通し、Codex runtime prompt を事前掃除する。
   Rationale: 実 runtime で karo / gunshi / ashigaru2 の rate-limit prompt が idle 中に差し込まれ、未読が来るまで dismiss が走らず将来の task を待ち伏せで詰まらせることを確認したため。
   Date/Author: 2026-04-04 / Codex
+- Decision: `watcher_supervisor.sh` は pane 未生成を正常系として扱い、`resolve_agent_pane_target` の失敗で supervisor 全体を終了させない。
+  Rationale: startup race は fresh runtime で必ず起こりうるため、次 tick で自己回復できる設計の方が practical だから。
+  Date/Author: 2026-04-05 / Codex
+- Decision: Codex の switch-only confirm prompt は `3` や `1` を再送せず、`Enter` だけを送って確定する。
+  Rationale: 現物 pane では選択肢が 1 つに絞られており、`Press enter to confirm` が UI 契約になっていたため。
+  Date/Author: 2026-04-05 / Codex
+- Decision: `inbox_watcher` は background `nohup` child ではなく、`goza-runtime` 配下の `inbox-<agent>` tmux window として管理する。
+  Rationale: startup one-shot 由来の watcher は shell 寿命や runtime 観測条件に引きずられやすく、supervisor から再生成可能な tmux window の方が practical だから。
+  Date/Author: 2026-04-05 / Codex
+- Decision: `shutsujin_departure.sh` は runtime daemon session を起こした後に、`WATCHER_RUNTIME_SESSION="$RUNTIME_DAEMON_SESSION"` 付きで watcher one-shot seed をもう一度流す。
+  Rationale: startup 前半の one-shot だけでは pane/daemon session の安定化前に走ってしまい、fresh start 完了時点で `inbox-<agent>` window が無いことがあったため。
+  Date/Author: 2026-04-05 / Codex
+- Decision: `goza-runtime:watcher` 自体も long-lived `bash scripts/watcher_supervisor.sh` ではなく、`WATCHER_SUPERVISOR_ONCE=1` の periodic tick loop として起動する。
+  Rationale: 実観測で one-shot は効く一方、常駐 supervisor 本体は startup race 後に tick を継続していない疑いがあり、実績のある one-shot 実行を daemon 化する方が安定だから。
+  Date/Author: 2026-04-05 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:

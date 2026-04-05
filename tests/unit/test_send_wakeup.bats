@@ -765,6 +765,19 @@ YAML
     grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
 }
 
+@test "T-CODEX-010b1b: watcher は switch-only Codex confirm prompt を Enter で確定する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'\n› 1. Switch to gpt-5.1-codex-mini Optimized\nfor codex.\n\nPress enter to confirm or esc to go back'"'"'
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
 @test "T-CODEX-010b0: send_wakeup は Codex 通常画面では no-prompt を許容して nudge する" {
     run bash -c '
         MOCK_PANE_CLI="codex"
@@ -1103,6 +1116,7 @@ MOCK
     run bash -c '
         grep -q "maintain_codex_runtime_prompt" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
         grep -q "dismiss_codex_rate_limit_prompt_if_present" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
+        grep -q "Press enter to confirm" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
         grep -q "process_unread_once" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
         grep -q "while true; do" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh"
     '

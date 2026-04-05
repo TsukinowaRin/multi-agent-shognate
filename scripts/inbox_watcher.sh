@@ -294,6 +294,16 @@ dismiss_codex_rate_limit_prompt_if_present() {
         return 0
     fi
     clear_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
+    if echo "$pane_text" | grep -qiE "Press enter to confirm|esc to go b" &&
+       echo "$pane_text" | grep -qiE "Switch to .*gpt-5\.1|Switch to .*mini|Optimized"; then
+        echo "[$(date)] [SEND-KEYS] Confirming Codex switch prompt for $AGENT_ID" >&2
+        if ! mux_send_enter; then
+            echo "[$(date)] WARNING: Codex switch-confirm Enter failed or timed out for $AGENT_ID" >&2
+            return 2
+        fi
+        sleep 0.3
+        return 0
+    fi
     if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model( \(never show again\))?|Hide future rate limit"; then
         echo "[$(date)] [SEND-KEYS] Dismissing Codex rate-limit prompt for $AGENT_ID" >&2
         if ! send_text_and_enter "3" "Codex rate-limit prompt"; then

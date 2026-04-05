@@ -9,6 +9,7 @@ cd "$SCRIPT_DIR"
 mkdir -p logs
 
 CLI_RESTART_COOLDOWN="${CLI_RESTART_COOLDOWN:-30}"
+WATCHER_RUNTIME_SESSION="${WATCHER_RUNTIME_SESSION:-goza-runtime}"
 
 if [ -f "$SCRIPT_DIR/lib/inbox_path.sh" ]; then
     # shellcheck source=/dev/null
@@ -206,6 +207,61 @@ clear_restart_state() {
     rm -f "$(restart_state_file "$agent")"
 }
 
+watcher_window_name() {
+    local agent="$1"
+    printf 'inbox-%s\n' "$agent"
+}
+
+watcher_window_target() {
+    local agent="$1"
+    printf '%s:%s\n' "$WATCHER_RUNTIME_SESSION" "$(watcher_window_name "$agent")"
+}
+
+watcher_window_exists() {
+    local agent="$1"
+    tmux list-windows -t "$WATCHER_RUNTIME_SESSION" -F "#{window_name}" 2>/dev/null | grep -Fxq "$(watcher_window_name "$agent")"
+}
+
+watcher_window_is_current() {
+    local agent="$1"
+    local pane="$2"
+    local target
+    local configured_agent=""
+    local configured_pane=""
+    local pane_dead=""
+
+    target="$(watcher_window_target "$agent")"
+    watcher_window_exists "$agent" || return 1
+
+    configured_agent="$(tmux show-options -w -t "$target" -v @watch_agent 2>/dev/null | tr -d '\r' | head -n1)"
+    configured_pane="$(tmux show-options -w -t "$target" -v @watch_pane 2>/dev/null | tr -d '\r' | head -n1)"
+    pane_dead="$(tmux list-panes -t "$target" -F "#{pane_dead}" 2>/dev/null | head -n1)"
+
+    [ "$configured_agent" = "$agent" ] || return 1
+    [ "$configured_pane" = "$pane" ] || return 1
+    [ "$pane_dead" = "0" ] || return 1
+    return 0
+}
+
+watcher_shell_command() {
+    local agent="$1"
+    local pane="$2"
+    local cli="$3"
+    local log_file="$4"
+    local shell_cmd=""
+
+    printf -v shell_cmd \
+        'cd %q && env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=1 ASW_DISABLE_NORMAL_NUDGE=0 bash %q %q %q %q %q >> %q 2>&1' \
+        "$SCRIPT_DIR" \
+        "$SCRIPT_DIR/scripts/inbox_watcher.sh" \
+        "$agent" \
+        "$pane" \
+        "$cli" \
+        "tmux" \
+        "$SCRIPT_DIR/$log_file"
+    printf '%s\n' "$shell_cmd"
+}
+
 restart_cooldown_active() {
     local agent="$1"
     local state_file
@@ -287,27 +343,50 @@ start_watcher_if_missing() {
     local pane="$2"
     local log_file="$3"
     local cli
+    local window_name=""
+    local window_target=""
+    local shell_cmd=""
 
     ensure_inbox_file "$agent"
     pane_exists "$pane" || return 0
 
-    if pgrep -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} ${pane} " >/dev/null 2>&1; then
+    if watcher_window_is_current "$agent" "$pane"; then
         return 0
     fi
 
+    cli=$(resolve_cli_type "$agent" "$pane")
+    window_name="$(watcher_window_name "$agent")"
+    window_target="$(watcher_window_target "$agent")"
+    shell_cmd="$(watcher_shell_command "$agent" "$pane" "$cli" "$log_file")"
+
+    if watcher_window_exists "$agent"; then
+        tmux kill-window -t "$window_target" >/dev/null 2>&1 || true
+        sleep 0.2
+    fi
     if pgrep -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1; then
         pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1 || true
         sleep 0.2
     fi
 
-    cli=$(resolve_cli_type "$agent" "$pane")
-    # WSL の /mnt/* 配下では inotify を取りこぼすことがあるため、
-    # timeout tick でも unread を処理する安全網を有効にして起動する。
-    nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=1 ASW_DISABLE_NORMAL_NUDGE=0 \
-        bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "$agent" "$pane" "$cli" "tmux" >> "$log_file" 2>&1 &
+    tmux new-window -d -t "$WATCHER_RUNTIME_SESSION" -n "$window_name" "$shell_cmd" >/dev/null 2>&1
+    tmux set-option -w -t "$window_target" @watch_agent "$agent" >/dev/null 2>&1 || true
+    tmux set-option -w -t "$window_target" @watch_pane "$pane" >/dev/null 2>&1 || true
+    tmux set-option -w -t "$window_target" @watch_cli "$cli" >/dev/null 2>&1 || true
 }
 
 cleanup_stale_watchers() {
+    local window_name agent target
+    while IFS= read -r window_name; do
+        case "$window_name" in
+            inbox-*)
+                agent="${window_name#inbox-}"
+                agent_is_supervised "$agent" && continue
+                target="${WATCHER_RUNTIME_SESSION}:${window_name}"
+                tmux kill-window -t "$target" >/dev/null 2>&1 || true
+                ;;
+        esac
+    done < <(tmux list-windows -t "$WATCHER_RUNTIME_SESSION" -F "#{window_name}" 2>/dev/null || true)
+
     local line pid cmd agent
     while IFS= read -r line; do
         pid="${line%% *}"
@@ -326,20 +405,20 @@ supervisor_tick() {
     refresh_karo_agents
     cleanup_stale_watchers
 
-    pane="$(resolve_agent_pane_target "shogun")"
+    pane="$(resolve_agent_pane_target "shogun" || true)"
     [ -n "$pane" ] && restart_shell_returned_codex_if_needed "shogun" "$pane"
     [ -n "$pane" ] && start_watcher_if_missing "shogun" "$pane" "logs/inbox_watcher_shogun.log"
-    pane="$(resolve_agent_pane_target "gunshi")"
+    pane="$(resolve_agent_pane_target "gunshi" || true)"
     [ -n "$pane" ] && restart_shell_returned_codex_if_needed "gunshi" "$pane"
     [ -n "$pane" ] && start_watcher_if_missing "gunshi" "$pane" "logs/inbox_watcher_gunshi.log"
     for karo_agent in "${KARO_AGENTS[@]}"; do
-        pane="$(resolve_agent_pane_target "$karo_agent")"
+        pane="$(resolve_agent_pane_target "$karo_agent" || true)"
         [ -n "$pane" ] || continue
         restart_shell_returned_codex_if_needed "$karo_agent" "$pane"
         start_watcher_if_missing "$karo_agent" "$pane" "logs/inbox_watcher_${karo_agent}.log"
     done
     for agent in "${ACTIVE_ASHIGARU[@]}"; do
-        pane="$(resolve_agent_pane_target "$agent")"
+        pane="$(resolve_agent_pane_target "$agent" || true)"
         [ -n "$pane" ] || continue
         restart_shell_returned_codex_if_needed "$agent" "$pane"
         start_watcher_if_missing "$agent" "$pane" "logs/inbox_watcher_${agent}.log"

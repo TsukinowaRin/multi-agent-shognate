@@ -6,9 +6,13 @@
 ## 追補（2026-04-05: runtime daemon の tmux 常駐化）
 ### 要求
 1. `shutsujin_departure.sh -c` で起動する watcher / bridge / runtime sync は、起動元シェルの終了に巻き込まれず残ること。
-2. 常駐系は `nohup/disown` へ依存せず、tmux session 内の daemon window として管理できること。
+2. 常駐系は `nohup/disown` へ依存せず、tmux session 内の daemon window として管理できること。`inbox_watcher` も同様に tmux window 化されること。
 3. clean start は既存の runtime daemon session を明示的に破棄し、再起動後に新しい daemon session を作り直すこと。
 4. fresh runtime 後に `karo` などの watcher が timeout tick を跨いでも生き残り、`queue/inbox/<agent>.yaml` の unread を継続して処理できること。
+5. `watcher_supervisor.sh` は startup race で backend pane がまだ無くても `set -e` で即死せず、次 tick で watcher を起こせること。
+6. Codex の `› 1. Switch to gpt-5.1-…` だけが見える switch-confirm prompt も watcher / startup が検知し、`Enter` で確定できること。
+7. `shutsujin_departure.sh` は daemon session 起動後にも watcher one-shot seed を再実行し、fresh start 直後から `inbox-<agent>` tmux window を確保できること。
+8. `goza-runtime:watcher` は `WATCHER_SUPERVISOR_ONCE=1` を周期実行する daemon window とし、主監視が 1 回の race で止まらないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bats tests/unit/test_mux_parity.bats`
@@ -16,9 +20,17 @@
 2. コマンド: `bash shutsujin_departure.sh -c`
    - 期待結果: 完了後の session 一覧に `goza-runtime` が現れ、watcher / bridge / runtime sync の daemon 起動完了が `tmux daemon session` として表示される。
 3. コマンド: `tmux list-windows -t goza-runtime`
-   - 期待結果: 少なくとも `watcher`, `shogun-to-karo`, `karo-to-shogun` window が存在する。
+   - 期待結果: 少なくとも `watcher`, `shogun-to-karo`, `karo-to-shogun` window が存在し、tick 後は `inbox-shogun`, `inbox-karo`, `inbox-ashigaru1` などの watcher window も現れる。
 4. コマンド: `bash scripts/inbox_write.sh karo "<task>" task_assigned lord`
    - 期待結果: `logs/inbox_watcher_karo.log` に timeout tick 後の unread 処理が残り、最終的に `queue/inbox/karo.yaml` が `read: true` へ遷移する。
+5. コマンド: `WATCHER_SUPERVISOR_ONCE=1 bash scripts/watcher_supervisor.sh`
+   - 期待結果: pane 未生成状態でも exit code 1 で落ちず、pane が揃った後の tick で watcher を再起動できる。
+6. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: switch-only Codex confirm prompt の `Enter` 確定と、`watcher_supervisor` の pane 未生成耐性回帰を含めて PASS する。
+7. コマンド: `bash shutsujin_departure.sh -c && tmux list-windows -t goza-runtime`
+   - 期待結果: fresh start 完了直後に `inbox-shogun`, `inbox-karo`, `inbox-ashigaru1` などの watcher window が現れる。
+8. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `while true; WATCHER_SUPERVISOR_ONCE=1 ... sleep` の watcher daemon window 回帰を含めて PASS する。
 
 ## 追補（2026-04-05: 全エージェントのイベント駆動徹底）
 ### 要求

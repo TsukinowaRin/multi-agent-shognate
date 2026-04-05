@@ -167,6 +167,30 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動は daemon session 起動後にも watcher one-shot seed を再実行する" {
+    run bats_search 'restart_tmux_runtime_daemon_session|WATCHER_RUNTIME_SESSION="\$RUNTIME_DAEMON_SESSION"|WATCHER_SUPERVISOR_ONCE=1' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux watcher daemon window は one-shot tick を5秒ごとに回す" {
+    run bats_search 'while true; do env WATCHER_SUPERVISOR_ONCE=1|WATCHER_SUPERVISOR_INTERVAL' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は switch-only Codex confirm prompt を Enter で確定する" {
+    run bats_search 'Press enter to confirm|Codex switch-confirm prompt|tmux_send_enter_only' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動の event_driven_directive は backtick を command substitution しない" {
+    run env PROJECT_ROOT="$PROJECT_ROOT" bash -lc '
+        eval "$(sed -n "/^event_driven_directive() {/,/^}/p" "$PROJECT_ROOT/shutsujin_departure.sh")"
+        out="$(event_driven_directive shogun)"
+        [[ "$out" == *"`cmd_done`"* ]]
+    '
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は runtime daemon を tmux session で常駐化する" {
     run bats_search 'RUNTIME_DAEMON_SESSION|restart_tmux_runtime_daemon_session|start_tmux_runtime_daemon_window|tmux new-session -d -s "\$session_name"|tmux new-window -d -t "\$session_name"|tmux kill-session -t "\$RUNTIME_DAEMON_SESSION"' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
@@ -175,4 +199,9 @@ setup_file() {
 @test "tmux 起動は watcher/bridge/runtime sync を nohup 常駐へ戻さない" {
     run bats_search 'nohup env MUX_TYPE=tmux bash "\$SCRIPT_DIR/scripts/watcher_supervisor\.sh"|nohup env MAS_SHOGUN_TO_KARO_BRIDGE_INTERVAL|nohup env MAS_KARO_DONE_TO_SHOGUN_INTERVAL|nohup env MAS_RUNTIME_PREF_SYNC_INTERVAL' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -ne 0 ]
+}
+
+@test "watcher supervisor は inbox watcher も tmux window で常駐化する" {
+    run bats_search 'WATCHER_RUNTIME_SESSION|watcher_window_name|tmux new-window -d -t "\$WATCHER_RUNTIME_SESSION"' "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
+    [ "$status" -eq 0 ]
 }

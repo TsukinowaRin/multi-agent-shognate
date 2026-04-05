@@ -117,3 +117,22 @@ EOF
   '
   [ "$status" -eq 0 ]
 }
+
+@test "watcher_supervisor: pane 未生成でも supervisor_tick は即死しない" {
+  run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
+    source "$SUPERVISOR_SNIPPET"
+    refresh_active_ashigaru() { ACTIVE_ASHIGARU=(ashigaru1); }
+    refresh_karo_agents() { KARO_AGENTS=(karo); }
+    cleanup_stale_watchers() { :; }
+    resolve_agent_pane_target() { return 1; }
+    supervisor_tick
+  '
+  [ "$status" -eq 0 ]
+}
+
+@test "watcher_supervisor: watcher 起動は tmux watcher window を作る" {
+  run env PROJECT_ROOT="$PROJECT_ROOT" bash -lc '
+    rg -q "WATCHER_RUNTIME_SESSION|watcher_window_name|tmux new-window -d -t \"\\$WATCHER_RUNTIME_SESSION\" -n \"\\$window_name\" \"\\$shell_cmd\"" "'"$PROJECT_ROOT"'/scripts/watcher_supervisor.sh"
+  '
+  [ "$status" -eq 0 ]
+}

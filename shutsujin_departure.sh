@@ -54,7 +54,7 @@ restart_tmux_runtime_daemon_session() {
         start_tmux_runtime_daemon_window \
             "$session_name" \
             "watcher" \
-            "env MUX_TYPE=tmux bash \"$SCRIPT_DIR/scripts/watcher_supervisor.sh\" >> \"$SCRIPT_DIR/logs/watcher_supervisor.log\" 2>&1"
+            "while true; do env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION=\"$session_name\" MUX_TYPE=tmux bash \"$SCRIPT_DIR/scripts/watcher_supervisor.sh\" >> \"$SCRIPT_DIR/logs/watcher_supervisor.log\" 2>&1 || true; sleep \"${WATCHER_SUPERVISOR_INTERVAL:-5}\"; done"
         started=1
     fi
 
@@ -307,6 +307,18 @@ tmux_send_text_and_enter() {
     return 0
 }
 
+tmux_send_enter_only() {
+    local pane_target="$1"
+    local action_label="${2:-tmux send-keys}"
+
+    tmux send-keys -t "$pane_target" Enter >/dev/null 2>&1 || {
+        echo "[WARN] ${action_label}: Enter send failed for ${pane_target}" >&2
+        return 1
+    }
+
+    return 0
+}
+
 tmux_send_text_and_enter_or_die() {
     local pane_target="$1"
     local text="$2"
@@ -495,6 +507,13 @@ auto_dismiss_codex_rate_limit_prompt_tmux() {
             return 0
         fi
         clear_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
+        if echo "$pane_text" | grep -qiE "Press enter to confirm|esc to go b" &&
+           echo "$pane_text" | grep -qiE "Switch to .*gpt-5\.1|Switch to .*mini|Optimized"; then
+            tmux_send_enter_only "$pane_target" "Codex switch-confirm prompt" || return 1
+            log_info "  └─ ${agent_id}: Codex switch-confirm prompt を Enter で確定"
+            sleep 2
+            return 0
+        fi
         if echo "$pane_text" | grep -qiE "Approaching rate limits|Keep current model( \(never show again\))?|Hide future rate limit"; then
             tmux_send_text_and_enter "$pane_target" "3" "Codex rate-limit prompt" || return 1
             log_info "  └─ ${agent_id}: Codex rate-limit prompt を自動dismiss"
@@ -960,13 +979,13 @@ event_driven_directive() {
     local agent_id="$1"
     case "$agent_id" in
         shogun)
-            echo "イベント駆動規則: 家老へ委譲したら即ターンを閉じ、`cmd_done` / 殿の次入力 / ntfy受信の時だけ起きよ。待機中の再走査やポーリングは禁止。"
+            echo 'イベント駆動規則: 家老へ委譲したら即ターンを閉じ、`cmd_done` / 殿の次入力 / ntfy受信の時だけ起きよ。待機中の再走査やポーリングは禁止。'
             ;;
         karo|karo[1-9]*|karo_gashira)
-            echo "イベント駆動規則: ポーリング禁止。`cmd_new` / `report_received` などの inboxイベント起点でのみ処理し、未読処理と close 後は即待機へ戻れ。"
+            echo 'イベント駆動規則: ポーリング禁止。`cmd_new` / `report_received` などの inboxイベント起点でのみ処理し、未読処理と close 後は即待機へ戻れ。'
             ;;
         ashigaru*)
-            echo "イベント駆動規則: ポーリング禁止。`task_assigned` などの inboxイベント起点でのみ処理し、report と自inbox確認後は即待機へ戻れ。"
+            echo 'イベント駆動規則: ポーリング禁止。`task_assigned` などの inboxイベント起点でのみ処理し、report と自inbox確認後は即待機へ戻れ。'
             ;;
         gunshi)
             echo "イベント駆動規則: ポーリング禁止。家老からの相談・分析 task が来た時だけ動き、報告と自inbox確認後は即待機へ戻れ。"
@@ -2045,6 +2064,9 @@ NINJA_EOF
         env WATCHER_SUPERVISOR_ONCE=1 MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
         restart_tmux_runtime_daemon_session "$RUNTIME_DAEMON_SESSION" || true
+        env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION="$RUNTIME_DAEMON_SESSION" MUX_TYPE=tmux \
+            bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
+            >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
         _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
         log_success "  └─ watcher_supervisor 起動完了（tmux daemon session: ${RUNTIME_DAEMON_SESSION}）"

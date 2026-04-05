@@ -269,6 +269,22 @@ clear_runtime_blocker_notice() {
     return 0
 }
 
+codex_prompt_compact_text() {
+    printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]'
+}
+
+codex_usage_limit_prompt_detected() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text "${1:-}")"
+    [[ "$compact_text" == *"youvehityourusagelimit"* || "$compact_text" == *"tryagainat"* ]]
+}
+
+codex_usage_limit_switchable() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text "${1:-}")"
+    [[ "$compact_text" == *"gpt51codexmini"* || "$compact_text" == *"switchto"*mini* || "$compact_text" == *"1switch"* ]]
+}
+
 dismiss_codex_rate_limit_prompt_if_present() {
     local effective_cli="${1:-}"
     local pane_text
@@ -279,8 +295,8 @@ dismiss_codex_rate_limit_prompt_if_present() {
     [[ "$effective_cli" == "codex" ]] || return 1
 
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -40 || true)
-    if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
-        if ! echo "$pane_text" | grep -qiE "gpt-5\.1-codex-mini|Switch to .*mini|1\. Switch"; then
+    if codex_usage_limit_prompt_detected "$pane_text"; then
+        if ! codex_usage_limit_switchable "$pane_text"; then
             record_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
             echo "[$(date)] [SKIP] Hard Codex usage-limit prompt detected for $AGENT_ID; no mini switch option present" >&2
             return 3

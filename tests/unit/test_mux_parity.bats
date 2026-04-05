@@ -137,6 +137,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動と watcher は折返し usage-limit prompt を compact 判定で拾う" {
+    run bats_search 'codex_prompt_compact_text|codex_usage_limit_prompt_detected|codex_usage_limit_switchable|codex_prompt_compact_text_tmux|codex_usage_limit_prompt_detected_tmux|codex_usage_limit_switchable_tmux' "$PROJECT_ROOT/scripts/inbox_watcher.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は hard usage-limit を dashboard blocked notice に記録する" {
     run bats_search 'record_runtime_blocker_notice_tmux|runtime_blocker_notice\.py|codex-hard-usage-limit|dashboard に記録' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
@@ -192,7 +197,19 @@ setup_file() {
 }
 
 @test "tmux 起動は runtime daemon を tmux session で常駐化する" {
-    run bats_search 'RUNTIME_DAEMON_SESSION|restart_tmux_runtime_daemon_session|start_tmux_runtime_daemon_window|tmux new-session -d -s "\$session_name"|tmux new-window -d -t "\$session_name"|tmux kill-session -t "\$RUNTIME_DAEMON_SESSION"' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search 'RUNTIME_DAEMON_SESSION|restart_tmux_runtime_daemon_session|start_tmux_runtime_daemon_window|ensure_tmux_runtime_daemon_window|tmux new-session -d -s "\$session_name"|tmux new-window -d -t "\$session_name"|tmux kill-session -t "\$RUNTIME_DAEMON_SESSION"' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は runtime_cli_pref_daemon を起動後に自己killしない" {
+    run sed -n '2068,2112p' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh"'* ]]
+    [[ "$output" != *$'\n        pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true\n        log_info "💾 live CLI設定の自動同期を起動中..."'* ]]
+}
+
+@test "tmux 起動は runtime-pref window 欠落時に ensure で再補充する" {
+    run bats_search 'ensure_tmux_runtime_daemon_window|runtime-pref|MAS_RUNTIME_PREF_SYNC_INTERVAL|sleep 1' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 

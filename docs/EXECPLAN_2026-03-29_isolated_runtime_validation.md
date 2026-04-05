@@ -229,6 +229,12 @@
   Rationale: いったん初動命令を配信した agent でも、Codex 再起動後は auth / trust prompt を経て再び bootstrap 再試行が必要になるため、既配信 marker を残したままだと post-login の復帰導線が失われるため。
   Date/Author: 2026-04-04 / Codex
 - Decision: `runtime_blocker_notice.py` は issue ごとに detail を正規化し、`codex-auth-required` は login menu / browser auth / login server error、`codex-hard-usage-limit` は retry 時刻などの安定要約だけを保持する。
+- Observation: `karo` pane の hard `usage-limit` が折返しで `You've hit your` / `usage limit` / `try ag` / `ain at ...` に分断されると、watcher / startup の単純 `grep` が取りこぼし、`Wake-up sent to karo` を繰り返した。
+  Evidence: `logs/inbox_watcher_karo.log` に 30 秒ごとの nudge が並び、pane capture では footer ではなく usage-limit 画面だった。compact 判定追加後は `tests/unit/test_send_wakeup.bats` の wrapped fixture が hard block として PASS した。
+- Observation: `runtime_cli_pref_daemon` は isolated tmux probe では残る一方、fresh start では `goza-runtime` から消えることがあり、起動後の self-heal が必要だった。
+  Evidence: `tmux list-windows -t goza-runtime` では `watcher` / bridge / `inbox-*` だけが残り、`runtime-pref` が欠落していた。manual `tmux new-window ... runtime_cli_pref_daemon.sh` では残った。
+- Decision: hard `usage-limit` 判定は raw pane text ではなく compact 文字列で行い、空白・折返しを落として `youvehityourusagelimit` / `tryagainat` を拾う。
+- Decision: `runtime-pref` は startup 後に `ensure_tmux_runtime_daemon_window` で再補充し、legacy cleanup の `pkill runtime_cli_pref_daemon.sh` は前段 cleanup のみに寄せる。
   Rationale: watcher が毎周生の pane capture を渡すと detail が揺れやすく、同じ blocker でも helper が `updated` を返して dashboard 更新と log 出力が止まらなくなるため。
   Date/Author: 2026-04-04 / Codex
 - Decision: `runtime_blocker_notice.py` は既知 section の本文を抽出して `dashboard.md` 全体を再構築できるようにし、壊れた runtime 生成物も natural update の中で自己修復させる。

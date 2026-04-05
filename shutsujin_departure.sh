@@ -44,6 +44,23 @@ start_tmux_runtime_daemon_window() {
     fi
 }
 
+tmux_runtime_daemon_window_exists() {
+    local session_name="$1"
+    local window_name="$2"
+
+    tmux list-windows -t "$session_name" -F '#{window_name}' 2>/dev/null | grep -Fxq "$window_name"
+}
+
+ensure_tmux_runtime_daemon_window() {
+    local session_name="$1"
+    local window_name="$2"
+    local inner_cmd="$3"
+
+    if ! tmux_runtime_daemon_window_exists "$session_name" "$window_name"; then
+        start_tmux_runtime_daemon_window "$session_name" "$window_name" "$inner_cmd"
+    fi
+}
+
 restart_tmux_runtime_daemon_session() {
     local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
     local started=0
@@ -118,6 +135,22 @@ acquire_startup_lock() {
 }
 
 ensure_tmux_tmpdir
+
+codex_prompt_compact_text_tmux() {
+    printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]'
+}
+
+codex_usage_limit_prompt_detected_tmux() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
+    [[ "$compact_text" == *"youvehityourusagelimit"* || "$compact_text" == *"tryagainat"* ]]
+}
+
+codex_usage_limit_switchable_tmux() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
+    [[ "$compact_text" == *"gpt51codexmini"* || "$compact_text" == *"switchto"*mini* || "$compact_text" == *"1switch"* ]]
+}
 acquire_startup_lock
 
 # 言語設定を読み取り（デフォルト: ja）
@@ -494,8 +527,8 @@ auto_dismiss_codex_rate_limit_prompt_tmux() {
 
     for i in {1..45}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -120 || true)"
-        if echo "$pane_text" | grep -qiE "You've hit your usage limit|try again at"; then
-            if ! echo "$pane_text" | grep -qiE "gpt-5\.1-codex-mini|Switch to .*mini|1\. Switch"; then
+        if codex_usage_limit_prompt_detected_tmux "$pane_text"; then
+            if ! codex_usage_limit_switchable_tmux "$pane_text"; then
                 record_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
                 log_info "  └─ ${agent_id}: Codex hard usage-limit prompt を検知（mini切替不可のため自動入力せず待機）"
                 return 0
@@ -2056,6 +2089,7 @@ NINJA_EOF
     pkill -f "$SCRIPT_DIR/scripts/watcher_supervisor.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
     tmux kill-session -t "$RUNTIME_DAEMON_SESSION" 2>/dev/null || true
     pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
     sleep 1
@@ -2067,6 +2101,13 @@ NINJA_EOF
         env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION="$RUNTIME_DAEMON_SESSION" MUX_TYPE=tmux \
             bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
+        if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then
+            sleep 1
+            ensure_tmux_runtime_daemon_window \
+                "$RUNTIME_DAEMON_SESSION" \
+                "runtime-pref" \
+                "env MAS_RUNTIME_PREF_SYNC_INTERVAL=\"${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}\" MAS_RUNTIME_PREF_SYNC_LOG=\"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" bash \"$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh\" >> \"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" 2>&1"
+        fi
         _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
         log_success "  └─ watcher_supervisor 起動完了（tmux daemon session: ${RUNTIME_DAEMON_SESSION}）"
@@ -2085,7 +2126,6 @@ NINJA_EOF
     fi
 
     if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then
-        pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
         log_info "💾 live CLI設定の自動同期を起動中..."
         log_success "  └─ runtime_cli_pref_daemon 起動完了（tmux daemon session）"
     fi

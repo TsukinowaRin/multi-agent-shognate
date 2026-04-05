@@ -891,6 +891,20 @@ YAML
     echo "$output" | grep -qi "Hard Codex usage-limit prompt"
 }
 
+@test "T-CODEX-010d2d: send_wakeup は折返し hard usage-limit prompt でも 1 を送らず nudge も抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s\n%s\n%s" "■ You'\''ve hit your" "usage limit. Upgr" "... try ag" "ain at Apr 8th, 2026 5:20 PM.")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+    ! grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    echo "$output" | grep -qi "Hard Codex usage-limit prompt"
+}
+
 @test "T-CODEX-010d2b: send_wakeup は hard usage-limit prompt を dashboard 通知へ記録する" {
     export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice.log"
     export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice.py"

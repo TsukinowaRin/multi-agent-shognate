@@ -627,6 +627,20 @@
 3. コマンド: `rg -n "shell_aliases\\.sh|install_shell_aliases\\.sh|alias cgo=|source .*shell_aliases\\.sh" scripts first_setup.sh README.md README_ja.md shutsujin_departure.sh`
    - 期待結果: repo-local alias の single source と repair 導線が見える。
 
+## 追補（2026-04-05: wrapped usage-limit と runtime-pref self-heal）
+### 要求
+1. watcher と startup は、折返しで `You've hit your usage limit` や `try again at` が分断されても hard block として判定し、nudge 連打を行わないこと。
+2. `goza-runtime` の `runtime-pref` window は clean start 後に欠落しても self-heal で再補充されること。
+3. `runtime_cli_pref_daemon` は tmux daemon session で起動した直後に legacy cleanup で自己 kill されないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/inbox_watcher.sh shutsujin_departure.sh`
+   - 期待結果: prompt compact 判定と runtime-pref self-heal を含む構文エラーがない。
+2. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: 折返し hard usage-limit prompt の回帰、runtime-pref self-heal、post-start self-kill 防止の回帰が PASS する。
+3. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: `goza-runtime` に `runtime-pref` window が存在し、`karo` などが wrapped usage-limit 画面でも誤 nudge しない。
+
 ## 追補（2026-03-11: live CLI設定の次回起動反映）
 ### 要求
 1. 各 pane 内で変更した `model` や `reasoning/thinking` のうち、判別可能なものは起動中に約1秒以内で `config/settings.yaml` へ同期すること。

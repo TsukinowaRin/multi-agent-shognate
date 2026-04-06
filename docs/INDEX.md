@@ -1,11 +1,12 @@
 # Docs Index
 
-最終更新: 2026-03-30
+最終更新: 2026-04-06
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
 - `docs/PLANS.md` - ExecPlanの作成・更新規約。
-- `docs/HANDOFF_2026-03-29_resume.md` - 新しいチャットで実Codex検証を再開するための handoff。現状の正本。
+- `docs/HANDOFF_2026-04-06_runtime_resume.md` - 新しいチャットで main repo の shared-auth runtime burn-in を再開するための最新 handoff。現状の正本。
+- `docs/HANDOFF_2026-03-29_resume.md` - 旧 handoff。`Shogunate-test` 起点の経緯確認用。
 
 ## Specs
 - `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。
@@ -48,4 +49,4 @@
 
 ## Resume
 - 新しいチャットで再開する場合は、`AGENTS.md` の後にこの `docs/INDEX.md` の Must-read を順に読む。
-- 実Codex検証の現状と再開手順は `docs/HANDOFF_2026-03-29_resume.md` を一次情報とする。
+- 実Codex検証の現状と再開手順は `docs/HANDOFF_2026-04-06_runtime_resume.md` を一次情報とする。

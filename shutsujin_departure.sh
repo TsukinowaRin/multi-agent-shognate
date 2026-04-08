@@ -165,6 +165,11 @@ codex_rate_limit_prompt_detected_tmux() {
     compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
     [[ "$compact_text" == *"approachingratelimits"* || "$compact_text" == *"keepcurrentmodel"* || "$compact_text" == *"hidefutureratelimit"* ]]
 }
+
+codex_ready_prompt_detected_tmux() {
+    local screen_content="${1:-}"
+    printf '%s' "$screen_content" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left)'
+}
 acquire_startup_lock
 
 # 言語設定を読み取り（デフォルト: ja）
@@ -701,7 +706,11 @@ wait_for_cli_ready_tmux() {
     if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
         return 2
     fi
-    if echo "$screen_content" | grep -qiE "$ready_pattern"; then
+    if [ "$cli_type" = "codex" ]; then
+        if codex_ready_prompt_detected_tmux "$screen_content"; then
+            return 0
+        fi
+    elif echo "$screen_content" | grep -qiE "$ready_pattern"; then
         return 0
     fi
 
@@ -711,7 +720,11 @@ wait_for_cli_ready_tmux() {
         if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
             return 2
         fi
-        if echo "$screen_content" | grep -qiE "$ready_pattern"; then
+        if [ "$cli_type" = "codex" ]; then
+            if codex_ready_prompt_detected_tmux "$screen_content"; then
+                return 0
+            fi
+        elif echo "$screen_content" | grep -qiE "$ready_pattern"; then
             return 0
         fi
     done
@@ -727,6 +740,7 @@ deliver_bootstrap_tmux() {
     local bootstrap_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.md"
     local pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.pending"
     local delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.delivered"
+    local ready_wait=30
 
     if [ ! -f "$bootstrap_file" ]; then
         echo "[WARN] bootstrap file not found for $agent_id: $bootstrap_file" >&2
@@ -743,7 +757,10 @@ deliver_bootstrap_tmux() {
 
     # CLIの準備完了を最大30秒待機（スクリーン内容ベース判定）
     local ready_rc=0
-    wait_for_cli_ready_tmux "$pane_target" "$cli_type" 30
+    if [ "$cli_type" = "codex" ]; then
+        ready_wait="${MAS_CODEX_BOOTSTRAP_READY_WAIT:-5}"
+    fi
+    wait_for_cli_ready_tmux "$pane_target" "$cli_type" "$ready_wait"
     ready_rc=$?
     if [ "$ready_rc" -ne 0 ]; then
         if [ "$ready_rc" -eq 2 ]; then
@@ -755,6 +772,11 @@ deliver_bootstrap_tmux() {
         if [ "$cli_type" = "codex" ] && ! codex_process_running_tmux "$pane_target"; then
             echo "[WARN] Codex process is not running in '$pane_target' for '$agent_id'. Keeping bootstrap pending." >&2
             append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "cli-not-running" "codex pane current command is not node"
+            return 1
+        fi
+        if [ "$cli_type" = "codex" ]; then
+            echo "[WARN] Codex UI not ready in '$pane_target' for '$agent_id'. Keeping bootstrap pending for watcher retry." >&2
+            append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-pending" "codex ui not ready after wait; watcher retry will deliver"
             return 1
         fi
         clear_runtime_blocker_notice_tmux "$agent_id" "codex-auth-required" "Codex auth prompt not detected during bootstrap delivery."

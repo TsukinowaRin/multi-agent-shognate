@@ -278,6 +278,12 @@
 - Decision: `goza-runtime:watcher` 自体も long-lived `bash scripts/watcher_supervisor.sh` ではなく、`WATCHER_SUPERVISOR_ONCE=1` の periodic tick loop として起動する。
   Rationale: 実観測で one-shot は効く一方、常駐 supervisor 本体は startup race 後に tick を継続していない疑いがあり、実績のある one-shot 実行を daemon 化する方が安定だから。
   Date/Author: 2026-04-05 / Codex
+- Decision: Codex ready 判定は裸の `codex` 文字列を使わず、`OpenAI Codex` header、`/model to change`、`Use /skills`、`Working ... esc to interrupt` など UI ready 文面に限定する。
+  Rationale: 実 pane で起動コマンド行の `codex --model ... --no-alt-screen` を ready と誤認し、`--no-alt-screeninbox1` のような bootstrap 混線を再現したため。
+  Date/Author: 2026-04-08 / Codex
+- Decision: startup 側の Codex bootstrap wait は既定 30 秒の full wait をやめ、短い wait 後に `ready-pending` として watcher retry へ委譲する。
+  Rationale: fresh start の実測で `goza-runtime` 起動が各 pane の逐次 30 秒待機に引きずられ、runtime daemon の立ち上がりが数分単位で遅れたため。
+  Date/Author: 2026-04-08 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -304,6 +310,8 @@
   - shell に戻った Codex pane は `watcher_supervisor` / `inbox_watcher` の双方から restart command を再投入できるようになり、実観測でも `logs/inbox_watcher_ashigaru2.log` に `restarted shell-returned Codex pane` を確認した。
   - startup は `WATCHER_SUPERVISOR_ONCE=1` の同期 tick を挟むようになり、初回 watcher 起動を detached supervisor の初回 loop に依存しない形へ寄せた。
   - `runtime_cli_pref_daemon` の no-op / unchanged は既定で静かになり、Gemini alias 同期後の 2 回目 sync は `unchanged` 扱いへ戻せた。
+  - 2026-04-08 の runtime 再検証で `ashigaru1` の `--no-alt-screeninbox1` 混線を再現し、Codex ready 誤判定を修正した結果、同 pane は通常の `OpenAI Codex` footer で待機するところまで戻せた。
+  - 同日の startup 修正では `goza-runtime` が fresh start 後に再び作成され、`watcher_supervisor 起動完了（tmux daemon session: goza-runtime）` と `runtime_cli_pref_daemon 起動完了` を trace 上で確認した。
   - main repo の auth 済み実 Codex runtime では、`cmd_001` と `cmd_002` の 2 本を連続で `cmd_done` まで完了できた。
   - 共同開発 task `cmd_003` の実観測から、検証結果の虚偽報告を instruction / protocol 契約で抑止する必要があることを特定し、exact command/cwd 記録と karo rerun-before-close を導入した。
   - clean start で old archive `cmd_done` が shogun inbox へ戻る replay も確認し、bridge state を clean start で捨てる修正を追加した。

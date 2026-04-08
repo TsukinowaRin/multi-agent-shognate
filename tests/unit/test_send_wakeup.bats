@@ -261,6 +261,16 @@ MOCK
     grep -q "send-keys.*inbox4" "$MOCK_LOG"
 }
 
+@test "T-CODEX-013a: codex ready判定は起動コマンド行だけでは真にならない" {
+    run bash -c "source '$TEST_HARNESS' && ! codex_ready_prompt_detected \$'AGENT_ID=karo CODEX_HOME=/tmp/x codex --model gpt-5.4 --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen'"
+    [ "$status" -eq 0 ]
+}
+
+@test "T-CODEX-014a: codex ready判定は OpenAI Codex header で真になる" {
+    run bash -c "source '$TEST_HARNESS' && codex_ready_prompt_detected \$'╭────────────────────────╮\n│ >_ OpenAI Codex (v0.118.0) │\n│ model: gpt-5.4 high   /model to change │\n╰────────────────────────╯'"
+    [ "$status" -eq 0 ]
+}
+
 @test "T-EXTRA-CLI-001: is_valid_cli_type accepts opencode and kilo" {
     run bash -c "source '$TEST_HARNESS' && is_valid_cli_type opencode && is_valid_cli_type kilo"
     [ "$status" -eq 0 ]
@@ -1003,7 +1013,7 @@ MOCK
 @test "T-CODEX-015: watcher は auth 解消後に pending bootstrap を literal 再配信する" {
     run bash -c '
         MOCK_PANE_CLI="codex"
-        MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\nfor shortcuts'"'"'
+        MOCK_CAPTURE_PANE=$'"'"'╭────────────────────────╮\n│ >_ OpenAI Codex (v0.118.0) │\n│ model: gpt-5.4 high   /model to change │\n╰────────────────────────╯'"'"'
         source "'"$TEST_HARNESS"'"
         SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
         mkdir -p "$SCRIPT_DIR/queue/runtime"

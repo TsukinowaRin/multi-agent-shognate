@@ -148,6 +148,16 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動と watcher は Codex 起動コマンド行を ready と誤認しない" {
+    run bats_search 'codex_ready_prompt_detected|codex_ready_prompt_detected_tmux|/model to change|ready-pending|watcher retry will deliver' "$PROJECT_ROOT/scripts/inbox_watcher.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は Codex bootstrap の ready 待機を短くして watcher 再試行へ渡す" {
+    run bats_search 'MAS_CODEX_BOOTSTRAP_READY_WAIT|ready_wait=30|ready_wait="\$\{MAS_CODEX_BOOTSTRAP_READY_WAIT:-5\}"|watcher retry will deliver' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は hard usage-limit を dashboard blocked notice に記録する" {
     run bats_search 'record_runtime_blocker_notice_tmux|runtime_blocker_notice\.py|codex-hard-usage-limit|dashboard に記録' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
@@ -213,10 +223,10 @@ setup_file() {
 }
 
 @test "tmux 起動は runtime_cli_pref_daemon を起動後に自己killしない" {
-    run sed -n '2068,2112p' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run sed -n '2116,2144p' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
     [[ "$output" == *'pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh"'* ]]
-    [[ "$output" != *$'\n        pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true\n        log_info "💾 live CLI設定の自動同期を起動中..."'* ]]
+    [[ "$output" != *$'log_info "💾 live CLI設定の自動同期を起動中..."\n        pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true'* ]]
 }
 
 @test "tmux 起動は runtime-pref window 欠落時に ensure で再補充する" {

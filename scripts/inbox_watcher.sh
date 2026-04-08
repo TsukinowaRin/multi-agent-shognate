@@ -443,7 +443,7 @@ recover_shell_returned_codex_if_needed() {
 bootstrap_ready_pattern() {
     case "${1:-}" in
         claude) printf '%s\n' '(claude code|Claude Code|╰|/model|for shortcuts)' ;;
-        codex) printf '%s\n' '(openai codex|Codex|context left|/model|for shortcuts|Press Ctrl|Working|esc to interrupt|% left)' ;;
+        codex) printf '%s\n' '(openai codex|context left|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left)' ;;
         gemini) printf '%s\n' '(gemini|Gemini|type your message|Tips to get|yolo mode|Working|esc to interrupt|Initializing the Agent)' ;;
         copilot) printf '%s\n' '(copilot|GitHub Copilot|/model)' ;;
         kimi) printf '%s\n' '(kimi|moonshot|/model)' ;;
@@ -452,6 +452,12 @@ bootstrap_ready_pattern() {
         kilo) printf '%s\n' '(kilo|Kilo|/model|ready:)' ;;
         *) printf '%s\n' '(claude|codex|gemini|copilot|kimi|localapi|opencode|kilo|ready:)' ;;
     esac
+}
+
+codex_ready_prompt_detected() {
+    local pane_text="${1:-}"
+
+    printf '%s' "$pane_text" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left)'
 }
 
 deliver_pending_bootstrap_if_ready() {
@@ -483,9 +489,13 @@ deliver_pending_bootstrap_if_ready() {
         return 0
     fi
 
-    ready_pattern=$(bootstrap_ready_pattern "$effective_cli")
-    if ! printf '%s' "$pane_text" | grep -qiE "$ready_pattern"; then
-        return 0
+    if [[ "$effective_cli" == "codex" ]]; then
+        codex_ready_prompt_detected "$pane_text" || return 0
+    else
+        ready_pattern=$(bootstrap_ready_pattern "$effective_cli")
+        if ! printf '%s' "$pane_text" | grep -qiE "$ready_pattern"; then
+            return 0
+        fi
     fi
 
     msg=$(cat "$bootstrap_file" 2>/dev/null || true)

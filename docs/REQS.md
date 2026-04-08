@@ -1965,3 +1965,19 @@
 4. コマンド: watcher 経由で `deliver_pending_bootstrap_if_ready` を実行
    - 前提: `queue/runtime/bootstrap_<agent>.pending` があり、pane が通常の Codex 画面へ復帰している。
    - 期待結果: `.pending` が消え `.delivered` が作成され、bootstrap 本文は literal + Enter で送信される。
+
+## 追補（2026-04-08: Codex ready誤判定と起動待機の短縮）
+### 要求
+1. `shutsujin_departure.sh` と `scripts/inbox_watcher.sh` の Codex ready 判定は、起動コマンド行の裸の `codex` 文字列だけで true にならないこと。
+2. Codex ready 判定は `OpenAI Codex` header、`/model to change`、`Use /skills`、`Working ... esc to interrupt` など、UI ready を示す文面でのみ true になること。
+3. startup 側で Codex が ready timeout しても、bootstrap を無理に送らず `ready-pending` として保留し、watcher retry へ委ねること。
+4. startup 側の Codex ready 待機は既定 30 秒ではなく短い待機時間にし、`goza-runtime` 起動を不要に遅らせないこと。
+5. この修正後、fresh runtime の `ashigaru` pane で `--no-alt-screeninbox1` のような bootstrap 混線が再発しないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: Codex ready 判定が起動コマンド行では false、`OpenAI Codex` header では true になり、startup 側は `ready-pending` と短縮 wait 設定を含む回帰が PASS する。
+2. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: startup 後に `goza-runtime` session が作成され、watcher / bridge / runtime-pref window が揃う。
+3. コマンド: `tmux capture-pane -pt goza-no-ma:overview.3 -S -120`
+   - 期待結果: `ashigaru1` pane に `error: unexpected argument '--no-alt-screeninbox1'` が出ず、通常の `OpenAI Codex` footer で待機または処理に入る。

@@ -1981,3 +1981,30 @@
    - 期待結果: startup 後に `goza-runtime` session が作成され、watcher / bridge / runtime-pref window が揃う。
 3. コマンド: `tmux capture-pane -pt goza-no-ma:overview.3 -S -120`
    - 期待結果: `ashigaru1` pane に `error: unexpected argument '--no-alt-screeninbox1'` が出ず、通常の `OpenAI Codex` footer で待機または処理に入る。
+
+## 追補（2026-04-09: hard usage-limit 中の watcher ログ抑制）
+### 要求
+1. `scripts/inbox_watcher.sh` は Codex hard `usage-limit` が継続している間、同じ検知ログを毎ループ出し続けないこと。
+2. unread が残っていても hard `usage-limit` が active なら、`1 unread for <agent>` のような通常 unread ログや nudge 抑止ログを毎ループ重ねず、blocked 状態の記録を優先すること。
+3. hard `usage-limit` が解消したら suppression state を解除し、次回の新しい hard block 発生時は再度ログを出せること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: hard `usage-limit` 検知ログの cooldown、hard block 中の `process_unread` が unread ログを連打しない回帰を含めて PASS する。
+2. コマンド: `tail -n 40 logs/inbox_watcher_karo.log`
+   - 前提: `karo` pane が hard `usage-limit` で停止中。
+   - 期待結果: 同一文言が短周期で大量に増えず、blocked 状態のログが抑制される。
+
+## 追補（2026-04-09: startup と watcher の bootstrap 二重送信防止）
+### 要求
+1. watcher が `bootstrap_<agent>.pending` を先に消化した後は、startup 側 `deliver_bootstrap_tmux()` が同じ bootstrap を再送しないこと。
+2. startup の ready wait 中に watcher が bootstrap を先に配信した場合も、startup は `pending` を再確認して no-op に切り替えること。
+3. この修正後も、startup の通常初回配信と auth 復帰後の watcher 再配信は維持すること。
+4. Codex bootstrap 後に pane が `Pasted Content ...` の未送信 composer 状態で止まっていたら、startup / watcher は追い `Enter` を送り、未送信のまま `delivered` 扱いにしないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `already-delivered`、`pending cleared before startup delivery`、`pending cleared during startup wait`、`confirm_codex_pasted_content_tmux` を含む回帰が PASS する。
+2. コマンド: `bash shutsujin_departure.sh -c`
+   - 前提: watcher が startup より先に `bootstrap_<agent>.pending` を消化し得る fresh runtime。
+   - 期待結果: 同一 agent pane に bootstrap 文面が二重注入されず、startup 側は `already-delivered` で処理を打ち切る。Codex pane が `Pasted Content ...` で止まる場合は追い `Enter` が入り、未送信のまま `bootstrap-delivered` に進まない。

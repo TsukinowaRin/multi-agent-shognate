@@ -284,6 +284,12 @@
 - Decision: startup 側の Codex bootstrap wait は既定 30 秒の full wait をやめ、短い wait 後に `ready-pending` として watcher retry へ委譲する。
   Rationale: fresh start の実測で `goza-runtime` 起動が各 pane の逐次 30 秒待機に引きずられ、runtime daemon の立ち上がりが数分単位で遅れたため。
   Date/Author: 2026-04-08 / Codex
+- Decision: startup 側 `deliver_bootstrap_tmux()` は送信直前にも `bootstrap_<agent>.pending` を再確認し、watcher が先に配信済みなら `already-delivered` として no-op に切り替える。
+  Rationale: fresh runtime 実観測で watcher が先に `bootstrap retried and delivered` を出した後も startup 側が blind に再送し、`karo` pane に初動文面が二重注入されていたため。
+  Date/Author: 2026-04-09 / Codex
+- Decision: Codex bootstrap 後に pane が `Pasted Content ...` composer のままなら、startup / watcher は追い `Enter` を送り、それでも残る場合は `bootstrap-send-failed` として扱う。
+  Rationale: fresh runtime 実観測で二重送信とは別に、単発の bootstrap 自体が `Pasted Content 1442 chars` の未送信状態で止まっていたため。
+  Date/Author: 2026-04-09 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -312,6 +318,8 @@
   - `runtime_cli_pref_daemon` の no-op / unchanged は既定で静かになり、Gemini alias 同期後の 2 回目 sync は `unchanged` 扱いへ戻せた。
   - 2026-04-08 の runtime 再検証で `ashigaru1` の `--no-alt-screeninbox1` 混線を再現し、Codex ready 誤判定を修正した結果、同 pane は通常の `OpenAI Codex` footer で待機するところまで戻せた。
   - 同日の startup 修正では `goza-runtime` が fresh start 後に再び作成され、`watcher_supervisor 起動完了（tmux daemon session: goza-runtime）` と `runtime_cli_pref_daemon 起動完了` を trace 上で確認した。
+  - 2026-04-09 の fresh runtime では watcher が `bootstrap retried and delivered for karo/gunshi` を startup より先に実行しうることを確認し、startup 側に `pending` 再確認を追加して二重 bootstrap 注入の経路を塞いだ。
+  - 同日の fresh runtime で `karo` pane が `› m[Pasted Content 1442 chars]` の未送信状態で止まることも再現し、Codex bootstrap 後の pasted-content confirm を startup / watcher の双方に追加した。
   - main repo の auth 済み実 Codex runtime では、`cmd_001` と `cmd_002` の 2 本を連続で `cmd_done` まで完了できた。
   - 共同開発 task `cmd_003` の実観測から、検証結果の虚偽報告を instruction / protocol 契約で抑止する必要があることを特定し、exact command/cwd 記録と karo rerun-before-close を導入した。
   - clean start で old archive `cmd_done` が shogun inbox へ戻る replay も確認し、bridge state を clean start で捨てる修正を追加した。

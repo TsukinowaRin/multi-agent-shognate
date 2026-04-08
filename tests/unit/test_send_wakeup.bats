@@ -941,6 +941,19 @@ YAML
     echo "$output" | grep -qi "Hard Codex usage-limit prompt"
 }
 
+@test "T-CODEX-010d2e: hard usage-limit 検知ログは cooldown 中に重複しない" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        dismiss_codex_rate_limit_prompt_if_present codex || true
+        dismiss_codex_rate_limit_prompt_if_present codex || true
+    '
+    [ "$status" -eq 0 ]
+
+    [ "$(printf "%s" "$output" | grep -c "Hard Codex usage-limit prompt detected")" -eq 1 ]
+}
+
 @test "T-CODEX-010d2b: send_wakeup は hard usage-limit prompt を dashboard 通知へ記録する" {
     export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice.log"
     export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice.py"
@@ -1027,6 +1040,40 @@ MOCK
 
     grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015g: process_unread は hard usage-limit 中に unread ログを連打しない" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        mkdir -p "'"$TEST_INBOX_DIR"'"
+        cat > "$INBOX" <<'"'"'YAML'"'"'
+messages:
+  - id: msg_1
+    from: shogun
+    type: cmd_new
+    read: false
+    timestamp: "2026-04-09T00:00:00+09:00"
+    content: "cmd_new"
+YAML
+        ASW_DISABLE_ESCALATION=1
+        process_unread timeout
+    '
+    [ "$status" -eq 0 ]
+
+    [[ "$output" == *"Hard Codex usage-limit prompt detected"* ]]
+    [[ "$output" != *"1 unread for test_agent"* ]]
+}
+
+@test "T-CODEX-015h: watcher は Codex pasted content が残っていたら Enter を追送する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'\'"'"''› m[Pasted Content 1442 chars]'"'"'\'"'"''
+        source "'"$TEST_HARNESS"'"
+        submit_codex_pending_paste_if_needed "bootstrap retry"
+    '
+    [ "$status" -ne 0 ]
 }
 
 @test "T-CODEX-015a: watcher は auth prompt 中の pending bootstrap を dashboard 通知へ記録する" {

@@ -88,6 +88,8 @@ ESCALATE_PHASE2=${ESCALATE_PHASE2:-240}
 ESCALATE_COOLDOWN=${ESCALATE_COOLDOWN:-300}
 LAST_CLI_RESTART_TS=${LAST_CLI_RESTART_TS:-0}
 CLI_RESTART_COOLDOWN=${CLI_RESTART_COOLDOWN:-30}
+LAST_HARD_USAGE_LIMIT_LOG_TS=${LAST_HARD_USAGE_LIMIT_LOG_TS:-0}
+HARD_USAGE_LIMIT_LOG_COOLDOWN=${HARD_USAGE_LIMIT_LOG_COOLDOWN:-600}
 
 # ─── Phase feature flags (cmd_107 Phase 1/2/3) ───
 # ASW_PHASE:
@@ -299,6 +301,19 @@ codex_rate_limit_prompt_detected() {
     [[ "$compact_text" == *"approachingratelimits"* || "$compact_text" == *"keepcurrentmodel"* || "$compact_text" == *"hidefutureratelimit"* ]]
 }
 
+note_hard_usage_limit_prompt() {
+    local now
+    now=$(date +%s)
+
+    if [ "${LAST_HARD_USAGE_LIMIT_LOG_TS:-0}" -gt 0 ] && [ $((now - LAST_HARD_USAGE_LIMIT_LOG_TS)) -lt "${HARD_USAGE_LIMIT_LOG_COOLDOWN:-600}" ]; then
+        return 0
+    fi
+
+    LAST_HARD_USAGE_LIMIT_LOG_TS=$now
+    echo "[$(date)] [SKIP] Hard Codex usage-limit prompt detected for $AGENT_ID; no mini switch option present" >&2
+    return 0
+}
+
 dismiss_codex_rate_limit_prompt_if_present() {
     local effective_cli="${1:-}"
     local pane_text
@@ -312,9 +327,10 @@ dismiss_codex_rate_limit_prompt_if_present() {
     if codex_usage_limit_prompt_detected "$pane_text"; then
         if ! codex_usage_limit_switchable "$pane_text"; then
             record_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
-            echo "[$(date)] [SKIP] Hard Codex usage-limit prompt detected for $AGENT_ID; no mini switch option present" >&2
+            note_hard_usage_limit_prompt
             return 3
         fi
+        LAST_HARD_USAGE_LIMIT_LOG_TS=0
         clear_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
         echo "[$(date)] [SEND-KEYS] Switching Codex to mini after usage-limit prompt for $AGENT_ID" >&2
         if ! send_text_and_enter "1" "Codex usage-limit prompt"; then
@@ -323,6 +339,7 @@ dismiss_codex_rate_limit_prompt_if_present() {
         sleep 0.3
         return 0
     fi
+    LAST_HARD_USAGE_LIMIT_LOG_TS=0
     clear_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
     if codex_switch_confirm_prompt_detected "$pane_text"; then
         echo "[$(date)] [SEND-KEYS] Confirming Codex switch prompt for $AGENT_ID" >&2
@@ -460,6 +477,35 @@ codex_ready_prompt_detected() {
     printf '%s' "$pane_text" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left)'
 }
 
+codex_pasted_content_pending() {
+    local pane_text="${1:-}"
+
+    printf '%s' "$pane_text" | grep -qi 'pasted content'
+}
+
+submit_codex_pending_paste_if_needed() {
+    local action_label="${1:-Codex pasted content confirm}"
+    local pane_text=""
+
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -40 || true)
+    codex_pasted_content_pending "$pane_text" || return 0
+
+    echo "[$(date)] [INFO] Confirming Codex pasted content for $AGENT_ID" >&2
+    if ! mux_send_enter; then
+        echo "[$(date)] WARNING: ${action_label} Enter failed or timed out for $AGENT_ID" >&2
+        return 1
+    fi
+
+    sleep 0.3
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -40 || true)
+    if codex_pasted_content_pending "$pane_text"; then
+        echo "[$(date)] WARNING: ${action_label} pasted content still pending for $AGENT_ID" >&2
+        return 1
+    fi
+
+    return 0
+}
+
 deliver_pending_bootstrap_if_ready() {
     local runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime"
     local bootstrap_file="$runtime_dir/bootstrap_${AGENT_ID}.md"
@@ -502,6 +548,9 @@ deliver_pending_bootstrap_if_ready() {
     [ -n "$msg" ] || return 0
 
     if ! send_literal_text_and_enter "$msg" "bootstrap retry"; then
+        return 1
+    fi
+    if [[ "$effective_cli" == "codex" ]] && ! submit_codex_pending_paste_if_needed "bootstrap retry"; then
         return 1
     fi
 
@@ -986,10 +1035,7 @@ send_wakeup() {
     dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || prompt_rc=$?
     case "$prompt_rc" in
         0|1) ;;
-        3)
-            echo "[$(date)] [SKIP] Hard Codex usage-limit prompt blocks $AGENT_ID; suppressing nudge" >&2
-            return 0
-            ;;
+        3) return 0 ;;
         *)
             echo "[$(date)] WARNING: Codex prompt dismiss failed for $AGENT_ID" >&2
             return 1
@@ -1045,10 +1091,7 @@ send_wakeup_with_escape() {
     dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || prompt_rc=$?
     case "$prompt_rc" in
         0|1) ;;
-        3)
-            echo "[$(date)] [SKIP] Hard Codex usage-limit prompt blocks $AGENT_ID; suppressing Escape+nudge" >&2
-            return 0
-            ;;
+        3) return 0 ;;
         *)
             echo "[$(date)] WARNING: Codex prompt dismiss failed for $AGENT_ID" >&2
             return 1
@@ -1173,7 +1216,20 @@ for s in data.get('specials', []):
 
     if [ "$normal_count" -gt 0 ] 2>/dev/null; then
         local now
+        local effective_cli
+        local prompt_rc=0
         now=$(date +%s)
+        effective_cli=$(get_effective_cli_type)
+
+        dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || prompt_rc=$?
+        case "$prompt_rc" in
+            0|1) ;;
+            3) return 0 ;;
+            *)
+                echo "[$(date)] WARNING: Codex prompt dismiss failed for $AGENT_ID" >&2
+                return 1
+                ;;
+        esac
 
         # Track when we first saw unread messages
         if [ "$FIRST_UNREAD_SEEN" -eq 0 ]; then

@@ -170,6 +170,35 @@ codex_ready_prompt_detected_tmux() {
     local screen_content="${1:-}"
     printf '%s' "$screen_content" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left)'
 }
+
+codex_pasted_content_pending_tmux() {
+    local screen_content="${1:-}"
+    printf '%s' "$screen_content" | grep -qi 'pasted content'
+}
+
+confirm_codex_pasted_content_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local action_label="${3:-Codex pasted content confirm}"
+    local screen_content=""
+
+    screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -40 || true)
+    codex_pasted_content_pending_tmux "$screen_content" || return 0
+
+    echo "[INFO] ${action_label}: confirming pasted content for ${agent_id} (${pane_target})" >&2
+    if ! tmux_send_enter_only "$pane_target" "$action_label"; then
+        return 1
+    fi
+
+    sleep 0.3
+    screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -40 || true)
+    if codex_pasted_content_pending_tmux "$screen_content"; then
+        echo "[WARN] ${action_label}: pasted content still pending for ${agent_id} (${pane_target})" >&2
+        return 1
+    fi
+
+    return 0
+}
 acquire_startup_lock
 
 # 言語設定を読み取り（デフォルト: ja）
@@ -755,6 +784,13 @@ deliver_bootstrap_tmux() {
         return 1
     fi
 
+    if [ ! -f "$pending_file" ]; then
+        if [ -f "$delivered_file" ]; then
+            append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "pending cleared before startup delivery"
+        fi
+        return 0
+    fi
+
     # CLIの準備完了を最大30秒待機（スクリーン内容ベース判定）
     local ready_rc=0
     if [ "$cli_type" = "codex" ]; then
@@ -784,12 +820,23 @@ deliver_bootstrap_tmux() {
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-timeout" "sending bootstrap anyway after 30s"
     fi
 
+    if [ ! -f "$pending_file" ]; then
+        if [ -f "$delivered_file" ]; then
+            append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "pending cleared during startup wait"
+        fi
+        return 0
+    fi
+
     local msg
     msg="$(cat "$bootstrap_file")"
     # -l: リテラル送信（日本語・特殊文字をキーシーケンスと誤解釈させない）
     # sleep: CLI がテキストをバッファに受け取ってから Enter を送る
     if ! tmux_send_text_and_enter "$pane_target" "$msg" "bootstrap delivery" "1"; then
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "text or enter send failed"
+        return 1
+    fi
+    if [ "$cli_type" = "codex" ] && ! confirm_codex_pasted_content_tmux "$pane_target" "$agent_id" "bootstrap delivery"; then
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "codex pasted content still pending"
         return 1
     fi
     rm -f "$pending_file"

@@ -122,6 +122,16 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動は watcher が先に配信した bootstrap を二重送信しない" {
+    run bats_search 'if \[ ! -f "\$pending_file" \ ]; then|already-delivered|pending cleared before startup delivery|pending cleared during startup wait' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は Codex bootstrap 後に pasted content が残っていたら追い Enter する" {
+    run bats_search 'codex_pasted_content_pending_tmux|confirm_codex_pasted_content_tmux|pasted content still pending|Confirming Codex pasted content' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は Codex workspace trust prompt を update prompt と分離して自動承認する" {
     run bats_search 'auto_accept_codex_workspace_trust_prompt_tmux|Do you trust the contents of this directory|1\\. Yes, continue|Would you like to update' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
@@ -223,9 +233,10 @@ setup_file() {
 }
 
 @test "tmux 起動は runtime_cli_pref_daemon を起動後に自己killしない" {
-    run sed -n '2116,2144p' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run sed -n '2168,2216p' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
     [[ "$output" == *'pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh"'* ]]
+    [[ "$output" == *'log_info "💾 live CLI設定の自動同期を起動中..."'* ]]
     [[ "$output" != *$'log_info "💾 live CLI設定の自動同期を起動中..."\n        pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true'* ]]
 }
 

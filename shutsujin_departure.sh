@@ -644,7 +644,7 @@ generate_bootstrap_file() {
 
     local startup_msg
     if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
-        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、続けて ${optimized_instruction_file} を読んで ${cli_type} 向け差分を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md を読み、続けて ${optimized_instruction_file} を読み、その内容を ${cli_type} 用の正本指示として即適用せよ。${role_instruction_file} との比較・diff・読み比べは不要。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら未読inbox監視へ戻れ。"
     else
         startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら未読inbox監視へ戻れ。"
     fi

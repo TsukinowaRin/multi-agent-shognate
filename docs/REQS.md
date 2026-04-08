@@ -3,6 +3,18 @@
 最終更新: 2026-04-05
 出典: 直近ユーザープロンプト
 
+## 追補（2026-04-08: generated instruction を正本化して初動の寄り道を防ぐ）
+### 要求
+1. `shutsujin_departure.sh` の bootstrap は、generated instruction がある CLI ではそれを正本として読むよう指示し、base role markdown との比較や diff を要求しないこと。
+2. 特に足軽の startup で、`instructions/ashigaru.md` と `instructions/generated/codex-ashigaru.md` の読み比べや `diff -u` のような寄り道を誘発しないこと。
+3. event-driven startup の目的は「最速で ready 後に inbox/task 待機へ入ること」であり、初動文面がそれを阻害しないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: bootstrap 文面が `generated instruction を正本として即適用` を含み、`差分を適用せよ` に戻らない回帰を含めて PASS する。
+2. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: generated instruction を持つ role は `AGENTS.md` と generated file を読んで待機へ戻る案内になり、base role markdown との diff を促さない。
+
 ## 追補（2026-04-05: runtime daemon の tmux 常駐化）
 ### 要求
 1. `shutsujin_departure.sh -c` で起動する watcher / bridge / runtime sync は、起動元シェルの終了に巻き込まれず残ること。

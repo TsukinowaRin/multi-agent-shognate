@@ -132,6 +132,12 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動は generated instruction を正本として読み比べ diff を要求しない" {
+    run bats_search '正本指示として即適用せよ|比較・diff・読み比べは不要' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *'差分を適用せよ'* ]]
+}
+
 @test "tmux 起動は Codex の rate-limit prompt も自動dismissする" {
     run bats_search "auto_dismiss_codex_rate_limit_prompt_tmux|Approaching rate limits|You've hit your usage limit|Keep current model \\(never show again\\)|gpt-5\\.1-codex-mini|hard usage-limit prompt|mini へ自動切替" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

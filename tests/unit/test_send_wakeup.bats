@@ -337,6 +337,50 @@ YAML
     ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
+@test "T-SW-010c: ashigaru task_assigned unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: karo
+    type: task_assigned
+    content: "subtask を割り当てた。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/ashigaru1.yaml に未読の task_assigned がある。" "$MOCK_LOG"
+    grep -q "queue/tasks/ashigaru1.yaml" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010d: ashigaru auto-recovery unread uses explicit recovery wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: inbox_watcher
+    type: task_assigned
+    content: "[auto-recovery] report を閉じよ"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/ashigaru1.yaml に未読の auto-recovery task_assigned がある。" "$MOCK_LOG"
+    grep -q "queue/reports/ashigaru1_report.yaml" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
 # --- T-SW-011: functions exist in inbox_watcher.sh ---
 
 @test "T-SW-011: inbox_watcher.sh uses send-keys with required functions" {
@@ -1485,4 +1529,103 @@ PY
 
     ! grep -q "send-keys.*/clear" "$MOCK_LOG"
     ! grep -q "send-keys.*/new" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015i: process_unread は assigned task の report 未完を auto-recovery で再通知する" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        CLI_TYPE="codex"
+        SCRIPT_DIR="$TEST_TMPDIR/proj"
+        INBOX="$TEST_INBOX_DIR/ashigaru1.yaml"
+        LOCKFILE="${INBOX}.lock"
+        mkdir -p "$SCRIPT_DIR/queue/tasks" "$SCRIPT_DIR/queue/reports"
+        cat > "$INBOX" << "YAML"
+messages: []
+YAML
+        cat > "$SCRIPT_DIR/queue/tasks/ashigaru1.yaml" << "YAML"
+task:
+  task_id: subtask_999a
+  status: assigned
+YAML
+        cat > "$SCRIPT_DIR/queue/reports/ashigaru1_report.yaml" << "YAML"
+worker_id: ashigaru1
+task_id: null
+timestamp: ""
+status: idle
+result: null
+YAML
+        process_unread timeout
+        python3 - << "PY" "$INBOX"
+import sys
+import yaml
+
+inbox_path = sys.argv[1]
+with open(inbox_path, "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+auto = [
+    m for m in messages
+    if m.get("from") == "inbox_watcher"
+    and m.get("type") == "task_assigned"
+    and "report" in (m.get("content") or "")
+    and m.get("read") is False
+]
+assert len(auto) == 1
+assert "subtask_999a" in (auto[0].get("content") or "")
+print("OK")
+PY
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "OK"
+    grep -q "queue/inbox/ashigaru1.yaml に未読の auto-recovery task_assigned がある" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015j: process_unread は current task の report 完了済みなら recovery しない" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        CLI_TYPE="codex"
+        SCRIPT_DIR="$TEST_TMPDIR/proj"
+        INBOX="$TEST_INBOX_DIR/ashigaru1.yaml"
+        LOCKFILE="${INBOX}.lock"
+        mkdir -p "$SCRIPT_DIR/queue/tasks" "$SCRIPT_DIR/queue/reports"
+        cat > "$INBOX" << "YAML"
+messages: []
+YAML
+        cat > "$SCRIPT_DIR/queue/tasks/ashigaru1.yaml" << "YAML"
+task:
+  task_id: subtask_999a
+  status: assigned
+YAML
+        cat > "$SCRIPT_DIR/queue/reports/ashigaru1_report.yaml" << "YAML"
+worker_id: ashigaru1
+task_id: subtask_999a
+timestamp: "2026-04-09T02:00:00+09:00"
+status: done
+result:
+  summary: done
+YAML
+        process_unread timeout
+        python3 - << "PY" "$INBOX"
+import sys
+import yaml
+
+inbox_path = sys.argv[1]
+with open(inbox_path, "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+auto = [
+    m for m in messages
+    if m.get("from") == "inbox_watcher"
+    and m.get("type") == "task_assigned"
+    and "[auto-recovery]" in (m.get("content") or "")
+]
+assert len(auto) == 0
+print("OK")
+PY
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "OK"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }

@@ -74,6 +74,9 @@
 - [x] (2026-04-04 22:0x JST) 修正後の clean start で ashigaru2 pane の起動コマンドから `--model left` が消え、pane footer が `model: gpt-5.4` に戻ることを実機確認した。
 - [x] (2026-04-05 13:0x JST) shared auth 導入後の live burn-in で、`karo` watcher の unread 停滞は unread 処理そのものではなく、`shutsujin_departure.sh` から起動した watcher / bridge / runtime sync が親シェル終了後に残らないことが主因と切り分けた。
 - [x] (2026-04-05 13:0x JST) 常駐系を `goza-runtime` tmux daemon session へ移し、fresh runtime 後も `karo` watcher が timeout tick を跨いで生存し、`queue/inbox/karo.yaml` の unread を既読化することを main repo 実行で確認した。
+- [x] (2026-04-09 01:2x JST) live burn-in `cmd_904` で、`ashigaru1` が app.py 改修と unittest 成功を pane 上で完了しても `queue/reports/ashigaru1_report.yaml` が `idle/null` のまま残り、家老 close が止まる failure class を確認した。
+- [x] (2026-04-09 01:3x JST) `scripts/inbox_watcher.sh` に「open task はあるが report が未完で pane は idle」の ashigaru 専用 recovery を追加し、timeout fast-path でも auto-recovery `task_assigned` を再注入できる回帰を加えた。
+- [x] (2026-04-09 01:3x JST) live runtime で実際に `ashigaru1` inbox へ auto-recovery `task_assigned` が再注入され、旧 `inbox1` だけでは弱いと分かったため、wake-up 文面を `queue/tasks/ashigaruN.yaml` / `queue/reports/ashigaruN_report.yaml` 明示へ強化した。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
@@ -248,6 +251,12 @@
 - Decision: Gemini alias 同期は `alias -> base_model` の 2 段書き換えをやめ、最終的に settings へ保存したい `base_model` を直接比較する。
   Rationale: alias 表示は pane footer 用であり、settings 側は base model を持っていれば十分なので、毎回 changed 判定になる必要がないため。
   Date/Author: 2026-04-04 / Codex
+- Decision: `ashigaru` の close 漏れは instruction 文面だけに頼らず、watcher が `queue/tasks/ashigaruN.yaml` と `queue/reports/ashigaruN_report.yaml` の current `task_id` 不一致を見て auto-recovery `task_assigned` を再投入する。
+  Rationale: live burn-in では test pass を出した後に report YAML だけ落とすケースがあり、event-driven を崩さず recovery するには idle timeout tick に current task/report mismatch を乗せるのが最小修正だったため。
+  Date/Author: 2026-04-09 / Codex
+- Decision: `ashigaru` の unread `task_assigned` と auto-recovery は generic な `inboxN` ではなく、`queue/tasks/ashigaruN.yaml` と `queue/reports/ashigaruN_report.yaml` を明示する wake-up 文面で起こす。
+  Rationale: live runtime では auto-recovery 自体は届いても、generic nudge だと足軽が task close ではなく周辺 docs 探索へ流れやすく、再着手の焦点が弱かったため。
+  Date/Author: 2026-04-09 / Codex
 - Decision: implementation 系 task の close 契約は、report 要約の自然言語ではなく `result.verification.command` / `cwd` / `result` を正本とし、家老が reported command を rerun してから close する。
   Rationale: 実 runtime の共同開発 task で、足軽 report が test pass を主張しても実コマンドが失敗する false-positive を確認し、report 文面だけでは品質を担保できないと分かったため。
   Date/Author: 2026-04-04 / Codex

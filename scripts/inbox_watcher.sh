@@ -608,9 +608,10 @@ normalize_special_command() {
 }
 
 enqueue_recovery_task_assigned() {
+    local recovery_hint="${1:-}"
     (
         flock -x 200
-        INBOX_PATH="$INBOX" AGENT_ID="$AGENT_ID" python3 - << 'PY'
+        INBOX_PATH="$INBOX" AGENT_ID="$AGENT_ID" RECOVERY_HINT="$recovery_hint" python3 - << 'PY'
 import datetime
 import os
 import uuid
@@ -618,6 +619,7 @@ import yaml
 
 inbox = os.environ.get("INBOX_PATH", "")
 agent_id = os.environ.get("AGENT_ID", "agent")
+hint = (os.environ.get("RECOVERY_HINT", "") or "").strip()
 
 try:
     with open(inbox, "r", encoding="utf-8") as f:
@@ -637,11 +639,15 @@ try:
             raise SystemExit(0)
 
     now = datetime.datetime.now(datetime.timezone.utc).astimezone()
-    msg = {
-        "content": (
+    if hint:
+        content = f"[auto-recovery] {hint}"
+    else:
+        content = (
             f"[auto-recovery] /clear 後の再着手通知。"
             f"queue/tasks/{agent_id}.yaml を再読し、assigned タスクを即時再開せよ。"
-        ),
+        )
+    msg = {
+        "content": content,
         "from": "inbox_watcher",
         "id": f"msg_auto_recovery_{now.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}",
         "read": False,
@@ -675,6 +681,80 @@ no_idle_full_read() {
     [ "$trigger" = "timeout" ] || return 1
     [ "${FIRST_UNREAD_SEEN:-0}" -eq 0 ] || return 1
     return 0
+}
+
+ashigaru_report_recovery_hint() {
+    [ -n "${AGENT_ID:-}" ] || return 1
+    [[ "${AGENT_ID}" =~ ^ashigaru[0-9]+$ ]] || return 1
+
+    local project_root task_file report_file
+    project_root="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+    task_file="$project_root/queue/tasks/${AGENT_ID}.yaml"
+    report_file="$project_root/queue/reports/${AGENT_ID}_report.yaml"
+    [ -f "$task_file" ] || return 1
+
+    TASK_FILE="$task_file" REPORT_FILE="$report_file" AGENT_NAME="$AGENT_ID" python3 - << 'PY'
+import os
+import yaml
+
+task_file = os.environ["TASK_FILE"]
+report_file = os.environ["REPORT_FILE"]
+agent = os.environ["AGENT_NAME"]
+
+try:
+    with open(task_file, "r", encoding="utf-8") as f:
+        task_doc = yaml.safe_load(f) or {}
+except Exception:
+    raise SystemExit(1)
+
+task = task_doc.get("task") or {}
+task_id = (task.get("task_id") or "").strip()
+task_status = (task.get("status") or "").strip().lower()
+if not task_id or task_status not in {"assigned", "in_progress"}:
+    raise SystemExit(1)
+
+report = {}
+if os.path.exists(report_file):
+    try:
+        with open(report_file, "r", encoding="utf-8") as f:
+            report = yaml.safe_load(f) or {}
+    except Exception:
+        report = {}
+
+report_task_id = str(report.get("task_id") or "").strip()
+report_status = str(report.get("status") or "").strip().lower()
+result = report.get("result")
+
+if report_task_id == task_id and report_status == "done" and result not in (None, "", {}):
+    raise SystemExit(1)
+
+print(
+    f"queue/tasks/{agent}.yaml の {task_id} が {task_status} のまま、"
+    f"queue/reports/{agent}_report.yaml が未完でござる。"
+    f" task YAML を再読し、report YAML 完成と家老通知まで即時閉じよ。"
+)
+PY
+}
+
+recover_missing_ashigaru_report_if_idle() {
+    local recovery_hint=""
+    local recovery_id=""
+
+    if agent_is_busy; then
+        return 1
+    fi
+
+    recovery_hint=$(ashigaru_report_recovery_hint 2>/dev/null || true)
+    [ -n "$recovery_hint" ] || return 1
+
+    recovery_id=$(enqueue_recovery_task_assigned "$recovery_hint")
+    if [ -n "$recovery_id" ] && [ "$recovery_id" != "SKIP_DUPLICATE" ] && [ "$recovery_id" != "ERROR" ]; then
+        echo "[$(date)] [AUTO-RECOVERY] queued missing-report recovery for $AGENT_ID ($recovery_id)" >&2
+        send_wakeup 1
+        return 0
+    fi
+
+    return 1
 }
 
 # summary-first: unread_count fast-path before full read
@@ -750,7 +830,7 @@ get_wakeup_text() {
     local default_nudge="inbox${unread_count}"
 
     # 将軍への cmd_done は、単なる inboxN よりも明示的な指示で起こす。
-    if [[ "${AGENT_ID:-}" != "shogun" ]]; then
+    if [[ "${AGENT_ID:-}" != "shogun" && ! "${AGENT_ID:-}" =~ ^ashigaru[0-9]+$ ]]; then
         echo "$default_nudge"
         return 0
     fi
@@ -767,7 +847,20 @@ try:
     messages = data.get("messages", []) or []
     unread = [m for m in messages if not m.get("read", False)]
     has_cmd_done = any((m.get("type") or "") == "cmd_done" for m in unread)
-    print("cmd_done" if has_cmd_done else "default")
+    has_task_assigned = any((m.get("type") or "") == "task_assigned" for m in unread)
+    has_auto_recovery = any(
+        (m.get("type") or "") == "task_assigned"
+        and "[auto-recovery]" in (m.get("content") or "")
+        for m in unread
+    )
+    if has_cmd_done:
+        print("cmd_done")
+    elif has_auto_recovery:
+        print("auto_recovery_task")
+    elif has_task_assigned:
+        print("task_assigned")
+    else:
+        print("default")
 except Exception:
     print("default")
 PY
@@ -776,6 +869,17 @@ PY
     if [[ "$decision" == "cmd_done" ]]; then
         echo "queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。"
         return 0
+    fi
+
+    if [[ "${AGENT_ID:-}" =~ ^ashigaru[0-9]+$ ]]; then
+        if [[ "$decision" == "auto_recovery_task" ]]; then
+            echo "queue/inbox/${AGENT_ID}.yaml に未読の auto-recovery task_assigned がある。queue/tasks/${AGENT_ID}.yaml と queue/reports/${AGENT_ID}_report.yaml を読み、report 未完なら完成と家老通知まで即時閉じよ。"
+            return 0
+        fi
+        if [[ "$decision" == "task_assigned" ]]; then
+            echo "queue/inbox/${AGENT_ID}.yaml に未読の task_assigned がある。まず queue/tasks/${AGENT_ID}.yaml を読み、assigned task を進めよ。完了したら queue/reports/${AGENT_ID}_report.yaml を書き、家老へ通知せよ。"
+            return 0
+        fi
     fi
 
     echo "$default_nudge"
@@ -1146,6 +1250,9 @@ process_unread() {
     fast_count=$(echo "$fast_info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null)
 
     if no_idle_full_read "$trigger" && [ "$fast_count" -eq 0 ] 2>/dev/null; then
+        if recover_missing_ashigaru_report_if_idle; then
+            return 0
+        fi
         # no_idle_full_read guard: unread=0 and timeout path → no full inbox read
         if [ "$FIRST_UNREAD_SEEN" -ne 0 ]; then
             echo "[$(date)] All messages read for $AGENT_ID — escalation reset (fast-path)" >&2
@@ -1279,9 +1386,13 @@ for s in data.get('specials', []):
             echo "[$(date)] All messages read for $AGENT_ID — escalation reset" >&2
         fi
         FIRST_UNREAD_SEEN=0
-        # Clear stale nudge text from input field (Codex CLI prefills last input on idle).
-        # Only send C-u when agent is idle — during Working it would be disruptive.
+
         if ! agent_is_busy; then
+            if recover_missing_ashigaru_report_if_idle; then
+                return 0
+            fi
+            # Clear stale nudge text from input field (Codex CLI prefills last input on idle).
+            # Only send C-u when agent is idle — during Working it would be disruptive.
             mux_send_ctrl_u
         fi
     fi

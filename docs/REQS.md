@@ -2008,3 +2008,22 @@
 2. コマンド: `bash shutsujin_departure.sh -c`
    - 前提: watcher が startup より先に `bootstrap_<agent>.pending` を消化し得る fresh runtime。
    - 期待結果: 同一 agent pane に bootstrap 文面が二重注入されず、startup 側は `already-delivered` で処理を打ち切る。Codex pane が `Pasted Content ...` で止まる場合は追い `Enter` が入り、未送信のまま `bootstrap-delivered` に進まない。
+
+## 追補（2026-04-09: assigned task の report 未作成を watcher が自己回復する）
+### 要求
+1. `ashigaru` が `queue/tasks/ashigaruN.yaml` で open な task を持ちながら、対応する `queue/reports/ashigaruN_report.yaml` を未完成のまま idle に戻った場合、`scripts/inbox_watcher.sh` は recovery 用 `task_assigned` を再通知できること。
+2. この recovery は `ashigaru` のみを対象とし、将軍・家老・軍師には適用しないこと。
+3. recovery 条件は「current task が `assigned` または `in_progress`」「report が同じ `task_id` の `done` で閉じていない」「pane が busy ではない」をすべて満たす場合に限定すること。
+4. timeout の fast-path でもこの判定を通し、通常 unread が無い待機中でも report 漏れを回復できること。
+5. recovery message は既存の auto-recovery `task_assigned` 経路を使い、同一 agent の未読 auto-recovery を重複生成しないこと。
+6. `ashigaru` に unread `task_assigned` または auto-recovery `task_assigned` がある場合、wake-up 文面は単なる `inboxN` ではなく、`queue/tasks/ashigaruN.yaml` と必要なら `queue/reports/ashigaruN_report.yaml` を明示した再着手メッセージであること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: assigned task が open で report が `idle/null` のときに auto-recovery `task_assigned` が inbox へ追加され、`inbox1` nudge まで走る回帰を含めて PASS する。
+2. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: current task と同じ `task_id` の report が `status: done` で埋まっている場合は recovery を生成しない回帰を含めて PASS する。
+3. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: live runtime で足軽が test pass を発話したのに report YAML を書き漏らした場合でも、次の timeout tick で auto-recovery が入り、task close 導線へ戻せる。
+4. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: `ashigaru` の unread `task_assigned` / auto-recovery `task_assigned` に対し、`queue/tasks/ashigaruN.yaml` と `queue/reports/ashigaruN_report.yaml` を含む明示 wake-up 文面の回帰を含めて PASS する。

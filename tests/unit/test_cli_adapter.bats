@@ -316,7 +316,7 @@ assert_codex_shared_auth_bootstrap() {
     [[ "$result" == *"mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} ${PROJECT_ROOT}/.shogunate/codex/shared"* ]]
     [[ "$result" == *"if [ -f ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json ] && [ ! -e ${PROJECT_ROOT}/.shogunate/codex/shared/auth.json ]; then cp ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json ${PROJECT_ROOT}/.shogunate/codex/shared/auth.json; fi"* ]]
     [[ "$result" == *"ln -sfn ${PROJECT_ROOT}/.shogunate/codex/shared/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json"* ]]
-    [[ "$result" == *"CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} NO_UPDATE_NOTIFIER=1 codex"* ]]
+    [[ "$result" == *"AGENT_ID=${agent_id} CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} NO_UPDATE_NOTIFIER=1 codex"* ]]
 }
 
 assert_codex_shared_auth_custom_bootstrap() {
@@ -488,7 +488,7 @@ assert_codex_shared_auth_custom_bootstrap() {
 @test "build_cli_command: claude + model → claude --model opus --dangerously-skip-permissions" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions" ]
+    [ "$result" = "MAX_THINKING_TOKENS=0 AGENT_ID=shogun claude --model opus --dangerously-skip-permissions" ]
 }
 
 @test "build_cli_command: claude + model auto → --model を付けない" {
@@ -502,7 +502,7 @@ cli:
 YAML
     load_adapter_with "${TEST_TMP}/settings_claude_auto.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "MAX_THINKING_TOKENS=0 claude --dangerously-skip-permissions" ]
+    [ "$result" = "MAX_THINKING_TOKENS=0 AGENT_ID=shogun claude --dangerously-skip-permissions" ]
 }
 
 @test "build_cli_command: codex → NO_UPDATE_NOTIFIER=1 付きで起動" {
@@ -572,26 +572,26 @@ YAML
 @test "build_cli_command: codex shared_auth false なら agent local auth のみ使う" {
     load_adapter_with "${TEST_TMP}/settings_codex_shared_auth_off.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
 @test "build_cli_command: codex shared_auth_file を custom path へ変更できる" {
     load_adapter_with "${TEST_TMP}/settings_codex_shared_auth_custom.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_custom_bootstrap "$result" "shogun"
-    [[ "$result" == *"CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *"AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
 }
 
 @test "build_cli_command: copilot → copilot --yolo" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru7")
-    [ "$result" = "copilot --yolo" ]
+    [ "$result" = "AGENT_ID=ashigaru7 copilot --yolo" ]
 }
 
 @test "build_cli_command: kimi + model → kimi --yolo --model k2.5" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(build_cli_command "ashigaru3")
-    [ "$result" = "kimi --yolo --model k2.5" ]
+    [ "$result" = "AGENT_ID=ashigaru3 kimi --yolo --model k2.5" ]
 }
 
 @test "build_cli_command: kimi-cliのみ存在時は kimi-cli を使用" {
@@ -603,55 +603,55 @@ exit 0
 SH
     chmod +x "${TEST_TMP}/bin/kimi-cli"
     PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru3")
-    [ "$result" = "${TEST_TMP}/bin/kimi-cli --yolo --model k2.5" ]
+    [ "$result" = "AGENT_ID=ashigaru3 ${TEST_TMP}/bin/kimi-cli --yolo --model k2.5" ]
 }
 
 @test "build_cli_command: kimi (モデル指定なし) → kimi --yolo" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(build_cli_command "ashigaru4")
-    [ "$result" = "kimi --yolo" ]
+    [ "$result" = "AGENT_ID=ashigaru4 kimi --yolo" ]
 }
 
 @test "build_cli_command: gemini + model auto → gemini --yolo" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
-    [ "$result" = "gemini --yolo" ]
+    [ "$result" = "AGENT_ID=ashigaru2 gemini --yolo" ]
 }
 
 @test "build_cli_command: gemini 3 pro + thinking_level → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "gunshi")
-    [ "$result" = "gemini --yolo --model mas-gunshi" ]
+    [ "$result" = "AGENT_ID=gunshi gemini --yolo --model mas-gunshi" ]
 }
 
 @test "build_cli_command: gemini 3 flash + thinking_level minimal → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru1")
-    [ "$result" = "gemini --yolo --model mas-ashigaru1" ]
+    [ "$result" = "AGENT_ID=ashigaru1 gemini --yolo --model mas-ashigaru1" ]
 }
 
 @test "build_cli_command: gemini 2.5 + thinking_budget → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
-    [ "$result" = "gemini --yolo --model mas-ashigaru2" ]
+    [ "$result" = "AGENT_ID=ashigaru2 gemini --yolo --model mas-ashigaru2" ]
 }
 
 @test "build_cli_command: gemini auto + thinking_level → inferred alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru3")
-    [ "$result" = "gemini --yolo --model mas-ashigaru3" ]
+    [ "$result" = "AGENT_ID=ashigaru3 gemini --yolo --model mas-ashigaru3" ]
 }
 
 @test "build_cli_command: shogun gemini は未設定なら alias を使わない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_gemini_default.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "shogun")
-    [ "$result" = "gemini --yolo" ]
+    [ "$result" = "AGENT_ID=shogun gemini --yolo" ]
 }
 
 @test "build_cli_command: gemini に gpt 系 model が入っていても auto に丸める" {
@@ -666,13 +666,13 @@ YAML
     load_adapter_with "${TEST_TMP}/settings_gemini_invalid_model.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "shogun")
-    [ "$result" = "gemini --yolo" ]
+    [ "$result" = "AGENT_ID=shogun gemini --yolo" ]
 }
 
 @test "build_cli_command: shogun claude は未設定でも thinking無効を既定適用" {
     load_adapter_with "${TEST_TMP}/settings_shogun_claude_default.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "MAX_THINKING_TOKENS=0 claude --model opus --dangerously-skip-permissions" ]
+    [ "$result" = "MAX_THINKING_TOKENS=0 AGENT_ID=shogun claude --model opus --dangerously-skip-permissions" ]
 }
 
 @test "build_cli_command: gemini-cliのみ存在時は gemini-cli を使用" {
@@ -685,7 +685,7 @@ SH
     chmod +x "${TEST_TMP}/bin/gemini-cli"
     mkdir -p "${TEST_TMP}/home-empty"
     HOME="${TEST_TMP}/home-empty" PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
-    [ "$result" = "${TEST_TMP}/bin/gemini-cli --yolo" ]
+    [ "$result" = "AGENT_ID=ashigaru2 ${TEST_TMP}/bin/gemini-cli --yolo" ]
 }
 
 @test "build_cli_command: localapi → python3 scripts/localapi_repl.py" {
@@ -699,13 +699,13 @@ SH
 @test "build_cli_command: opencode + provider/model → opencode --model ..." {
     load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "opencode --model ollama/qwen3-coder:30b" ]
+    [ "$result" = "AGENT_ID=shogun opencode --model ollama/qwen3-coder:30b" ]
 }
 
 @test "build_cli_command: kilo + provider/model → kilo --model ..." {
     load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
     result=$(build_cli_command "gunshi")
-    [ "$result" = "kilo --model lmstudio/codellama-7b.Q4_0.gguf" ]
+    [ "$result" = "AGENT_ID=gunshi kilo --model lmstudio/codellama-7b.Q4_0.gguf" ]
 }
 
 @test "build_cli_command: opencode global bin絶対パスには node PATH を自動付与する" {
@@ -718,7 +718,7 @@ SH
     chmod +x "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/node"
     sed -i "s#/tmp/test-home#${TEST_TMP}/home#g" "${TEST_TMP}/settings_opencode_global_bin.yaml"
     result=$(build_cli_command "ashigaru1")
-    [ "$result" = "env PATH=${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin:\$PATH env XDG_DATA_HOME=/tmp/mas_xdg XDG_CACHE_HOME=/tmp/mas_cache ${TEST_TMP}/home/.nvm/versions/node/v22.22.0/lib/node_modules/opencode-ai/bin/opencode --model lmstudio/openai/gpt-oss-20b" ]
+    [ "$result" = "AGENT_ID=ashigaru1 env PATH=${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin:\$PATH env XDG_DATA_HOME=/tmp/mas_xdg XDG_CACHE_HOME=/tmp/mas_cache ${TEST_TMP}/home/.nvm/versions/node/v22.22.0/lib/node_modules/opencode-ai/bin/opencode --model lmstudio/openai/gpt-oss-20b" ]
 }
 
 @test "get_model_display_name: codex は opus/sonnet 既定値ではなく Codex を表示する" {
@@ -765,38 +765,38 @@ SH
 @test "build_cli_command_with_startup_prompt: claude は positional prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_with_models.yaml"
     result=$(build_cli_command_with_startup_prompt "karo" "claude" "ready:karo")
-    [ "$result" = "claude --model sonnet --dangerously-skip-permissions ready:karo" ]
+    [ "$result" = "AGENT_ID=karo claude --model sonnet --dangerously-skip-permissions ready:karo" ]
 }
 
 @test "build_cli_command_with_startup_prompt: gemini は interactive prompt フラグを付与する" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command_with_startup_prompt "ashigaru2" "gemini" "ready:ashigaru2")
-    [ "$result" = "gemini --yolo -i ready:ashigaru2" ]
+    [ "$result" = "AGENT_ID=ashigaru2 gemini --yolo -i ready:ashigaru2" ]
 }
 
 @test "build_cli_command_with_startup_prompt: opencode は --prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
     result=$(build_cli_command_with_startup_prompt "shogun" "opencode" "ready:shogun")
-    [ "$result" = "opencode --model ollama/qwen3-coder:30b --prompt ready:shogun" ]
+    [ "$result" = "AGENT_ID=shogun opencode --model ollama/qwen3-coder:30b --prompt ready:shogun" ]
 }
 
 @test "build_cli_command_with_startup_prompt: kilo は --prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
     result=$(build_cli_command_with_startup_prompt "gunshi" "kilo" "ready:gunshi")
-    [ "$result" = "kilo --model lmstudio/codellama-7b.Q4_0.gguf --prompt ready:gunshi" ]
+    [ "$result" = "AGENT_ID=gunshi kilo --model lmstudio/codellama-7b.Q4_0.gguf --prompt ready:gunshi" ]
 }
 
 @test "build_cli_command: cliセクションなし → claude フォールバック" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(build_cli_command "ashigaru1")
-    [[ "$result" == claude*--dangerously-skip-permissions ]]
+    [[ "$result" == AGENT_ID=ashigaru1\ claude*--dangerously-skip-permissions ]]
 }
 
 @test "build_cli_command: settings読取失敗 → claude フォールバック" {
     load_adapter_with "/nonexistent/settings.yaml"
     result=$(build_cli_command "ashigaru1")
-    [[ "$result" == claude*--dangerously-skip-permissions ]]
+    [[ "$result" == AGENT_ID=ashigaru1\ claude*--dangerously-skip-permissions ]]
 }
 
 # =============================================================================

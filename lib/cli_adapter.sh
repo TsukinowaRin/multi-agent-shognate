@@ -448,6 +448,7 @@ build_cli_command() {
 build_cli_command_with_type() {
     local agent_id="$1"
     local cli_type="$2"
+    local agent_env_prefix=""
     local model
     model=$(get_agent_model "$agent_id")
     local configured_model
@@ -459,6 +460,9 @@ build_cli_command_with_type() {
     fi
     local reasoning_effort
     reasoning_effort="$(get_agent_reasoning_effort "$agent_id")"
+    if [[ -n "$agent_id" ]]; then
+        agent_env_prefix="AGENT_ID=$(_cli_adapter_shell_quote "$agent_id") "
+    fi
 
     # thinking prefix: Claude CLI でのみ有効
     # thinking: true or 未設定 → そのまま（デフォルトでThinking ON）
@@ -475,13 +479,13 @@ build_cli_command_with_type() {
                 cmd="$cmd --model $model"
             fi
             cmd="$cmd --dangerously-skip-permissions"
-            echo "${prefix}${cmd}"
+            echo "${prefix}${agent_env_prefix}${cmd}"
             ;;
         codex)
             local codex_home
             codex_home="$(_cli_adapter_codex_home "$agent_id")"
             local cmd
-            cmd="$(_cli_adapter_prepare_codex_home_cmd "$agent_id") && CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 codex"
+            cmd="$(_cli_adapter_prepare_codex_home_cmd "$agent_id") && ${agent_env_prefix}CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 codex"
             if ! _cli_adapter_is_valid_codex_model "$configured_model"; then
                 configured_model="default"
             fi
@@ -495,7 +499,7 @@ build_cli_command_with_type() {
             echo "$cmd"
             ;;
         copilot)
-            echo "copilot --yolo"
+            echo "${agent_env_prefix}copilot --yolo"
             ;;
         kimi)
             local kimi_bin
@@ -504,7 +508,7 @@ build_cli_command_with_type() {
             if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
                 cmd="$cmd --model $model"
             fi
-            echo "$cmd"
+            echo "${agent_env_prefix}${cmd}"
             ;;
         gemini)
             local gemini_bin
@@ -516,7 +520,7 @@ build_cli_command_with_type() {
             if [[ -n "$runtime_model" && "$runtime_model" != "auto" && "$runtime_model" != "default" ]]; then
                 cmd="$cmd --model $runtime_model"
             fi
-            echo "$cmd"
+            echo "${agent_env_prefix}${cmd}"
             ;;
         localapi)
             local localapi_cmd
@@ -532,7 +536,7 @@ build_cli_command_with_type() {
             if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
                 localapi_cmd="LOCALAI_MODEL=${model} ${localapi_cmd}"
             fi
-            echo "$localapi_cmd"
+            echo "${agent_env_prefix}${localapi_cmd}"
             ;;
         opencode)
             local opencode_cmd
@@ -541,7 +545,7 @@ build_cli_command_with_type() {
             if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
                 opencode_cmd="$opencode_cmd --model $configured_model"
             fi
-            echo "$opencode_cmd"
+            echo "${agent_env_prefix}${opencode_cmd}"
             ;;
         kilo)
             local kilo_cmd
@@ -550,10 +554,10 @@ build_cli_command_with_type() {
             if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
                 kilo_cmd="$kilo_cmd --model $configured_model"
             fi
-            echo "$kilo_cmd"
+            echo "${agent_env_prefix}${kilo_cmd}"
             ;;
         *)
-            echo "claude --dangerously-skip-permissions"
+            echo "${agent_env_prefix}claude --dangerously-skip-permissions"
             ;;
     esac
 }

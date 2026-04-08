@@ -3,6 +3,19 @@
 最終更新: 2026-04-05
 出典: 直近ユーザープロンプト
 
+## 追補（2026-04-08: launch-time に AGENT_ID を必ず引き継ぐ）
+### 要求
+1. 各 agent の CLI 起動コマンドは、tmux pane option `@agent_id` だけに依存せず、process 環境変数 `AGENT_ID` も常に持つこと。
+2. この `AGENT_ID` は fresh start の初回起動だけでなく、watcher / supervisor による shell-return recovery 後の再起動でも維持されること。
+3. Codex / Claude / Gemini / OpenCode / Kilo / LocalAPI / Copilot の各 launch command で `AGENT_ID` が欠落しないこと。
+4. `AGENT_ID` が空のため agent が毎回 tmux metadata へフォールバックして初動を遅らせないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: `build_cli_command` / `build_cli_command_with_startup_prompt` の主要 CLI 出力に `AGENT_ID=<agent>` が含まれる回帰を含めて PASS する。
+2. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: fresh runtime 後の Codex pane で `AGENT_ID は空` のような fallback 自己診断が不要になり、初動がそのまま inbox / task 処理へ進む。
+
 ## 追補（2026-04-08: generated instruction を正本化して初動の寄り道を防ぐ）
 ### 要求
 1. `shutsujin_departure.sh` の bootstrap は、generated instruction がある CLI ではそれを正本として読むよう指示し、base role markdown との比較や diff を要求しないこと。

@@ -27,6 +27,8 @@
 5. `WORKLOG` と本 ExecPlan に結果を追記し、必要なら commit/push する。
 
 ## Progress
+- [x] (2026-04-09 14:4x JST) `cmd_001` の `cmd_done` relay まで完走させ、`shogun -> karo -> ashigaru1/2 -> karo -> shogun` の軽い共同開発タスクが main repo runtime で閉じることを再確認した。
+- [x] (2026-04-09 14:4x JST) `karo_done_to_shogun_bridge.log` に `primed\t...` が蓄積して可観測性を落とすため、bridge daemon は既定では `primed` を stdout へ流さず、verbose 時だけ出すよう回帰を追加した。
 - [x] (2026-04-09 14:3x JST) live runtime の軽い共同開発 task 投入で、`shogun` は `cmd_001` を即起票できた一方、`karo` は unread `cmd_new` を受けても generic `inboxN` 起点のまま `queue/shogun_to_karo.yaml` へ入るまでに停滞することを観測した。
 - [x] (2026-04-09 14:3x JST) `scripts/inbox_watcher.sh` の wake-up 文面を補強し、`karo` に unread `cmd_new` / `report_received` がある場合は `queue/shogun_to_karo.yaml`、`status: in_progress`、`task_assigned`、`queue/reports/ashigaru*_report.yaml`、`dashboard更新・cmd close` を明示して最短経路へ誘導する回帰を追加した。
 - [x] (2026-04-09 14:0x JST) Codex bootstrap を後段 `send-keys` だけに頼らず、CLI launch command の起動引数へ直接載せるよう更新した。fresh runtime で `shogun` / `karo` / `gunshi` pane に `【初動命令】...` がそのまま prompt として入り、少なくとも `ready:shogun` と `ready:karo` が実際に返ることを確認した。
@@ -251,6 +253,8 @@
   Evidence: `logs/inbox_watcher_karo.log` に 30 秒ごとの nudge が並び、pane capture では footer ではなく usage-limit 画面だった。compact 判定追加後は `tests/unit/test_send_wakeup.bats` の wrapped fixture が hard block として PASS した。
 - Observation: live runtime で `shogun` は軽い共同開発 task を `cmd_001` として即起票できたが、`karo` は `cmd_new` unread 後も `queue/inbox/karo.yaml` を読む段で止まり、`queue/shogun_to_karo.yaml` の `status: in_progress` と `queue/tasks/ashigaru*.yaml` への dispatch が遅れた。
   Evidence: `goza-no-ma:overview.1` では `› inbox2` 後に `queue/inbox/karo.yaml` 読取までは出る一方、`queue/shogun_to_karo.yaml` 参照や `task_assigned` は数十秒以上出ず、`queue/inbox/karo.yaml` には unread `cmd_new` が残り続けた。
+- Observation: `cmd_001` の完走自体は可能だが、`karo_done_to_shogun_bridge.log` には clean start や daemon 再起動のたびに `primed\t...` が繰り返し追記され、最近の `sent\tcmd_001` が埋もれやすかった。
+  Evidence: `tail -n 40 logs/karo_done_to_shogun_bridge.log` で `sent\tcmd_001` の前後が `primed\tcmd_001...` の繰り返しで占められていた。
 - Observation: `runtime_cli_pref_daemon` は isolated tmux probe では残る一方、fresh start では `goza-runtime` から消えることがあり、起動後の self-heal が必要だった。
   Evidence: `tmux list-windows -t goza-runtime` では `watcher` / bridge / `inbox-*` だけが残り、`runtime-pref` が欠落していた。manual `tmux new-window ... runtime_cli_pref_daemon.sh` では残った。
 - Decision: hard `usage-limit` 判定は raw pane text ではなく compact 文字列で行い、空白・折返しを落として `youvehityourusagelimit` / `tryagainat` を拾う。
@@ -259,6 +263,9 @@
   Date/Author: 2026-04-04 / Codex
 - Decision: `karo` の wake-up は unread `cmd_new` / `report_received` について generic `inboxN` を使わず、queue file と次の必須動作を明示した専用文面へ寄せる。
   Rationale: live runtime では fast-dispatch / fast-closure の instruction があっても、generic nudge では `karo` が `queue/inbox/karo.yaml` 以外へ進むまでの初動が遅く、実 task throughput のボトルネックになっていたため。
+  Date/Author: 2026-04-09 / Codex
+- Decision: bridge daemon は `sent` だけを既定ログへ流し、`noop` に加えて `primed` も verbose 時以外は黙らせる。
+  Rationale: state 初期化の繰り返しは配送イベントではなく、業務運用で追いたいのは `sent` と失敗だけであるため。
   Date/Author: 2026-04-09 / Codex
 - Decision: `runtime_blocker_notice.py` は既知 section の本文を抽出して `dashboard.md` 全体を再構築できるようにし、壊れた runtime 生成物も natural update の中で自己修復させる。
   Rationale: `dashboard.md` は tracked file ではない runtime 生成物なので、別コマンドでの手動掃除に頼るより helper 自体が骨格を戻せる方が実運用で安全なため。

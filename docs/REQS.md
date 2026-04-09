@@ -14,6 +14,16 @@
 1. コマンド: `bats tests/unit/test_send_wakeup.bats`
    - 期待結果: `karo` の unread `cmd_new` / `report_received` に対して `queue/shogun_to_karo.yaml`、`status: in_progress`、`queue/tasks/ashigaru1.yaml`、`queue/reports/ashigaru*_report.yaml`、`dashboard更新・cmd close` を含む明示 wake-up 文面の回帰を含めて PASS する。
 
+## 追補（2026-04-09: bridge daemon は primed 状態を既定ログへ流さない）
+### 要求
+1. `scripts/shogun_to_karo_bridge_daemon.sh` と `scripts/karo_done_to_shogun_bridge_daemon.sh` は、bridge 本体が `primed\t...` を返しても既定では stdout へ流さないこと。
+2. `sent\t...` は従来どおり stdout へ流し、配送イベントの可観測性は維持すること。
+3. 調査用途として `MAS_BRIDGE_VERBOSE_NOOP=1` では `noop` に加えて `primed` も表示できること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_bridge_daemons.bats`
+   - 期待結果: `shogun_to_karo_bridge_daemon.sh` / `karo_done_to_shogun_bridge_daemon.sh` の `primed` が既定で無出力、verbose 時は出力、`sent` はそのまま出力、という回帰を含めて PASS する。
+
 ## 追補（2026-04-09: 将軍自身が blocked の時は lord inbox へも直通知する）
 ### 要求
 1. `inbox_watcher.sh` が `shogun` の hard `usage-limit` または `auth-required` を検知したら、`dashboard.md` の blocked notice 記録だけで終わらず、`queue/inbox/lord.yaml` に `type: runtime_blocked` を 1 回だけ relay すること。

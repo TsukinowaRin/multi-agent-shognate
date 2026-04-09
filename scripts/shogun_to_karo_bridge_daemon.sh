@@ -24,7 +24,7 @@ run_bridge_once() {
 
     [ -n "$output" ] || return 0
     first_line="${output%%$'\n'*}"
-    if [ "$VERBOSE_NOOP" = "1" ] || [[ "$first_line" != noop$'\t'* ]]; then
+    if [ "$VERBOSE_NOOP" = "1" ] || ([[ "$first_line" != noop$'\t'* ]] && [[ "$first_line" != primed$'\t'* ]]); then
         printf '%s\n' "$output"
     fi
 }

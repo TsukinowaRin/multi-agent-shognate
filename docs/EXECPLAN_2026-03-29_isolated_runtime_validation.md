@@ -27,6 +27,7 @@
 5. `WORKLOG` と本 ExecPlan に結果を追記し、必要なら commit/push する。
 
 ## Progress
+- [x] (2026-04-09 11:0x JST) hard `usage-limit` / `auth-required` を `dashboard.md` だけでなく `queue/inbox/shogun.yaml` の `runtime_blocked` としても relay し、将軍が blocked state を event-driven に拾える経路を追加した。
 - [x] (2026-03-29 15:0x) `REQS` / `INDEX` を更新し、本検証を docs 上の正規要求として追加。
 - [x] (2026-03-29 15:1x) ワークスペース内に隔離コピー `runtime_sandboxes/isolated_runtime_validation_20260329_151700/repo` を作成。
 - [x] (2026-03-29 16:07 JST) `/tmp/mas_isolated_runtime_validation_151700` を tmux socket 置き場として使い、隔離コピー側で `bash shutsujin_departure.sh -c` を完了。
@@ -260,6 +261,9 @@
   Date/Author: 2026-04-09 / Codex
 - Decision: `ashigaru` の unread `task_assigned` と auto-recovery は generic な `inboxN` ではなく、`queue/tasks/ashigaruN.yaml` と `queue/reports/ashigaruN_report.yaml` を明示する wake-up 文面で起こす。
   Rationale: live runtime では auto-recovery 自体は届いても、generic nudge だと足軽が task close ではなく周辺 docs 探索へ流れやすく、再着手の焦点が弱かったため。
+  Date/Author: 2026-04-09 / Codex
+- Decision: non-shogun agent の runtime blocker は `dashboard.md` だけでなく `queue/inbox/shogun.yaml` の `type: runtime_blocked` としても 1 回 relay し、blocker 解消時に relay marker を外す。
+  Rationale: hard `usage-limit` や auth-required が家老で起きると dashboard だけでは event-driven runtime に埋もれやすく、将軍が Lord へ blocked 状態を即報告できないため。
   Date/Author: 2026-04-09 / Codex
 - Decision: implementation 系 task の close 契約は、report 要約の自然言語ではなく `result.verification.command` / `cwd` / `result` を正本とし、家老が reported command を rerun してから close する。
   Rationale: 実 runtime の共同開発 task で、足軽 report が test pass を主張しても実コマンドが失敗する false-positive を確認し、report 文面だけでは品質を担保できないと分かったため。

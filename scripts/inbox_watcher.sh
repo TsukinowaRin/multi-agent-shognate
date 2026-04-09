@@ -282,6 +282,78 @@ clear_runtime_blocker_notice() {
     return 0
 }
 
+runtime_blocked_relay_marker_path() {
+    local issue="${1:-}"
+    local runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime/runtime_blocked_relay"
+    printf '%s/%s__%s.sent' "$runtime_dir" "${AGENT_ID:-agent}" "$issue"
+}
+
+notify_shogun_runtime_blocked_if_needed() {
+    local issue="${1:-}"
+    local detail="${2:-}"
+    local project_root="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+    local relay_dir="${project_root}/queue/runtime/runtime_blocked_relay"
+    local marker_path
+    local inbox_write_script="${project_root}/scripts/inbox_write.sh"
+    local message=""
+
+    [ -n "$issue" ] || return 0
+    [ "${AGENT_ID:-}" = "shogun" ] && return 0
+    marker_path="$(runtime_blocked_relay_marker_path "$issue")"
+    [ -f "$marker_path" ] && return 0
+    [ -f "$inbox_write_script" ] || return 0
+
+    mkdir -p "$relay_dir"
+
+    case "$issue" in
+        codex-hard-usage-limit)
+            message="queue/inbox/${AGENT_ID}.yaml の担当 agent が Codex hard usage-limit で停止中。dashboard.md の runtime-blocked/${AGENT_ID} を確認し、殿へ blocked 状態を報告せよ。"
+            ;;
+        codex-auth-required)
+            message="queue/inbox/${AGENT_ID}.yaml の担当 agent が Codex auth 待ちで停止中。dashboard.md の runtime-blocked/${AGENT_ID} を確認し、殿へ blocked 状態を報告せよ。"
+            ;;
+        *)
+            message="queue/inbox/${AGENT_ID}.yaml の担当 agent が runtime blocker (${issue}) で停止中。dashboard.md の runtime-blocked/${AGENT_ID} を確認し、殿へ blocked 状態を報告せよ。"
+            ;;
+    esac
+
+    if bash "$inbox_write_script" shogun "$message" runtime_blocked "inbox_watcher" >/dev/null 2>&1; then
+        : > "$marker_path"
+        echo "[$(date)] [INFO] runtime blocker relay queued for shogun (${AGENT_ID}, ${issue})" >&2
+        return 0
+    fi
+
+    echo "[$(date)] [WARN] failed to relay runtime blocker to shogun (${AGENT_ID}, ${issue})" >&2
+    return 0
+}
+
+clear_shogun_runtime_blocked_relay() {
+    local issue="${1:-}"
+    local marker_path=""
+
+    [ -n "$issue" ] || return 0
+    [ "${AGENT_ID:-}" = "shogun" ] && return 0
+    marker_path="$(runtime_blocked_relay_marker_path "$issue")"
+    rm -f "$marker_path"
+    return 0
+}
+
+record_runtime_blocker() {
+    local issue="${1:-}"
+    local detail="${2:-}"
+    record_runtime_blocker_notice "$issue" "$detail"
+    notify_shogun_runtime_blocked_if_needed "$issue" "$detail"
+    return 0
+}
+
+clear_runtime_blocker() {
+    local issue="${1:-}"
+    local detail="${2:-}"
+    clear_runtime_blocker_notice "$issue" "$detail"
+    clear_shogun_runtime_blocked_relay "$issue"
+    return 0
+}
+
 codex_prompt_compact_text() {
     printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]'
 }
@@ -337,12 +409,12 @@ dismiss_codex_rate_limit_prompt_if_present() {
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -40 || true)
     if codex_usage_limit_prompt_detected "$pane_text"; then
         if ! codex_usage_limit_switchable "$pane_text"; then
-            record_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
+            record_runtime_blocker "codex-hard-usage-limit" "$pane_text"
             note_hard_usage_limit_prompt
             return 3
         fi
         LAST_HARD_USAGE_LIMIT_LOG_TS=0
-        clear_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
+        clear_runtime_blocker "codex-hard-usage-limit" "$pane_text"
         echo "[$(date)] [SEND-KEYS] Switching Codex to mini after usage-limit prompt for $AGENT_ID" >&2
         if ! send_text_and_enter "1" "Codex usage-limit prompt"; then
             return 2
@@ -351,7 +423,7 @@ dismiss_codex_rate_limit_prompt_if_present() {
         return 0
     fi
     LAST_HARD_USAGE_LIMIT_LOG_TS=0
-    clear_runtime_blocker_notice "codex-hard-usage-limit" "$pane_text"
+    clear_runtime_blocker "codex-hard-usage-limit" "$pane_text"
     if codex_switch_confirm_prompt_detected "$pane_text"; then
         echo "[$(date)] [SEND-KEYS] Confirming Codex switch prompt for $AGENT_ID" >&2
         if ! mux_send_enter; then
@@ -582,13 +654,13 @@ deliver_pending_bootstrap_if_ready() {
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
 
     if [[ "$effective_cli" == "codex" ]] && codex_auth_prompt_detected "$pane_text"; then
-        record_runtime_blocker_notice "codex-auth-required" "$pane_text"
+        record_runtime_blocker "codex-auth-required" "$pane_text"
         return 0
     fi
     if [[ "$effective_cli" == "codex" ]] && ! codex_process_running; then
         return 0
     fi
-    clear_runtime_blocker_notice "codex-auth-required" "$pane_text"
+    clear_runtime_blocker "codex-auth-required" "$pane_text"
     if agent_is_busy; then
         return 0
     fi
@@ -614,7 +686,7 @@ deliver_pending_bootstrap_if_ready() {
 
     rm -f "$pending_file"
     : > "$delivered_file"
-    clear_runtime_blocker_notice "codex-auth-required" "$pane_text"
+    clear_runtime_blocker "codex-auth-required" "$pane_text"
     echo "[$(date)] [INFO] bootstrap retried and delivered for $AGENT_ID" >&2
     return 0
 }
@@ -922,6 +994,7 @@ try:
     messages = data.get("messages", []) or []
     unread = [m for m in messages if not m.get("read", False)]
     has_cmd_done = any((m.get("type") or "") == "cmd_done" for m in unread)
+    has_runtime_blocked = any((m.get("type") or "") == "runtime_blocked" for m in unread)
     has_task_assigned = any((m.get("type") or "") == "task_assigned" for m in unread)
     has_auto_recovery = any(
         (m.get("type") or "") == "task_assigned"
@@ -930,6 +1003,8 @@ try:
     )
     if has_cmd_done:
         print("cmd_done")
+    elif has_runtime_blocked:
+        print("runtime_blocked")
     elif has_auto_recovery:
         print("auto_recovery_task")
     elif has_task_assigned:
@@ -943,6 +1018,11 @@ PY
 
     if [[ "$decision" == "cmd_done" ]]; then
         echo "queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。"
+        return 0
+    fi
+
+    if [[ "$decision" == "runtime_blocked" ]]; then
+        echo "queue/inbox/shogun.yaml に未読の runtime_blocked がある。dashboard.md の runtime-blocked/* を確認し、止まっている役職と要対応を殿へ報告せよ。"
         return 0
     fi
 

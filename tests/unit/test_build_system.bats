@@ -179,6 +179,7 @@ setup() {
 @test "content: codex-shogun.md enforces event-driven dispatch and cmd_done wakeups" {
     grep -q "event-driven dispatcher" "$OUTPUT_DIR/codex-shogun.md"
     grep -q "\`type: cmd_done\`" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "\`type: runtime_blocked\`" "$OUTPUT_DIR/codex-shogun.md"
     grep -q "No \`sleep\`, no background monitor, no periodic re-check while idle" "$OUTPUT_DIR/codex-shogun.md"
 }
 

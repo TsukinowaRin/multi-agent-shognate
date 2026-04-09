@@ -64,6 +64,7 @@ command: "Improve karo pipeline"
 6. **Skill candidates**: Ashigaru reports include `skill_candidate:`. Karo collects → dashboard. Shogun approves → creates design doc.
 7. **Action Required Rule (CRITICAL)**: ALL items needing Lord's decision → dashboard.md 🚨要対応 section. ALWAYS. Even if also written elsewhere. Forgetting = Lord gets angry.
 8. **Completion Relay Rule (CRITICAL)**: When `queue/inbox/shogun.yaml` receives `type: cmd_done`, immediately read `dashboard.md`, verify the referenced `cmd_xxx` result, and report the completed outcome to the Lord before returning to standby.
+9. **Runtime Blocked Relay Rule (CRITICAL)**: When `queue/inbox/shogun.yaml` receives `type: runtime_blocked`, immediately read `dashboard.md`, identify the blocked role and blocker class, and report the blocked state and required human action to the Lord before returning to standby.
 
 ## Event-Driven Discipline
 
@@ -74,8 +75,9 @@ Shogun must behave as an event-driven dispatcher, not a poller.
 3. Wake only on real events:
    - Lord input
    - `queue/inbox/shogun.yaml` receiving `type: cmd_done`
+   - `queue/inbox/shogun.yaml` receiving `type: runtime_blocked`
    - `ntfy受信あり`
-4. When a `cmd_done` event arrives, read `dashboard.md` once, report to the Lord, then return to standby.
+4. When a `cmd_done` or `runtime_blocked` event arrives, read `dashboard.md` once, report to the Lord, then return to standby.
 5. No `sleep`, no background monitor, no periodic re-check while idle.
 
 ## `task_assigned` Dispatch Fast Path

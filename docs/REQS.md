@@ -3,6 +3,21 @@
 最終更新: 2026-04-05
 出典: 直近ユーザープロンプト
 
+## 追補（2026-04-09: runtime blocked は dashboard だけでなく将軍 inbox にも明示通知する）
+### 要求
+1. `inbox_watcher.sh` が non-shogun agent の hard `usage-limit` または `auth-required` を検知したら、`dashboard.md` の blocked notice 記録だけで終わらず、`queue/inbox/shogun.yaml` に `type: runtime_blocked` を 1 回だけ relay すること。
+2. relay は同一 `agent + issue` で重複投入せず、blocked が解消したら marker を外し、次回の再発時には再通知できること。
+3. `shutsujin_departure.sh` の startup 側でも同じ `runtime_blocked` relay を行い、watcher 起動前に出た auth / hard usage-limit も将軍へ見えること。
+4. 将軍の instruction と wake-up 文面は `runtime_blocked` を `cmd_done` と同じ event-driven wake source として扱い、`dashboard.md` を見て殿へ blocked 状態を報告するよう明記すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: hard `usage-limit` と auth-required で `runtime_blocked` relay が 1 回だけ行われ、shogun の wake-up 文面にも `runtime_blocked` が反映された回帰を含めて PASS する。
+2. コマンド: `bash scripts/build_instructions.sh && bats tests/unit/test_build_system.bats`
+   - 期待結果: `codex-shogun.md` に `type: runtime_blocked` が event-driven wake source として入り、回帰が PASS する。
+3. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: startup 側の `runtime_blocked` relay helper が存在し、`shutsujin_departure.sh` の静的回帰が PASS する。
+
 ## 追補（2026-04-09: Codex 初回起動中の誤再起動と launch command 混線を防ぐ）
 ### 要求
 1. `shutsujin_departure.sh` の CLI launch は pane へ literal 送信し、shell が受け取る起動コマンド文字列を途中で Codex 会話入力へ漏らさないこと。

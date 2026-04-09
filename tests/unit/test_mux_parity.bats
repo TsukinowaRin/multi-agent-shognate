@@ -183,6 +183,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動は runtime blocked を shogun inbox へ relay する" {
+    run bats_search 'notify_shogun_runtime_blocked_tmux|runtime_blocked_relay_marker_path_tmux|runtime_blocked|startup_guard|dashboard\.md の runtime-blocked/' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は Codex process が node でない間は bootstrap を保留する" {
     run bats_search 'codex_process_running_tmux|pane_current_command|cli-not-running|Keeping bootstrap pending' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

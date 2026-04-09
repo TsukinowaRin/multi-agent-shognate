@@ -341,6 +341,27 @@ YAML
     ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
+@test "T-SW-010bb: shogun runtime_blocked unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: inbox_watcher
+    type: runtime_blocked
+    content: "karo blocked"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="shogun"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/shogun.yaml に未読の runtime_blocked がある。dashboard.md の runtime-blocked/\\* を確認し、止まっている役職と要対応を殿へ報告せよ。" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
 @test "T-SW-010c: ashigaru task_assigned unread uses explicit wake-up text" {
     cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
 messages:
@@ -1073,6 +1094,29 @@ MOCK
     ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
 }
 
+@test "T-CODEX-010d2ba: send_wakeup は hard usage-limit prompt を shogun inbox に一度だけ relay する" {
+    export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_relay.log"
+
+    run bash -c '
+        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
+        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+#!/bin/bash
+printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
+MOCK
+        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        send_wakeup 1
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    [ "$(wc -l < "$RELAY_LOG")" -eq 1 ]
+    grep -q $'^shogun\t.*runtime_blocked\tinbox_watcher$' "$RELAY_LOG"
+}
+
 @test "T-CODEX-010d2c: send_wakeup は Codex 通常画面で stale blocked notice を除去する" {
     export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice_clear.log"
     export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice_clear.py"
@@ -1197,6 +1241,30 @@ MOCK
 
     grep -q -- '--action record --agent test_agent --issue codex-auth-required' "$NOTICE_LOG"
     ! grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015aa: watcher は auth prompt 中の pending bootstrap を shogun inbox に relay する" {
+    export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_auth_relay.log"
+
+    run bash -c '
+        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
+        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+#!/bin/bash
+printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
+MOCK
+        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\n1. Sign in with ChatGPT\nPress Enter to continue'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q $'^shogun\t.*runtime_blocked\tinbox_watcher$' "$RELAY_LOG"
 }
 
 @test "T-CODEX-015b: watcher は bootstrap 再配信成功時に auth notice を除去する" {

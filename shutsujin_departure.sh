@@ -467,6 +467,79 @@ clear_runtime_blocker_notice_tmux() {
     run_runtime_blocker_notice_tmux "clear" "$@"
 }
 
+runtime_blocked_relay_marker_path_tmux() {
+    local agent_id="$1"
+    local issue="$2"
+    printf '%s/queue/runtime/runtime_blocked_relay/%s__%s.sent' "$SCRIPT_DIR" "$agent_id" "$issue"
+}
+
+notify_shogun_runtime_blocked_tmux() {
+    local agent_id="$1"
+    local issue="$2"
+    local relay_dir="$SCRIPT_DIR/queue/runtime/runtime_blocked_relay"
+    local marker_path=""
+    local message=""
+
+    [ -n "$agent_id" ] || return 0
+    [ -n "$issue" ] || return 0
+    [ "$agent_id" = "shogun" ] && return 0
+    marker_path="$(runtime_blocked_relay_marker_path_tmux "$agent_id" "$issue")"
+    [ -f "$marker_path" ] && return 0
+    mkdir -p "$relay_dir"
+
+    case "$issue" in
+        codex-hard-usage-limit)
+            message="queue/inbox/${agent_id}.yaml の担当 agent が Codex hard usage-limit で停止中。dashboard.md の runtime-blocked/${agent_id} を確認し、殿へ blocked 状態を報告せよ。"
+            ;;
+        codex-auth-required)
+            message="queue/inbox/${agent_id}.yaml の担当 agent が Codex auth 待ちで停止中。dashboard.md の runtime-blocked/${agent_id} を確認し、殿へ blocked 状態を報告せよ。"
+            ;;
+        *)
+            message="queue/inbox/${agent_id}.yaml の担当 agent が runtime blocker (${issue}) で停止中。dashboard.md の runtime-blocked/${agent_id} を確認し、殿へ blocked 状態を報告せよ。"
+            ;;
+    esac
+
+    if bash "$SCRIPT_DIR/scripts/inbox_write.sh" shogun "$message" runtime_blocked "startup_guard" >/dev/null 2>&1; then
+        : > "$marker_path"
+        log_info "  └─ ${agent_id}: runtime blocker を shogun inbox へ通知"
+        return 0
+    fi
+
+    log_warn "  └─ ${agent_id}: runtime blocker の shogun relay に失敗"
+    return 0
+}
+
+clear_shogun_runtime_blocked_tmux() {
+    local agent_id="$1"
+    local issue="$2"
+    local marker_path=""
+
+    [ -n "$agent_id" ] || return 0
+    [ -n "$issue" ] || return 0
+    [ "$agent_id" = "shogun" ] && return 0
+    marker_path="$(runtime_blocked_relay_marker_path_tmux "$agent_id" "$issue")"
+    rm -f "$marker_path"
+    return 0
+}
+
+record_runtime_blocker_tmux() {
+    local agent_id="$1"
+    local issue="$2"
+    local detail="${3:-}"
+    record_runtime_blocker_notice_tmux "$agent_id" "$issue" "$detail"
+    notify_shogun_runtime_blocked_tmux "$agent_id" "$issue"
+    return 0
+}
+
+clear_runtime_blocker_tmux() {
+    local agent_id="$1"
+    local issue="$2"
+    local detail="${3:-}"
+    clear_runtime_blocker_notice_tmux "$agent_id" "$issue" "$detail"
+    clear_shogun_runtime_blocked_tmux "$agent_id" "$issue"
+    return 0
+}
+
 # Gemini CLI 初回の trust folder プロンプトを自動承認する（1回のみ）
 auto_accept_gemini_trust_prompt_tmux() {
     local pane_target="$1"
@@ -582,17 +655,17 @@ auto_dismiss_codex_rate_limit_prompt_tmux() {
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -120 || true)"
         if codex_usage_limit_prompt_detected_tmux "$pane_text"; then
             if ! codex_usage_limit_switchable_tmux "$pane_text"; then
-                record_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
+                record_runtime_blocker_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
                 log_info "  └─ ${agent_id}: Codex hard usage-limit prompt を検知（mini切替不可のため自動入力せず待機）"
                 return 0
             fi
-            clear_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
+            clear_runtime_blocker_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
             tmux_send_text_and_enter "$pane_target" "1" "Codex usage-limit prompt" || return 1
             log_info "  └─ ${agent_id}: Codex usage-limit prompt で mini へ自動切替"
             sleep 2
             return 0
         fi
-        clear_runtime_blocker_notice_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
+        clear_runtime_blocker_tmux "$agent_id" "codex-hard-usage-limit" "$pane_text"
         if codex_switch_confirm_prompt_detected_tmux "$pane_text"; then
             tmux_send_enter_only "$pane_target" "Codex switch-confirm prompt" || return 1
             log_info "  └─ ${agent_id}: Codex switch-confirm prompt を Enter で確定"
@@ -805,7 +878,7 @@ deliver_bootstrap_tmux() {
     ready_rc=$?
     if [ "$ready_rc" -ne 0 ]; then
         if [ "$ready_rc" -eq 2 ]; then
-            record_runtime_blocker_notice_tmux "$agent_id" "codex-auth-required" "Codex authentication prompt detected before bootstrap delivery."
+            record_runtime_blocker_tmux "$agent_id" "codex-auth-required" "Codex authentication prompt detected before bootstrap delivery."
             echo "[WARN] Codex authentication prompt detected in '$pane_target' for '$agent_id'. Skipping bootstrap until login completes." >&2
             append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "auth-required" "codex authentication prompt detected"
             return 1
@@ -820,7 +893,7 @@ deliver_bootstrap_tmux() {
             append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-pending" "codex ui not ready after wait; watcher retry will deliver"
             return 1
         fi
-        clear_runtime_blocker_notice_tmux "$agent_id" "codex-auth-required" "Codex auth prompt not detected during bootstrap delivery."
+        clear_runtime_blocker_tmux "$agent_id" "codex-auth-required" "Codex auth prompt not detected during bootstrap delivery."
         echo "[WARN] CLI '$cli_type' not ready in '$pane_target' after 30s, sending bootstrap anyway" >&2
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-timeout" "sending bootstrap anyway after 30s"
     fi
@@ -846,7 +919,7 @@ deliver_bootstrap_tmux() {
     fi
     rm -f "$pending_file"
     : > "$delivered_file"
-    clear_runtime_blocker_notice_tmux "$agent_id" "codex-auth-required" "Codex auth prompt cleared before bootstrap delivery."
+    clear_runtime_blocker_tmux "$agent_id" "codex-auth-required" "Codex auth prompt cleared before bootstrap delivery."
     append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-delivered" "send-keys literal + enter"
 }
 

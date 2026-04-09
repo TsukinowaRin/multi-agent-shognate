@@ -1139,6 +1139,31 @@ MOCK
     [ ! -f "$RELAY_LOG" ] || [ ! -s "$RELAY_LOG" ]
 }
 
+@test "T-CODEX-010d2bc: shogun hard usage-limit は lord inbox に一度だけ relay する" {
+    export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_human_relay.log"
+
+    run bash -c '
+        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
+        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+#!/bin/bash
+printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
+MOCK
+        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        export ASW_ENABLE_RUNTIME_BLOCKED_HUMAN_RELAY_TEST=1
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        AGENT_ID="shogun"
+        send_wakeup 1
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    [ "$(wc -l < "$RELAY_LOG")" -eq 1 ]
+    grep -q $'^lord\t.*runtime_blocked\tinbox_watcher$' "$RELAY_LOG"
+}
+
 @test "T-CODEX-010d2c: send_wakeup は Codex 通常画面で stale blocked notice を除去する" {
     export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice_clear.log"
     export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice_clear.py"

@@ -183,8 +183,8 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "tmux 起動は runtime blocked を shogun inbox へ relay する" {
-    run bats_search 'notify_shogun_runtime_blocked_tmux|runtime_blocked_relay_marker_path_tmux|runtime_blocked|startup_guard|dashboard\.md の runtime-blocked/' "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "tmux 起動は runtime blocked を shogun inbox と lord inbox へ relay する" {
+    run bats_search 'notify_shogun_runtime_blocked_tmux|notify_lord_runtime_blocked_tmux|runtime_blocked_relay_marker_path_tmux|runtime_blocked_human_marker_path_tmux|runtime_blocked|startup_guard|dashboard\.md の runtime-blocked/' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 

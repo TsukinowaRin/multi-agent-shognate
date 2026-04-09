@@ -3,6 +3,19 @@
 最終更新: 2026-04-05
 出典: 直近ユーザープロンプト
 
+## 追補（2026-04-09: 将軍自身が blocked の時は lord inbox へも直通知する）
+### 要求
+1. `inbox_watcher.sh` が `shogun` の hard `usage-limit` または `auth-required` を検知したら、`dashboard.md` の blocked notice 記録だけで終わらず、`queue/inbox/lord.yaml` に `type: runtime_blocked` を 1 回だけ relay すること。
+2. relay は同一 `agent + issue` で重複投入せず、blocked が解消したら marker を外し、次回の再発時には再通知できること。
+3. `shutsujin_departure.sh` の startup 側でも同じ `lord` relay を行い、watcher 起動前に出た `shogun` の auth / hard `usage-limit` も人間に見えること。
+4. test harness 実行時は real queue を汚染しないよう、lord relay の回帰は opt-in でのみ動くこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: `shogun` hard `usage-limit` で `queue/inbox/lord.yaml` 向け relay が 1 回だけ行われる回帰と、test harness 既定では relay しない回帰を含めて PASS する。
+2. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: startup 側の `notify_lord_runtime_blocked_tmux` と human relay marker helper を含む静的回帰が PASS する。
+
 ## 追補（2026-04-09: runtime blocked は dashboard だけでなく将軍 inbox にも明示通知する）
 ### 要求
 1. `inbox_watcher.sh` が non-shogun agent の hard `usage-limit` または `auth-required` を検知したら、`dashboard.md` の blocked notice 記録だけで終わらず、`queue/inbox/shogun.yaml` に `type: runtime_blocked` を 1 回だけ relay すること。

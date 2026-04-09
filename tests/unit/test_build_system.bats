@@ -229,6 +229,13 @@ setup() {
     grep -q "Do \*\*not\*\* inspect target code, README, test files, or broad repo state before the first dispatch" "$OUTPUT_DIR/codex-karo.md"
 }
 
+@test "content: codex-karo.md forces initial multi-ashigaru split when the cmd is naturally parallel" {
+    grep -q "If two or more active ashigaru are available and the cmd naturally splits into independent early lanes" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "assign the first lane to \`ashigaru1\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "assign a complementary lane to \`ashigaru2\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do \*\*not\*\* leave \`ashigaru2\` idle" "$OUTPUT_DIR/codex-karo.md"
+}
+
 @test "content: codex-gunshi.md enforces event-driven standby after analysis" {
     grep -q "Gunshi must also remain event-driven" "$OUTPUT_DIR/codex-gunshi.md"
     grep -q "return to standby immediately" "$OUTPUT_DIR/codex-gunshi.md"

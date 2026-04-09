@@ -852,7 +852,7 @@ startup_fastpath_directive() {
             echo "初動最適化: 起動直後は自inboxだけ確認し、未読が無ければ即待機。task_assigned を受けたら queue/shogun_to_karo.yaml・自inbox・settings だけで即 cmd 起票し、app.py/tests/README や git status のような実装調査は家老へ委ねよ。"
             ;;
         karo|karo[1-9]*|karo_gashira)
-            echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は inbox・queue/shogun_to_karo.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め。dashboard/settings/対象コードは dispatch 後か runtime 矛盾時だけ読め。report_received は report YAML を正本として dashboard 更新と cmd close を最優先せよ。bridge/ntfy/streaks/sample は異常時以外読むな。"
+            echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は inbox・queue/shogun_to_karo.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め。2人以上の active ashigaru で成果物や工程が分けられる cmd なら、初手で少なくとも2本の補完的 subtasks を切ってから待機せよ。dashboard/settings/対象コードは dispatch 後か runtime 矛盾時だけ読め。report_received は report YAML を正本として dashboard 更新と cmd close を最優先せよ。bridge/ntfy/streaks/sample は異常時以外読むな。"
             ;;
         ashigaru*)
             echo "初動最適化: 起動直後は自inbox/task だけ確認し、未読も task も無ければ即待機。着手後も自task と対象ファイルに限定して動け。"

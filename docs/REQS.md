@@ -3,6 +3,19 @@
 最終更新: 2026-04-05
 出典: 直近ユーザープロンプト
 
+## 追補（2026-04-09: 家老は2人で割れる task を初手で複数足軽へ切る）
+### 要求
+1. `karo` が `cmd_new` を受け、active ashigaru が2名以上いて、成果物や工程が独立に分けられる task なら、最初の dispatch で少なくとも2本の補完的 subtasks を切ること。
+2. 少なくとも `app.py` / `README.md` / `tests/test_app.py` のような複数成果物、または Spec/Test と Implement/Polish のような独立工程は、初手から parallelizable とみなすこと。
+3. 上記は RACE-001 を壊さない範囲で行い、単一ファイル競合が強い場合だけ単騎 dispatch を許容すること。
+4. startup の `karo` 初動 directive と generated instruction の両方に同じ規則を反映すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh && bats tests/unit/test_build_system.bats`
+   - 期待結果: `codex-karo.md` に「2人以上の active ashigaru」「初手で ashigaru1 と ashigaru2 へ補完的 subtasks」「ashigaru2 を idle のまま残さない」が入り、回帰が PASS する。
+2. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `shutsujin_departure.sh` の `karo` startup directive が、parallelizable な cmd では初手で複数 subtasks を切る契約を含む静的回帰で PASS する。
+
 ## 追補（2026-04-09: 家老の wake-up は cmd_new / report_received を明示する）
 ### 要求
 1. `scripts/inbox_watcher.sh` の wake-up 文面は、`karo` に unread `cmd_new` がある場合、単なる `inboxN` ではなく `queue/inbox/karo.yaml` と `queue/shogun_to_karo.yaml` を起点に `status: in_progress` と `task_assigned` まで即 dispatch するよう明示すること。

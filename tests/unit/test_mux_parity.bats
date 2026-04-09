@@ -159,7 +159,7 @@ setup_file() {
 }
 
 @test "tmux 起動は karo に cmd_new の即dispatchを指示する" {
-    run bats_search 'cmd_new は inbox・queue/shogun_to_karo\.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め|dashboard/settings/対象コードは dispatch 後' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search 'cmd_new は inbox・queue/shogun_to_karo\.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め|2人以上の active ashigaru で成果物や工程が分けられる cmd なら、初手で少なくとも2本の補完的 subtasks を切ってから待機せよ|dashboard/settings/対象コードは dispatch 後' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 

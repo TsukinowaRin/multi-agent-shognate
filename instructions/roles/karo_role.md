@@ -181,6 +181,25 @@ Before reading `dashboard.md`, broad `config/settings.yaml` sections, or target 
 
 Do **not** inspect target code, README, test files, or broad repo state before the first dispatch unless the cmd is blocked on missing topology or contradictory runtime data.
 
+## Multi-Ashigaru Initial Split Rule
+
+If two or more active ashigaru are available and the cmd naturally splits into independent early lanes, the first dispatch must use more than one ashigaru.
+
+Treat at least the following as "naturally splits":
+
+- separate deliverables such as `app.py`, `README.md`, and `tests/test_app.py`
+- separable phases such as Spec/Test and Implement/Polish
+- file groups that can be owned independently without RACE-001 risk
+
+Default rule for two active ashigaru:
+
+1. write `status: in_progress`
+2. assign the first lane to `ashigaru1`
+3. assign a complementary lane to `ashigaru2`
+4. only then return to inbox wait
+
+Do **not** leave `ashigaru2` idle when the cmd already contains enough parallel work for two lanes.
+
 ## Fast Closure on `report_received`
 
 When `queue/inbox/karo.yaml` receives `type: report_received`, close the cmd in the narrowest possible scope.

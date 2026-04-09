@@ -16,6 +16,31 @@
 2. コマンド: `bats tests/unit/test_mux_parity.bats`
    - 期待結果: startup 側の `notify_lord_runtime_blocked_tmux` と human relay marker helper を含む静的回帰が PASS する。
 
+## 追補（2026-04-09: Codex bootstrap は起動引数へ直載せし、ready 行で pending を掃除する）
+### 要求
+1. `shutsujin_departure.sh` の Codex 起動は、初動命令を後段 `send-keys` だけに頼らず、CLI 起動引数として直接渡すこと。
+2. watcher / startup は pane に `ready:<agent>` が見えた時点で、その agent の `bootstrap_<agent>.pending` を消して `delivered` へ寄せること。
+3. 上記の掃除は二重送信を起こさず、auth-required や shell-return recovery 後の pending bootstrap retry は従来どおり保持すること。
+4. main repo の fresh runtime で、少なくとも `shogun` と `karo` が `ready:*` を実際に返し、default prompt 放置ではなく bootstrap 適用へ進むこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: watcher の `ready:<agent>` ack 掃除回帰と、startup 側の `build_cli_command_with_startup_prompt` / ack helper を含む静的回帰が PASS する。
+2. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: fresh runtime の `goza-no-ma` pane で `ready:shogun` と `ready:karo` が見え、`queue/runtime/bootstrap_shogun.delivered` / `bootstrap_karo.delivered` へ遷移する。
+
+## 追補（2026-04-09: 家老は cmd_new で dispatch を先に打つ）
+### 要求
+1. `karo` が `cmd_new` を受けた時は、最初の dispatch 前に読む範囲を `queue/inbox/karo.yaml`、該当 cmd の `queue/shogun_to_karo.yaml`、active ashigaru の `queue/tasks/ashigaru*.yaml` / `queue/reports/ashigaru*_report.yaml` に限定すること。
+2. `dashboard.md`、広い `config/settings.yaml`、対象コード、README、テスト、repo-wide search は、最初の `status: in_progress` と `task_assigned` を済ませた後に読むこと。
+3. startup の初動最適化 directive でも同じ fast-dispatch 契約を明示し、`karo` が `cmd_new` で分担案の思案に寄り過ぎないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh && bats tests/unit/test_build_system.bats`
+   - 期待結果: `codex-karo.md` に `dispatch first and expand context later`、`status: in_progress`、`type: task_assigned`、`Do not inspect target code... before the first dispatch` を含む回帰が PASS する。
+2. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `shutsujin_departure.sh` の `karo` startup directive が `cmd_new` での即 dispatch と `dashboard/settings/対象コードは dispatch 後` を含む静的回帰が PASS する。
+
 ## 追補（2026-04-09: runtime blocked は dashboard だけでなく将軍 inbox にも明示通知する）
 ### 要求
 1. `inbox_watcher.sh` が non-shogun agent の hard `usage-limit` または `auth-required` を検知したら、`dashboard.md` の blocked notice 記録だけで終わらず、`queue/inbox/shogun.yaml` に `type: runtime_blocked` を 1 回だけ relay すること。

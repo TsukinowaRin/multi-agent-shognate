@@ -1224,6 +1224,24 @@ MOCK
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
+@test "T-CODEX-0150: watcher は pane に ready:agent が見えたら pending bootstrap を掃除する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'ready:test_agent\nAGENTS.md を読み始める'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+}
+
 @test "T-CODEX-015g: process_unread は hard usage-limit 中に unread ログを連打しない" {
     run bash -c '
         MOCK_PANE_CLI="codex"

@@ -824,6 +824,27 @@ generate_bootstrap_file() {
     rm -f "$delivered_file"
 }
 
+bootstrap_message_text() {
+    local agent_id="$1"
+    local bootstrap_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.md"
+    [ -f "$bootstrap_file" ] || return 1
+    cat "$bootstrap_file"
+}
+
+bootstrap_acknowledged_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local screen_content="${3:-}"
+    local ack_token=""
+
+    ack_token="ready:${agent_id}"
+    [[ -n "$ack_token" ]] || return 1
+    if [ -z "$screen_content" ]; then
+        screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+    fi
+    printf '%s\n' "$screen_content" | grep -Fq "$ack_token"
+}
+
 startup_fastpath_directive() {
     local agent_id="$1"
     case "$agent_id" in
@@ -831,7 +852,7 @@ startup_fastpath_directive() {
             echo "初動最適化: 起動直後は自inboxだけ確認し、未読が無ければ即待機。task_assigned を受けたら queue/shogun_to_karo.yaml・自inbox・settings だけで即 cmd 起票し、app.py/tests/README や git status のような実装調査は家老へ委ねよ。"
             ;;
         karo|karo[1-9]*|karo_gashira)
-            echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は最小分解、report_received は report YAML を正本として dashboard 更新と cmd close を最優先せよ。bridge/ntfy/streaks/sample は異常時以外読むな。"
+            echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は inbox・queue/shogun_to_karo.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め。dashboard/settings/対象コードは dispatch 後か runtime 矛盾時だけ読め。report_received は report YAML を正本として dashboard 更新と cmd close を最優先せよ。bridge/ntfy/streaks/sample は異常時以外読むな。"
             ;;
         ashigaru*)
             echo "初動最適化: 起動直後は自inbox/task だけ確認し、未読も task も無ければ即待機。着手後も自task と対象ファイルに限定して動け。"
@@ -905,6 +926,7 @@ deliver_bootstrap_tmux() {
     local pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.pending"
     local delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.delivered"
     local ready_wait=30
+    local screen_content=""
 
     if [ ! -f "$bootstrap_file" ]; then
         echo "[WARN] bootstrap file not found for $agent_id: $bootstrap_file" >&2
@@ -923,6 +945,14 @@ deliver_bootstrap_tmux() {
         if [ -f "$delivered_file" ]; then
             append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "pending cleared before startup delivery"
         fi
+        return 0
+    fi
+
+    screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+    if bootstrap_acknowledged_tmux "$pane_target" "$agent_id" "$screen_content"; then
+        rm -f "$pending_file"
+        : > "$delivered_file"
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "bootstrap already acknowledged in pane"
         return 0
     fi
 
@@ -959,6 +989,14 @@ deliver_bootstrap_tmux() {
         if [ -f "$delivered_file" ]; then
             append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "pending cleared during startup wait"
         fi
+        return 0
+    fi
+
+    screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+    if bootstrap_acknowledged_tmux "$pane_target" "$agent_id" "$screen_content"; then
+        rm -f "$pending_file"
+        : > "$delivered_file"
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "bootstrap acknowledged during startup wait"
         return 0
     fi
 
@@ -2027,6 +2065,12 @@ if [ "$SETUP_ONLY" = false ]; then
     fi
     tmux set-option -p -t "$SHOGUN_TARGET" @agent_cli "$_shogun_cli_type"
     generate_bootstrap_file "shogun" "$_shogun_cli_type"
+    if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        _shogun_startup_prompt="$(bootstrap_message_text "shogun" || true)"
+        if [ -n "$_shogun_startup_prompt" ]; then
+            _shogun_cmd=$(build_cli_command_with_startup_prompt "shogun" "$_shogun_cli_type" "$_shogun_startup_prompt")
+        fi
+    fi
     printf "shogun\t%s\n" "$_shogun_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
         tmux_send_text_and_enter_or_die "$SHOGUN_TARGET" "MAX_THINKING_TOKENS=0 $_shogun_cmd" "shogun CLI launch" "1"
@@ -2049,6 +2093,12 @@ if [ "$SETUP_ONLY" = false ]; then
     fi
     tmux set-option -p -t "$GUNSHI_TARGET" @agent_cli "$_gunshi_cli_type"
     generate_bootstrap_file "gunshi" "$_gunshi_cli_type"
+    if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        _gunshi_startup_prompt="$(bootstrap_message_text "gunshi" || true)"
+        if [ -n "$_gunshi_startup_prompt" ]; then
+            _gunshi_cmd=$(build_cli_command_with_startup_prompt "gunshi" "$_gunshi_cli_type" "$_gunshi_startup_prompt")
+        fi
+    fi
     printf "gunshi\t%s\n" "$_gunshi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
     tmux_send_text_and_enter_or_die "$GUNSHI_TARGET" "$_gunshi_cmd" "gunshi CLI launch" "1"
     mark_cli_launch_attempt_tmux "$GUNSHI_TARGET"
@@ -2096,6 +2146,12 @@ if [ "$SETUP_ONLY" = false ]; then
         [ -n "$_pane_target" ] || continue
         tmux set-option -p -t "$_pane_target" @agent_cli "$_agent_cli_type"
         generate_bootstrap_file "$_agent" "$_agent_cli_type"
+        if [ "$CLI_ADAPTER_LOADED" = true ]; then
+            _agent_startup_prompt="$(bootstrap_message_text "$_agent" || true)"
+            if [ -n "$_agent_startup_prompt" ]; then
+                _agent_cmd=$(build_cli_command_with_startup_prompt "$_agent" "$_agent_cli_type" "$_agent_startup_prompt")
+            fi
+        fi
         tmux_send_text_and_enter_or_die "$_pane_target" "$_agent_cmd" "${_agent} CLI launch" "1"
         mark_cli_launch_attempt_tmux "$_pane_target"
         printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"

@@ -162,6 +162,25 @@ Karo must remain event-driven at all times.
 4. Do not run sleep loops, pane polling, or ad-hoc background monitors while waiting.
 5. If no unread inbox remains and no immediate cmd closure is pending, return to standby instead of re-scanning the repo.
 
+## Fast Dispatch on `cmd_new`
+
+When `queue/inbox/karo.yaml` receives `type: cmd_new`, dispatch first and expand context later.
+
+Read only these sources before the first dispatch:
+
+1. `queue/inbox/karo.yaml` — identify the unread `cmd_new`
+2. The matching cmd entry in `queue/shogun_to_karo.yaml`
+3. `queue/tasks/ashigaru*.yaml` and `queue/reports/ashigaru*_report.yaml` for the currently active ashigaru
+
+Before reading `dashboard.md`, broad `config/settings.yaml` sections, or target implementation files:
+
+1. Mark the cmd `status: in_progress`
+2. Decide the first dispatch plan
+3. Write at least one `queue/tasks/ashigaru{N}.yaml`
+4. Immediately send `type: task_assigned`
+
+Do **not** inspect target code, README, test files, or broad repo state before the first dispatch unless the cmd is blocked on missing topology or contradictory runtime data.
+
 ## Fast Closure on `report_received`
 
 When `queue/inbox/karo.yaml` receives `type: report_received`, close the cmd in the narrowest possible scope.

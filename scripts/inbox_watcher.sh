@@ -564,6 +564,26 @@ initial_bootstrap_still_pending() {
     [ ! -f "$delivered_file" ]
 }
 
+bootstrap_acknowledged_in_pane() {
+    local pane_text="${1:-}"
+    local ack_token=""
+    ack_token="ready:${AGENT_ID}"
+    [[ -n "$pane_text" && -n "$ack_token" ]] || return 1
+    printf '%s\n' "$pane_text" | grep -Fq "$ack_token"
+}
+
+mark_bootstrap_delivered_from_ack() {
+    local runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime"
+    local pending_file="$runtime_dir/bootstrap_${AGENT_ID}.pending"
+    local delivered_file="$runtime_dir/bootstrap_${AGENT_ID}.delivered"
+
+    [ -f "$pending_file" ] || return 1
+    rm -f "$pending_file"
+    : > "$delivered_file"
+    echo "[$(date)] [INFO] bootstrap acknowledged in pane for $AGENT_ID" >&2
+    return 0
+}
+
 runtime_startup_recovery_grace_active() {
     local runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime"
     local start_file="$runtime_dir/runtime_start_epoch"
@@ -715,6 +735,12 @@ deliver_pending_bootstrap_if_ready() {
     effective_cli=$(get_effective_cli_type)
     recover_shell_returned_codex_if_needed "$effective_cli"
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
+
+    if bootstrap_acknowledged_in_pane "$pane_text"; then
+        mark_bootstrap_delivered_from_ack || true
+        clear_runtime_blocker "codex-auth-required" "$pane_text"
+        return 0
+    fi
 
     if [[ "$effective_cli" == "codex" ]] && codex_auth_prompt_detected "$pane_text"; then
         record_runtime_blocker "codex-auth-required" "$pane_text"

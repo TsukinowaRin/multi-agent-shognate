@@ -222,6 +222,13 @@ setup() {
     grep -q "Do not run sleep loops, pane polling, or ad-hoc background monitors" "$OUTPUT_DIR/codex-karo.md"
 }
 
+@test "content: codex-karo.md dispatches cmd_new before broad reading" {
+    grep -q "When \`queue/inbox/karo.yaml\` receives \`type: cmd_new\`, dispatch first and expand context later" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Mark the cmd \`status: in_progress\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Immediately send \`type: task_assigned\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do \*\*not\*\* inspect target code, README, test files, or broad repo state before the first dispatch" "$OUTPUT_DIR/codex-karo.md"
+}
+
 @test "content: codex-gunshi.md enforces event-driven standby after analysis" {
     grep -q "Gunshi must also remain event-driven" "$OUTPUT_DIR/codex-gunshi.md"
     grep -q "return to standby immediately" "$OUTPUT_DIR/codex-gunshi.md"

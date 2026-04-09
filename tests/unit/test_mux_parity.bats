@@ -148,6 +148,21 @@ setup_file() {
     [[ "$output" != *'差分を適用せよ'* ]]
 }
 
+@test "tmux 起動は初動命令を CLI 起動引数へ直接載せる" {
+    run bats_search 'build_cli_command_with_startup_prompt|bootstrap_message_text' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動と watcher は ready:agent を見たら pending bootstrap を掃除する" {
+    run bats_search 'bootstrap_acknowledged_tmux|bootstrap_acknowledged_in_pane|bootstrap acknowledged' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は karo に cmd_new の即dispatchを指示する" {
+    run bats_search 'cmd_new は inbox・queue/shogun_to_karo\.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め|dashboard/settings/対象コードは dispatch 後' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は Codex の rate-limit prompt も自動dismissする" {
     run bats_search "auto_dismiss_codex_rate_limit_prompt_tmux|Approaching rate limits|You've hit your usage limit|Keep current model \\(never show again\\)|gpt-5\\.1-codex-mini|hard usage-limit prompt|mini へ自動切替" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

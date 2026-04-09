@@ -27,6 +27,8 @@
 5. `WORKLOG` と本 ExecPlan に結果を追記し、必要なら commit/push する。
 
 ## Progress
+- [x] (2026-04-09 14:0x JST) Codex bootstrap を後段 `send-keys` だけに頼らず、CLI launch command の起動引数へ直接載せるよう更新した。fresh runtime で `shogun` / `karo` / `gunshi` pane に `【初動命令】...` がそのまま prompt として入り、少なくとも `ready:shogun` と `ready:karo` が実際に返ることを確認した。
+- [x] (2026-04-09 14:0x JST) watcher / startup に `ready:<agent>` ack 掃除を追加し、`queue/runtime/bootstrap_shogun.pending` と `bootstrap_karo.pending` が pane ack 後に `delivered` へ切り替わることを確認した。
 - [x] (2026-04-09 11:0x JST) hard `usage-limit` / `auth-required` を `dashboard.md` だけでなく `queue/inbox/shogun.yaml` の `runtime_blocked` としても relay し、将軍が blocked state を event-driven に拾える経路を追加した。
 - [x] (2026-03-29 15:0x) `REQS` / `INDEX` を更新し、本検証を docs 上の正規要求として追加。
 - [x] (2026-03-29 15:1x) ワークスペース内に隔離コピー `runtime_sandboxes/isolated_runtime_validation_20260329_151700/repo` を作成。
@@ -84,6 +86,10 @@
 - [x] (2026-04-09 10:0x JST) live pane で、将軍が通常開発 task を受けた際に `app.py` / tests / `git status` を掘ってしまう role drift を確認し、`shogun_role.md` と startup bootstrap を「routing 情報だけで即 cmd 起票、実装調査禁止」の dispatch fast path へ更新した。generated instruction と build_system 回帰も再生成済み。
 
 ## Surprises & Discoveries
+- Observation: Codex bootstrap を `send-keys` 再送だけで運ぶ方式だと、fresh runtime でも pane によっては default prompt のまま止まり、`karo` は bootstrap 未適用、`shogun` は後続の `inbox1` だけ拾って誤進行することがあった。
+  Evidence: 2026-04-09 13:57 JST 台の `goza-no-ma` capture で、`karo` は `Explain this codebase` の default prompt のまま、`shogun` は bootstrap の代わりに `› inbox1` を受けて `queue/inbox/ashigaru1.yaml` を読む誤挙動を示した。
+- Observation: CLI launch command に初動命令を直接載せる方式へ変えると、同じ fresh runtime でも `ready:shogun` / `ready:karo` が pane 上で返り、pending marker を `ready:*` ack で掃除できた。
+  Evidence: 2026-04-09 14:04 JST 台の `goza-no-ma` capture に `ready:shogun`, `ready:karo` が残り、`queue/runtime/bootstrap_shogun.delivered`, `queue/runtime/bootstrap_karo.delivered` へ遷移した。
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。
   Evidence: `env TMUX_TMPDIR=... tmux new-session -d -s probe_goza 'sleep 3'` が `directory ... has unsafe permissions` を返した。
 - Observation: 隔離コピー内で `PATH` を export しても、tmux pane 内の shell では bare `codex` が実 `codex` を解決した。

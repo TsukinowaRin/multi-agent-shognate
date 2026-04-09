@@ -412,6 +412,11 @@ tmux_send_text_and_enter_or_die() {
     fi
 }
 
+mark_cli_launch_attempt_tmux() {
+    local pane_target="$1"
+    tmux set-option -p -t "$pane_target" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
+}
+
 run_runtime_blocker_notice_tmux() {
     local action="$1"
     shift
@@ -693,7 +698,7 @@ startup_fastpath_directive() {
     local agent_id="$1"
     case "$agent_id" in
         shogun)
-            echo "初動最適化: 起動直後は自inboxだけ確認し、未読が無ければ即待機。task_assigned を受けたら repo 名で即 cmd 起票し、詳細調査は家老へ委ねよ。"
+            echo "初動最適化: 起動直後は自inboxだけ確認し、未読が無ければ即待機。task_assigned を受けたら queue/shogun_to_karo.yaml・自inbox・settings だけで即 cmd 起票し、app.py/tests/README や git status のような実装調査は家老へ委ねよ。"
             ;;
         karo|karo[1-9]*|karo_gashira)
             echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は最小分解、report_received は report YAML を正本として dashboard 更新と cmd close を最優先せよ。bridge/ntfy/streaks/sample は異常時以外読むな。"
@@ -1633,6 +1638,7 @@ else
 fi
 
 mkdir -p "$SCRIPT_DIR/queue/runtime"
+date +%s > "$SCRIPT_DIR/queue/runtime/runtime_start_epoch"
 if [ "$TOPOLOGY_ADAPTER_LOADED" = true ]; then
     build_even_ownership_map "$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv" "${ACTIVE_ASHIGARU[@]}"
 else
@@ -1821,7 +1827,7 @@ for _agent in "${BACKEND_AGENT_IDS[@]}"; do
     tmux set-option -p -t "$_pane" @model_name "$(resolve_model_display_name "$_agent")"
     tmux set-option -p -t "$_pane" @current_task ""
     tmux select-pane -t "$_pane" -T "$_agent" >/dev/null 2>&1 || true
-    tmux_send_text_and_enter_or_die "$_pane" "cd \"$(pwd)\" && export PS1='${_prompt}' && clear" "pane shell prep"
+    tmux_send_text_and_enter_or_die "$_pane" "cd \"$(pwd)\" && export PS1='${_prompt}' && clear" "pane shell prep" "1"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         tmux set-option -p -t "$_pane" @agent_cli "$(resolve_cli_type_for_agent "$_agent")"
     fi
@@ -1893,11 +1899,13 @@ if [ "$SETUP_ONLY" = false ]; then
     generate_bootstrap_file "shogun" "$_shogun_cli_type"
     printf "shogun\t%s\n" "$_shogun_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
-        tmux_send_text_and_enter_or_die "$SHOGUN_TARGET" "MAX_THINKING_TOKENS=0 $_shogun_cmd" "shogun CLI launch"
+        tmux_send_text_and_enter_or_die "$SHOGUN_TARGET" "MAX_THINKING_TOKENS=0 $_shogun_cmd" "shogun CLI launch" "1"
+        mark_cli_launch_attempt_tmux "$SHOGUN_TARGET"
         tmux set-option -p -t "$SHOGUN_TARGET" @model_name "$(resolve_model_display_name "shogun")"
         log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type") / thinking無効）、召喚完了"
     else
-        tmux_send_text_and_enter_or_die "$SHOGUN_TARGET" "$_shogun_cmd" "shogun CLI launch"
+        tmux_send_text_and_enter_or_die "$SHOGUN_TARGET" "$_shogun_cmd" "shogun CLI launch" "1"
+        mark_cli_launch_attempt_tmux "$SHOGUN_TARGET"
         tmux set-option -p -t "$SHOGUN_TARGET" @model_name "$(resolve_model_display_name "shogun")"
         log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type")）、召喚完了"
     fi
@@ -1912,7 +1920,8 @@ if [ "$SETUP_ONLY" = false ]; then
     tmux set-option -p -t "$GUNSHI_TARGET" @agent_cli "$_gunshi_cli_type"
     generate_bootstrap_file "gunshi" "$_gunshi_cli_type"
     printf "gunshi\t%s\n" "$_gunshi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
-    tmux_send_text_and_enter_or_die "$GUNSHI_TARGET" "$_gunshi_cmd" "gunshi CLI launch"
+    tmux_send_text_and_enter_or_die "$GUNSHI_TARGET" "$_gunshi_cmd" "gunshi CLI launch" "1"
+    mark_cli_launch_attempt_tmux "$GUNSHI_TARGET"
     tmux set-option -p -t "$GUNSHI_TARGET" @model_name "$(resolve_model_display_name "gunshi")"
     log_info "  └─ 軍師（$(resolve_cli_summary "gunshi" "$_gunshi_cli_type")）、召喚完了"
 
@@ -1957,7 +1966,8 @@ if [ "$SETUP_ONLY" = false ]; then
         [ -n "$_pane_target" ] || continue
         tmux set-option -p -t "$_pane_target" @agent_cli "$_agent_cli_type"
         generate_bootstrap_file "$_agent" "$_agent_cli_type"
-        tmux_send_text_and_enter_or_die "$_pane_target" "$_agent_cmd" "${_agent} CLI launch"
+        tmux_send_text_and_enter_or_die "$_pane_target" "$_agent_cmd" "${_agent} CLI launch" "1"
+        mark_cli_launch_attempt_tmux "$_pane_target"
         printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
         MULTIAGENT_CLI["$_agent"]="$_agent_cli_type"
         tmux set-option -p -t "$_pane_target" @model_name "$(resolve_model_display_name "$_agent")"

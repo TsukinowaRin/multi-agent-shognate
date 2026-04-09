@@ -182,6 +182,12 @@ setup() {
     grep -q "No \`sleep\`, no background monitor, no periodic re-check while idle" "$OUTPUT_DIR/codex-shogun.md"
 }
 
+@test "content: codex-shogun.md keeps task_assigned on dispatch fast path only" {
+    grep -q "Read only the minimum routing sources needed to create the cmd" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Do \*\*not\*\* open implementation targets such as \`app.py\`, test files, README files" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Do \*\*not\*\* run project tests, \`git status\`, or codebase-wide searches" "$OUTPUT_DIR/codex-shogun.md"
+}
+
 @test "content: codex-ashigaru.md contains ashigaru role reference" {
     grep -qi "ashigaru\|足軽" "$OUTPUT_DIR/codex-ashigaru.md"
 }

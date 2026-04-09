@@ -87,7 +87,108 @@ EOF
     test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_ashigaru2.delivered"
   '
   [ "$status" -eq 0 ]
-  [[ "$output" == *"send-keys -t %4 codex --search --no-alt-screen Enter"* ]]
+  [[ "$output" == *"send-keys -l -t %4 codex --search --no-alt-screen"* ]]
+  [[ "$output" == *"send-keys -t %4 Enter"* ]]
+}
+
+@test "watcher_supervisor: 起動直後grace中の codex pane は再起動しない" {
+  run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
+    TEST_PROJECT="$TEST_TMP/project"
+    NOW_TS="$(date +%s)"
+    tmux() {
+      if [[ "$*" == *"show-options -p -t %4 -v @agent_cli"* ]]; then
+        echo "codex"
+        return 0
+      fi
+      if [[ "$*" == *"show-options -p -t %4 -v @cli_launch_epoch"* ]]; then
+        echo "$NOW_TS"
+        return 0
+      fi
+      if [[ "$*" == *"display-message -p -t %4 #{pane_current_command}"* ]]; then
+        echo "bash"
+        return 0
+      fi
+      if [[ "$1" == "send-keys" ]]; then
+        echo "$*" >> "$TEST_TMP/send_keys.log"
+        return 0
+      fi
+      return 0
+    }
+    build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+    source "$SUPERVISOR_SNIPPET"
+    SCRIPT_DIR="$TEST_PROJECT"
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    restart_shell_returned_codex_if_needed ashigaru2 %4
+    test ! -f "$TEST_TMP/send_keys.log"
+  '
+  [ "$status" -eq 0 ]
+}
+
+@test "watcher_supervisor: initial bootstrap pending 中の codex pane は再起動しない" {
+  run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
+    TEST_PROJECT="$TEST_TMP/project"
+    tmux() {
+      if [[ "$*" == *"show-options -p -t %4 -v @agent_cli"* ]]; then
+        echo "codex"
+        return 0
+      fi
+      if [[ "$*" == *"show-options -p -t %4 -v @cli_launch_epoch"* ]]; then
+        echo ""
+        return 0
+      fi
+      if [[ "$*" == *"display-message -p -t %4 #{pane_current_command}"* ]]; then
+        echo "bash"
+        return 0
+      fi
+      if [[ "$1" == "send-keys" ]]; then
+        echo "$*" >> "$TEST_TMP/send_keys.log"
+        return 0
+      fi
+      return 0
+    }
+    build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+    source "$SUPERVISOR_SNIPPET"
+    SCRIPT_DIR="$TEST_PROJECT"
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    printf "%s\n" "【初動命令】ready:ashigaru2" > "$SCRIPT_DIR/queue/runtime/bootstrap_ashigaru2.md"
+    : > "$SCRIPT_DIR/queue/runtime/bootstrap_ashigaru2.pending"
+    restart_shell_returned_codex_if_needed ashigaru2 %4
+    test ! -f "$TEST_TMP/send_keys.log"
+  '
+  [ "$status" -eq 0 ]
+}
+
+@test "watcher_supervisor: runtime startup grace 中の codex pane は再起動しない" {
+  run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
+    TEST_PROJECT="$TEST_TMP/project"
+    tmux() {
+      if [[ "$*" == *"show-options -p -t %4 -v @agent_cli"* ]]; then
+        echo "codex"
+        return 0
+      fi
+      if [[ "$*" == *"show-options -p -t %4 -v @cli_launch_epoch"* ]]; then
+        echo ""
+        return 0
+      fi
+      if [[ "$*" == *"display-message -p -t %4 #{pane_current_command}"* ]]; then
+        echo "bash"
+        return 0
+      fi
+      if [[ "$1" == "send-keys" ]]; then
+        echo "$*" >> "$TEST_TMP/send_keys.log"
+        return 0
+      fi
+      return 0
+    }
+    build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+    source "$SUPERVISOR_SNIPPET"
+    SCRIPT_DIR="$TEST_PROJECT"
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    date +%s > "$SCRIPT_DIR/queue/runtime/runtime_start_epoch"
+    restart_shell_returned_codex_if_needed ashigaru2 %4
+    test ! -f "$TEST_TMP/send_keys.log"
+  '
+  [ "$status" -eq 0 ]
 }
 
 @test "watcher_supervisor: codex pane が node に戻ったら restart state を消す" {

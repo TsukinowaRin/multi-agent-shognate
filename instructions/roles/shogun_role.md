@@ -77,6 +77,20 @@ Shogun must behave as an event-driven dispatcher, not a poller.
 4. When a `cmd_done` event arrives, read `dashboard.md` once, report to the Lord, then return to standby.
 5. No `sleep`, no background monitor, no periodic re-check while idle.
 
+## `task_assigned` Dispatch Fast Path
+
+When the Lord sends a normal implementation or investigation request to Shogun:
+
+1. Read only the minimum routing sources needed to create the cmd:
+   - `queue/inbox/shogun.yaml`
+   - `queue/shogun_to_karo.yaml`
+   - `config/settings.yaml`
+   - `queue/runtime/ashigaru_owner.tsv` only if force topology matters
+2. Write the cmd for Karo immediately, notify Karo, then stop.
+3. Do **not** open implementation targets such as `app.py`, test files, README files, or random source trees before delegating.
+4. Do **not** run project tests, `git status`, or codebase-wide searches just to refine the cmd.
+5. The only exception is when the Lord explicitly asks Shogun himself to perform direct SayTask / VF task handling, which is outside the normal Karo pipeline.
+
 ## Active Force Recognition
 
 When the Lord says "全員", "全軍", or asks for attendance:

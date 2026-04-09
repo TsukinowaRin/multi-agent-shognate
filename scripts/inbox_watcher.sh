@@ -88,8 +88,13 @@ ESCALATE_PHASE2=${ESCALATE_PHASE2:-240}
 ESCALATE_COOLDOWN=${ESCALATE_COOLDOWN:-300}
 LAST_CLI_RESTART_TS=${LAST_CLI_RESTART_TS:-0}
 CLI_RESTART_COOLDOWN=${CLI_RESTART_COOLDOWN:-30}
+CLI_STARTUP_GRACE_SECONDS=${CLI_STARTUP_GRACE_SECONDS:-20}
+RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS=${RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS:-90}
 LAST_HARD_USAGE_LIMIT_LOG_TS=${LAST_HARD_USAGE_LIMIT_LOG_TS:-0}
 HARD_USAGE_LIMIT_LOG_COOLDOWN=${HARD_USAGE_LIMIT_LOG_COOLDOWN:-600}
+LAST_MISSING_REPORT_RECOVERY_TASK_ID=${LAST_MISSING_REPORT_RECOVERY_TASK_ID:-}
+LAST_MISSING_REPORT_RECOVERY_TS=${LAST_MISSING_REPORT_RECOVERY_TS:-0}
+MISSING_REPORT_RECOVERY_COOLDOWN=${MISSING_REPORT_RECOVERY_COOLDOWN:-120}
 
 # ─── Phase feature flags (cmd_107 Phase 1/2/3) ───
 # ASW_PHASE:
@@ -187,8 +192,14 @@ mux_capture_pane_tail() {
 send_text_and_enter() {
     local text="$1"
     local action_label="${2:-send-keys}"
+    local literal_mode="${3:-0}"
 
-    if ! mux_send_text "$text"; then
+    if [ "$literal_mode" = "1" ]; then
+        if ! mux_send_text_literal "$text"; then
+            echo "[$(date)] WARNING: ${action_label} text failed or timed out for $AGENT_ID" >&2
+            return 1
+        fi
+    elif ! mux_send_text "$text"; then
         echo "[$(date)] WARNING: ${action_label} text failed or timed out for $AGENT_ID" >&2
         return 1
     fi
@@ -407,6 +418,40 @@ rearm_bootstrap_pending_for_restart() {
     rm -f "$delivered_file"
 }
 
+initial_bootstrap_still_pending() {
+    local runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime"
+    local bootstrap_file="$runtime_dir/bootstrap_${AGENT_ID}.md"
+    local pending_file="$runtime_dir/bootstrap_${AGENT_ID}.pending"
+    local delivered_file="$runtime_dir/bootstrap_${AGENT_ID}.delivered"
+
+    [ -f "$bootstrap_file" ] || return 1
+    [ -f "$pending_file" ] || return 1
+    [ ! -f "$delivered_file" ]
+}
+
+runtime_startup_recovery_grace_active() {
+    local runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime"
+    local start_file="$runtime_dir/runtime_start_epoch"
+    local start_ts=""
+    local now=""
+
+    [ -f "$start_file" ] || return 1
+    start_ts=$(awk 'NR==1{print $1}' "$start_file" 2>/dev/null || true)
+    [[ "$start_ts" =~ ^[0-9]+$ ]] || return 1
+    now=$(date +%s)
+    [ $((now - start_ts)) -lt "$RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS" ]
+}
+
+cli_launch_grace_active() {
+    local launch_ts=""
+    local now=""
+
+    launch_ts=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @cli_launch_epoch 2>/dev/null || true)
+    [[ "$launch_ts" =~ ^[0-9]+$ ]] || return 1
+    now=$(date +%s)
+    [ $((now - launch_ts)) -lt "$CLI_STARTUP_GRACE_SECONDS" ]
+}
+
 recover_shell_returned_codex_if_needed() {
     local effective_cli="${1:-}"
     local current_command=""
@@ -430,6 +475,18 @@ recover_shell_returned_codex_if_needed() {
         *) return 0 ;;
     esac
 
+    if runtime_startup_recovery_grace_active; then
+        return 0
+    fi
+
+    if initial_bootstrap_still_pending; then
+        return 0
+    fi
+
+    if cli_launch_grace_active; then
+        return 0
+    fi
+
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
     if codex_auth_prompt_detected "$pane_text"; then
         return 0
@@ -447,7 +504,8 @@ recover_shell_returned_codex_if_needed() {
     [ -n "$restart_cmd" ] || return 0
 
     rearm_bootstrap_pending_for_restart
-    if send_text_and_enter "$restart_cmd" "Codex CLI restart"; then
+    if send_text_and_enter "$restart_cmd" "Codex CLI restart" "1"; then
+        timeout 2 tmux set-option -p -t "$PANE_TARGET" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
         LAST_CLI_RESTART_TS=$now
         echo "[$(date)] [INFO] restarted shell-returned Codex pane for $AGENT_ID" >&2
         return 0
@@ -683,7 +741,7 @@ no_idle_full_read() {
     return 0
 }
 
-ashigaru_report_recovery_hint() {
+ashigaru_report_recovery_payload() {
     [ -n "${AGENT_ID:-}" ] || return 1
     [[ "${AGENT_ID}" =~ ^ashigaru[0-9]+$ ]] || return 1
 
@@ -728,27 +786,44 @@ result = report.get("result")
 if report_task_id == task_id and report_status == "done" and result not in (None, "", {}):
     raise SystemExit(1)
 
-print(
+hint = (
     f"queue/tasks/{agent}.yaml の {task_id} が {task_status} のまま、"
     f"queue/reports/{agent}_report.yaml が未完でござる。"
     f" task YAML を再読し、report YAML 完成と家老通知まで即時閉じよ。"
 )
+print(f"{task_id}\t{hint}")
 PY
 }
 
 recover_missing_ashigaru_report_if_idle() {
+    local recovery_payload=""
+    local recovery_task_id=""
     local recovery_hint=""
     local recovery_id=""
+    local now=0
 
     if agent_is_busy; then
         return 1
     fi
 
-    recovery_hint=$(ashigaru_report_recovery_hint 2>/dev/null || true)
+    recovery_payload=$(ashigaru_report_recovery_payload 2>/dev/null || true)
+    [ -n "$recovery_payload" ] || return 1
+    recovery_task_id="${recovery_payload%%$'\t'*}"
+    recovery_hint="${recovery_payload#*$'\t'}"
     [ -n "$recovery_hint" ] || return 1
+
+    now=$(date +%s)
+    if [ -n "${LAST_MISSING_REPORT_RECOVERY_TASK_ID:-}" ] \
+        && [ "${LAST_MISSING_REPORT_RECOVERY_TASK_ID}" = "$recovery_task_id" ] \
+        && [ "${LAST_MISSING_REPORT_RECOVERY_TS:-0}" -gt 0 ] \
+        && [ $((now - LAST_MISSING_REPORT_RECOVERY_TS)) -lt "${MISSING_REPORT_RECOVERY_COOLDOWN:-120}" ]; then
+        return 1
+    fi
 
     recovery_id=$(enqueue_recovery_task_assigned "$recovery_hint")
     if [ -n "$recovery_id" ] && [ "$recovery_id" != "SKIP_DUPLICATE" ] && [ "$recovery_id" != "ERROR" ]; then
+        LAST_MISSING_REPORT_RECOVERY_TASK_ID="$recovery_task_id"
+        LAST_MISSING_REPORT_RECOVERY_TS=$now
         echo "[$(date)] [AUTO-RECOVERY] queued missing-report recovery for $AGENT_ID ($recovery_id)" >&2
         send_wakeup 1
         return 0

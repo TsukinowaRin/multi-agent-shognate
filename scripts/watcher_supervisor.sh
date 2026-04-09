@@ -9,6 +9,8 @@ cd "$SCRIPT_DIR"
 mkdir -p logs
 
 CLI_RESTART_COOLDOWN="${CLI_RESTART_COOLDOWN:-30}"
+CLI_STARTUP_GRACE_SECONDS="${CLI_STARTUP_GRACE_SECONDS:-20}"
+RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS="${RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS:-90}"
 WATCHER_RUNTIME_SESSION="${WATCHER_RUNTIME_SESSION:-goza-runtime}"
 
 if [ -f "$SCRIPT_DIR/lib/inbox_path.sh" ]; then
@@ -297,6 +299,40 @@ rearm_bootstrap_pending_for_restart() {
     rm -f "$delivered_file"
 }
 
+initial_bootstrap_still_pending() {
+    local agent="$1"
+    local bootstrap_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.md"
+    local pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.pending"
+    local delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.delivered"
+
+    [ -f "$bootstrap_file" ] || return 1
+    [ -f "$pending_file" ] || return 1
+    [ ! -f "$delivered_file" ]
+}
+
+runtime_startup_recovery_grace_active() {
+    local start_file="$SCRIPT_DIR/queue/runtime/runtime_start_epoch"
+    local start_ts=""
+    local now=""
+
+    [ -f "$start_file" ] || return 1
+    start_ts="$(awk 'NR==1{print $1}' "$start_file" 2>/dev/null || true)"
+    [[ "$start_ts" =~ ^[0-9]+$ ]] || return 1
+    now="$(date +%s)"
+    [ $((now - start_ts)) -lt "$RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS" ]
+}
+
+cli_launch_grace_active() {
+    local pane="$1"
+    local launch_ts=""
+    local now=""
+
+    launch_ts="$(tmux show-options -p -t "$pane" -v @cli_launch_epoch 2>/dev/null | tr -d '\r' | head -n1)"
+    [[ "$launch_ts" =~ ^[0-9]+$ ]] || return 1
+    now="$(date +%s)"
+    [ $((now - launch_ts)) -lt "$CLI_STARTUP_GRACE_SECONDS" ]
+}
+
 restart_shell_returned_codex_if_needed() {
     local agent="$1"
     local pane="$2"
@@ -319,6 +355,18 @@ restart_shell_returned_codex_if_needed() {
         *) return 0 ;;
     esac
 
+    if runtime_startup_recovery_grace_active; then
+        return 0
+    fi
+
+    if initial_bootstrap_still_pending "$agent"; then
+        return 0
+    fi
+
+    if cli_launch_grace_active "$pane"; then
+        return 0
+    fi
+
     if restart_cooldown_active "$agent"; then
         return 0
     fi
@@ -330,7 +378,8 @@ restart_shell_returned_codex_if_needed() {
     [ -n "$cmd" ] || return 0
 
     rearm_bootstrap_pending_for_restart "$agent"
-    if tmux send-keys -t "$pane" "$cmd" Enter >/dev/null 2>&1; then
+    if tmux send-keys -l -t "$pane" "$cmd" >/dev/null 2>&1 && tmux send-keys -t "$pane" Enter >/dev/null 2>&1; then
+        tmux set-option -p -t "$pane" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
         mark_restart_attempt "$agent" "$pane" "$cli"
         echo "[$(date)] restarted shell-returned codex pane for ${agent} on ${pane}" >&2
     else

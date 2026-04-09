@@ -189,7 +189,12 @@ setup_file() {
 }
 
 @test "watcher は shell に戻った Codex pane を restart command で再起動する" {
-    run bats_search 'recover_shell_returned_codex_if_needed|LAST_CLI_RESTART_TS|Codex CLI restart|restarted shell-returned Codex pane' "$PROJECT_ROOT/scripts/inbox_watcher.sh"
+    run bats_search 'recover_shell_returned_codex_if_needed|LAST_CLI_RESTART_TS|CLI_STARTUP_GRACE_SECONDS|@cli_launch_epoch|Codex CLI restart|restarted shell-returned Codex pane' "$PROJECT_ROOT/scripts/inbox_watcher.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は CLI launch 時刻を記録し、起動直後の shell-return recovery を抑止する" {
+    run bats_search 'mark_cli_launch_attempt_tmux|@cli_launch_epoch|CLI_STARTUP_GRACE_SECONDS|runtime_start_epoch|RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -233,7 +238,7 @@ setup_file() {
 }
 
 @test "tmux 起動は runtime_cli_pref_daemon を起動後に自己killしない" {
-    run sed -n '2168,2216p' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run rg -n 'pkill -f "\$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh"|log_info "💾 live CLI設定の自動同期を起動中..."' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
     [[ "$output" == *'pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh"'* ]]
     [[ "$output" == *'log_info "💾 live CLI設定の自動同期を起動中..."'* ]]

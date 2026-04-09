@@ -119,7 +119,11 @@ tmux() {
         return \${MOCK_SENDKEYS_RC:-0}
     fi
     if echo "\$*" | grep -q "show-options"; then
-        echo "\${MOCK_PANE_CLI:-}"
+        if echo "\$*" | grep -q "@cli_launch_epoch"; then
+            echo "\${MOCK_SHOW_OPTION_VALUE:-}"
+        else
+            echo "\${MOCK_PANE_CLI:-}"
+        fi
         return 0
     fi
     if echo "\$*" | grep -q "display-message"; then
@@ -545,6 +549,35 @@ YAML
     [ "$status" -eq 0 ]
 }
 
+@test "T-BUSY-001b: agent_is_busy returns 0 when Codex has queued follow-up submission" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="• Working (36s • esc to interrupt)
+
+• Messages to be submitted after next tool call (press esc to interrupt and send immediately)
+  ↳ inbox1
+
+› Explain this codebase"
+        source "'"$TEST_HARNESS"'"
+        agent_is_busy
+    '
+    [ "$status" -eq 0 ]
+}
+
+@test "T-BUSY-001c: agent_is_busy returns 0 when recent Codex Working line is still visible" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="• 着手中
+
+◦ Working (1m 51s • esc to interrupt)
+
+› Write tests for @filename
+
+  gpt-5.4 high · 92% left · /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate"
+        source "'"$TEST_HARNESS"'"
+        agent_is_busy
+    '
+    [ "$status" -eq 0 ]
+}
+
 # --- T-BUSY-002: agent_is_busy returns 1 when idle ---
 
 @test "T-BUSY-002: agent_is_busy returns 1 when pane is idle" {
@@ -569,6 +602,20 @@ YAML
     echo "$output" | grep -qi "SKIP.*busy"
 
     # No nudge should have been sent
+    ! grep -q "send-keys.*inbox" "$MOCK_LOG"
+}
+
+@test "T-BUSY-003b: send_wakeup skips nudge when Codex follow-up is already queued" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="• Messages to be submitted after next tool call (press esc to interrupt and send immediately)
+  ↳ inbox2
+
+› Write tests for @filename"
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -qi "SKIP.*busy"
     ! grep -q "send-keys.*inbox" "$MOCK_LOG"
 }
 
@@ -1249,8 +1296,60 @@ MOCK
     '
     [ "$status" -eq 0 ]
 
-    grep -q "send-keys -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015e2: watcher は起動直後grace中の shell-return recovery を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        MOCK_SHOW_OPTION_VALUE="$(date +%s)"
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        recover_shell_returned_codex_if_needed
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015e3: watcher は initial bootstrap pending 中の shell-return recovery を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        recover_shell_returned_codex_if_needed
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015e4: watcher は runtime startup grace 中の shell-return recovery を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        date +%s > "$SCRIPT_DIR/queue/runtime/runtime_start_epoch"
+        recover_shell_returned_codex_if_needed
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
 }
 
 @test "T-CODEX-015f: watcher は unread が無くても idle loop で Codex runtime prompt を掃除する" {
@@ -1628,4 +1727,54 @@ PY
     [ "$status" -eq 0 ]
     echo "$output" | grep -q "OK"
     ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015k: process_unread は同一 task の missing-report recovery を cooldown 中に連打しない" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        CLI_TYPE="codex"
+        SCRIPT_DIR="$TEST_TMPDIR/proj"
+        INBOX="$TEST_INBOX_DIR/ashigaru1.yaml"
+        LOCKFILE="${INBOX}.lock"
+        mkdir -p "$SCRIPT_DIR/queue/tasks" "$SCRIPT_DIR/queue/reports"
+        cat > "$INBOX" << "YAML"
+messages: []
+YAML
+        cat > "$SCRIPT_DIR/queue/tasks/ashigaru1.yaml" << "YAML"
+task:
+  task_id: subtask_999a
+  status: assigned
+YAML
+        cat > "$SCRIPT_DIR/queue/reports/ashigaru1_report.yaml" << "YAML"
+worker_id: ashigaru1
+task_id: null
+timestamp: ""
+status: idle
+result: null
+YAML
+        process_unread timeout
+        python3 - << "PY" "$INBOX"
+import sys, yaml
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+assert len(messages) == 1
+messages[0]["read"] = True
+with open(sys.argv[1], "w", encoding="utf-8") as f:
+    yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+PY
+        process_unread timeout
+        python3 - << "PY" "$INBOX"
+import sys, yaml
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+auto = [m for m in messages if m.get("from") == "inbox_watcher" and m.get("type") == "task_assigned"]
+assert len(auto) == 1
+print("OK")
+PY
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "OK"
 }

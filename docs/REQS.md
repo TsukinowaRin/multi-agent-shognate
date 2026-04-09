@@ -3,6 +3,43 @@
 最終更新: 2026-04-05
 出典: 直近ユーザープロンプト
 
+## 追補（2026-04-09: Codex 初回起動中の誤再起動と launch command 混線を防ぐ）
+### 要求
+1. `shutsujin_departure.sh` の CLI launch は pane へ literal 送信し、shell が受け取る起動コマンド文字列を途中で Codex 会話入力へ漏らさないこと。
+2. `watcher_supervisor.sh` と `inbox_watcher.sh` の shell-return recovery は、fresh start 直後の初回起動フェーズでは動かないこと。
+3. 具体的には、`runtime_start_epoch` の startup grace 中、および `bootstrap_<agent>.pending` が残る initial bootstrap 中は shell-return recovery を抑止すること。
+4. 上記抑止は実 shell-return recovery を壊さず、初回起動後は従来どおり Codex pane の再起動へ使えること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `@cli_launch_epoch`, `runtime_start_epoch`, `RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS`, `initial bootstrap pending` の回帰を含めて PASS する。
+2. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: fresh start 後の `watcher_supervisor.log` に直後の `restarted shell-returned codex pane` が増えず、各 pane は `node` で通常 footer まで進む。
+
+## 追補（2026-04-09: Codex の follow-up queue 中は watcher が追加入力を積まない）
+### 要求
+1. Codex pane に `Messages to be submitted after next tool call` が見えている間は、その pane を busy 扱いにし、watcher が追加の `inboxN` を送らないこと。
+2. Codex の `Working (..)` 行が画面下部の可視領域に残っている間も、watcher は idle と誤判定しないこと。
+3. 上記 busy 判定の強化は、過去 scroll-back の古い `Working` 文言だけで恒久的な false-busy を起こさず、可視領域に出ている current turn の follow-up / spinner に限定されること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: `Messages to be submitted after next tool call` と最近の `Working (...)` を busy とみなす回帰を含めて PASS する。
+2. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: 実 task 実行中の Codex pane で `Messages to be submitted after next tool call ↳ inboxN` が見えている間、watcher log に同一 pane への追加 `Wake-up sent` が連打されない。
+
+## 追補（2026-04-09: 将軍は実装対象を掘らず即座に家老へ委譲する）
+### 要求
+1. `task_assigned` を受けた将軍は、通常の開発 task では `queue/inbox/shogun.yaml`, `queue/shogun_to_karo.yaml`, `config/settings.yaml` など cmd 起票に必要な最小 routing 情報だけを読むこと。
+2. 将軍は cmd 起票前に `app.py`, test file, README, 任意の source tree, `git status` のような実装調査を行わないこと。
+3. bootstrap 文面と `codex-shogun.md` は、上記 fast path を明示し、実装詳細・検証詳細は家老へ委譲するよう案内すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh && bats tests/unit/test_build_system.bats`
+   - 期待結果: `codex-shogun.md` に dispatch fast path と「`app.py` / tests / README / `git status` を読まない」規則が入り、回帰が PASS する。
+2. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: 将軍 pane の `task_assigned` 処理で、cmd 起票前に target source や `git status` を掘らず、まず `queue/shogun_to_karo.yaml` への cmd 起票へ寄る。
+
 ## 追補（2026-04-08: launch-time に AGENT_ID を必ず引き継ぐ）
 ### 要求
 1. 各 agent の CLI 起動コマンドは、tmux pane option `@agent_id` だけに依存せず、process 環境変数 `AGENT_ID` も常に持つこと。

@@ -18,8 +18,11 @@
 #   1. Status bar check (last non-empty line): 'esc to' only appears in
 #      Claude Code's status bar during active processing. This is the most
 #      reliable busy signal — immune to old spinner text in scroll-back.
-#   2. Idle checks: CLI-specific idle prompts (❯, Codex ? prompt)
-#   3. Text-based busy markers: spinner keywords in bottom 5 lines
+#   2. Follow-up queue checks: Codex can show "Messages to be submitted after
+#      next tool call" while it is still processing. This must count as busy
+#      or watchers will stack extra inbox nudges into the same turn.
+#   3. Idle checks: CLI-specific idle prompts (❯, Codex ? prompt)
+#   4. Text-based busy markers: spinner keywords in recent visible lines
 #
 # Why this order matters:
 #   - Claude Code shows ❯ prompt even during thinking/working, so idle
@@ -31,6 +34,7 @@
 agent_is_busy_check() {
     local pane_target="$1"
     local pane_tail
+    local pane_recent
 
     # Pane existence check — independent of capture-pane result.
     # capture-pane on a TUI app (e.g. Claude Code) often returns only trailing
@@ -46,9 +50,13 @@ agent_is_busy_check() {
     # then pipe to tail.
     local full_capture
     full_capture=$(timeout 2 tmux capture-pane -t "$pane_target" -p 2>/dev/null)
-    # Only check the bottom 5 lines. Old busy markers linger in scroll-back
-    # and cause false-busy if we scan too many lines.
+    # Only check the bottom 5 lines for the strict idle/status-bar probes.
+    # Old busy markers linger in scroll-back and cause false-busy if we scan
+    # too many lines.
     pane_tail=$(echo "$full_capture" | tail -5)
+    # For queued follow-up / recent Working lines, use a slightly wider
+    # visible slice. These markers are meaningful only while still visible.
+    pane_recent=$(printf '%s\n' "$full_capture" | grep -v '^[[:space:]]*$' | tail -12)
 
     # Pane exists but capture is empty → treat as idle, not absent
     if [[ -z "$pane_tail" ]]; then
@@ -64,6 +72,14 @@ agent_is_busy_check() {
     last_line=$(echo "$pane_tail" | grep -v '^[[:space:]]*$' | tail -1)
     if echo "$last_line" | grep -qiF 'esc to'; then
         return 0  # busy — status bar confirms active processing
+    fi
+
+    # ── Queued follow-up / recent Codex spinner checks ──
+    if echo "$pane_recent" | grep -qiF 'Messages to be submitted after next tool call'; then
+        return 0  # busy — next-turn input is already queued
+    fi
+    if echo "$pane_recent" | grep -qiE '(^|[^[:alpha:]])Working \([0-9]+[smh]'; then
+        return 0  # busy — Codex spinner still visible in the active area
     fi
 
     # ── Idle checks ──

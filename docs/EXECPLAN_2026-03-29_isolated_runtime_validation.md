@@ -77,6 +77,10 @@
 - [x] (2026-04-09 01:2x JST) live burn-in `cmd_904` で、`ashigaru1` が app.py 改修と unittest 成功を pane 上で完了しても `queue/reports/ashigaru1_report.yaml` が `idle/null` のまま残り、家老 close が止まる failure class を確認した。
 - [x] (2026-04-09 01:3x JST) `scripts/inbox_watcher.sh` に「open task はあるが report が未完で pane は idle」の ashigaru 専用 recovery を追加し、timeout fast-path でも auto-recovery `task_assigned` を再注入できる回帰を加えた。
 - [x] (2026-04-09 01:3x JST) live runtime で実際に `ashigaru1` inbox へ auto-recovery `task_assigned` が再注入され、旧 `inbox1` だけでは弱いと分かったため、wake-up 文面を `queue/tasks/ashigaruN.yaml` / `queue/reports/ashigaruN_report.yaml` 明示へ強化した。
+- [x] (2026-04-09 09:4x JST) `watcher_supervisor.sh` / `inbox_watcher.sh` に startup grace と initial bootstrap pending 抑止を入れ、fresh start 直後の shell-return recovery が Codex launch command を会話入力へ混線させないようにした。unit 回帰 147 件が通り、以後の clean start では `watcher_supervisor.log` に直後の `restarted shell-returned codex pane` が増えないことを確認した。
+- [x] (2026-04-09 09:5x JST) main repo の fresh runtime で `cmd_001` を再投入し、`shogun -> karo -> ashigaru1/2` まで実経路を確認した。同時に、Codex pane に `Messages to be submitted after next tool call` が見えている間も watcher が `inboxN` を追加入力してしまう failure class を再現し、`lib/agent_status.sh` で queued follow-up / recent `Working (...)` を busy とみなす回帰を追加した。
+- [x] (2026-04-09 10:0x JST) 上記 busy 判定強化後の再試験で、`shogun` watcher log は最初の `Wake-up sent` 後に `Agent shogun is busy (codex), deferring nudge` へ切り替わり、同一 turn への `inboxN` 追加入力が止まることを確認した。
+- [x] (2026-04-09 10:0x JST) live pane で、将軍が通常開発 task を受けた際に `app.py` / tests / `git status` を掘ってしまう role drift を確認し、`shogun_role.md` と startup bootstrap を「routing 情報だけで即 cmd 起票、実装調査禁止」の dispatch fast path へ更新した。generated instruction と build_system 回帰も再生成済み。
 
 ## Surprises & Discoveries
 - Observation: tmux socket を `/mnt/d/...` 配下へ置くと、WSL 側で `unsafe permissions` 扱いになり session 作成に失敗する。

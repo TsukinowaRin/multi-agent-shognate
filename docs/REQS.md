@@ -3,6 +3,17 @@
 最終更新: 2026-04-05
 出典: 直近ユーザープロンプト
 
+## 追補（2026-04-09: 家老の wake-up は cmd_new / report_received を明示する）
+### 要求
+1. `scripts/inbox_watcher.sh` の wake-up 文面は、`karo` に unread `cmd_new` がある場合、単なる `inboxN` ではなく `queue/inbox/karo.yaml` と `queue/shogun_to_karo.yaml` を起点に `status: in_progress` と `task_assigned` まで即 dispatch するよう明示すること。
+2. `karo` に unread `report_received` がある場合も、`queue/reports/ashigaru*_report.yaml`、`queue/shogun_to_karo.yaml`、`dashboard 更新`、`cmd close` を明示した wake-up 文面で起こすこと。
+3. 上記の明示 wake-up は `shogun` の `cmd_done` / `runtime_blocked`、`ashigaru` の `task_assigned` / auto-recovery と同様に `inboxN` より優先されること。
+4. `karo` 以外の通常 role の既存 generic wake-up 契約は壊さないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: `karo` の unread `cmd_new` / `report_received` に対して `queue/shogun_to_karo.yaml`、`status: in_progress`、`queue/tasks/ashigaru1.yaml`、`queue/reports/ashigaru*_report.yaml`、`dashboard更新・cmd close` を含む明示 wake-up 文面の回帰を含めて PASS する。
+
 ## 追補（2026-04-09: 将軍自身が blocked の時は lord inbox へも直通知する）
 ### 要求
 1. `inbox_watcher.sh` が `shogun` の hard `usage-limit` または `auth-required` を検知したら、`dashboard.md` の blocked notice 記録だけで終わらず、`queue/inbox/lord.yaml` に `type: runtime_blocked` を 1 回だけ relay すること。

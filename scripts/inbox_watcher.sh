@@ -1065,12 +1065,6 @@ get_wakeup_text() {
     local unread_count="$1"
     local default_nudge="inbox${unread_count}"
 
-    # 将軍への cmd_done は、単なる inboxN よりも明示的な指示で起こす。
-    if [[ "${AGENT_ID:-}" != "shogun" && ! "${AGENT_ID:-}" =~ ^ashigaru[0-9]+$ ]]; then
-        echo "$default_nudge"
-        return 0
-    fi
-
     local decision
     decision=$(INBOX_PATH="$INBOX" python3 - << 'PY'
 import os
@@ -1084,6 +1078,8 @@ try:
     unread = [m for m in messages if not m.get("read", False)]
     has_cmd_done = any((m.get("type") or "") == "cmd_done" for m in unread)
     has_runtime_blocked = any((m.get("type") or "") == "runtime_blocked" for m in unread)
+    has_cmd_new = any((m.get("type") or "") == "cmd_new" for m in unread)
+    has_report_received = any((m.get("type") or "") == "report_received" for m in unread)
     has_task_assigned = any((m.get("type") or "") == "task_assigned" for m in unread)
     has_auto_recovery = any(
         (m.get("type") or "") == "task_assigned"
@@ -1094,6 +1090,10 @@ try:
         print("cmd_done")
     elif has_runtime_blocked:
         print("runtime_blocked")
+    elif has_cmd_new:
+        print("cmd_new")
+    elif has_report_received:
+        print("report_received")
     elif has_auto_recovery:
         print("auto_recovery_task")
     elif has_task_assigned:
@@ -1112,6 +1112,19 @@ PY
 
     if [[ "$decision" == "runtime_blocked" ]]; then
         echo "queue/inbox/shogun.yaml に未読の runtime_blocked がある。dashboard.md の runtime-blocked/* を確認し、止まっている役職と要対応を殿へ報告せよ。"
+        return 0
+    fi
+
+    if [[ "${AGENT_ID:-}" == "karo" ]]; then
+        if [[ "$decision" == "cmd_new" ]]; then
+            echo "queue/inbox/karo.yaml に未読の cmd_new がある。まず queue/shogun_to_karo.yaml を読み、該当 cmd を status: in_progress にし、queue/tasks/ashigaru1.yaml または queue/tasks/ashigaru2.yaml へ task_assigned を即時に切れ。"
+            return 0
+        fi
+        if [[ "$decision" == "report_received" ]]; then
+            echo "queue/inbox/karo.yaml に未読の report_received がある。まず対応する queue/reports/ashigaru*_report.yaml と queue/shogun_to_karo.yaml を読み、検証・dashboard更新・cmd close を即時に進めよ。"
+            return 0
+        fi
+        echo "$default_nudge"
         return 0
     fi
 

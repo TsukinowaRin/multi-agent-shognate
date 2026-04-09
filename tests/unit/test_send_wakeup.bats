@@ -362,6 +362,54 @@ YAML
     ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
+@test "T-SW-010bc: karo cmd_new unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: shogun
+    type: cmd_new
+    content: "cmd_001 を実行せよ。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="karo"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/karo.yaml に未読の cmd_new がある。" "$MOCK_LOG"
+    grep -q "queue/shogun_to_karo.yaml" "$MOCK_LOG"
+    grep -q "status: in_progress" "$MOCK_LOG"
+    grep -q "queue/tasks/ashigaru1.yaml" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010bd: karo report_received unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: ashigaru1
+    type: report_received
+    content: "report done"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="karo"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/karo.yaml に未読の report_received がある。" "$MOCK_LOG"
+    grep -q "queue/reports/ashigaru\\*_report.yaml" "$MOCK_LOG"
+    grep -q "queue/shogun_to_karo.yaml" "$MOCK_LOG"
+    grep -q "dashboard更新・cmd close" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
 @test "T-SW-010c: ashigaru task_assigned unread uses explicit wake-up text" {
     cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
 messages:

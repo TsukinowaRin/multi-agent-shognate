@@ -299,6 +299,9 @@ notify_shogun_runtime_blocked_if_needed() {
 
     [ -n "$issue" ] || return 0
     [ "${AGENT_ID:-}" = "shogun" ] && return 0
+    if [ "${__INBOX_WATCHER_TESTING__:-0}" = "1" ] && [ "${ASW_ENABLE_RUNTIME_BLOCKED_RELAY_TEST:-0}" != "1" ]; then
+        return 0
+    fi
     marker_path="$(runtime_blocked_relay_marker_path "$issue")"
     [ -f "$marker_path" ] && return 0
     [ -f "$inbox_write_script" ] || return 0

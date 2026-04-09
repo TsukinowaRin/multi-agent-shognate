@@ -1104,6 +1104,7 @@ MOCK
 printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
 MOCK
         chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        export ASW_ENABLE_RUNTIME_BLOCKED_RELAY_TEST=1
         MOCK_PANE_CLI="codex"
         MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
         source "'"$TEST_HARNESS"'"
@@ -1115,6 +1116,27 @@ MOCK
 
     [ "$(wc -l < "$RELAY_LOG")" -eq 1 ]
     grep -q $'^shogun\t.*runtime_blocked\tinbox_watcher$' "$RELAY_LOG"
+}
+
+@test "T-CODEX-010d2bb: watcher test harness では opt-in なしに runtime_blocked relay しない" {
+    export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_relay_guard.log"
+
+    run bash -c '
+        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
+        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+#!/bin/bash
+printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
+MOCK
+        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    [ ! -f "$RELAY_LOG" ] || [ ! -s "$RELAY_LOG" ]
 }
 
 @test "T-CODEX-010d2c: send_wakeup は Codex 通常画面で stale blocked notice を除去する" {
@@ -1253,6 +1275,7 @@ MOCK
 printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
 MOCK
         chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        export ASW_ENABLE_RUNTIME_BLOCKED_RELAY_TEST=1
         MOCK_PANE_CLI="codex"
         MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\n1. Sign in with ChatGPT\nPress Enter to continue'"'"'
         source "'"$TEST_HARNESS"'"

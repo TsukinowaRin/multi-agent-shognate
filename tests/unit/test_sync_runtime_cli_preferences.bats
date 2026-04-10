@@ -444,3 +444,65 @@ PY
   run bats_search "invalid-codex-model-reset=left" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
+
+@test "sync_runtime_cli_preferences: codex に codux typo model が入っていても default に矯正する" {
+  cat > "$TEST_TMP/settings.yaml" <<'YAML'
+topology:
+  active_ashigaru:
+    - ashigaru1
+cli:
+  default: codex
+  agents:
+    ashigaru1:
+      type: codex
+      model: gpt-5.1-codux-mini
+      reasoning_effort: medium
+YAML
+  cat > "$TEST_TMP/tmux" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+cmd="$1"
+shift
+case "$cmd" in
+  has-session)
+    [[ "$2" == "multiagent" ]] && exit 0 || exit 1
+    ;;
+  list-panes)
+    printf 'multiagent:agents.0\n'
+    ;;
+  show-options)
+    target="$3"
+    option="${5:-}"
+    case "$target:$option" in
+      multiagent:agents.0:@agent_id) printf 'ashigaru1\n' ;;
+      multiagent:agents.0:@agent_cli) printf 'codex\n' ;;
+    esac
+    ;;
+  capture-pane)
+    cat <<'OUT'
+OpenAI Codex
+model: gpt-5.4 medium   /model to change
+OUT
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+SH
+  chmod +x "$TEST_TMP/tmux"
+
+  run python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
+  [ "$status" -eq 0 ]
+
+  run python3 - "$MAS_SETTINGS_PATH" <<'PY'
+import sys, yaml
+with open(sys.argv[1], encoding='utf-8') as fh:
+    cfg = yaml.safe_load(fh) or {}
+assert cfg['cli']['agents']['ashigaru1']['model'] == 'default'
+print('ok')
+PY
+  [ "$status" -eq 0 ]
+
+  run bats_search "invalid-codex-model-reset=gpt-5.1-codux-mini" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  [ "$status" -eq 0 ]
+}

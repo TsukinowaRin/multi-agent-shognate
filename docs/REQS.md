@@ -22,6 +22,19 @@
    - 期待結果: runtime 再起動なしで 2 本目も `cmd_done` まで閉じる。
 5. コマンド: `python3 -m unittest runtime_sandboxes/<task-2>/tests/test_app.py`
    - 期待結果: PASS する。
+6. コマンド: 2 本目の統合検証が途中で失敗した場合の `dashboard.md` / `queue/tasks/ashigaru*.yaml` 観測
+   - 期待結果: 家老は parent cmd を `done` にせず `in_progress` のまま維持し、`redo_of` 付き subtask を再投入して false done を避ける。
+
+## 追補（2026-04-10: runtime sync は Codex model typo を default へ矯正する）
+### 要求
+1. `config/settings.yaml` などに `gpt-5.1-codux-mini` のような typo model が残っていても、`scripts/sync_runtime_cli_preferences.py` は不正 model とみなし `default` へ矯正すること。
+2. その際 `queue/runtime/runtime_cli_prefs.tsv` には `invalid-codex-model-reset=<typo>` が記録されること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `python3 -m py_compile scripts/sync_runtime_cli_preferences.py`
+   - 期待結果: PASS する。
+2. コマンド: `bats tests/unit/test_sync_runtime_cli_preferences.bats`
+   - 期待結果: `gpt-5.1-codux-mini` fixture が `default` へ矯正される回帰を含めて PASS する。
 
 ## 追補（2026-04-10: greenfield の分担 task では target_path 非存在を失敗理由にしない）
 ### 要求

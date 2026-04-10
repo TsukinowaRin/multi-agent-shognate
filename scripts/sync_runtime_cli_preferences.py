@@ -208,6 +208,8 @@ def is_valid_codex_model(model: str) -> bool:
     lower = value.lower()
     if lower in {"auto", "default"}:
         return True
+    if "codux" in lower:
+        return False
     if lower in INVALID_CODEX_MODEL_TOKENS:
         return False
     if value.startswith("/"):

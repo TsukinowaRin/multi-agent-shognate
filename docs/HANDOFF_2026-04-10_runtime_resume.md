@@ -89,6 +89,8 @@
 
 ## 7) 既知リスク / 未完了
 
+- `burnin_probe_nine_retest` で greenfield 修正後の live 完走は確認済み。
+- `burnin_probe_ten_retest` では同一 runtime 上の 2 本目で app/test contract drift を検出し、家老が redo subtasks を再投入した。redo 後 unittest PASS までは確認したが、最終 `cmd_done` は未確認。
 - 長時間連続運転の安定性は未検証。
 - 外部 quota による停止は起こり得る。
 - `git status` は重く、全体の clean 状態は未確認。
@@ -116,4 +118,3 @@ bash scripts/inbox_write.sh shogun "<task>" task_assigned user
 
 1. 「軽いタスク 2 本連続」までの再現性を確認する。
 2. quota による停止が出たら `runtime_blocked` relay が将軍・人間の双方へ届くか確認する。
-

@@ -1,5 +1,7 @@
 # Handoff: 2026-04-06 Runtime Resume
 
+この文書は旧版。**最新は `docs/HANDOFF_2026-04-10_runtime_resume.md` を参照。**
+
 最終更新: 2026-04-06 JST
 
 ## この文書の目的

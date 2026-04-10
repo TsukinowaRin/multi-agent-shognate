@@ -27,6 +27,7 @@
 5. `WORKLOG` と本 ExecPlan に結果を追記し、必要なら commit/push する。
 
 ## Progress
+- [x] (2026-04-10 19:5x JST) main repo runtime の `burnin_probe_eight` 再開で、greenfield 分担 task の `target_path` 未生成を `ashigaru2` が即 `failed` と扱う欠陥を再現し、`ashigaru` / `karo` instruction を「新規成果物では未存在を正常扱いし、親ディレクトリを作って進める」契約へ更新した。`bash scripts/build_instructions.sh` と `bats tests/unit/test_build_system.bats` が PASS。
 - [x] (2026-04-09 14:4x JST) `cmd_001` の `cmd_done` relay まで完走させ、`shogun -> karo -> ashigaru1/2 -> karo -> shogun` の軽い共同開発タスクが main repo runtime で閉じることを再確認した。
 - [x] (2026-04-09 14:4x JST) `karo_done_to_shogun_bridge.log` に `primed\t...` が蓄積して可観測性を落とすため、bridge daemon は既定では `primed` を stdout へ流さず、verbose 時だけ出すよう回帰を追加した。
 - [x] (2026-04-09 14:3x JST) live runtime の軽い共同開発 task 投入で、`shogun` は `cmd_001` を即起票できた一方、`karo` は unread `cmd_new` を受けても generic `inboxN` 起点のまま `queue/shogun_to_karo.yaml` へ入るまでに停滞することを観測した。
@@ -327,6 +328,9 @@
 - Decision: Codex bootstrap 後に pane が `Pasted Content ...` composer のままなら、startup / watcher は追い `Enter` を送り、それでも残る場合は `bootstrap-send-failed` として扱う。
   Rationale: fresh runtime 実観測で二重送信とは別に、単発の bootstrap 自体が `Pasted Content 1442 chars` の未送信状態で止まっていたため。
   Date/Author: 2026-04-09 / Codex
+- Decision: greenfield の multi-ashigaru task では、`target_path` が未作成でも அதுを intended output path とみなし、`ashigaru` は親ディレクトリを作って実装を進める。`karo` も dispatch 時点のファイル未存在を parallel split の阻害要因にしない。
+  Rationale: 2026-04-10 の `burnin_probe_eight` で、`README.md` / `tests/test_app.py` lane が「対象パス不在」を理由に即 `failed` となり、greenfield 分担そのものが壊れる failure class を再現したため。
+  Date/Author: 2026-04-10 / Codex
 
 ## Outcomes & Retrospective
 - Outcomes:
@@ -364,6 +368,7 @@
   - burn-in 継続中に出た新しい Codex rate-limit prompt variant も watcher / startup で dismiss できるようにし、`Keep current model` / `Hide future rate limit` 文言差分で止まらない回帰を追加した。
   - watcher の idle loop でも Codex runtime prompt を proactive に掃除するようにし、fresh runtime の実 pane で karo / ashigaru2 の rate-limit prompt が通常 footer へ戻ることを確認した。
   - `runtime_blocked` の relay 先が `shogun` だけだと、将軍自身が hard block の時に人間へ届かないことを確認し、`shogun` blocker だけは `queue/inbox/lord.yaml` へも 1 回 relay する degraded-mode を追加した。
+  - `burnin_probe_eight` では家老の初手分担自体は成功したが、greenfield lane の `target_path` 未存在を `ashigaru2` が即 `failed` と扱い、2 本連続 burn-in の前に instruction 契約の欠落が残っていることを確認した。契約補強と `test_build_system` 回帰追加は完了した。
 - Gaps:
   - 今回の agent 実行は sandbox-local mock Codex を使ったため、実 `codex` SaaS 応答品質までは保証しない。
   - 実 `codex` での本当の task 実行完了は、認証が済んだ環境で再試験が必要。
@@ -373,6 +378,7 @@
   - 新しい rate-limit prompt variant の live dismiss は対象回帰までは通したが、fresh runtime の burn-in 本番では次の task で再確認が必要。
   - fresh runtime の task 投入直後、shogun 自体は 2026-04-05 01:55 AM 再試行の hard usage-limit に入ったため、`cmd_done` までの burn-in 継続は外部 quota 復帰待ちで止まっている。
   - `queue/inbox/lord.yaml` は新設された human relay 先なので、実運用で誰がどの頻度で確認するかはまだ運用設計が必要。
+  - greenfield `target_path` 契約の live runtime 再検証は未完了。build_system 回帰は通ったが、修正後 runtime で同系統 task が `failed` ではなく継続するかは次回同一 PTY で再確認が必要。
 - Lessons:
   - WSL の `/mnt/d` 配下で tmux を使う検証は、socket を Linux 側 filesystem へ逃がす前提で考えた方が早い。
   - bare command 解決に依存する CLI 起動は、tmux pane shell の PATH 差異で検証が揺れる。隔離検証では絶対パスが安全。

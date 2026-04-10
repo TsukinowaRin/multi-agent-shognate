@@ -1,7 +1,38 @@
 # Requirements (Normalized)
 
-最終更新: 2026-04-05
+最終更新: 2026-04-10
 出典: 直近ユーザープロンプト
+
+## 追補（2026-04-10: main repo runtime で軽い task を 2 本連続完走できることを確認する）
+### 要求
+1. main repo で `bash shutsujin_departure.sh -c` による fresh runtime start 後、軽い共同開発 task を 2 本連続で将軍へ単発投入し、それぞれ `cmd_done` まで閉じること。
+2. 各 task は `runtime_sandboxes/` 配下の別ディレクトリを対象とし、少なくとも `app.py`、`README.md`、`tests/test_app.py` のように初手で複数足軽へ分担可能な成果物を含むこと。
+3. 各 task 完了後は、人手で指定 `python3 -m unittest ...` を再実行し、report 内容と実体が一致することを確認すること。
+4. 2 本目の task は 1 本目完了後に同一 runtime 上で投入し、再起動なしで連続処理できることを確認すること。
+5. 実行結果は `docs/WORKLOG.md` と必要に応じて handoff / ExecPlan へ反映し、未検証範囲を明示すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: fresh runtime が起動し、`goza-no-ma` と `goza-runtime` が作成され、watcher / bridge を含む常駐系が稼働する。
+2. コマンド: `bash scripts/inbox_write.sh shogun "<task-1>" task_assigned user`
+   - 期待結果: `queue/shogun_to_karo.yaml` の command が消化され、`queue/inbox/shogun.yaml` に `type: cmd_done` が追加される。
+3. コマンド: `python3 -m unittest runtime_sandboxes/<task-1>/tests/test_app.py`
+   - 期待結果: PASS する。
+4. コマンド: `bash scripts/inbox_write.sh shogun "<task-2>" task_assigned user`
+   - 期待結果: runtime 再起動なしで 2 本目も `cmd_done` まで閉じる。
+5. コマンド: `python3 -m unittest runtime_sandboxes/<task-2>/tests/test_app.py`
+   - 期待結果: PASS する。
+
+## 追補（2026-04-10: greenfield の分担 task では target_path 非存在を失敗理由にしない）
+### 要求
+1. `ashigaru` は `task_assigned` を受けた時、`target_path` が新規成果物を指していて未作成でも、それだけで `failed` にしないこと。
+2. 上記の場合、`target_path` は intended output path とみなし、必要なら親ディレクトリを作成して実装を継続すること。
+3. 既存ファイルのレビューや差分修正が明示された task だけを、`target_path` 非存在の blocker とみなすこと。
+4. `karo` は greenfield ディレクトリの `app.py` / `README.md` / `tests/test_app.py` を初手で並列分担してよく、dispatch 時点でファイル未存在でも serialize の理由にしないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh && bats tests/unit/test_build_system.bats`
+   - 期待結果: `codex-ashigaru.md` に「new deliverable が未存在でも正常」「親ディレクトリを作って進める」「target_path は intended output path」、`codex-karo.md` に「greenfield split を初手で許容」が入り、回帰が PASS する。
 
 ## 追補（2026-04-09: 家老は2人で割れる task を初手で複数足軽へ切る）
 ### 要求

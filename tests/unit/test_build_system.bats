@@ -198,6 +198,12 @@ setup() {
     grep -q "queue/tasks/ashigaru{N}.yaml" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
+@test "content: codex-ashigaru.md treats missing new target_path as normal greenfield work" {
+    grep -q "If \`target_path\` points to a new deliverable that does not exist yet, treat that as normal" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Create the parent directory as needed and proceed with implementation" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "target_path\` is the intended output path" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
 @test "content: codex-ashigaru.md requires exact verification command and cwd before claiming pass" {
     grep -q "result.verification.command" "$OUTPUT_DIR/codex-ashigaru.md"
     grep -q "result.verification.cwd" "$OUTPUT_DIR/codex-ashigaru.md"
@@ -234,6 +240,12 @@ setup() {
     grep -q "assign the first lane to \`ashigaru1\`" "$OUTPUT_DIR/codex-karo.md"
     grep -q "assign a complementary lane to \`ashigaru2\`" "$OUTPUT_DIR/codex-karo.md"
     grep -q "Do \*\*not\*\* leave \`ashigaru2\` idle" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md allows greenfield split before files exist" {
+    grep -q "\`target_path\` is the intended output path for the lane" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "For greenfield directories, you may split \`app.py\`, \`README.md\`, and \`tests/test_app.py\` in parallel" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not treat the absence of those files at dispatch time as a reason to serialize the work" "$OUTPUT_DIR/codex-karo.md"
 }
 
 @test "content: codex-gunshi.md enforces event-driven standby after analysis" {

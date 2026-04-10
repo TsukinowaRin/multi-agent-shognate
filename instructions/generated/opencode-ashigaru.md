@@ -75,6 +75,7 @@ Act without waiting for Karo's instruction:
 2. Read `queue/tasks/ashigaru{N}.yaml` immediately
 3. Use that task YAML as the only source of truth for the current assignment
 4. Do not infer the task from old `queue/reports/ashigaru*_report.yaml`, stale dashboard text, or prior inbox messages
+5. If `target_path` points to a new deliverable that does not exist yet, treat that as normal. Create the parent directory as needed and proceed with implementation. Missing `target_path` is only a blocker when the task explicitly requires reviewing or editing an already-existing file.
 
 **On task completion** (in this order):
 1. Self-review deliverables (re-read your output)
@@ -86,6 +87,7 @@ Act without waiting for Karo's instruction:
 
 **Quality assurance:**
 - After modifying files → verify with Read
+- For greenfield deliverables, `target_path` is the intended output path, not proof that the file must already exist
 - If project has tests → run the exact related test command from the exact working directory the task expects
 - If you claim `python3 -m unittest`, `npm test`, build success, or CLI success → record the exact command and `cwd` in `result.verification`
 - Never claim pass from assumption, partial import, or a different working directory

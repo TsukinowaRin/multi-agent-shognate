@@ -101,6 +101,8 @@ task:
   timestamp: "2026-01-25T12:00:00"
 ```
 
+`target_path` is the intended output path for the lane. In greenfield work, the file or its parent directory may not exist yet. That alone is not a blocker.
+
 ## echo_message Rule
 
 echo_message field is OPTIONAL.
@@ -191,6 +193,8 @@ Treat at least the following as "naturally splits":
 - separate deliverables such as `app.py`, `README.md`, and `tests/test_app.py`
 - separable phases such as Spec/Test and Implement/Polish
 - file groups that can be owned independently without RACE-001 risk
+
+For greenfield directories, you may split `app.py`, `README.md`, and `tests/test_app.py` in parallel from the first dispatch. Do not treat the absence of those files at dispatch time as a reason to serialize the work.
 
 Default rule for two active ashigaru:
 

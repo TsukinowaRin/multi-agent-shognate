@@ -88,9 +88,11 @@ Act without waiting for Karo's instruction:
 **Quality assurance:**
 - After modifying files → verify with Read
 - For greenfield deliverables, `target_path` is the intended output path, not proof that the file must already exist
+- If sibling-lane artifacts such as `README.md`, `tests/test_app.py`, or `app.py` already exist, re-read them and match their public identifiers exactly. Do not invent near-synonyms such as a different function name when the paired lane already names the contract.
 - If project has tests → run the exact related test command from the exact working directory the task expects
 - If you claim `python3 -m unittest`, `npm test`, build success, or CLI success → record the exact command and `cwd` in `result.verification`
 - Never claim pass from assumption, partial import, or a different working directory
+- If the paired lane defines or implies a shared API, your deliverable must use the exact same function names, exception names, CLI behavior, and JSON keys before you report `done`
 - If modifying instructions → check for contradictions
 
 **Anomaly handling:**

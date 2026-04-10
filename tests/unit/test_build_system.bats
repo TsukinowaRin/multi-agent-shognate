@@ -204,6 +204,12 @@ setup() {
     grep -q "target_path\` is the intended output path" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
+@test "content: codex-ashigaru.md requires exact contract match with sibling lane artifacts" {
+    grep -q "If sibling-lane artifacts such as \`README.md\`, \`tests/test_app.py\`, or \`app.py\` already exist, re-read them and match their public identifiers exactly" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Do not invent near-synonyms" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "must use the exact same function names, exception names, CLI behavior, and JSON keys" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
 @test "content: codex-ashigaru.md requires exact verification command and cwd before claiming pass" {
     grep -q "result.verification.command" "$OUTPUT_DIR/codex-ashigaru.md"
     grep -q "result.verification.cwd" "$OUTPUT_DIR/codex-ashigaru.md"
@@ -246,6 +252,13 @@ setup() {
     grep -q "\`target_path\` is the intended output path for the lane" "$OUTPUT_DIR/codex-karo.md"
     grep -q "For greenfield directories, you may split \`app.py\`, \`README.md\`, and \`tests/test_app.py\` in parallel" "$OUTPUT_DIR/codex-karo.md"
     grep -q "Do not treat the absence of those files at dispatch time as a reason to serialize the work" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md writes explicit shared contract into parallel app and README/tests lanes" {
+    grep -q "When those parallel lanes must share a public contract, write the exact same contract into both task descriptions before dispatch" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Name the public function(s), exception type(s), CLI entrypoint behavior, and required output keys explicitly" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not write vague instructions such as \"align with README/tests\"" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "For the common split of \`app.py\` vs \`README.md\` + \`tests/test_app.py\`" "$OUTPUT_DIR/codex-karo.md"
 }
 
 @test "content: codex-gunshi.md enforces event-driven standby after analysis" {

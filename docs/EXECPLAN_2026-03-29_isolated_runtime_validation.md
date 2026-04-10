@@ -27,6 +27,9 @@
 5. `WORKLOG` と本 ExecPlan に結果を追記し、必要なら commit/push する。
 
 ## Progress
+- [x] (2026-04-10 22:53-22:57 JST) 同一 runtime 上の 3 本目 `burnin_probe_eleven_retest` を投入し、`README/tests` lane が先に `summarize_name_scores` 契約を固定した一方で `app.py` lane は `summarize_scores` を実装して drift を再現した。中間での手動 `python3 -m unittest runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py` は `ImportError` / `cannot import name 'summarize_name_scores'` で失敗。
+- [x] (2026-04-10 22:58 JST) `karo` / `ashigaru` instruction を更新し、greenfield parallel split では public function・exception・CLI 入出力・JSON key の shared contract を両 lane description に明記し、足軽は sibling artifact が存在する場合に identifier を厳密一致させる規則を追加した。`bash scripts/build_instructions.sh` と `bats tests/unit/test_build_system.bats` が PASS。
+- [ ] (2026-04-10 23:00 JST-) fresh runtime を再起動し、`burnin_probe_twelve_retest` で同種 task の live 再検証を開始。将軍は新規 cmd を起票し、家老は shared contract 明記つきの初手二車線 dispatch に入る直前まで確認済み。最終 `cmd_done` は未確認。
 - [x] (2026-04-10 19:5x JST) main repo runtime の `burnin_probe_eight` 再開で、greenfield 分担 task の `target_path` 未生成を `ashigaru2` が即 `failed` と扱う欠陥を再現し、`ashigaru` / `karo` instruction を「新規成果物では未存在を正常扱いし、親ディレクトリを作って進める」契約へ更新した。`bash scripts/build_instructions.sh` と `bats tests/unit/test_build_system.bats` が PASS。
 - [x] (2026-04-10 20:05-20:13 JST) main repo runtime の `burnin_probe_nine_retest` で、greenfield 修正後も家老が初手 2 lane 分担でき、`cmd_done` と dashboard 戦果まで完走することを live で確認した。`python3 -m unittest runtime_sandboxes/burnin_probe_nine_retest/tests/test_app.py` が PASS。
 - [x] (2026-04-10 20:14-20:24 JST) 同一 tmux runtime 上の `burnin_probe_ten_retest` で app/test contract drift を統合検証時に検知し、家老が parent cmd を `in_progress` に保ったまま `redo_of` 付き subtasks (`a2` / `b2`) を再投入する self-recovery を live で確認した。redo 後 unittest は PASS。
@@ -218,6 +221,9 @@
 - Decision: 家老の `report_received` fast path は「relevant report YAML / parent cmd / dashboard.md」へ read scope を限定し、bridge / ntfy / streaks / sample は異常時以外読まない。
   Rationale: 終盤の不要探索で `cmd_done` 返却が遅れ、実検証の throughput を落としていたため。
   Date/Author: 2026-03-30 / Codex
+- Decision: greenfield の `app.py` lane と `README/tests` lane を初手並列で切るときは、家老が shared contract を自分で canonical 化し、public function 名・exception 名・CLI 入出力・JSON key を両 subtask に同じ文面で埋め込む。
+  Rationale: `burnin_probe_eleven_retest` で `summarize_name_scores` と `summarize_scores` のような near-synonym drift が再発し、parallel split 自体は成功しても integration が不安定だったため。
+  Date/Author: 2026-04-10 / Codex
 - Decision: `karo_done_to_shogun_bridge.py` は active queue と archive file の両方を監視し、state key は `cmd_id+timestamp` とする。
   Rationale: 家老が `done` cmd を archive へ移す運用と両立しつつ、`cmd_001` のような再利用 ID でも別 run の完了を relay できるようにするため。
   Date/Author: 2026-03-30 / Codex
@@ -258,6 +264,8 @@
   Evidence: `goza-no-ma:overview.1` では `› inbox2` 後に `queue/inbox/karo.yaml` 読取までは出る一方、`queue/shogun_to_karo.yaml` 参照や `task_assigned` は数十秒以上出ず、`queue/inbox/karo.yaml` には unread `cmd_new` が残り続けた。
 - Observation: `cmd_001` の完走自体は可能だが、`karo_done_to_shogun_bridge.log` には clean start や daemon 再起動のたびに `primed\t...` が繰り返し追記され、最近の `sent\tcmd_001` が埋もれやすかった。
   Evidence: `tail -n 40 logs/karo_done_to_shogun_bridge.log` で `sent\tcmd_001` の前後が `primed\tcmd_001...` の繰り返しで占められていた。
+- Observation: `burnin_probe_eleven_retest` では `README/tests` lane が `summarize_name_scores` を固定した一方、`app.py` lane は `summarize_scores` を実装し、parallel split 後の shared contract drift が依然として起きた。
+  Evidence: [runtime_sandboxes/burnin_probe_eleven_retest/app.py](/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate/runtime_sandboxes/burnin_probe_eleven_retest/app.py) には `summarize_scores`、[runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py](/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate/runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py) には `summarize_name_scores` が記録され、手動 `python3 -m unittest runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py` は import error で失敗した。
 - Observation: `runtime_cli_pref_daemon` は isolated tmux probe では残る一方、fresh start では `goza-runtime` から消えることがあり、起動後の self-heal が必要だった。
   Evidence: `tmux list-windows -t goza-runtime` では `watcher` / bridge / `inbox-*` だけが残り、`runtime-pref` が欠落していた。manual `tmux new-window ... runtime_cli_pref_daemon.sh` では残った。
 - Decision: hard `usage-limit` 判定は raw pane text ではなく compact 文字列で行い、空白・折返しを落として `youvehityourusagelimit` / `tryagainat` を拾う。

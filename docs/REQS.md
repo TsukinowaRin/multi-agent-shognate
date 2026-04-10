@@ -36,6 +36,17 @@
 2. コマンド: `bats tests/unit/test_sync_runtime_cli_preferences.bats`
    - 期待結果: `gpt-5.1-codux-mini` fixture が `default` へ矯正される回帰を含めて PASS する。
 
+## 追補（2026-04-10: 家老の greenfield 並列分担は shared contract を曖昧語で流さない）
+### 要求
+1. `karo` が `app.py` lane と `README.md` / `tests/test_app.py` lane を初手並列で切る場合、両 subtask description に同一の shared contract を明記すること。
+2. 上記 contract には少なくとも public function 名、exception 名、CLI 入力/出力挙動、必須 JSON key を含めること。
+3. `ashigaru` は sibling lane の artifact が存在する場合、その public identifier を再読し、関数名・exception 名・JSON key を厳密一致で合わせること。
+4. `align with README/tests` のような曖昧文だけで shared contract を委ねないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh && bats tests/unit/test_build_system.bats`
+   - 期待結果: `codex-karo.md` に shared contract を両 lane に明記する規則と、`codex-ashigaru.md` に sibling artifact の identifier を厳密一致させる規則が入り、回帰が PASS する。
+
 ## 追補（2026-04-10: greenfield の分担 task では target_path 非存在を失敗理由にしない）
 ### 要求
 1. `ashigaru` は `task_assigned` を受けた時、`target_path` が新規成果物を指していて未作成でも、それだけで `failed` にしないこと。

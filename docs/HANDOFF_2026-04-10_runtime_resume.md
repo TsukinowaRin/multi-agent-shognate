@@ -89,12 +89,12 @@
 
 ## 7) 既知リスク / 未完了
 
-- `burnin_probe_nine_retest` で greenfield 修正後の live 完走は確認済み。
-- `burnin_probe_ten_retest` では同一 runtime 上の 2 本目で app/test contract drift を検出し、家老が redo subtasks を再投入した。redo 後 unittest PASS までは確認したが、最終 `cmd_done` は未確認。
+- `burnin_probe_nine_retest` と `burnin_probe_ten_retest` は live で `cmd_done` まで確認済み。
+- ただし 3 本目 `burnin_probe_eleven_retest` では、`README/tests` lane と `app.py` lane の shared contract drift (`summarize_name_scores` vs `summarize_scores`) を再現した。
+- これに対し、家老が shared contract を両 lane description へ明記し、足軽が sibling artifact の identifier を厳密一致させる instruction 強化を入れた。
+- fresh runtime での再試験 `burnin_probe_twelve_retest` は開始済みだが、この文書時点では最終 `cmd_done` 未確認。
 - 長時間連続運転の安定性は未検証。
 - 外部 quota による停止は起こり得る。
-- `git status` は重く、全体の clean 状態は未確認。
-  - このため **作業再開時に `git status` を短時間で確認すること**。
 
 ## 8) 再開手順（最短）
 
@@ -113,8 +113,10 @@ bash scripts/inbox_write.sh shogun "<task>" task_assigned user
 - `queue/reports/ashigaru*_report.yaml` が `done`
 - `queue/inbox/shogun.yaml` に `cmd_done`
 - `dashboard.md` の完了表示
+- parallel lane の shared contract が両 task description に同じ識別子で入っている
 
 ## 9) 次にやるべきこと（候補）
 
-1. 「軽いタスク 2 本連続」までの再現性を確認する。
-2. quota による停止が出たら `runtime_blocked` relay が将軍・人間の双方へ届くか確認する。
+1. `burnin_probe_twelve_retest` が `cmd_done` と手動 unittest PASS まで閉じるか確認する。
+2. その後に「軽いタスク 3 本目でも shared contract drift が再発しないか」を再検証する。
+3. quota による停止が出たら `runtime_blocked` relay が将軍・人間の双方へ届くか確認する。

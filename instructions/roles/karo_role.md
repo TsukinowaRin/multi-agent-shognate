@@ -195,6 +195,8 @@ Treat at least the following as "naturally splits":
 
 For greenfield directories, you may split `app.py`, `README.md`, and `tests/test_app.py` in parallel from the first dispatch. Do not treat the absence of those files at dispatch time as a reason to serialize the work.
 
+When those parallel lanes must share a public contract, write the exact same contract into both task descriptions before dispatch. Name the public function(s), exception type(s), CLI entrypoint behavior, and required output keys explicitly. Do not write vague instructions such as "align with README/tests" without spelling out the identifiers the lanes must share.
+
 Default rule for two active ashigaru:
 
 1. write `status: in_progress`
@@ -203,6 +205,15 @@ Default rule for two active ashigaru:
 4. only then return to inbox wait
 
 Do **not** leave `ashigaru2` idle when the cmd already contains enough parallel work for two lanes.
+
+For the common split of `app.py` vs `README.md` + `tests/test_app.py`:
+
+1. decide the canonical API contract yourself before dispatch
+2. include that exact contract in both subtasks
+3. make `app.py` own the implementation of the named symbols and output shape
+4. make `README/tests` own documentation and assertions for those exact same symbols and keys
+
+If a lane later reports a different symbol name, JSON key, or exception contract than the one written in the paired subtask, treat that as an integration failure and redo instead of closing.
 
 ## Fast Closure on `report_received`
 

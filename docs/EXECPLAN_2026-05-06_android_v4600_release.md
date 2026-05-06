@@ -49,7 +49,7 @@
 - [x] release asset 生成。
 - [x] release prep commits 作成。
 - [x] prepublish check。
-- [ ] push / release。
+- [x] push / release。
 
 ## Decision Log
 
@@ -83,3 +83,8 @@
   - `dist/multi-agent-shognate-installer-v4.6.0.0.bat`
   - APK sha256: `1b5357c70b64a31ad4d417686c3f78eb0729802fe51e517d8d4e799cc56a6bd8`
   - Installer sha256: `a65dd6856279adf8269145ffc9bf3fc21c402295019f184b92c4b30395112bca`
+- Published:
+  - Branch `codex/upstream-v4.6.0-sync` pushed to origin.
+  - GitHub Release `android-v4.6.0.0`: https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/android-v4.6.0.0
+  - Release is not prerelease.
+  - Release target tag resolves to `08d9cddbca1dac36efd3b2c9c650e7e77fa1e86a`.

@@ -47,7 +47,9 @@
 - [x] 一時ファイル削除。
 - [x] host / Android 検証。
 - [x] release asset 生成。
-- [ ] commit / push / release。
+- [x] release prep commits 作成。
+- [x] prepublish check。
+- [ ] push / release。
 
 ## Decision Log
 
@@ -75,6 +77,7 @@
   - `cd android && GRADLE_USER_HOME="$PWD/.gradle-user-home" ./gradlew --no-daemon test assembleRelease` → initial FAIL because `/home/muro/.gradle` was read-only.
   - `cd android && HOME="$PWD/.home" ANDROID_USER_HOME="$PWD/.android-user-home" GRADLE_USER_HOME="$PWD/.gradle-user-home" ./gradlew --no-daemon test assembleRelease` → PASS (`73` tasks; warnings only)
   - `aapt dump badging dist/multi-agent-shognate-android-v4.6.0.0.apk` → `versionCode='6'`, `versionName='4.6.0'`, `application-label:'multi-agent-shognate Android'`
+  - `bash scripts/prepublish_check.sh` → PASS
 - Release assets generated:
   - `dist/multi-agent-shognate-android-v4.6.0.0.apk`
   - `dist/multi-agent-shognate-installer-v4.6.0.0.bat`

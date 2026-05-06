@@ -3,6 +3,25 @@
 最終更新: 2026-05-06
 出典: 直近ユーザープロンプト
 
+## 追補（2026-05-06: v4.6.0.0 Android / installer release）
+### 要求
+1. 無駄な一時ファイルを削除すること。
+2. upstream `v4.6.0` 反映後の Shogunate を、release tag `android-v4.6.0.0` として一通りリリースすること。
+3. Android app を現在の upstream / Shogunate 仕様へ適合させ、version / release docs / installer asset と整合させること。
+4. Android app と関連 host scripts をテストしてから release すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: temporary / ignored cache path の確認と削除
+   - 期待結果: `template-temp` など不要な一時フォルダが削除され、tracked file は失われない。
+2. コマンド: `rg -n "4\\.4\\.1|android-v4\\.4\\.1\\.0" README.md README_ja.md android .github/workflows/android-release.yml`
+   - 期待結果: 現行 release 説明が `v4.6.0.0` 基準へ更新される。
+3. コマンド: `cd android && ./gradlew --no-daemon test assembleRelease`
+   - 期待結果: Android unit test と release APK build が PASS する。
+4. コマンド: host 側 syntax / focused test / prepublish check
+   - 期待結果: merge 後に触った shell / Python / Bats と公開前チェックが PASS する。
+5. GitHub Release:
+   - 期待結果: `android-v4.6.0.0` release が作成され、APK と installer asset が添付される。
+
 ## 追補（2026-05-06: upstream 最新を取り込み fork 独自機能を保持する）
 ### 要求
 1. fork 元 `upstream/main` の最新コードをこの Shogunate fork に反映すること。
@@ -2043,8 +2062,8 @@
 2. tracked な local 編集や local commit がある場合、git install はそれを破壊せず、`.shogunate/merge-candidates/` に incoming file を退避して家老へ通知すること。
 3. Release installer で入れた portable install は stable release channel とすること。
 4. 同じフォルダに古い portable Release install がある場合、`multi-agent-shognate-installer-<version>.bat` は新規導入ではなく更新モードとして動き、local state を保持したまま newer Release snapshot を適用できること。
-5. Android Release tag は `android-v<upstream>.<packaging_revision>`、例: `android-v4.4.1.0` の形式に統一すること。
-6. installer の release asset 名は tag 全体ではなく `v4.4.1.0` のような version 部だけを使うこと。
+5. Android Release tag は `android-v<upstream>.<packaging_revision>`、例: `android-v4.6.0.0` の形式に統一すること。
+6. installer の release asset 名は tag 全体ではなく `v4.6.0.0` のような version 部だけを使うこと。
 7. Release installer で作られた portable install には `Shogunate-Uninstaller.bat` が同梱され、配置先フォルダからアンインストールできること。
 8. `Shogunate-Uninstaller.bat` は個人データを install 外へ保持するか、この install 内のデータごと全削除するかを選べること。
 9. uninstaller 実行後も親フォルダは残り、同じ場所へクリーンインストールし直せること。
@@ -2057,7 +2076,7 @@
    - 期待結果: release snapshot 更新時の置換・preserve・merge candidate 退避が通る。
 2. コマンド: `python3 scripts/update_manager.py status`
    - 期待結果: install mode / version / auto-update 状態が JSON で出る。
-3. コマンド: `rg -n "apply-source-release|merge-candidates|multi-agent-shognate-installer-|android-v<upstream-version>|android-v4.4.1.0" install.bat scripts/update_manager.py README.md README_ja.md .github/workflows/android-release.yml android/release/README.md`
+3. コマンド: `rg -n "apply-source-release|merge-candidates|multi-agent-shognate-installer-|android-v<upstream-version>|android-v4.6.0.0" install.bat scripts/update_manager.py README.md README_ja.md .github/workflows/android-release.yml android/release/README.md`
    - 期待結果: installer 単独の install/update 導線と release workflow の接点が揃っている。
 4. コマンド: `rg -n "Shogunate-Uninstaller.bat|Uninstall|アンインストール" .gitignore install.bat README.md README_ja.md android/release/README.md`
    - 期待結果: uninstaller が tracked され、installer 完了メッセージと docs に導線がある。

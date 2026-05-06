@@ -16,6 +16,7 @@
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - portable install / uninstaller 事故対応、修正内容、使うべき release、release asset naming の引き継ぎ。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-05-06_android_v4600_release.md` - upstream `v4.6.0` 同期後の Android / installer `android-v4.6.0.0` release 計画。
 - `docs/EXECPLAN_2026-05-06_upstream_v460_sync.md` - upstream `main` / v4.6.0 の最新変更を取り込み、fork 独自機能を保持して再検証する計画（完了）。
 - `docs/EXECPLAN_2026-03-29_isolated_runtime_validation.md` - ワークスペース内 clone / sandbox で runtime を実起動し、実Codex認証待ち・trust prompt・rate-limit / usage-limit prompt・実タスク経路まで検証する計画。
 - `docs/EXECPLAN_2026-04-05_codex_shared_auth.md` - Codex の role local `CODEX_HOME` を保ちながら、`auth.json` だけを repo-local shared path で共通化する実行計画。

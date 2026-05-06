@@ -212,8 +212,8 @@ If you installed the system with `multi-agent-shognate-installer-<version>.bat`,
 Release tags use the format `android-v<upstream-version>.<fork-revision>`.
 The first three numbers track the upstream Shogun version.
 The fourth number is this fork's packaging/release revision.
-Current upstream is `v4.4.1`, so the next aligned example is `android-v4.4.1.0`.
-Installer asset names use only the version part, for example `v4.4.1.0`.
+Current upstream is `v4.6.0`, so the next aligned example is `android-v4.6.0.0`.
+Installer asset names use only the version part, for example `v4.6.0.0`.
 
 Use the Windows installer like this:
 

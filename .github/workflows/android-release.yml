@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "GitHub Release tag (format: android-v<upstream-version>.<fork-revision>, e.g. android-v4.4.1.0)"
+        description: "GitHub Release tag (format: android-v<upstream-version>.<fork-revision>, e.g. android-v4.6.0.0)"
         required: true
         type: string
       release_name:
@@ -66,7 +66,7 @@ jobs:
           fi
           if ! printf '%s\n' "$TAG" | grep -Eq '^android-v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "Invalid release tag format: $TAG"
-            echo "Expected format: android-v<upstream-version>.<fork-revision> (example: android-v4.4.1.0)"
+            echo "Expected format: android-v<upstream-version>.<fork-revision> (example: android-v4.6.0.0)"
             exit 1
           fi
 

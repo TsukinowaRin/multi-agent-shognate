@@ -6,6 +6,8 @@
 #   ./shutsujin_departure.sh           # 全エージェント起動（前回の状態を維持）
 #   ./shutsujin_departure.sh -c        # キューをリセットして起動（クリーンスタート）
 #   ./shutsujin_departure.sh -s        # セットアップのみ（Claude起動なし）
+#   ./shutsujin_departure.sh --auto-mode-on          # Claude permission auto-approved で起動
+#   ./shutsujin_departure.sh --permission-mode plan  # Claude permission mode を明示指定
 #   ./shutsujin_departure.sh -h        # ヘルプ表示
 
 set -e
@@ -1367,6 +1369,7 @@ KESSEN_MODE=false
 SHOGUN_NO_THINKING=false
 SILENT_MODE=false
 SHELL_OVERRIDE=""
+PERMISSION_FLAG="--dangerously-skip-permissions"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -1389,6 +1392,19 @@ while [[ $# -gt 0 ]]; do
         --shogun-no-thinking)
             SHOGUN_NO_THINKING=true
             shift
+            ;;
+        --auto-mode-on)
+            PERMISSION_FLAG="--permission-mode auto-approved"
+            shift
+            ;;
+        --permission-mode)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                PERMISSION_FLAG="--permission-mode $2"
+                shift 2
+            else
+                echo "エラー: --permission-mode オプションにはモード名を指定してください"
+                exit 1
+            fi
             ;;
         -S|--silent)
             SILENT_MODE=true
@@ -1418,6 +1434,8 @@ while [[ $# -gt 0 ]]; do
             echo "  -t, --terminal      Windows Terminal で新しいタブを開く"
             echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
             echo "                      未指定時は config/settings.yaml の設定を使用"
+            echo "  --auto-mode-on      Claude を --permission-mode auto-approved で起動"
+            echo "  --permission-mode M Claude の permission mode を明示指定"
             echo "  -S, --silent        サイレントモード（足軽の戦国echo表示を無効化・API節約）"
             echo "                      未指定時はshoutモード（タスク完了時に戦国風echo表示）"
             echo "  -h, --help          このヘルプを表示"
@@ -1435,6 +1453,8 @@ while [[ $# -gt 0 ]]; do
             echo "  ./shutsujin_departure.sh -c -k         # クリーンスタート＋決戦の陣"
             echo "  ./shutsujin_departure.sh -shell zsh   # zsh用プロンプトで起動"
             echo "  ./shutsujin_departure.sh --shogun-no-thinking  # 将軍のthinkingを無効化（中継特化）"
+            echo "  ./shutsujin_departure.sh --auto-mode-on        # permission auto-approved で起動"
+            echo "  ./shutsujin_departure.sh --permission-mode plan  # permission mode を明示指定"
             echo "  ./shutsujin_departure.sh -S           # サイレントモード（echo表示なし）"
             echo ""
             echo "CLI/モデル構成:"
@@ -2058,7 +2078,7 @@ if [ "$SETUP_ONLY" = false ]; then
 
     # 将軍: CLI Adapter経由でコマンド構築
     _shogun_cli_type="claude"
-    _shogun_cmd="claude --model opus --dangerously-skip-permissions"
+    _shogun_cmd="claude --model opus $PERMISSION_FLAG"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         _shogun_cli_type=$(resolve_cli_type_for_agent "shogun")
         _shogun_cmd=$(build_cli_command_with_type "shogun" "$_shogun_cli_type")
@@ -2086,7 +2106,7 @@ if [ "$SETUP_ONLY" = false ]; then
 
     # 軍師: CLI Adapter経由でコマンド構築
     _gunshi_cli_type="claude"
-    _gunshi_cmd="claude --model opus --effort max --dangerously-skip-permissions"
+    _gunshi_cmd="claude --model opus --effort max $PERMISSION_FLAG"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         _gunshi_cli_type=$(resolve_cli_type_for_agent "gunshi")
         _gunshi_cmd=$(build_cli_command_with_type "gunshi" "$_gunshi_cli_type")
@@ -2115,7 +2135,7 @@ if [ "$SETUP_ONLY" = false ]; then
         _agent="${MULTIAGENT_IDS[$_idx]}"
         if [[ "$_agent" == karo* ]]; then
             _agent_cli_type="claude"
-            _agent_cmd="claude --model opus --effort max --dangerously-skip-permissions"
+            _agent_cmd="claude --model opus --effort max $PERMISSION_FLAG"
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
                 _agent_cli_type=$(resolve_cli_type_for_agent "$_agent")
                 _agent_cmd=$(build_cli_command_with_type "$_agent" "$_agent_cli_type")
@@ -2125,16 +2145,16 @@ if [ "$SETUP_ONLY" = false ]; then
             _ashi_num="${_agent#ashigaru}"
             _agent_cli_type="claude"
             if [ "$KESSEN_MODE" = true ]; then
-                _agent_cmd="claude --model opus --effort max --dangerously-skip-permissions"
+                _agent_cmd="claude --model opus --effort max $PERMISSION_FLAG"
             elif [ "${_ashi_num:-0}" -le 4 ]; then
-                _agent_cmd="claude --model sonnet --effort max --dangerously-skip-permissions"
+                _agent_cmd="claude --model sonnet --effort max $PERMISSION_FLAG"
             else
-                _agent_cmd="claude --model opus --effort max --dangerously-skip-permissions"
+                _agent_cmd="claude --model opus --effort max $PERMISSION_FLAG"
             fi
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
                 _agent_cli_type=$(resolve_cli_type_for_agent "$_agent")
                 if [ "$KESSEN_MODE" = true ] && [ "$_agent_cli_type" = "claude" ]; then
-                    _agent_cmd="claude --model opus --effort max --dangerously-skip-permissions"
+                    _agent_cmd="claude --model opus --effort max $PERMISSION_FLAG"
                 else
                     _agent_cmd=$(build_cli_command_with_type "$_agent" "$_agent_cli_type")
                 fi

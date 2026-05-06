@@ -6,7 +6,7 @@
 #   T-001~T-002: 引数バリデーション
 #   T-003~T-004: 正常書き込み（新規/追記）
 #   T-005: メッセージID一意性
-#   T-006~T-007: デフォルト値（type/from）
+#   T-006~T-007: type/from厳格バリデーションとカスタム値
 #   T-008~T-009: Overflow Protection（50件制限）
 #   T-010: flock競合時のリトライ
 #   T-011: 特殊文字のエスケープ処理
@@ -72,6 +72,12 @@ teardown() {
     run bash "$TEST_INBOX_WRITE" "test_agent"
     [ "$status" -eq 1 ]
     [[ "$output" =~ "Usage" ]]
+}
+
+@test "T-002c: self-send (from == target) → exit 1 with REJECTED" {
+    run bash "$TEST_INBOX_WRITE" "karo" "self message" "cmd_new" "karo"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "REJECTED" ]]
 }
 
 # =============================================================================
@@ -149,8 +155,8 @@ EOF
 
 @test "T-005: message ID uniqueness → 2 rapid writes produce different IDs" {
     # 2回連続書き込み
-    bash "$TEST_INBOX_WRITE" "test_agent" "メッセージA"
-    bash "$TEST_INBOX_WRITE" "test_agent" "メッセージB"
+    bash "$TEST_INBOX_WRITE" "test_agent" "メッセージA" "test_type" "sender_a"
+    bash "$TEST_INBOX_WRITE" "test_agent" "メッセージB" "test_type" "sender_b"
 
     # python3で検証
     python3 <<EOF
@@ -171,27 +177,13 @@ EOF
 }
 
 # =============================================================================
-# T-006: デフォルト値 — type未指定でwake_up
+# T-006: type/from未指定はエラー
 # =============================================================================
 
-@test "T-006: type/from default values → type=wake_up, from=unknown when not specified" {
+@test "T-006: missing type/from → exit 1 with Usage message" {
     run bash "$TEST_INBOX_WRITE" "test_agent" "デフォルトテスト"
-    [ "$status" -eq 0 ]
-
-    # python3で検証
-    python3 <<EOF
-import yaml
-
-with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
-    data = yaml.safe_load(f)
-
-msg = data['messages'][0]
-
-assert msg['type'] == 'wake_up', f'Expected type=wake_up, got {msg["type"]}'
-assert msg['from'] == 'unknown', f'Expected from=unknown, got {msg["from"]}'
-
-print('T-006: PASS')
-EOF
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "Usage" ]]
 }
 
 # =============================================================================
@@ -245,7 +237,7 @@ with open('$TEST_INBOX_DIR/test_agent.yaml', 'w') as f:
 EOF
 
     # 新規メッセージ1件書き込み
-    run bash "$TEST_INBOX_WRITE" "test_agent" "新規メッセージ"
+    run bash "$TEST_INBOX_WRITE" "test_agent" "新規メッセージ" "test_type" "sender_new"
     [ "$status" -eq 0 ]
 
     # 検証: 合計50件以下、新規メッセージは存在
@@ -305,7 +297,7 @@ with open('$TEST_INBOX_DIR/test_agent.yaml', 'w') as f:
 EOF
 
     # 新規メッセージ1件書き込み（未読20→21件になる）
-    run bash "$TEST_INBOX_WRITE" "test_agent" "新規未読"
+    run bash "$TEST_INBOX_WRITE" "test_agent" "新規未読" "test_type" "sender_new"
     [ "$status" -eq 0 ]
 
     # 検証: 未読21件が全て保持される
@@ -380,7 +372,7 @@ EOF
 ブレース: {key: value}
 配列: [1, 2, 3]"
 
-    run bash "$TEST_INBOX_WRITE" "test_agent" "$SPECIAL_CONTENT"
+    run bash "$TEST_INBOX_WRITE" "test_agent" "$SPECIAL_CONTENT" "test_type" "sender_special"
     [ "$status" -eq 0 ]
 
     # 検証: 特殊文字が正しく保存・復元されること
@@ -412,7 +404,7 @@ EOF
     SPECIAL_CONTENT="前置き ''' 中身
 次の行も維持する"
 
-    run bash "$TEST_INBOX_WRITE" "test_agent" "$SPECIAL_CONTENT"
+    run bash "$TEST_INBOX_WRITE" "test_agent" "$SPECIAL_CONTENT" "test_type" "sender_special"
     [ "$status" -eq 0 ]
 
     python3 <<EOF
@@ -443,7 +435,7 @@ EOF
     [ ! -d "$TEST_INBOX_DIR" ]
 
     # メッセージ書き込み
-    run bash "$TEST_INBOX_WRITE" "test_agent" "自動作成テスト"
+    run bash "$TEST_INBOX_WRITE" "test_agent" "自動作成テスト" "test_type" "sender_auto"
     [ "$status" -eq 0 ]
 
     # ディレクトリとファイルが作成されていることを確認
@@ -512,7 +504,7 @@ EOF
     printf '/tmp/fake-inbox-path\n' > "$TEST_TMPDIR/queue/inbox"
     [ -f "$TEST_TMPDIR/queue/inbox" ]
 
-    run bash "$TEST_INBOX_WRITE" "shogun" "復旧テスト"
+    run bash "$TEST_INBOX_WRITE" "shogun" "復旧テスト" "test_type" "sender_repair"
     [ "$status" -eq 0 ]
     [ -d "$TEST_TMPDIR/queue/inbox" ]
     [ -f "$TEST_TMPDIR/queue/inbox/shogun.yaml" ]

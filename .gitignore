@@ -98,6 +98,8 @@
 !scripts/
 !scripts/inbox_write.sh
 !scripts/inbox_watcher.sh
+!scripts/session_start_hook.sh
+!scripts/dashboard-viewer.py
 !scripts/watcher_supervisor.sh
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh
@@ -113,6 +115,14 @@
 !scripts/goza_layout_autosave.sh
 !scripts/shogun_to_karo_bridge.py
 !scripts/shogun_to_karo_bridge_daemon.sh
+
+# GitHub metadata
+!.github/
+!.github/FUNDING.yml
+
+# Memory template
+!memory/
+!memory/MEMORY.md.sample
 !scripts/karo_done_to_shogun_bridge.py
 !scripts/karo_done_to_shogun_bridge_daemon.sh
 !scripts/history_book.sh

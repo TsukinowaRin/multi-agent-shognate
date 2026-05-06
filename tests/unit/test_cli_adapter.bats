@@ -5,6 +5,10 @@
 # --- セットアップ ---
 
 setup() {
+    unset PERMISSION_FLAG
+    unset NVM_BIN
+    unset PNPM_HOME
+
     # テスト用のtmpディレクトリ
     TEST_TMP="$(mktemp -d)"
 
@@ -491,6 +495,13 @@ assert_codex_shared_auth_custom_bootstrap() {
     [ "$result" = "MAX_THINKING_TOKENS=0 AGENT_ID=shogun claude --model opus --dangerously-skip-permissions" ]
 }
 
+@test "build_cli_command: claude は PERMISSION_FLAG を反映する" {
+    load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
+    PERMISSION_FLAG="--permission-mode plan"
+    result=$(build_cli_command "shogun")
+    [ "$result" = "MAX_THINKING_TOKENS=0 AGENT_ID=shogun claude --model opus --permission-mode plan" ]
+}
+
 @test "build_cli_command: claude + model auto → --model を付けない" {
     cat > "${TEST_TMP}/settings_claude_auto.yaml" << 'YAML'
 cli:
@@ -602,7 +613,7 @@ YAML
 exit 0
 SH
     chmod +x "${TEST_TMP}/bin/kimi-cli"
-    PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru3")
+    result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "ashigaru3")
     [ "$result" = "AGENT_ID=ashigaru3 ${TEST_TMP}/bin/kimi-cli --yolo --model k2.5" ]
 }
 
@@ -615,42 +626,42 @@ SH
 @test "build_cli_command: gemini + model auto → gemini --yolo" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
     [ "$result" = "AGENT_ID=ashigaru2 gemini --yolo" ]
 }
 
 @test "build_cli_command: gemini 3 pro + thinking_level → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "gunshi")
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "gunshi")
     [ "$result" = "AGENT_ID=gunshi gemini --yolo --model mas-gunshi" ]
 }
 
 @test "build_cli_command: gemini 3 flash + thinking_level minimal → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru1")
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru1")
     [ "$result" = "AGENT_ID=ashigaru1 gemini --yolo --model mas-ashigaru1" ]
 }
 
 @test "build_cli_command: gemini 2.5 + thinking_budget → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
     [ "$result" = "AGENT_ID=ashigaru2 gemini --yolo --model mas-ashigaru2" ]
 }
 
 @test "build_cli_command: gemini auto + thinking_level → inferred alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "ashigaru3")
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru3")
     [ "$result" = "AGENT_ID=ashigaru3 gemini --yolo --model mas-ashigaru3" ]
 }
 
 @test "build_cli_command: shogun gemini は未設定なら alias を使わない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_gemini_default.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "shogun")
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
     [ "$result" = "AGENT_ID=shogun gemini --yolo" ]
 }
 
@@ -665,7 +676,7 @@ cli:
 YAML
     load_adapter_with "${TEST_TMP}/settings_gemini_invalid_model.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command "shogun")
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
     [ "$result" = "AGENT_ID=shogun gemini --yolo" ]
 }
 
@@ -684,7 +695,7 @@ exit 0
 SH
     chmod +x "${TEST_TMP}/bin/gemini-cli"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="${TEST_TMP}/bin:/usr/bin:/bin" result=$(build_cli_command "ashigaru2")
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "ashigaru2")
     [ "$result" = "AGENT_ID=ashigaru2 ${TEST_TMP}/bin/gemini-cli --yolo" ]
 }
 
@@ -771,7 +782,7 @@ SH
 @test "build_cli_command_with_startup_prompt: gemini は interactive prompt フラグを付与する" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" result=$(build_cli_command_with_startup_prompt "ashigaru2" "gemini" "ready:ashigaru2")
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command_with_startup_prompt "ashigaru2" "gemini" "ready:ashigaru2")
     [ "$result" = "AGENT_ID=ashigaru2 gemini --yolo -i ready:ashigaru2" ]
 }
 

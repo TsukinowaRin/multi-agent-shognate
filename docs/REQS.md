@@ -1,7 +1,23 @@
 # Requirements (Normalized)
 
-最終更新: 2026-04-10
+最終更新: 2026-05-06
 出典: 直近ユーザープロンプト
+
+## 追補（2026-05-06: upstream 最新を取り込み fork 独自機能を保持する）
+### 要求
+1. fork 元 `upstream/main` の最新コードをこの Shogunate fork に反映すること。
+2. その後、このリポジトリ独自の機能（fork 元との差分）を保持・再適用すること。
+3. fork 元との差分がどのような機能群なのかを説明すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `git fetch upstream --prune`
+   - 期待結果: `upstream/main` が最新化され、最新 tag が取得される。
+2. コマンド: `git merge upstream/main`
+   - 期待結果: merge が完了し、`git diff --name-only --diff-filter=U` が空になる。
+3. コマンド: 関連する syntax / unit tests
+   - 期待結果: 少なくとも merge で触れた shell / Python / instruction 周辺の検証が PASS する。
+4. 報告:
+   - 期待結果: 上流から取り込んだ主な変更と、fork 独自機能の概要が説明される。
 
 ## 追補（2026-04-10: main repo runtime で軽い task を 2 本連続完走できることを確認する）
 ### 要求

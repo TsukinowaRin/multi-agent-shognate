@@ -1142,6 +1142,31 @@ PY
     echo "$default_nudge"
 }
 
+# ─── Send startup prompt after context reset ───
+# Claude / Codex clear/new 後に persona と task recovery を再確立する。
+send_startup_prompt() {
+    local attempt
+    for attempt in 1 2 3; do
+        sleep 5
+        if ! agent_is_busy; then
+            echo "[$(date)] [STARTUP] $AGENT_ID idle after ${attempt}x5s — sending startup prompt" >&2
+            break
+        fi
+        echo "[$(date)] [STARTUP] $AGENT_ID still busy after ${attempt}x5s — retrying" >&2
+    done
+
+    local startup_prompt=""
+    if type get_startup_prompt &>/dev/null; then
+        startup_prompt=$(get_startup_prompt "$AGENT_ID" 2>/dev/null || true)
+    fi
+    if [[ -z "$startup_prompt" ]]; then
+        startup_prompt="Session Start — do ALL of this in one turn: identify yourself, read queue/tasks/${AGENT_ID}.yaml, read queue/inbox/${AGENT_ID}.yaml, mark processed inbox read:true, then execute assigned work to completion."
+    fi
+
+    echo "[$(date)] [STARTUP] Sending startup prompt to $AGENT_ID: ${startup_prompt:0:80}..." >&2
+    send_text_and_enter "$startup_prompt" "startup prompt" || true
+}
+
 # ─── Send CLI command via pty direct write ───
 # For /clear and /model only. These are CLI commands, not conversation messages.
 # CLI_TYPE別分岐: claude→そのまま, codex→/clear対応・/modelスキップ,
@@ -1176,6 +1201,7 @@ send_cli_command() {
                     return 1
                 fi
                 sleep 3
+                send_startup_prompt
                 return 0
             fi
             if [[ "$cmd" == /model* ]]; then
@@ -1287,6 +1313,9 @@ send_cli_command() {
     # /clear needs extra wait time before follow-up
     if [[ "$actual_cmd" == "/clear" ]]; then
         sleep 3
+        if [[ "$effective_cli" == "claude" ]]; then
+            send_startup_prompt
+        fi
     else
         sleep 1
     fi

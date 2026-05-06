@@ -460,6 +460,7 @@ build_cli_command_with_type() {
     fi
     local reasoning_effort
     reasoning_effort="$(get_agent_reasoning_effort "$agent_id")"
+    local permission_flag="${PERMISSION_FLAG:---dangerously-skip-permissions}"
     if [[ -n "$agent_id" ]]; then
         agent_env_prefix="AGENT_ID=$(_cli_adapter_shell_quote "$agent_id") "
     fi
@@ -478,7 +479,7 @@ build_cli_command_with_type() {
             if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
                 cmd="$cmd --model $model"
             fi
-            cmd="$cmd --dangerously-skip-permissions"
+            cmd="$cmd $permission_flag"
             echo "${prefix}${agent_env_prefix}${cmd}"
             ;;
         codex)
@@ -557,7 +558,7 @@ build_cli_command_with_type() {
             echo "${agent_env_prefix}${kilo_cmd}"
             ;;
         *)
-            echo "${agent_env_prefix}claude --dangerously-skip-permissions"
+            echo "${agent_env_prefix}claude $permission_flag"
             ;;
     esac
 }

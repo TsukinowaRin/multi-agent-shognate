@@ -454,7 +454,7 @@
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `git clone --branch codex/upstream-sync-2026-03-29 <origin> Shogunate-test`
-   - 期待結果: [Shogunate-test](/mnt/d/Git_WorkSpace/multi-agent-shognate/Shogunate-test) が作成され、HEAD が `1d4e127` 以降である。
+   - 期待結果: [Shogunate-test](<workspace>/Shogunate-test) が作成され、HEAD が `1d4e127` 以降である。
 2. コマンド: `CODEX_HOME=<workspace-local home> codex --search exec ... "返答は READY のみ。"`
    - 期待結果: `READY` を返し、401 や browser sign-in prompt では止まらない。
 3. コマンド: `TMUX_TMPDIR=/tmp/Shogunate-test bash shutsujin_departure.sh -c`

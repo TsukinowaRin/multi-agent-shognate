@@ -50,7 +50,7 @@
 ## Surprises & Discoveries
 
 - Observation: 表層 `D:\Git_WorkSpace\multi-agent-shognate` ではなく、内側 `multi-agent-shognate/` が実Gitリポジトリだった。
-  Evidence: `git -C multi-agent-shognate rev-parse --show-toplevel --git-dir --abbrev-ref HEAD` が `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`, `.git`, `codex/upstream-sync-2026-03-29` を返した。
+  Evidence: `git -C multi-agent-shognate rev-parse --show-toplevel --git-dir --abbrev-ref HEAD` が `<workspace>/multi-agent-shognate`, `.git`, `codex/upstream-sync-2026-03-29` を返した。
 - Observation: 上流は v4.4.2, v4.5.0, v4.6.0 の tag を追加していた。
   Evidence: `git fetch upstream --prune` の出力。
 - Observation: この fork の shell テストは、実環境の `NVM_BIN` / `PNPM_HOME` にある CLI を拾うと「未インストール」系ケースが不安定になる。

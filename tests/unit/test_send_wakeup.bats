@@ -640,7 +640,7 @@ YAML
 
 › Write tests for @filename
 
-  gpt-5.4 high · 92% left · /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate"
+  gpt-5.4 high · 92% left · <workspace>/multi-agent-shognate"
         source "'"$TEST_HARNESS"'"
         agent_is_busy
     '

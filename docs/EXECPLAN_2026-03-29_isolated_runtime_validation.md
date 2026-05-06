@@ -3,7 +3,7 @@
 ## Context
 - ユーザー要求は、最新統合済みコードを元の作業ツリーとは別の隔離フォルダへコピーし、そのコピーで実起動と代表タスク実行まで確認すること。
 - この repo は tmux session、`queue/`, `status/`, `logs/`, repo-local `HOME` など実行時副作用を持つため、元ツリーを直接使うと前回状態と混ざる。
-- ワークスペース外参照は禁止されているため、隔離先は `/mnt/d/Git_WorkSpace/multi-agent-shognate` 配下に閉じ込める。
+- ワークスペース外参照は禁止されているため、隔離先は `<workspace>` 配下に閉じ込める。
 
 ## Scope
 - ワークスペース内に隔離コピーを作成する。
@@ -265,7 +265,7 @@
 - Observation: `cmd_001` の完走自体は可能だが、`karo_done_to_shogun_bridge.log` には clean start や daemon 再起動のたびに `primed\t...` が繰り返し追記され、最近の `sent\tcmd_001` が埋もれやすかった。
   Evidence: `tail -n 40 logs/karo_done_to_shogun_bridge.log` で `sent\tcmd_001` の前後が `primed\tcmd_001...` の繰り返しで占められていた。
 - Observation: `burnin_probe_eleven_retest` では `README/tests` lane が `summarize_name_scores` を固定した一方、`app.py` lane は `summarize_scores` を実装し、parallel split 後の shared contract drift が依然として起きた。
-  Evidence: [runtime_sandboxes/burnin_probe_eleven_retest/app.py](/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate/runtime_sandboxes/burnin_probe_eleven_retest/app.py) には `summarize_scores`、[runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py](/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate/runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py) には `summarize_name_scores` が記録され、手動 `python3 -m unittest runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py` は import error で失敗した。
+  Evidence: [runtime_sandboxes/burnin_probe_eleven_retest/app.py](<workspace>/multi-agent-shognate/runtime_sandboxes/burnin_probe_eleven_retest/app.py) には `summarize_scores`、[runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py](<workspace>/multi-agent-shognate/runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py) には `summarize_name_scores` が記録され、手動 `python3 -m unittest runtime_sandboxes/burnin_probe_eleven_retest/tests/test_app.py` は import error で失敗した。
 - Observation: `runtime_cli_pref_daemon` は isolated tmux probe では残る一方、fresh start では `goza-runtime` から消えることがあり、起動後の self-heal が必要だった。
   Evidence: `tmux list-windows -t goza-runtime` では `watcher` / bridge / `inbox-*` だけが残り、`runtime-pref` が欠落していた。manual `tmux new-window ... runtime_cli_pref_daemon.sh` では残った。
 - Decision: hard `usage-limit` 判定は raw pane text ではなく compact 文字列で行い、空白・折返しを落として `youvehityourusagelimit` / `tryagainat` を拾う。

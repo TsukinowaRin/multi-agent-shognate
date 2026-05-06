@@ -23,7 +23,7 @@
 ## 現在の作業対象
 
 - main repo:
-  - `/mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate`
+  - `<workspace>/multi-agent-shognate`
 - branch:
   - `codex/upstream-sync-2026-03-29`
 - 現在の HEAD:
@@ -178,7 +178,7 @@ role ごとの wake 条件は明文化済み。
 ### A. 現状確認
 
 ```bash
-cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate
+cd <workspace>/multi-agent-shognate
 git status --short --untracked-files=all
 sed -n '1,200p' dashboard.md
 sed -n '1,240p' queue/shogun_to_karo.yaml
@@ -194,7 +194,7 @@ sed -n '1,240p' queue/inbox/karo.yaml
 ### B. 別アカウントへ shared auth を切り替える場合
 
 ```bash
-cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate
+cd <workspace>/multi-agent-shognate
 
 tmux kill-session -t goza-no-ma 2>/dev/null || true
 tmux kill-session -t goza-runtime 2>/dev/null || true
@@ -216,7 +216,7 @@ shared auth なので 1 回で十分。
 ログイン後:
 
 ```bash
-cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate
+cd <workspace>/multi-agent-shognate
 bash shutsujin_departure.sh -c
 ```
 

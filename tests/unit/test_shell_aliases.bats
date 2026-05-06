@@ -18,7 +18,7 @@ setup_file() {
 @test "install_shell_aliases は stale alias を repo-local source block へ置き換える" {
     rc_file="$BATS_TEST_TMPDIR/bashrc"
     cat > "$rc_file" <<'EOF'
-alias cgo='bash /mnt/d/Git_WorkSpace/Human-Emulator/scripts/goza_no_ma.sh'
+alias cgo='bash /opt/old-human-emulator/scripts/goza_no_ma.sh'
 export SAMPLE_FLAG=1
 EOF
 

@@ -464,6 +464,7 @@ def apply_pending_update_request() -> Tuple[bool, str]:
     try:
         if action == "manual":
             applied, version_after = run_update("manual")
+            update_integrated_tools()
         else:
             applied, version_after = upstream_sync(dry_run=False)
     except Exception as exc:
@@ -1004,9 +1005,27 @@ def run_update(mode: str) -> Tuple[bool, str]:
     return False, current_version_label(state)
 
 
+def update_integrated_tools() -> None:
+    codd_check_path = ROOT / "scripts" / "codd_check.sh"
+    if not codd_check_path.exists():
+        print("[update_manager] skip integrated tools: scripts/codd_check.sh not found")
+        return
+
+    print("[update_manager] updating integrated tools: CoDD")
+    completed = subprocess.run(
+        ["bash", str(codd_check_path), "install"],
+        cwd=ROOT,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(f"integrated tool update failed: CoDD exit={completed.returncode}")
+
+
 def manual_update(args: argparse.Namespace) -> int:
     maybe_toggle_auto_release(args)
     applied, version_after = run_update("manual")
+    if not args.skip_integrated_tools:
+        update_integrated_tools()
     return 10 if applied else 0
 
 
@@ -1106,6 +1125,7 @@ def build_parser() -> argparse.ArgumentParser:
     manual_p = sub.add_parser("manual", help="run manual update")
     manual_p.add_argument("--enable-auto", action="store_true")
     manual_p.add_argument("--disable-auto", action="store_true")
+    manual_p.add_argument("--skip-integrated-tools", action="store_true")
     manual_p.set_defaults(func=manual_update)
 
     apply_release_p = sub.add_parser("apply-source-release", help="apply a specific release snapshot from a source tree")

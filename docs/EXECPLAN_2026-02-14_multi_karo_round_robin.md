@@ -4,6 +4,7 @@
 - 足軽増員時に家老が複数化されても、担当境界が固定されず報告先がぶれる問題があった。
 - `inbox_write` が経路制約を持たず、非担当家老宛や家老同士直接通信を防げていなかった。
 - watcher監視対象が単一家老前提のため、`karo1..karoN` 構成で監視漏れが起きる。
+- 2026-05-07 に、家老1人あたりの実用上限を足軽6人とし、足軽7人以上で複数家老を実働させる方針に更新した。
 
 ## Scope
 - `lib/topology_adapter.sh` の均等割り振り関数を起動フローで使用。
@@ -11,6 +12,9 @@
 - `scripts/inbox_write.sh` に送信経路ポリシーを実装。
 - `scripts/watcher_supervisor.sh` を多家老監視へ対応。
 - 役職指示書と設定CUIに担当固定ルール/確認導線を反映。
+- tmux `goza-no-ma` で `KARO_AGENTS` 全員の pane / CLI / bootstrap を起動する。
+- `karo1` を筆頭家老として `queue/runtime/lead_karo` に記録し、将軍との報告経路を集約する。
+- 家老間の連携は inbox 直接通信ではなく `queue/runtime/karo_coordination.yaml` の構造化 coordination board を使う。
 - テスト追加（topology/inbox_write）と既存回帰確認。
 
 ## Acceptance Criteria
@@ -18,7 +22,8 @@
 2. 家老別の割り当て人数差は常に最大1以内。
 3. `inbox_write` で足軽→非担当家老宛を拒否し、担当宛は通過する。
 4. 家老→家老（別家老）を拒否する。
-5. `bats tests/unit/test_topology_adapter.bats tests/test_inbox_write.bats` がPASS。
+5. 自動構成では足軽6人までは `karo`、7人から `karo1` / `karo2`、13人から `karo1` / `karo2` / `karo3` になる。
+6. `bats tests/unit/test_topology_adapter.bats tests/test_inbox_write.bats tests/unit/test_mux_parity.bats` がPASS。
 
 ## Work Breakdown
 1. 起動時 owner map 再生成の実装確認（tmux/zellij）。
@@ -35,6 +40,9 @@
 - 2026-02-14: `instructions/karo.md` / `instructions/ashigaru.md` に担当固定・非担当禁止を追記。
 - 2026-02-14: `tests/unit/test_topology_adapter.bats` を追加し、均等割り振り検証ケースを実装。
 - 2026-02-14: `tests/test_inbox_write.bats` に送信経路制約の回帰テストを追加。
+- 2026-05-07: 家老自動増員の閾値を足軽6人/家老へ変更する。
+- 2026-05-07: `goza-no-ma` で複数家老 pane を実働化し、`karo1` を筆頭家老として記録する。
+- 2026-05-07: 家老間の自由 inbox 直接通信は禁止のまま、構造化 coordination board を追加する。
 
 ## Surprises & Discoveries
 - 監視再同期ロジックは `pane_target` 不一致時に古い watcher を残しやすく、複数家老で顕在化しやすかった。
@@ -44,8 +52,16 @@
 - D1: 割り振りは「起動時固定」のみを採用し、運用中の動的再配分は対象外とした。
 - D2: 送信経路の最終防衛線は `inbox_write` に置き、指示書違反を実行時にブロックする。
 - D3: watcher は owner map 直接依存より `topology_resolve_karo_agents` 優先で解決し、設定由来の再現性を優先。
+- D4: 複数家老時は `karo1` を筆頭家老とし、将軍への報告は筆頭に集約する。
+- D5: 家老間は直接 inbox 会話を解禁しない。依存・衝突・handoff・merge は `queue/runtime/karo_coordination.yaml` に構造化して残す。
 
 ## Outcomes & Retrospective
 - 複数家老構成での足軽担当境界が明確化され、誤配送の自動検知/拒否が可能になった。
 - 監視対象が多家老・可変足軽構成に追随し、運用時の監視漏れリスクを下げた。
 - 残課題は、`karo_gashira` を含む上位統制フローの明確な運用ルールを別ExecPlanで整理すること。
+
+## Verification 2026-05-07
+- `bash -n shutsujin_departure.sh lib/topology_adapter.sh scripts/inbox_write.sh scripts/configure_agents.sh first_setup.sh` → PASS。
+- `python3 -m py_compile scripts/shogun_to_karo_bridge.py scripts/karo_done_to_shogun_bridge.py scripts/configure_runtime_roles.py` → PASS。
+- `bats tests/unit/test_topology_adapter.bats tests/unit/test_mux_parity.bats tests/test_inbox_write.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_karo_done_to_shogun_bridge.bats` → PASS。
+- `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_runtime_roles.bats tests/unit/test_build_system.bats` → PASS。

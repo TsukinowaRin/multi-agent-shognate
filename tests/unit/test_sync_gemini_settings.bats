@@ -55,6 +55,8 @@ assert aliases["mas-gunshi"]["modelConfig"]["generateContentConfig"]["thinkingCo
 assert aliases["mas-ashigaru1"]["modelConfig"]["generateContentConfig"]["thinkingConfig"]["thinkingLevel"] == "MINIMAL"
 assert aliases["mas-ashigaru2"]["modelConfig"]["generateContentConfig"]["thinkingConfig"]["thinkingBudget"] == -1
 assert aliases["mas-ashigaru3"]["modelConfig"]["model"] == "gemini-3-pro-preview"
+assert cfg["general"]["enableAutoUpdate"] is False
+assert cfg["general"]["enableAutoUpdateNotification"] is False
 print("ok")
 PY
   [ "$status" -eq 0 ]

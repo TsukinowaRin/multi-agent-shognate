@@ -60,7 +60,7 @@ Read-cost controls:
 | 2〜4 min | Escape×2 + nudge | Cursor position bug workaround |
 | 4 min+ | `/clear` sent (max once per 5 min) | Force session reset + YAML re-read |
 
-## Inbox Processing Protocol (karo/ashigaru)
+## Inbox Processing Protocol (karo/ashigaru/gunshi)
 
 When you receive `inboxN` (e.g. `inbox3`):
 1. `Read queue/inbox/{your_id}.yaml`
@@ -93,6 +93,15 @@ When karo sends `type: task_assigned`:
 - The inbox message should include the assigned `task_id`
 - The inbox message should name the exact task file path, e.g. `queue/tasks/ashigaru3.yaml`
 - Keep the text short, but never omit the task file reference
+
+When gunshi receives `type: task_assigned`:
+
+1. Mark the inbox entry `read: true`
+2. Immediately read `queue/tasks/gunshi.yaml`
+3. Produce strategy / decomposition / risk / evaluation output only
+4. Write `queue/reports/gunshi_report.yaml`
+5. Notify Karo with `bash scripts/inbox_write.sh karo "軍師、分析完了。queue/reports/gunshi_report.yaml を確認されたし。" report_received gunshi`
+6. Do not implement files, assign ashigaru, update `dashboard.md`, or close cmds
 
 ## Karo Autonomy Rule
 
@@ -128,6 +137,8 @@ Race condition is eliminated: `/clear` wipes old context. Agent re-reads YAML wi
 | Direction | Method | Reason |
 |-----------|--------|--------|
 | Ashigaru → Karo | Report YAML + inbox_write | File-based notification |
+| Gunshi → Karo | `queue/reports/gunshi_report.yaml` + inbox_write | Strategic analysis / QC notification |
+| Karo → Gunshi | `queue/tasks/gunshi.yaml` + inbox_write | Strategic task delegation |
 | Karo → Shogun/Lord | dashboard.md update only | Karo itself does not inbox the Shogun directly |
 | Top → Down | YAML + inbox_write | Standard wake-up |
 

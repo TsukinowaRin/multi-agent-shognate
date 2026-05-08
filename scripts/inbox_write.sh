@@ -46,10 +46,16 @@ lookup_owner_karo() {
 
 validate_route_policy() {
     local owner=""
-    # 家老同士の直接通信は禁止（自己宛は許可）
+    # 家老同士の自由な直接通信は禁止。構造化 coordination board の wake-up notice だけ許可。
     if is_karo_agent "$FROM" && is_karo_agent "$TARGET" && [ "$FROM" != "$TARGET" ]; then
-        echo "[inbox_write] route rejected: karo-to-karo direct communication is forbidden ($FROM -> $TARGET)" >&2
-        return 1
+        case "$TYPE" in
+            coordination_notice|dependency_notice|conflict_notice|handoff_request|merge_request|status_sync)
+                ;;
+            *)
+                echo "[inbox_write] route rejected: karo-to-karo free direct communication is forbidden ($FROM -> $TARGET, type=$TYPE). Use queue/runtime/karo_coordination.yaml plus coordination_notice." >&2
+                return 1
+                ;;
+        esac
     fi
 
     # 足軽→家老は担当固定（owner map がある場合）

@@ -51,6 +51,49 @@ generate_owner_map() {
     build_even_ownership_map "$OWNER_MAP" "${agents[@]}"
 }
 
+write_auto_settings() {
+    local ashigaru_count="$1"
+    local max_per_karo="${2:-}"
+    {
+        echo "topology:"
+        echo "  active_ashigaru:"
+        for ((i=1; i<=ashigaru_count; i++)); do
+            echo "    - ashigaru${i}"
+        done
+        if [ -n "$max_per_karo" ]; then
+            echo "  karo:"
+            echo "    mode: auto"
+            echo "    max_ashigaru_per_karo: ${max_per_karo}"
+        fi
+    } > "$SETTINGS_PATH"
+}
+
+resolve_karos() {
+    export TOPOLOGY_SETTINGS_PATH="$SETTINGS_PATH"
+    # shellcheck source=/dev/null
+    source "$ADAPTER_SCRIPT"
+    topology_resolve_karo_agents
+}
+
+@test "auto mode: 足軽6人までは単一家老、7人から複数家老" {
+    write_auto_settings 6
+    run resolve_karos
+    [ "$status" -eq 0 ]
+    [ "$output" = "karo" ]
+
+    write_auto_settings 7
+    run resolve_karos
+    [ "$status" -eq 0 ]
+    [ "$output" = $'karo1\nkaro2' ]
+}
+
+@test "auto mode: 各家老が6人を超えないよう13人で3家老になる" {
+    write_auto_settings 13
+    run resolve_karos
+    [ "$status" -eq 0 ]
+    [ "$output" = $'karo1\nkaro2\nkaro3' ]
+}
+
 @test "M=10, N=2 のとき 5/5 で均等配分される" {
     write_manual_settings 10 karo1 karo2
     generate_owner_map 10

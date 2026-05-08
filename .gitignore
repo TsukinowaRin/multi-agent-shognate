@@ -71,10 +71,20 @@
 !install.bat
 !updater.bat
 !Shogunate-Uninstaller.bat
+!Shogunate-Runtime.bat
+!Shogunate-Runtime.sh
+!Shogunate-Runtime.command
+!Shogunate-Configure-Roles.bat
+!Shogunate-Configure-Roles.sh
+!Shogunate-Configure-Roles.command
 !scripts/stop_and_apply_update.sh
 
 # Development tooling
 !Makefile
+
+# Optional CoDD integration config (runtime outputs under .codd stay ignored unless whitelisted)
+!.codd/
+!.codd/codd.yaml
 
 # Config (sample files only, no secrets)
 !config/
@@ -106,6 +116,8 @@
 !scripts/build_instructions.sh
 !scripts/localapi_repl.py
 !scripts/configure_agents.sh
+!scripts/configure_runtime_roles.py
+!scripts/codd_check.sh
 !scripts/goza_no_ma.sh
 !scripts/android_tmux_proxy.py
 !scripts/sync_gemini_settings.py

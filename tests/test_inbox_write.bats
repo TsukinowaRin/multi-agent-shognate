@@ -492,7 +492,13 @@ EOF
 @test "T-015: karo-to-karo direct message is rejected" {
     run bash "$TEST_INBOX_WRITE" "karo2" "家老間連携テスト" "cmd_new" "karo1"
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "karo-to-karo direct communication is forbidden" ]]
+    [[ "$output" =~ "karo-to-karo free direct communication is forbidden" ]]
+}
+
+@test "T-015b: structured karo coordination notice is allowed" {
+    run bash "$TEST_INBOX_WRITE" "karo2" "coordination board を確認されたし" "coordination_notice" "karo1"
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_INBOX_DIR/karo2.yaml" ]
 }
 
 # =============================================================================

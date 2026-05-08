@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-05-06
+最終更新: 2026-05-08
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -16,6 +16,10 @@
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - portable install / uninstaller 事故対応、修正内容、使うべき release、release asset naming の引き継ぎ。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-05-07_codd_integration.md` - CoDD (`yohey-w/codd-dev`) を標準 coherence gate として導入・更新する計画。
+- `docs/EXECPLAN_2026-05-07_runtime_role_config.md` - CLI種別と足軽数だけを設定し、Linux / Windows WSL / macOS launcher から起動できる簡易設定の計画。
+- `docs/EXECPLAN_2026-05-06_cli_state_isolation.md` - 対応CLIのホスト認証利用と pane-local 設定 / モデル state 分離の計画。
+- `docs/EXECPLAN_2026-05-06_isolated_mixed_cli_runtime.md` - 隔離コピーで指定された Gemini preview / GPT-5.5 / opencode 混在 runtime を起動検証する計画。
 - `docs/EXECPLAN_2026-05-06_android_v4600_release.md` - upstream `v4.6.0` 同期後の Android / installer `android-v4.6.0.0` release 計画。
 - `docs/EXECPLAN_2026-05-06_upstream_v460_sync.md` - upstream `main` / v4.6.0 の最新変更を取り込み、fork 独自機能を保持して再検証する計画（完了）。
 - `docs/EXECPLAN_2026-03-29_isolated_runtime_validation.md` - ワークスペース内 clone / sandbox で runtime を実起動し、実Codex認証待ち・trust prompt・rate-limit / usage-limit prompt・実タスク経路まで検証する計画。
@@ -33,7 +37,7 @@
 - `docs/EXECPLAN_2026-03-11_upstream_cli_only_rebase.md` - upstream `main` 正本化と CLI 拡張差分の再整理計画。
 - `docs/EXECPLAN_2026-02-12_role_instruction_sync.md` - 役職別正本MDの必読化と最適化MD自動同期の実行計画。
 - `docs/EXECPLAN_2026-02-12_startup_event_driven.md` - 初動自動送信/イベント駆動安定化/履歴要約（歴史書）導入の実行計画。
-- `docs/EXECPLAN_2026-02-14_multi_karo_round_robin.md` - 複数家老時の足軽均等割り振りと経路制約の実行計画。
+- `docs/EXECPLAN_2026-02-14_multi_karo_round_robin.md` - 足軽7人以上で複数家老を実働させ、`karo1` を筆頭家老にする均等割り振りと経路制約の計画。
 - `docs/EXECPLAN_2026-02-14_upstream_sync.md` - 上流更新の差分取り込み（Codex model / watcher判定）の実行計画。
 
 ## Plans (superseded / historical)

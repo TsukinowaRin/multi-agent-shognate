@@ -29,7 +29,7 @@ if /I "%~1"=="--auto-on" (
     set "AUTO_ARG=--disable-auto"
 )
 
-echo   [1/3] Checking WSL2 / Ubuntu...
+echo   [1/4] Checking WSL2 / Ubuntu...
 wsl.exe -d Ubuntu -- echo test >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo   [ERROR] Ubuntu on WSL is not ready.
@@ -41,7 +41,23 @@ if %ERRORLEVEL% NEQ 0 (
 echo   [OK] Ubuntu OK
 echo.
 
-echo   [2/3] Resolving WSL path...
+echo   [2/4] Checking Python / venv in WSL...
+wsl.exe -d Ubuntu -- bash -lc "command -v python3 >/dev/null && python3 -m venv --help >/dev/null 2>&1"
+if %ERRORLEVEL% NEQ 0 (
+    echo   [ERROR] Python3 / python3-venv is not ready in Ubuntu.
+    echo           CoDD is integrated by default and Update needs Python in WSL.
+    echo.
+    echo           Ubuntu で実行:
+    echo             sudo apt update
+    echo             sudo apt install -y python3 python3-venv python3-pip
+    echo.
+    pause
+    exit /b 1
+)
+echo   [OK] Python / venv OK
+echo.
+
+echo   [3/4] Resolving WSL path...
 for /f "usebackq delims=" %%I in (`wsl.exe -d Ubuntu -- wslpath -a "%SCRIPT_DIR%"`) do set "REPO_WSL=%%I"
 if not defined REPO_WSL (
     echo   [ERROR] Failed to resolve WSL path from:
@@ -53,7 +69,7 @@ if not defined REPO_WSL (
 echo   [OK] %REPO_WSL%
 echo.
 
-echo   [3/3] Running updater...
+echo   [4/4] Running updater and integrated tool updates...
 wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && python3 scripts/update_manager.py manual %AUTO_ARG%"
 set "UPDATE_EXIT=%ERRORLEVEL%"
 

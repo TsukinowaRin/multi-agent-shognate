@@ -1,4 +1,4 @@
-.PHONY: test build lint check help install-deps clean
+.PHONY: test build lint check help install-deps clean codd codd-install codd-build codd-verify codd-audit
 
 # Default target
 help:
@@ -10,6 +10,8 @@ help:
 	@echo "  make build         - Run build_instructions.sh"
 	@echo "  make lint          - Run shellcheck on lib/ and scripts/"
 	@echo "  make check         - Run build + diff check (CI equivalent)"
+	@echo "  make codd          - Run integrated CoDD DAG verification"
+	@echo "  make codd-install  - Install/update codd-dev into .shogunate/codd-venv"
 	@echo "  make install-deps  - Install test dependencies (bats, helpers)"
 	@echo "  make clean         - Clean test artifacts"
 	@echo ""
@@ -89,6 +91,21 @@ check: build
 		echo "WARNING: build_instructions.sh or instructions/generated not found"; \
 		echo "Skipping diff check (Phase 2 feature)"; \
 	fi
+
+codd:
+	@bash scripts/codd_check.sh verify
+
+codd-install:
+	@bash scripts/codd_check.sh install
+
+codd-build:
+	@bash scripts/codd_check.sh build
+
+codd-verify:
+	@bash scripts/codd_check.sh verify
+
+codd-audit:
+	@bash scripts/codd_check.sh audit
 
 # Install test dependencies
 install-deps:

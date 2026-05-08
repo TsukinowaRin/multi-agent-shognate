@@ -95,12 +95,12 @@ from pathlib import Path
 try:
     import yaml  # type: ignore
 except Exception:
-    print(8)
+    print(6)
     raise SystemExit(0)
 
 settings = Path(sys.argv[1])
 if not settings.exists():
-    print(8)
+    print(6)
     raise SystemExit(0)
 
 cfg = yaml.safe_load(settings.read_text(encoding="utf-8")) or {}
@@ -108,7 +108,7 @@ value = (((cfg.get("topology") or {}).get("karo") or {}).get("max_ashigaru_per_k
 try:
     n = int(value)
 except Exception:
-    n = 8
+    n = 6
 if n < 1:
     n = 1
 print(n)

@@ -155,6 +155,14 @@ def format_status_entries(cmds):
     return labels
 
 
+def read_lead_karo(runtime_dir: Path) -> str:
+    path = runtime_dir / "lead_karo"
+    if not path.exists():
+        return ""
+    value = path.read_text(encoding="utf-8").strip().splitlines()
+    return value[0].strip() if value and value[0].strip() else ""
+
+
 def main() -> int:
     root = Path(os.environ.get("MAS_PROJECT_ROOT", Path(__file__).resolve().parents[1]))
     queue_dir = Path(os.environ.get("MAS_QUEUE_DIR", root / "queue"))
@@ -168,6 +176,7 @@ def main() -> int:
     state_file = Path(os.environ.get("MAS_KARO_DONE_TO_SHOGUN_STATE", runtime_dir / "karo_done_to_shogun.tsv"))
     inbox_write = os.environ.get("MAS_INBOX_WRITE_SCRIPT", str(root / "scripts" / "inbox_write.sh"))
     target_agent = os.environ.get("MAS_SHOGUN_TARGET_AGENT", "shogun")
+    source_agent = os.environ.get("MAS_KARO_DONE_FROM_AGENT") or read_lead_karo(runtime_dir) or "karo"
 
     cmds = collect_commands(cmd_file, archive_file)
     shogun_inbox.parent.mkdir(parents=True, exist_ok=True)
@@ -221,7 +230,7 @@ def main() -> int:
         if summary:
             content += f" 要約: {summary}"
         subprocess.run(
-            [inbox_write, target_agent, content, "cmd_done", "karo"],
+            [inbox_write, target_agent, content, "cmd_done", source_agent],
             check=True,
             cwd=str(root),
         )

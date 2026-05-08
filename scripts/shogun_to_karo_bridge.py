@@ -132,12 +132,23 @@ def format_status_entries(cmds):
     return labels
 
 
+def read_lead_karo(runtime_dir: Path) -> str:
+    path = runtime_dir / "lead_karo"
+    if not path.exists():
+        return ""
+    value = path.read_text(encoding="utf-8").strip().splitlines()
+    return value[0].strip() if value and value[0].strip() else ""
+
+
 def main() -> int:
     root = Path(os.environ.get("MAS_PROJECT_ROOT", Path(__file__).resolve().parents[1]))
     queue_dir = Path(os.environ.get("MAS_QUEUE_DIR", root / "queue"))
     runtime_dir = Path(os.environ.get("MAS_RUNTIME_DIR", queue_dir / "runtime"))
     cmd_file = Path(os.environ.get("MAS_SHOGUN_TO_KARO_FILE", queue_dir / "shogun_to_karo.yaml"))
-    inbox_file = Path(os.environ.get("MAS_KARO_INBOX_FILE", queue_dir / "inbox" / "karo.yaml"))
+    target_agent = os.environ.get("MAS_KARO_TARGET_AGENT") or read_lead_karo(runtime_dir) or "karo"
+    inbox_file = Path(
+        os.environ.get("MAS_KARO_INBOX_FILE", queue_dir / "inbox" / f"{target_agent}.yaml")
+    )
     state_file = Path(
         os.environ.get(
             "MAS_SHOGUN_TO_KARO_BRIDGE_STATE",
@@ -147,7 +158,6 @@ def main() -> int:
     inbox_write = os.environ.get(
         "MAS_INBOX_WRITE_SCRIPT", str(root / "scripts" / "inbox_write.sh")
     )
-    target_agent = os.environ.get("MAS_KARO_TARGET_AGENT", "karo")
 
     cmds = normalize_commands(load_yaml(cmd_file) or [])
 

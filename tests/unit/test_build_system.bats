@@ -166,6 +166,11 @@ setup() {
     grep -q "If only \`ashigaru1\` and \`ashigaru2\` are active, then the force size is two" "$OUTPUT_DIR/codex-karo.md"
 }
 
+@test "content: codex-karo.md documents lead karo and coordination board" {
+    grep -q "queue/runtime/lead_karo" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "queue/runtime/karo_coordination.yaml" "$OUTPUT_DIR/codex-karo.md"
+}
+
 @test "content: codex-karo.md does not hardcode ashigaru1-4/5-8 lanes" {
     ! grep -q "Ashigaru 1-4" "$OUTPUT_DIR/codex-karo.md"
     ! grep -q "Ashigaru 5-8" "$OUTPUT_DIR/codex-karo.md"
@@ -243,9 +248,20 @@ setup() {
 
 @test "content: codex-karo.md forces initial multi-ashigaru split when the cmd is naturally parallel" {
     grep -q "If two or more active ashigaru are available and the cmd naturally splits into independent early lanes" "$OUTPUT_DIR/codex-karo.md"
-    grep -q "assign the first lane to \`ashigaru1\`" "$OUTPUT_DIR/codex-karo.md"
-    grep -q "assign a complementary lane to \`ashigaru2\`" "$OUTPUT_DIR/codex-karo.md"
-    grep -q "Do \*\*not\*\* leave \`ashigaru2\` idle" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "the first dispatch must use the active roster broadly" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "assign lanes across all useful active ashigaru in order, including \`ashigaru3+\` when present" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do \*\*not\*\* stop at \`ashigaru1\` / \`ashigaru2\` when \`ashigaru3+\` are active" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md tells karo when to use gunshi" {
+    grep -q "## Gunshi Consultation Rule" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Assign a \`queue/tasks/gunshi.yaml\` analysis task" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not wait for Gunshi before the first dispatch when obvious safe lanes already exist" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Gunshi does \*\*not\*\* implement files, manage ashigaru, update \`dashboard.md\`, or close the cmd" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "### Bloom Level → Agent Routing" "$OUTPUT_DIR/codex-karo.md"
+    grep -q '"Investigating root cause/structure?" | L4 Analyze | \*\*Gunshi\*\*' "$OUTPUT_DIR/codex-karo.md"
+    grep -q "## Quality Control Routing" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Route complex checks to Gunshi via \`queue/tasks/gunshi.yaml\`" "$OUTPUT_DIR/codex-karo.md"
 }
 
 @test "content: codex-karo.md allows greenfield split before files exist" {
@@ -265,6 +281,15 @@ setup() {
     grep -q "Gunshi must also remain event-driven" "$OUTPUT_DIR/codex-gunshi.md"
     grep -q "return to standby immediately" "$OUTPUT_DIR/codex-gunshi.md"
     grep -q "No sleep loop, no periodic re-analysis" "$OUTPUT_DIR/codex-gunshi.md"
+}
+
+@test "content: codex-gunshi.md keeps upstream strategist safeguards" {
+    grep -q "## Forbidden Actions" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Manage ashigaru inboxes or assign work" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "## North Star Alignment" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "north_star_alignment" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "## Critical Thinking Protocol" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Confidence label" "$OUTPUT_DIR/codex-gunshi.md"
 }
 
 # =============================================================================

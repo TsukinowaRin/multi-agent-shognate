@@ -58,6 +58,10 @@ jobs:
           python3 -m venv .venv
           .venv/bin/pip install --quiet pyyaml
 
+      - name: CoDD DAG verification
+        run: |
+          CODD_AUTO_INSTALL=1 bash scripts/codd_check.sh verify
+
       - name: Run Python unit tests
         run: |
           python3 -m unittest tests.unit.test_uninstaller_contract tests.unit.test_update_manager

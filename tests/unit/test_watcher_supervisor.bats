@@ -74,7 +74,7 @@ EOF
       fi
       return 0
     }
-    build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+    build_cli_command_with_type() { echo "codex --search"; }
     source "$SUPERVISOR_SNIPPET"
     SCRIPT_DIR="$TEST_PROJECT"
     mkdir -p "$SCRIPT_DIR/queue/runtime"
@@ -87,7 +87,7 @@ EOF
     test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_ashigaru2.delivered"
   '
   [ "$status" -eq 0 ]
-  [[ "$output" == *"send-keys -l -t %4 codex --search --no-alt-screen"* ]]
+  [[ "$output" == *"send-keys -l -t %4 codex --search"* ]]
   [[ "$output" == *"send-keys -t %4 Enter"* ]]
 }
 
@@ -114,7 +114,7 @@ EOF
       fi
       return 0
     }
-    build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+    build_cli_command_with_type() { echo "codex --search"; }
     source "$SUPERVISOR_SNIPPET"
     SCRIPT_DIR="$TEST_PROJECT"
     mkdir -p "$SCRIPT_DIR/queue/runtime"
@@ -146,7 +146,7 @@ EOF
       fi
       return 0
     }
-    build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+    build_cli_command_with_type() { echo "codex --search"; }
     source "$SUPERVISOR_SNIPPET"
     SCRIPT_DIR="$TEST_PROJECT"
     mkdir -p "$SCRIPT_DIR/queue/runtime"
@@ -180,7 +180,7 @@ EOF
       fi
       return 0
     }
-    build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+    build_cli_command_with_type() { echo "codex --search"; }
     source "$SUPERVISOR_SNIPPET"
     SCRIPT_DIR="$TEST_PROJECT"
     mkdir -p "$SCRIPT_DIR/queue/runtime"

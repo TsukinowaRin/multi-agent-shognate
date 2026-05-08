@@ -500,6 +500,9 @@ fi
   for ((i=1; i<=ashigaru_count; i++)); do
     echo "    - ashigaru${i}"
   done
+  echo "  karo:"
+  echo "    mode: auto"
+  echo "    max_ashigaru_per_karo: 6"
   echo "cli:"
   echo "  default: $cli_default"
   echo "  agents:"

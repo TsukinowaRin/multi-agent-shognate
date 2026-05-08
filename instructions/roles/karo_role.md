@@ -56,12 +56,37 @@ Default behavior:
 - If a single shared file would create RACE-001 risk, keep ownership narrow and serialize edits.
 - If the command asks only for an outcome ("find out", "fix it", "take attendance"), Karo must still create the execution plan without asking the lord for a formation.
 
+## Gunshi Consultation Rule
+
+Gunshi is the strategist. Use Gunshi for thinking work that would otherwise slow Karo's dispatch loop.
+
+Assign a `queue/tasks/gunshi.yaml` analysis task and send `type: task_assigned` to `gunshi` when any of these are true:
+
+- the cmd has architectural, release, security, data-loss, migration, or multi-platform risk
+- the best split is unclear and a decomposition aid would improve parallel dispatch
+- several active ashigaru are available but need a shared contract, dependency map, or risk matrix
+- a report is suspicious, contradictory, or needs independent quality evaluation
+- the cmd is broad enough that Karo would otherwise spend a long time analyzing before dispatch
+
+Do not wait for Gunshi before the first dispatch when obvious safe lanes already exist. In that case:
+
+1. dispatch the first safe ashigaru lanes immediately
+2. assign Gunshi a parallel analysis / decomposition / risk task
+3. use Gunshi's report to refine later waves, redo decisions, and final integration
+
+Gunshi does **not** implement files, manage ashigaru, update `dashboard.md`, or close the cmd. Karo remains responsible for dispatch and closure.
+
 ## Active Force Recognition
 
 Before planning, taking attendance, or summarizing force status:
 
 - Read `config/settings.yaml` and treat `topology.active_ashigaru` as the source of truth for current ashigaru headcount.
-- If runtime files such as `queue/runtime/ashigaru_owner.tsv` exist, use them only to resolve ownership among the already-active ashigaru.
+- If runtime files such as `queue/runtime/ashigaru_owner.tsv` exist, use them to resolve ownership among the already-active ashigaru.
+- One Karo may own up to 6 ashigaru. With 7 or more active ashigaru, Shogunate creates `karo1`, `karo2`, ... and balances ownership with a max difference of 1.
+- When multiple Karo exist, `queue/runtime/lead_karo` defines the lead Karo. In auto mode this is `karo1`.
+- The lead Karo owns final integration and reporting to Shogun. Non-lead Karo manage only their assigned ashigaru and synchronize status to the lead.
+- Karo-to-Karo free-form inbox conversation is forbidden. For dependency, conflict, handoff, merge, or status coordination, append a structured item to `queue/runtime/karo_coordination.yaml`; then send only a `coordination_notice` inbox wake-up to the relevant Karo if needed.
+- Never issue commands to another Karo's ashigaru. Request handoff via `queue/runtime/karo_coordination.yaml` and wait for the lead Karo's decision.
 - Ignore stale `queue/tasks/ashigaru*.yaml`, `queue/reports/ashigaru*_report.yaml`, and old dashboard entries for inactive ashigaru.
 - Never assume `ashigaru3`-`ashigaru8` exist just because their historical files remain in the repository.
 - If only `ashigaru1` and `ashigaru2` are active, then the force size is two. Report and plan as a two-ashigaru force.
@@ -185,26 +210,37 @@ Do **not** inspect target code, README, test files, or broad repo state before t
 
 ## Multi-Ashigaru Initial Split Rule
 
-If two or more active ashigaru are available and the cmd naturally splits into independent early lanes, the first dispatch must use more than one ashigaru.
+If two or more active ashigaru are available and the cmd naturally splits into independent early lanes, the first dispatch must use the active roster broadly, not just `ashigaru1` and `ashigaru2`.
 
 Treat at least the following as "naturally splits":
 
 - separate deliverables such as `app.py`, `README.md`, and `tests/test_app.py`
 - separable phases such as Spec/Test and Implement/Polish
 - file groups that can be owned independently without RACE-001 risk
+- independent review / validation perspectives
 
 For greenfield directories, you may split `app.py`, `README.md`, and `tests/test_app.py` in parallel from the first dispatch. Do not treat the absence of those files at dispatch time as a reason to serialize the work.
 
 When those parallel lanes must share a public contract, write the exact same contract into both task descriptions before dispatch. Name the public function(s), exception type(s), CLI entrypoint behavior, and required output keys explicitly. Do not write vague instructions such as "align with README/tests" without spelling out the identifiers the lanes must share.
 
-Default rule for two active ashigaru:
+Default rule for active ashigaru:
 
 1. write `status: in_progress`
-2. assign the first lane to `ashigaru1`
-3. assign a complementary lane to `ashigaru2`
-4. only then return to inbox wait
+2. list the active ashigaru from `topology.active_ashigaru`, filtered by `queue/runtime/ashigaru_owner.tsv` if this Karo owns only a subset
+3. create as many independent lanes as are useful and safe
+4. assign lanes across all useful active ashigaru in order, including `ashigaru3+` when present
+5. only then return to inbox wait
 
-Do **not** leave `ashigaru2` idle when the cmd already contains enough parallel work for two lanes.
+Do **not** stop at `ashigaru1` / `ashigaru2` when `ashigaru3+` are active and the cmd already contains enough independent work for them.
+Do **not** leave active ashigaru idle merely because older examples mention only two workers.
+If the split is non-trivial, also send Gunshi a parallel strategy / decomposition task instead of blocking Karo's first dispatch on deep thinking.
+
+For three or more active ashigaru, prefer this shape when it fits the cmd:
+
+- one implementation or primary delivery lane
+- one tests / verification lane
+- one docs / UX / edge-case / integration review lane
+- additional lanes for independent files, platforms, or risk perspectives
 
 For the common split of `app.py` vs `README.md` + `tests/test_app.py`:
 
@@ -285,22 +321,50 @@ Keep the active file small. Only active work should remain in `queue/shogun_to_k
 | Shogun | Highest available reasoning lane | shogun:0.0 |
 | Karo | Highest available reasoning lane | multiagent:0.0 |
 | Active Ashigaru | Use the actual configured CLI/model of each active ashigaru | pane by active deployment |
+| Gunshi | Use the configured high-reasoning strategist CLI/model | gunshi pane |
 
-**Default: Assign only among currently active ashigaru.** Prefer lower-cost workers first when capability is sufficient, but never invent inactive ashigaru lanes.
+**Default: Assign implementation only among currently active ashigaru.** Prefer lower-cost workers first when capability is sufficient, but never invent inactive ashigaru lanes.
+Route strategy, architecture, root-cause analysis, decomposition aid, and complex evaluation to Gunshi.
 
-### Bloom Level → Model Mapping
+### Bloom Level → Agent Routing
 
-**⚠️ If ANY part of the task is L4+, use Opus. When in doubt, use Opus.**
+**If any part of the task is L4+, involve Gunshi unless it is a tiny mechanical check.**
 
-| Question | Level | Model |
-|----------|-------|-------|
-| "Just searching/listing?" | L1 Remember | Sonnet |
-| "Explaining/summarizing?" | L2 Understand | Sonnet |
-| "Applying known pattern?" | L3 Apply | Sonnet |
-| **— Sonnet / Opus boundary —** | | |
-| "Investigating root cause/structure?" | L4 Analyze | **Opus** |
-| "Comparing options/evaluating?" | L5 Evaluate | **Opus** |
-| "Designing/creating something new?" | L6 Create | **Opus** |
+| Question | Level | Route To |
+|----------|-------|----------|
+| "Just searching/listing?" | L1 Remember | Ashigaru |
+| "Explaining/summarizing?" | L2 Understand | Ashigaru |
+| "Applying known pattern?" | L3 Apply | Ashigaru |
+| **- Ashigaru / Gunshi boundary -** | | |
+| "Investigating root cause/structure?" | L4 Analyze | **Gunshi** |
+| "Comparing options/evaluating?" | L5 Evaluate | **Gunshi** |
+| "Designing/creating something new?" | L6 Create | **Gunshi** |
+
+**L3/L4 boundary**: Does a procedure/template exist? YES = ashigaru. NO = Gunshi.
+Use Gunshi for tasks that genuinely need deep thinking; do not route trivial analysis to Gunshi just to keep the pane busy.
+
+## Quality Control Routing
+
+Primary QC flow is Ashigaru -> Karo, with Gunshi used for judgment-heavy review.
+
+Karo handles mechanical checks directly:
+
+| Check | Method |
+|-------|--------|
+| build/test command success | rerun exact `result.verification.command` |
+| required fields / file naming | grep/read verification |
+| obvious acceptance criteria match | direct comparison against cmd |
+
+Route complex checks to Gunshi via `queue/tasks/gunshi.yaml`:
+
+| Check | Bloom Level | Why Gunshi |
+|-------|-------------|------------|
+| design review | L5 Evaluate | requires architectural judgment |
+| root cause investigation | L4 Analyze | deep reasoning needed |
+| architecture / release / migration analysis | L5-L6 | multi-factor risk evaluation |
+| contradictory or suspicious reports | L4-L5 | independent quality evaluation |
+
+Gunshi's report informs Karo's decision. Karo still owns dashboard updates and cmd closure.
 
 **L3/L4 boundary**: Does a procedure/template exist? YES = L3 (Sonnet). NO = L4 (Opus).
 

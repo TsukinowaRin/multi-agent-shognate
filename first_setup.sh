@@ -583,6 +583,10 @@ topology:
   active_ashigaru:
     - ashigaru1
     - ashigaru2
+  karo:
+    mode: auto
+    # 家老1人あたり足軽6名まで。7名以上で karo1/karo2... に自動増員。
+    max_ashigaru_per_karo: 6
 
 # スキル設定
 skill:
@@ -619,24 +623,14 @@ cli:
   agents:
     shogun:
       type: codex
-      model: auto
-      reasoning_effort: auto
     gunshi:
       type: codex
-      model: auto
-      reasoning_effort: auto
     karo:
       type: codex
-      model: auto
-      reasoning_effort: auto
     ashigaru1:
       type: codex
-      model: auto
-      reasoning_effort: auto
     ashigaru2:
       type: codex
-      model: auto
-      reasoning_effort: auto
   commands:
     gemini: "gemini --yolo"
     localapi: "python3 scripts/localapi_repl.py"

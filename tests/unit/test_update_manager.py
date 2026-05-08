@@ -276,6 +276,40 @@ class UpdateManagerInstallModeDetectionTests(unittest.TestCase):
         self.assertEqual(mode, "release")
 
 
+class UpdateManagerIntegratedToolsTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix="mas-integrated-tools-test-")
+        self.root = Path(self.temp_dir.name) / "repo"
+        self.root.mkdir(parents=True)
+        self.original_root = update_manager.ROOT
+        update_manager.ROOT = self.root
+
+    def tearDown(self):
+        update_manager.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def test_update_integrated_tools_runs_codd_installer_when_present(self):
+        scripts_dir = self.root / "scripts"
+        scripts_dir.mkdir(parents=True)
+        marker = self.root / ".shogunate" / "codd-called"
+        (scripts_dir / "codd_check.sh").write_text(
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            "mkdir -p .shogunate\n"
+            "echo \"$1\" > .shogunate/codd-called\n",
+            encoding="utf-8",
+        )
+
+        update_manager.update_integrated_tools()
+
+        self.assertEqual(marker.read_text(encoding="utf-8").strip(), "install")
+
+    def test_update_integrated_tools_skips_when_wrapper_missing(self):
+        update_manager.update_integrated_tools()
+
+        self.assertFalse((self.root / ".shogunate").exists())
+
+
 class UpdateManagerSpecificReleaseApplyTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix="mas-apply-release-test-")

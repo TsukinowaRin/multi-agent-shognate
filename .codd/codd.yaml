@@ -1,0 +1,81 @@
+version: "0.1.0"
+codd_required_version: ">=1.34.0"
+codd_required_version_strict: false
+
+project:
+  name: "multi-agent-shognate"
+  language: "shell/python/kotlin"
+  project_type: "cli"
+  frameworks:
+    - "bash"
+    - "tmux"
+    - "python"
+    - "android"
+
+ai_command: "codex"
+
+scan:
+  source_dirs:
+    - "lib/"
+    - "scripts/"
+  test_dirs:
+    - "tests/"
+  doc_dirs:
+    - "docs/"
+  config_files:
+    - "AGENTS.md"
+    - "CLAUDE.md"
+    - "GEMINI.md"
+    - "KILO.md"
+    - "OPENCODE.md"
+    - "README.md"
+    - "README_ja.md"
+    - "config/settings.yaml"
+  exclude:
+    - "**/.git/**"
+    - "**/.venv/**"
+    - "**/.shogunate/**"
+    - "**/__pycache__/**"
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/.gradle/**"
+    - "**/queue/**"
+    - "**/Waste/**"
+    - "**/_trash/**"
+    - "**/_upstream_reference/**"
+
+graph:
+  store: "jsonl"
+  path: ".codd/scan"
+
+dag:
+  project_type: "cli"
+  enabled_checks:
+    - "node_completeness"
+    - "edge_validity"
+    - "depends_on_consistency"
+    - "transitive_closure"
+  impl_file_patterns:
+    - "*.sh"
+    - "*.command"
+    - "*.bat"
+    - "Makefile"
+    - "lib/**/*.sh"
+    - "scripts/**/*.sh"
+    - "scripts/**/*.py"
+  test_file_patterns:
+    - "tests/**/*.bats"
+    - "tests/**/*.py"
+  design_doc_patterns:
+    - "docs/REQS.md"
+    - "docs/INDEX.md"
+    - "docs/EXECPLAN_*.md"
+    - "README.md"
+    - "README_ja.md"
+  plan_task_file: "docs/REQS.md"
+
+verify:
+  typecheck_command: "bash -n shutsujin_departure.sh first_setup.sh scripts/*.sh lib/*.sh"
+  test_command: "bats tests/unit/test_cli_adapter.bats tests/unit/test_mux_parity.bats"
+  report_output: ".codd/verify_report.md"

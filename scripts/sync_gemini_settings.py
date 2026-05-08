@@ -183,6 +183,12 @@ def main() -> int:
         generated.append(alias)
 
     existing["$schema"] = SCHEMA_URL
+    general = existing.setdefault("general", {})
+    if not isinstance(general, dict):
+        general = {}
+        existing["general"] = general
+    general["enableAutoUpdate"] = False
+    general["enableAutoUpdateNotification"] = False
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with OUTPUT_PATH.open("w", encoding="utf-8") as fh:

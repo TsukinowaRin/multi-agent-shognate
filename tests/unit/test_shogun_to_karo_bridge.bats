@@ -117,6 +117,42 @@ PY
   [[ "$output" =~ "sent" ]]
 }
 
+@test "shogun_to_karo_bridge: lead_karo があれば筆頭家老 inbox を既定 target にする" {
+  unset MAS_KARO_INBOX_FILE
+  unset MAS_KARO_TARGET_AGENT
+  printf 'karo1\n' > "$TEST_TMP/queue/runtime/lead_karo"
+  cat > "$TEST_TMP/queue/inbox/karo1.yaml" <<'YAML'
+messages: []
+YAML
+  cat > "$TEST_TMP/scripts/inbox_write.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+TARGET="$1"
+CONTENT="$2"
+TYPE="${3:-wake_up}"
+FROM="${4:-unknown}"
+INBOX_PATH="$MAS_QUEUE_DIR/inbox/${TARGET}.yaml"
+python3 - "$INBOX_PATH" "$CONTENT" "$TYPE" "$FROM" <<'PY'
+import sys, yaml
+path, content, msg_type, source = sys.argv[1:]
+with open(path, encoding="utf-8") as fh:
+    data = yaml.safe_load(fh) or {}
+msgs = data.get("messages", []) or []
+msgs.append({"id": "test", "from": source, "type": msg_type, "content": content, "read": False})
+data["messages"] = msgs
+with open(path, "w", encoding="utf-8") as fh:
+    yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
+PY
+SH
+  chmod +x "$TEST_TMP/scripts/inbox_write.sh"
+
+  run python3 "$PROJECT_ROOT/scripts/shogun_to_karo_bridge.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "sent" ]]
+  run bats_search "cmd_200" "$TEST_TMP/queue/inbox/karo1.yaml"
+  [ "$status" -eq 0 ]
+}
+
 @test "shogun_to_karo_bridge: 同じ cmd_id でも timestamp が違えば別通知する" {
   printf 'cmd_200\t2026-03-13T22:33:00+09:00\n' > "$MAS_SHOGUN_TO_KARO_BRIDGE_STATE"
 

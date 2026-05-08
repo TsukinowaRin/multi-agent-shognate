@@ -3,6 +3,22 @@
 最終更新: 2026-05-08
 出典: 直近ユーザープロンプト
 
+## 追補（2026-05-08: 新エージェントへ完全に引き継げる docs を整備する）
+### 要求
+1. 新しいエージェントに「Docs と AGENTS.md を読んで作業を続行して」と指示すれば、chat 履歴なしで現在地点から再開できること。
+2. 最新の branch / commit / push 状態、Git read-only 問題の原因と解消状態、検証済みコマンド、残タスク、次に読む文書、最初に実行するコマンドを docs に残すこと。
+3. `docs/INDEX.md` の Must-read / Resume 導線を最新 handoff へ向けること。
+4. `docs/WORKLOG.md` に今回の引き継ぎ checkpoint を残すこと。
+5. 引き継ぎ文書には、次の目的が Multi-agent-shogunate の開発継続であり、調査だけで止まらず実装・検証・commit / push まで進めることを明記すること。
+
+### 受け入れ条件（観測可能）
+1. `docs/HANDOFF_2026-05-08_runtime_resume.md` が存在し、repo root、branch、HEAD、remote、Git mount 状態、検証結果、次の一手を含む。
+2. `docs/INDEX.md` の Must-read と Resume が `docs/HANDOFF_2026-05-08_runtime_resume.md` を正本として指す。
+3. `docs/WORKLOG.md` に 2026-05-08 の handoff entry がある。
+4. `docs/HANDOFF_2026-05-08_runtime_resume.md` が、次セッションの目的を Multi-agent-shogunate 開発継続として明示している。
+5. コマンド: `git status -sb && git diff --check`
+   - 期待結果: docs 変更だけが差分として出て、whitespace error がない。
+
 ## 追補（2026-05-08: Codex native 起動失敗と OpenCode 再ログインを直す）
 ### 要求
 1. WSL 上に native Codex CLI がある場合、Shogunate runtime は Windows 側 npm shim（例: `/mnt/c/.../codex`）を優先して起動しないこと。

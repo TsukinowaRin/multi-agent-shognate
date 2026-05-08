@@ -26,7 +26,7 @@ This fork prioritizes:
 - portable installation into any folder
 - Android remote control via the fork APK
 - broader multi-CLI support than upstream
-- conservative defaults: every role uses `codex`, `model: auto`, and the initial active ashigaru are only `ashigaru1` and `ashigaru2`
+- conservative defaults: every role uses `codex`, no model is pinned in `config/settings.yaml`, and the initial active ashigaru are only `ashigaru1` and `ashigaru2`
 
 In practice, the intended flow is:
 
@@ -41,7 +41,7 @@ In practice, the intended flow is:
 |---|---|---|
 | runtime layout | split tmux sessions are primary | `goza-no-ma:overview` is the runtime source of truth; `shogun` / `gunshi` / `multiagent` remain as Android-compatible proxy sessions |
 | initial ashigaru roster | historical docs often imply a larger force | the default active ashigaru are only `ashigaru1` and `ashigaru2` |
-| default CLI | upstream defaults | all roles default to `codex` with `model: auto` |
+| default CLI | upstream defaults | all roles default to `codex`; model selection is left to pane-local CLI state |
 | CLI coverage | core upstream CLIs | adds `Gemini CLI`, `OpenCode`, `Kilo`, `localapi`, and local-provider bridges such as `Ollama` / `LM Studio` |
 | Android distribution | upstream Android app / APK | the fork APK in this repo's Releases is the supported distribution |
 | Windows installer | repo-oriented setup flow | Release installer `multi-agent-shognate-installer-<version>.bat` installs portably into the folder where you place it |
@@ -96,7 +96,21 @@ In this fork, every agent defaults to an unattended, no-approval-by-default mode
 | `kilo` | generated `opencode.json` sets `permission: allow` |
 | `localapi` | launches the local REPL directly without a separate approval layer |
 
-For Codex specifically, each role still launches with its own repo-local `CODEX_HOME`, but `auth.json` is shared by default from a repo-local shared path. That keeps login state common across roles while preserving role-specific model or `reasoning_effort` presets in the launch command instead of mixing the full runtime state with VSCode Codex or unrelated Codex CLI sessions.
+OpenCode / Kilo do not expose a stable `--yolo` flag in the current CLI help, so Shogunate treats the generated project `opencode.json` permission setting as the unattended-mode source of truth.
+
+### CLI State / Host Auth
+
+External CLIs launched by the Shogunate runtime reuse host login credentials where known, while keeping model, settings, and history state separate per role / pane.
+
+- CLI executables themselves are resolved from the host shell / WSL environment at Shogunate startup. The launcher prefers common Linux/WSL install paths under `HOME`, `NVM_BIN`, and `PNPM_HOME` before falling back to `PATH`, then passes absolute executable paths to tmux. This avoids accidentally launching Windows npm shims such as `/mnt/c/.../codex` when a native WSL CLI is installed.
+- `Codex` launches each role with a repo-local `CODEX_HOME`. If host `~/.codex/auth.json` exists, the role-local `auth.json` points to it; if not, the older repo-local shared auth fallback is still available. Model / `reasoning_effort` / history state stays role-local.
+- Codex startup keeps the normal interactive TUI by default: Shogunate launches `codex` first, then delivers the bootstrap prompt through tmux. Set `MAS_CODEX_STARTUP_PROMPT_MODE=argv` only if you need the older `codex <bootstrap prompt>` launch style.
+- The exact composer chrome, placeholder prompts, and footer are owned by the installed Codex CLI version. Shogunate does not restyle the Codex TUI; it only avoids the old positional bootstrap prompt that changed the startup state.
+- `Claude` / `Copilot` / `Kimi` / `Gemini` / `OpenCode` / `Kilo` launch with `HOME` and XDG paths pointed at `.shogunate/cli-state/<cli>/agents/<agent>/home`. Known host auth files are symlinked into that pane-local home, but settings, model selections, caches, and history stay pane-local. Gemini also gets `GEMINI_DEFAULT_AUTH_TYPE=oauth-personal` by default so host OAuth credentials can be used without sharing the full user settings file.
+- `OpenCode` / `Kilo` additionally symlink known host `auth.json` and plugin dependency files into the pane-local home. Their host provider SQLite DB and model state are copied into the pane-local home only when the role-local file is missing, and stale DB symlinks are removed first. This avoids repeated API-key entry while keeping each pane from live-sharing the same SQLite database. Role model selection still comes from Shogunate settings / launch flags, and unattended permission still comes from the generated project `opencode.json`.
+- `localapi` is an in-repo local REPL and does not have external CLI login state to isolate.
+
+The reason for this split is to avoid repeated logins while keeping Shogunate role-specific model / reasoning / history state separate from VSCode or unrelated sessions of the same CLI. Secret contents are not read or printed by this bootstrap; OpenCode / Kilo provider state may be seeded as a file copy so the CLI can reuse host credentials.
 
 ### Local-provider support
 
@@ -117,9 +131,70 @@ It talks to the OpenAI-compatible endpoint directly and is the main path in this
 
 `opencode` and `kilo` are still supported agent CLIs in this fork, but local-provider use should be treated as best-effort. Their own provider/model registry may reject model IDs that the backend itself would otherwise serve.
 
-### Per-role CLI and model settings
+### CoDD Coherence Gate
 
-Use this when you want different CLIs or models per role:
+This repository integrates [CoDD](https://github.com/yohey-w/codd-dev) as the standard external coherence gate. CoDD is not vendored into Shogunate; `Update.bat`, `scripts/update_manager.py manual`, and `make codd-install` install or update `codd-dev` in `.shogunate/codd-venv`.
+
+```bash
+make codd-install
+make codd
+# or one-shot:
+CODD_AUTO_INSTALL=1 scripts/codd_check.sh verify
+```
+
+The project config lives at `.codd/codd.yaml`. Install/update normally pulls the latest PyPI `codd-dev`. If that fails, the wrapper falls back to the development-verified `CODD_FALLBACK_VERSION` default, currently `1.34.0`. If `python3` / `python3-venv` is missing in WSL, Linux, or macOS, the wrapper prints the required install commands and stops. CI runs `codd dag verify` by default. `scripts/codd_check.sh audit` is exposed for environments that have CoDD's optional audit bridge.
+
+### Simple runtime role settings
+
+Use this for normal setup. It configures only the broad CLI type per role and the active ashigaru count; model / reasoning / thinking choices are made inside each tmux pane and kept in pane-local CLI state.
+The interactive order is `cli.default`, shogun, karo, gunshi, ashigaru count, then each active ashigaru.
+
+Linux / WSL terminal:
+
+```bash
+./Shogunate-Configure-Roles.sh
+```
+
+Windows Explorer:
+
+```text
+Shogunate-Configure-Roles.bat
+```
+
+macOS Finder / Terminal:
+
+```bash
+./Shogunate-Configure-Roles.command
+```
+
+For macOS Shortcuts, use a "Run Shell Script" action with:
+
+```bash
+cd /path/to/multi-agent-shognate && ./Shogunate-Configure-Roles.sh
+```
+
+The direct Python entrypoint is:
+
+```bash
+python3 scripts/configure_runtime_roles.py
+```
+
+Non-interactive example:
+
+```bash
+python3 scripts/configure_runtime_roles.py \
+  --ashigaru-count 3 \
+  --shogun gemini \
+  --karo codex \
+  --gunshi codex \
+  --ashigaru1 codex \
+  --ashigaru2 opencode \
+  --ashigaru3 opencode
+```
+
+### Advanced per-role CLI and model settings
+
+Use this when you explicitly want Shogunate to write model / reasoning / provider fields into `config/settings.yaml`:
 
 ```bash
 bash scripts/configure_agents.sh
@@ -277,9 +352,39 @@ In this fork, `config/settings.yaml` is local-only and is not part of the publis
 
 After installation:
 
+Linux / WSL terminal:
+
+```bash
+./Shogunate-Runtime.sh
+```
+
+Windows Explorer:
+
+```text
+Shogunate-Runtime.bat
+```
+
+macOS Finder / Terminal:
+
+```bash
+./Shogunate-Runtime.command
+```
+
+For macOS Shortcuts, use a "Run Shell Script" action with:
+
+```bash
+cd /path/to/multi-agent-shognate && ./Shogunate-Runtime.sh
+```
+
+The direct shell entrypoint is still available:
+
 ```bash
 bash shutsujin_departure.sh
 ```
+
+The launcher defaults to a clean start and then attaches to `goza-no-ma`. If a CLI needs login, follow the prompt in that CLI's tmux pane. Use `./Shogunate-Runtime.sh --resume` to keep existing runtime state, or `./Shogunate-Runtime.sh --no-attach` to start without attaching.
+
+Role configuration can be opened before launch with `Shogunate-Configure-Roles.bat` on Windows, `./Shogunate-Configure-Roles.sh` on Linux / WSL, or `./Shogunate-Configure-Roles.command` on macOS.
 
 Useful commands after startup:
 
@@ -412,9 +517,10 @@ That keeps the following scoped to that workspace:
 Current defaults:
 
 - all roles use `codex`
-- `model: auto`
+- no model is pinned in `config/settings.yaml`; each CLI uses its own pane-local/default model state
 - initial active ashigaru are `ashigaru1` and `ashigaru2`
-- Karo is expected to infer staffing from the task intent
+- one Karo manages up to 6 ashigaru; at 7 ashigaru and above, Shogunate creates `karo1`, `karo2`, ... and balances ownership
+- when multiple Karo exist, `karo1` is the lead Karo and owns Shogun reporting; Karo-to-Karo coordination uses `queue/runtime/karo_coordination.yaml`, not free-form direct inbox chat
 
 If you want more ashigaru, change the active topology instead of relying on historical 1-8 references.
 
@@ -423,6 +529,9 @@ If you want more ashigaru, change the active topology instead of relying on hist
 ```bash
 bash first_setup.sh
 bash shutsujin_departure.sh
+./Shogunate-Runtime.sh
+./Shogunate-Configure-Roles.sh
+python3 scripts/configure_runtime_roles.py
 bash scripts/configure_agents.sh
 bash scripts/goza_no_ma.sh
 bash scripts/focus_agent_pane.sh shogun
@@ -442,6 +551,12 @@ multi-agent-shognate/
 ├── scripts/                   # runtime, bootstrap, bridge, watcher
 ├── tests/                     # unit and smoke tests
 ├── install.bat                # Windows installer / bootstrap entry
+├── Shogunate-Runtime.bat      # Windows runtime launcher
+├── Shogunate-Runtime.sh       # Linux / WSL runtime launcher
+├── Shogunate-Runtime.command  # macOS Finder runtime launcher
+├── Shogunate-Configure-Roles.bat      # Windows WSL role configurator launcher
+├── Shogunate-Configure-Roles.sh       # Linux / WSL role configurator launcher
+├── Shogunate-Configure-Roles.command  # macOS Finder role configurator launcher
 ├── updater.bat                # Legacy Windows updater script kept for compatibility
 ├── Shogunate-Uninstaller.bat  # Windows uninstaller included in installed copies
 ├── first_setup.sh             # first-time setup

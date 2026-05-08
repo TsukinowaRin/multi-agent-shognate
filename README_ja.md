@@ -26,7 +26,7 @@
 - 任意のフォルダへそのまま入れられる portable インストール
 - fork 版 APK を使った Android リモート操作
 - upstream より広い Multi-CLI 対応
-- 保守寄りの既定構成: 全役職 `codex`、`model: auto`、初期足軽は `ashigaru1` / `ashigaru2` の2名
+- 保守寄りの既定構成: 全役職 `codex`、`config/settings.yaml` では model を pin しない、初期足軽は `ashigaru1` / `ashigaru2` の2名
 
 要点だけ言うと、
 
@@ -43,7 +43,7 @@
 |---|---|---|
 | runtime 構成 | split tmux session が主 | `goza-no-ma:overview` が runtime 正本。`shogun` / `gunshi` / `multiagent` は Android 互換 proxy として維持 |
 | 初期足軽構成 | 歴史的に大きい編成を前提にした記述がある | 既定の現役足軽は `ashigaru1` と `ashigaru2` のみ |
-| 既定 CLI | upstream 既定 | 全役職 `codex`、`model: auto` |
+| 既定 CLI | upstream 既定 | 全役職 `codex`、model 選択は pane-local CLI state に任せる |
 | CLI 対応範囲 | upstream の中核 CLI | `Gemini CLI`、`OpenCode`、`Kilo`、`localapi`、`Ollama` / `LM Studio` 連携を追加 |
 | Android 配布 | upstream Android アプリ / APK | この repo の Releases にある fork 版 APK を正規配布物として扱う |
 | Windows installer | repo 前提の導線 | Releases の `multi-agent-shognate-installer-<version>.bat` を配布し、置いたフォルダへ portable に導入 |
@@ -98,7 +98,21 @@
 | `kilo` | 生成される `opencode.json` に `permission: allow` を入れる |
 | `localapi` | 別の承認レイヤーを持たず、local REPL を直接起動する |
 
-特に `Codex` については、各役職を repo-local の別 `CODEX_HOME` で起動しつつ、`auth.json` だけは既定で repo-local の共有パスから使うようにしてあります。これにより、ログイン状態は役職間で共通化しつつ、将軍側で選んだ model や `reasoning_effort` は launch command の preset として維持され、VSCode の Codex や無関係な別 Codex CLI セッションへ full state が漏れにくくなります。
+OpenCode / Kilo は現行 CLI help 上で安定した `--yolo` flag を公開していないため、Shogunate では起動前に生成する project `opencode.json` の permission 設定を unattended mode の正本として扱います。
+
+### CLI state / ホスト認証
+
+Shogunate runtime から起動する外部 CLI は、既知のログイン認証情報だけホスト PC / ユーザー home のものを使い、モデル設定・CLI 設定・履歴などは役職 / pane ごとに分離します。
+
+- CLI 実行ファイル自体は、Shogunate 起動時の host shell / WSL 環境で解決されるものを使います。`HOME` 配下の一般的な Linux/WSL install path、`NVM_BIN`、`PNPM_HOME` を `PATH` より優先し、見つかった実行ファイルを絶対パス化して tmux pane へ渡します。これにより、native WSL CLI があるのに `/mnt/c/.../codex` のような Windows npm shim を誤って起動する事故を避けます。
+- `Codex` は各役職を repo-local の別 `CODEX_HOME` で起動します。ホストの `~/.codex/auth.json` があれば role-local `auth.json` から symlink し、存在しない場合だけ従来の repo-local shared auth fallback を使います。model / `reasoning_effort` / 履歴 state は role-local に保ちます。
+- Codex 起動は既定で通常の対話 TUI を優先します。Shogunate はまず `codex` を空で起動し、その後 tmux 経由で bootstrap prompt を配信します。従来の `codex <bootstrap prompt>` 起動へ戻したい場合だけ `MAS_CODEX_STARTUP_PROMPT_MODE=argv` を指定します。
+- 入力欄の見た目、空入力時のサンプル文言、footer はインストール済み Codex CLI のバージョン側の表示です。Shogunate は Codex TUI を再装飾せず、起動状態を変えていた旧 positional bootstrap prompt だけを避けます。
+- `Claude` / `Copilot` / `Kimi` / `Gemini` / `OpenCode` / `Kilo` は、起動時に `HOME` と XDG paths を `.shogunate/cli-state/<cli>/agents/<agent>/home` 配下へ向けます。既知の host auth file だけ pane-local home へ symlink し、設定・モデル選択・cache・履歴は pane-local に保ちます。Gemini は user settings 全体を共有せず host OAuth credentials を使えるよう、既定で `GEMINI_DEFAULT_AUTH_TYPE=oauth-personal` も付与します。
+- `OpenCode` / `Kilo` は既知の host `auth.json` と plugin 依存ファイルを pane-local home へ symlink します。host provider SQLite DB と model state は role-local file が無いときだけ pane-local home へ初期コピーし、古い DB symlink が残っていれば先に外します。これにより API key の再入力を避けつつ、複数 pane が同じ SQLite DB を live 共有する衝突も避けます。役職ごとの model 選択は Shogunate settings / launch flags 側で維持し、unattended permission は生成される project `opencode.json` を正本にします。
+- `localapi` は repo 内の local REPL なので、外部 CLI のログイン state 隔離対象ではありません。
+
+この分離の目的は、再ログインの手間を避けつつ、Shogunate の役職別 model / reasoning / 履歴 state と、VSCode や別プロジェクトで使う同じ CLI の state を混ぜないことです。bootstrap は secrets の内容を読んだり表示したりしませんが、OpenCode / Kilo の provider state は CLI が host 認証を再利用できるよう file として初期コピーする場合があります。
 
 ### local provider 対応
 
@@ -119,9 +133,70 @@
 
 `opencode` / `kilo` 自体は引き続き agent CLI として対応していますが、local provider 運用は best-effort です。backend 側では応答可能でも、CLI 側の provider/model registry によって model 名が弾かれることがあります。
 
-### 役職ごとの CLI / model 設定
+### CoDD coherence gate
 
-CLI や model を役職ごとに変えたい時はこれを使います。
+このリポジトリでは、[CoDD](https://github.com/yohey-w/codd-dev) を外部 coherence gate として標準統合しています。CoDD 本体は Shogunate に vendoring せず、`Update.bat` / `scripts/update_manager.py manual` / `make codd-install` が `codd-dev` を `.shogunate/codd-venv` へ導入・更新します。
+
+```bash
+make codd-install
+make codd
+# または一発:
+CODD_AUTO_INSTALL=1 scripts/codd_check.sh verify
+```
+
+project config は `.codd/codd.yaml` です。install は基本的に PyPI の最新 `codd-dev` を取りに行きます。最新導入に失敗した場合は、開発時確認版の `CODD_FALLBACK_VERSION`（既定 `1.34.0`）へフォールバックします。WSL / Linux / macOS 側に `python3` / `python3-venv` が無い場合は、必要な install command を表示して停止します。CI でも `codd dag verify` を実行します。`scripts/codd_check.sh audit` も入口として用意していますが、CoDD 側の optional audit bridge がある環境向けです。
+
+### 簡易 runtime 役職設定
+
+通常はこちらを使います。役職ごとの大まかな CLI 種別と active Ashigaru 数だけを設定し、model / reasoning / thinking は tmux pane 内の各 CLI で手動設定して pane-local state に保持します。
+対話入力の順番は `cli.default`、将軍、家老、軍師、足軽人数、active 足軽ごとの CLI です。
+
+Linux / WSL terminal:
+
+```bash
+./Shogunate-Configure-Roles.sh
+```
+
+Windows Explorer:
+
+```text
+Shogunate-Configure-Roles.bat
+```
+
+macOS Finder / Terminal:
+
+```bash
+./Shogunate-Configure-Roles.command
+```
+
+macOS Shortcuts では、「Run Shell Script」アクションに次を指定します。
+
+```bash
+cd /path/to/multi-agent-shognate && ./Shogunate-Configure-Roles.sh
+```
+
+直接 Python で起動する場合はこちらです。
+
+```bash
+python3 scripts/configure_runtime_roles.py
+```
+
+非対話の例:
+
+```bash
+python3 scripts/configure_runtime_roles.py \
+  --ashigaru-count 3 \
+  --shogun gemini \
+  --karo codex \
+  --gunshi codex \
+  --ashigaru1 codex \
+  --ashigaru2 opencode \
+  --ashigaru3 opencode
+```
+
+### 詳細な役職ごとの CLI / model 設定
+
+`config/settings.yaml` に model / reasoning / provider まで明示的に書きたい場合はこちらを使います。
 
 ```bash
 bash scripts/configure_agents.sh
@@ -281,9 +356,39 @@ tracked file が local 編集と衝突した場合は、installer / 更新導線
 
 インストール後はこれです。
 
+Linux / WSL terminal:
+
+```bash
+./Shogunate-Runtime.sh
+```
+
+Windows Explorer:
+
+```text
+Shogunate-Runtime.bat
+```
+
+macOS Finder / Terminal:
+
+```bash
+./Shogunate-Runtime.command
+```
+
+macOS Shortcuts では、「Run Shell Script」アクションに次を指定します。
+
+```bash
+cd /path/to/multi-agent-shognate && ./Shogunate-Runtime.sh
+```
+
+直接 shell で起動する導線も残しています。
+
 ```bash
 bash shutsujin_departure.sh
 ```
+
+launcher は既定で clean start し、そのまま `goza-no-ma` に attach します。Codex などのログインが必要な場合は、tmux 上で該当 pane の案内に従ってログインします。既存 state を保つ場合は `./Shogunate-Runtime.sh --resume`、attach しない場合は `./Shogunate-Runtime.sh --no-attach` を使います。
+
+起動前の役職設定は、Windows では `Shogunate-Configure-Roles.bat`、Linux / WSL では `./Shogunate-Configure-Roles.sh`、macOS では `./Shogunate-Configure-Roles.command` から開けます。
 
 起動後に使う代表コマンド:
 
@@ -416,9 +521,10 @@ APK 自身の更新は行いません。Android アプリの更新は引き続�
 現在の既定方針は次です。
 
 - 全役職 `codex`
-- `model: auto`
+- `config/settings.yaml` では model を pin せず、各 CLI の pane-local / default model state に任せる
 - 初期 active Ashigaru は `ashigaru1` と `ashigaru2`
-- 家老が意図から自律的に人数配分を決める
+- 家老1人が担当する足軽は最大6名。7名以上では `karo1`, `karo2` ... を自動作成して均等割り当てする
+- 複数家老では `karo1` が筆頭家老として将軍報告を担う。家老間連携は自由な直接 inbox 会話ではなく `queue/runtime/karo_coordination.yaml` を使う
 
 足軽数を増やしたい時は、歴史的な 1〜8 記述を信用するのではなく、active topology を変更します。
 
@@ -427,6 +533,9 @@ APK 自身の更新は行いません。Android アプリの更新は引き続�
 ```bash
 bash first_setup.sh
 bash shutsujin_departure.sh
+./Shogunate-Runtime.sh
+./Shogunate-Configure-Roles.sh
+python3 scripts/configure_runtime_roles.py
 bash scripts/configure_agents.sh
 bash scripts/goza_no_ma.sh
 bash scripts/focus_agent_pane.sh shogun
@@ -446,6 +555,12 @@ multi-agent-shognate/
 ├── scripts/                   # runtime / bootstrap / bridge / watcher
 ├── tests/                     # unit / smoke tests
 ├── install.bat                # Windows installer / bootstrap entry
+├── Shogunate-Runtime.bat      # Windows runtime launcher
+├── Shogunate-Runtime.sh       # Linux / WSL runtime launcher
+├── Shogunate-Runtime.command  # macOS Finder runtime launcher
+├── Shogunate-Configure-Roles.bat      # Windows WSL 役職設定 launcher
+├── Shogunate-Configure-Roles.sh       # Linux / WSL 役職設定 launcher
+├── Shogunate-Configure-Roles.command  # macOS Finder 役職設定 launcher
 ├── updater.bat                # 互換維持のため残している旧 Windows updater
 ├── Shogunate-Uninstaller.bat  # インストール済みコピーに含まれる Windows uninstaller
 ├── first_setup.sh             # 初回セットアップ

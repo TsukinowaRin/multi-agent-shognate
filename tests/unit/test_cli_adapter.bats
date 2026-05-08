@@ -11,6 +11,9 @@ setup() {
 
     # テスト用のtmpディレクトリ
     TEST_TMP="$(mktemp -d)"
+    export HOME="${TEST_TMP}/home"
+    export CLI_ADAPTER_HOST_HOME="${TEST_TMP}/host-home"
+    mkdir -p "$HOME" "$CLI_ADAPTER_HOST_HOME"
 
     # プロジェクトルート
     PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
@@ -173,6 +176,17 @@ cli:
       model: auto
 YAML
 
+    cat > "${TEST_TMP}/settings_gemini_command_without_yolo.yaml" << 'YAML'
+cli:
+  default: gemini
+  agents:
+    ashigaru2:
+      type: gemini
+      model: auto
+  commands:
+    gemini: "gemini"
+YAML
+
     # gemini thinking settings
     cat > "${TEST_TMP}/settings_gemini_thinking.yaml" << 'YAML'
 cli:
@@ -317,18 +331,90 @@ load_adapter_with() {
 assert_codex_shared_auth_bootstrap() {
     local result="$1"
     local agent_id="$2"
+    [[ "$result" == *"mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} && if [ -f ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ]; then ln -sfn ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json; else"* ]]
     [[ "$result" == *"mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} ${PROJECT_ROOT}/.shogunate/codex/shared"* ]]
     [[ "$result" == *"if [ -f ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json ] && [ ! -e ${PROJECT_ROOT}/.shogunate/codex/shared/auth.json ]; then cp ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json ${PROJECT_ROOT}/.shogunate/codex/shared/auth.json; fi"* ]]
     [[ "$result" == *"ln -sfn ${PROJECT_ROOT}/.shogunate/codex/shared/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json"* ]]
-    [[ "$result" == *"AGENT_ID=${agent_id} CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} NO_UPDATE_NOTIFIER=1 codex"* ]]
+    [[ "$result" == *"AGENT_ID=${agent_id} CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} NO_UPDATE_NOTIFIER=1 "*codex* ]]
+    [[ "$result" == *"; fi && AGENT_ID=${agent_id} CODEX_HOME="* ]]
 }
 
 assert_codex_shared_auth_custom_bootstrap() {
     local result="$1"
     local agent_id="$2"
+    [[ "$result" == *"if [ -f ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ]; then ln -sfn ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json; else"* ]]
     [[ "$result" == *"mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id} ${PROJECT_ROOT}/context/local/codex-auth"* ]]
     [[ "$result" == *"cp ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json ${PROJECT_ROOT}/context/local/codex-auth/auth.json"* ]]
     [[ "$result" == *"ln -sfn ${PROJECT_ROOT}/context/local/codex-auth/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/${agent_id}/auth.json"* ]]
+}
+
+assert_cli_state_isolated() {
+    local result="$1"
+    local cli_type="$2"
+    local agent_id="$3"
+    local state_home="${PROJECT_ROOT}/.shogunate/cli-state/${cli_type}/agents/${agent_id}/home"
+    [[ "$result" == *"mkdir -p ${state_home} ${state_home}/.config ${state_home}/.local/share ${state_home}/.cache ${state_home}/.local/state"* ]]
+    [[ "$result" == *"HOME=${state_home}"* ]]
+    [[ "$result" == *"XDG_CONFIG_HOME=${state_home}/.config"* ]]
+    [[ "$result" == *"XDG_DATA_HOME=${state_home}/.local/share"* ]]
+    [[ "$result" == *"XDG_CACHE_HOME=${state_home}/.cache"* ]]
+    [[ "$result" == *"XDG_STATE_HOME=${state_home}/.local/state"* ]]
+}
+
+assert_cli_host_auth_link() {
+    local result="$1"
+    local rel_path="$2"
+    local cli_type="$3"
+    local agent_id="$4"
+    local state_home="${PROJECT_ROOT}/.shogunate/cli-state/${cli_type}/agents/${agent_id}/home"
+    [[ "$result" == *"if [ -f ${CLI_ADAPTER_HOST_HOME}/${rel_path} ]; then ln -sfn ${CLI_ADAPTER_HOST_HOME}/${rel_path} ${state_home}/${rel_path}; fi"* ]]
+}
+
+assert_cli_host_dir_link() {
+    local result="$1"
+    local rel_path="$2"
+    local cli_type="$3"
+    local agent_id="$4"
+    local state_home="${PROJECT_ROOT}/.shogunate/cli-state/${cli_type}/agents/${agent_id}/home"
+    [[ "$result" == *"if [ -d ${CLI_ADAPTER_HOST_HOME}/${rel_path} ]; then ln -sfn ${CLI_ADAPTER_HOST_HOME}/${rel_path} ${state_home}/${rel_path}; fi"* ]]
+}
+
+assert_cli_state_symlink_removed() {
+    local result="$1"
+    local rel_path="$2"
+    local cli_type="$3"
+    local agent_id="$4"
+    local state_home="${PROJECT_ROOT}/.shogunate/cli-state/${cli_type}/agents/${agent_id}/home"
+    [[ "$result" == *"if [ -L ${state_home}/${rel_path} ]; then rm -f ${state_home}/${rel_path}; fi"* ]]
+}
+
+assert_cli_host_state_seed() {
+    local result="$1"
+    local rel_path="$2"
+    local cli_type="$3"
+    local agent_id="$4"
+    local state_home="${PROJECT_ROOT}/.shogunate/cli-state/${cli_type}/agents/${agent_id}/home"
+    [[ "$result" == *"if [ -L ${state_home}/${rel_path} ]; then rm -f ${state_home}/${rel_path}; fi"* ]]
+    [[ "$result" == *"if [ -f ${CLI_ADAPTER_HOST_HOME}/${rel_path} ] && [ ! -e ${state_home}/${rel_path} ]; then cp ${CLI_ADAPTER_HOST_HOME}/${rel_path} ${state_home}/${rel_path}; fi"* ]]
+}
+
+make_fake_cli() {
+    local name="$1"
+    mkdir -p "${TEST_TMP}/bin"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${TEST_TMP}/bin/${name}"
+    chmod +x "${TEST_TMP}/bin/${name}"
+}
+
+@test "_cli_adapter_find_executable: PATHよりHOME配下のnative CLIを優先する" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    mkdir -p "${TEST_TMP}/path-bin" "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${TEST_TMP}/path-bin/codex"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/codex"
+    chmod +x "${TEST_TMP}/path-bin/codex" "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/codex"
+
+    result=$(HOME="${TEST_TMP}/home" PATH="${TEST_TMP}/path-bin:/usr/bin:/bin" _cli_adapter_find_executable "codex")
+
+    [ "$result" = "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/codex" ]
 }
 
 # =============================================================================
@@ -433,6 +519,19 @@ assert_codex_shared_auth_custom_bootstrap() {
     [ "$result" = "codex" ]
 }
 
+@test "get_cli_type: karo2 は karo 設定を継承する" {
+    cat > "${TEST_TMP}/settings_karo_family.yaml" <<'YAML'
+cli:
+  default: codex
+  agents:
+    karo:
+      type: gemini
+YAML
+    load_adapter_with "${TEST_TMP}/settings_karo_family.yaml"
+    result=$(get_cli_type "karo2")
+    [ "$result" = "gemini" ]
+}
+
 @test "get_cli_type: 空agent_id → claude" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(get_cli_type "")
@@ -492,14 +591,25 @@ assert_codex_shared_auth_custom_bootstrap() {
 @test "build_cli_command: claude + model → claude --model opus --dangerously-skip-permissions" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "MAX_THINKING_TOKENS=0 AGENT_ID=shogun claude --model opus --dangerously-skip-permissions" ]
+    assert_cli_state_isolated "$result" "claude" "shogun"
+    assert_cli_host_auth_link "$result" ".claude/.credentials.json" "claude" "shogun"
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --model opus --dangerously-skip-permissions" ]]
+}
+
+@test "build_cli_command: claude は host PATH の実行ファイルを絶対パスで使う" {
+    load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
+    make_fake_cli claude
+    result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "shogun")
+    assert_cli_state_isolated "$result" "claude" "shogun"
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun ${TEST_TMP}/bin/claude --model opus --dangerously-skip-permissions" ]]
 }
 
 @test "build_cli_command: claude は PERMISSION_FLAG を反映する" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     PERMISSION_FLAG="--permission-mode plan"
     result=$(build_cli_command "shogun")
-    [ "$result" = "MAX_THINKING_TOKENS=0 AGENT_ID=shogun claude --model opus --permission-mode plan" ]
+    assert_cli_state_isolated "$result" "claude" "shogun"
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --model opus --permission-mode plan" ]]
 }
 
 @test "build_cli_command: claude + model auto → --model を付けない" {
@@ -513,56 +623,65 @@ cli:
 YAML
     load_adapter_with "${TEST_TMP}/settings_claude_auto.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "MAX_THINKING_TOKENS=0 AGENT_ID=shogun claude --dangerously-skip-permissions" ]
+    assert_cli_state_isolated "$result" "claude" "shogun"
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --dangerously-skip-permissions" ]]
 }
 
 @test "build_cli_command: codex → NO_UPDATE_NOTIFIER=1 付きで起動" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru5")
     assert_codex_shared_auth_bootstrap "$result" "ashigaru5"
-    [[ "$result" == *"--search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *"--search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
-@test "build_cli_command: codex + explicit model → codex --model ... --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" {
+@test "build_cli_command: codex は host PATH の実行ファイルを絶対パスで使う" {
+    load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
+    make_fake_cli codex
+    result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "shogun")
+    assert_codex_shared_auth_bootstrap "$result" "shogun"
+    [[ "$result" == *"NO_UPDATE_NOTIFIER=1 ${TEST_TMP}/bin/codex --search --dangerously-bypass-approvals-and-sandbox" ]]
+}
+
+@test "build_cli_command: codex + explicit model → codex --model ... --search --dangerously-bypass-approvals-and-sandbox" {
     load_adapter_with "${TEST_TMP}/settings_codex_model.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *"codex --model gpt-5.3-codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *codex" --model gpt-5.3-codex --search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
 @test "build_cli_command: codex + reasoning_effort → -c model_reasoning_effort を付与" {
     load_adapter_with "${TEST_TMP}/settings_codex_reasoning.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *"codex -c model_reasoning_effort='high' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *codex" -c model_reasoning_effort='high' --search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
 @test "build_cli_command: codex + explicit model + reasoning_effort none を付与" {
     load_adapter_with "${TEST_TMP}/settings_codex_reasoning.yaml"
     result=$(build_cli_command "gunshi")
     assert_codex_shared_auth_bootstrap "$result" "gunshi"
-    [[ "$result" == *"codex --model gpt-5.4 -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *codex" --model gpt-5.4 -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
 @test "build_cli_command: shogun codex は未設定なら reasoning_effort を付けない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_defaults.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
 @test "build_cli_command: gunshi codex は未設定なら reasoning_effort を付けない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_defaults.yaml"
     result=$(build_cli_command "gunshi")
     assert_codex_shared_auth_bootstrap "$result" "gunshi"
-    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
 @test "build_cli_command: codex + model auto → --model を付けない" {
     load_adapter_with "${TEST_TMP}/settings_codex_auto.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
 @test "build_cli_command: codex に UI 断片 left が入っていても --model を付けない" {
@@ -577,32 +696,46 @@ YAML
     load_adapter_with "${TEST_TMP}/settings_codex_invalid_model.yaml"
     result=$(build_cli_command "ashigaru2")
     assert_codex_shared_auth_bootstrap "$result" "ashigaru2"
-    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
-@test "build_cli_command: codex shared_auth false なら agent local auth のみ使う" {
+@test "build_cli_command: codex shared_auth false でも host auth を優先する" {
     load_adapter_with "${TEST_TMP}/settings_codex_shared_auth_off.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    [[ "$result" == "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && if [ -f ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ]; then ln -sfn ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/shogun/auth.json; else mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun; fi && AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 "*codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
 @test "build_cli_command: codex shared_auth_file を custom path へ変更できる" {
     load_adapter_with "${TEST_TMP}/settings_codex_shared_auth_custom.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_custom_bootstrap "$result" "shogun"
-    [[ "$result" == *"AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]]
+    [[ "$result" == *"AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 "*codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
 }
 
 @test "build_cli_command: copilot → copilot --yolo" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru7")
-    [ "$result" = "AGENT_ID=ashigaru7 copilot --yolo" ]
+    assert_cli_state_isolated "$result" "copilot" "ashigaru7"
+    assert_cli_host_auth_link "$result" ".copilot/auth.json" "copilot" "ashigaru7"
+    assert_cli_host_auth_link "$result" ".config/copilot/auth.json" "copilot" "ashigaru7"
+    [[ "$result" == *"AGENT_ID=ashigaru7 "*copilot" --yolo" ]]
+}
+
+@test "build_cli_command: copilot は host PATH の実行ファイルを絶対パスで使う" {
+    load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
+    make_fake_cli copilot
+    result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "ashigaru7")
+    assert_cli_state_isolated "$result" "copilot" "ashigaru7"
+    [[ "$result" == *"AGENT_ID=ashigaru7 ${TEST_TMP}/bin/copilot --yolo" ]]
 }
 
 @test "build_cli_command: kimi + model → kimi --yolo --model k2.5" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(build_cli_command "ashigaru3")
-    [ "$result" = "AGENT_ID=ashigaru3 kimi --yolo --model k2.5" ]
+    assert_cli_state_isolated "$result" "kimi" "ashigaru3"
+    assert_cli_host_auth_link "$result" ".kimi/auth.json" "kimi" "ashigaru3"
+    assert_cli_host_auth_link "$result" ".config/kimi/auth.json" "kimi" "ashigaru3"
+    [[ "$result" == *"AGENT_ID=ashigaru3 "*kimi" --yolo --model k2.5" ]]
 }
 
 @test "build_cli_command: kimi-cliのみ存在時は kimi-cli を使用" {
@@ -614,55 +747,73 @@ exit 0
 SH
     chmod +x "${TEST_TMP}/bin/kimi-cli"
     result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "ashigaru3")
-    [ "$result" = "AGENT_ID=ashigaru3 ${TEST_TMP}/bin/kimi-cli --yolo --model k2.5" ]
+    assert_cli_state_isolated "$result" "kimi" "ashigaru3"
+    [[ "$result" == *"AGENT_ID=ashigaru3 ${TEST_TMP}/bin/kimi-cli --yolo --model k2.5" ]]
 }
 
 @test "build_cli_command: kimi (モデル指定なし) → kimi --yolo" {
     load_adapter_with "${TEST_TMP}/settings_kimi.yaml"
     result=$(build_cli_command "ashigaru4")
-    [ "$result" = "AGENT_ID=ashigaru4 kimi --yolo" ]
+    assert_cli_state_isolated "$result" "kimi" "ashigaru4"
+    [[ "$result" == *"AGENT_ID=ashigaru4 "*kimi" --yolo" ]]
 }
 
 @test "build_cli_command: gemini + model auto → gemini --yolo" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
-    [ "$result" = "AGENT_ID=ashigaru2 gemini --yolo" ]
+    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
+    assert_cli_host_auth_link "$result" ".gemini/oauth_creds.json" "gemini" "ashigaru2"
+    assert_cli_host_auth_link "$result" ".gemini/google_accounts.json" "gemini" "ashigaru2"
+    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo" ]]
+}
+
+@test "build_cli_command: gemini custom command に --yolo が無ければ補完する" {
+    load_adapter_with "${TEST_TMP}/settings_gemini_command_without_yolo.yaml"
+    mkdir -p "${TEST_TMP}/home-empty"
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
+    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
+    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo" ]]
 }
 
 @test "build_cli_command: gemini 3 pro + thinking_level → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "gunshi")
-    [ "$result" = "AGENT_ID=gunshi gemini --yolo --model mas-gunshi" ]
+    assert_cli_state_isolated "$result" "gemini" "gunshi"
+    [[ "$result" == *"AGENT_ID=gunshi GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo --model mas-gunshi" ]]
 }
 
 @test "build_cli_command: gemini 3 flash + thinking_level minimal → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru1")
-    [ "$result" = "AGENT_ID=ashigaru1 gemini --yolo --model mas-ashigaru1" ]
+    assert_cli_state_isolated "$result" "gemini" "ashigaru1"
+    [[ "$result" == *"AGENT_ID=ashigaru1 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo --model mas-ashigaru1" ]]
 }
 
 @test "build_cli_command: gemini 2.5 + thinking_budget → per-agent alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
-    [ "$result" = "AGENT_ID=ashigaru2 gemini --yolo --model mas-ashigaru2" ]
+    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
+    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo --model mas-ashigaru2" ]]
 }
 
 @test "build_cli_command: gemini auto + thinking_level → inferred alias を使う" {
     load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru3")
-    [ "$result" = "AGENT_ID=ashigaru3 gemini --yolo --model mas-ashigaru3" ]
+    assert_cli_state_isolated "$result" "gemini" "ashigaru3"
+    [[ "$result" == *"AGENT_ID=ashigaru3 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo --model mas-ashigaru3" ]]
 }
 
 @test "build_cli_command: shogun gemini は未設定なら alias を使わない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_gemini_default.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
-    [ "$result" = "AGENT_ID=shogun gemini --yolo" ]
+    assert_cli_state_isolated "$result" "gemini" "shogun"
+    [[ "$result" == *"AGENT_ID=shogun GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo" ]]
 }
 
 @test "build_cli_command: gemini に gpt 系 model が入っていても auto に丸める" {
@@ -677,13 +828,15 @@ YAML
     load_adapter_with "${TEST_TMP}/settings_gemini_invalid_model.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
-    [ "$result" = "AGENT_ID=shogun gemini --yolo" ]
+    assert_cli_state_isolated "$result" "gemini" "shogun"
+    [[ "$result" == *"AGENT_ID=shogun GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo" ]]
 }
 
 @test "build_cli_command: shogun claude は未設定でも thinking無効を既定適用" {
     load_adapter_with "${TEST_TMP}/settings_shogun_claude_default.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "MAX_THINKING_TOKENS=0 AGENT_ID=shogun claude --model opus --dangerously-skip-permissions" ]
+    assert_cli_state_isolated "$result" "claude" "shogun"
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --model opus --dangerously-skip-permissions" ]]
 }
 
 @test "build_cli_command: gemini-cliのみ存在時は gemini-cli を使用" {
@@ -696,7 +849,8 @@ SH
     chmod +x "${TEST_TMP}/bin/gemini-cli"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "ashigaru2")
-    [ "$result" = "AGENT_ID=ashigaru2 ${TEST_TMP}/bin/gemini-cli --yolo" ]
+    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
+    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal ${TEST_TMP}/bin/gemini-cli --yolo" ]]
 }
 
 @test "build_cli_command: localapi → python3 scripts/localapi_repl.py" {
@@ -710,13 +864,47 @@ SH
 @test "build_cli_command: opencode + provider/model → opencode --model ..." {
     load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
     result=$(build_cli_command "shogun")
-    [ "$result" = "AGENT_ID=shogun opencode --model ollama/qwen3-coder:30b" ]
+    assert_cli_state_isolated "$result" "opencode" "shogun"
+    assert_cli_host_auth_link "$result" ".local/share/opencode/auth.json" "opencode" "shogun"
+    assert_cli_host_state_seed "$result" ".local/share/opencode/opencode.db" "opencode" "shogun"
+    assert_cli_host_state_seed "$result" ".local/share/opencode/opencode.db-shm" "opencode" "shogun"
+    assert_cli_host_state_seed "$result" ".local/share/opencode/opencode.db-wal" "opencode" "shogun"
+    assert_cli_host_state_seed "$result" ".local/state/opencode/model.json" "opencode" "shogun"
+    assert_cli_host_auth_link "$result" ".config/opencode/package.json" "opencode" "shogun"
+    assert_cli_host_dir_link "$result" ".config/opencode/node_modules" "opencode" "shogun"
+    [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/opencode/opencode.db"* ]]
+    [[ "$result" == *"AGENT_ID=shogun "*opencode" --model ollama/qwen3-coder:30b" ]]
+}
+
+@test "build_cli_command: opencode bare command は host PATH の実行ファイルへ解決する" {
+    load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
+    make_fake_cli opencode
+    result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "shogun")
+    assert_cli_state_isolated "$result" "opencode" "shogun"
+    [[ "$result" == *"AGENT_ID=shogun ${TEST_TMP}/bin/opencode --model ollama/qwen3-coder:30b" ]]
 }
 
 @test "build_cli_command: kilo + provider/model → kilo --model ..." {
     load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
     result=$(build_cli_command "gunshi")
-    [ "$result" = "AGENT_ID=gunshi kilo --model lmstudio/codellama-7b.Q4_0.gguf" ]
+    assert_cli_state_isolated "$result" "kilo" "gunshi"
+    assert_cli_host_auth_link "$result" ".local/share/kilo/auth.json" "kilo" "gunshi"
+    assert_cli_host_state_seed "$result" ".local/share/kilo/kilo.db" "kilo" "gunshi"
+    assert_cli_host_state_seed "$result" ".local/share/kilo/kilo.db-shm" "kilo" "gunshi"
+    assert_cli_host_state_seed "$result" ".local/share/kilo/kilo.db-wal" "kilo" "gunshi"
+    assert_cli_host_state_seed "$result" ".local/state/kilo/model.json" "kilo" "gunshi"
+    assert_cli_host_auth_link "$result" ".config/kilo/package.json" "kilo" "gunshi"
+    assert_cli_host_dir_link "$result" ".config/kilo/node_modules" "kilo" "gunshi"
+    [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/kilo/kilo.db"* ]]
+    [[ "$result" == *"AGENT_ID=gunshi "*kilo" --model lmstudio/codellama-7b.Q4_0.gguf" ]]
+}
+
+@test "build_cli_command: kilo bare command は host PATH の実行ファイルへ解決する" {
+    load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
+    make_fake_cli kilo
+    result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "gunshi")
+    assert_cli_state_isolated "$result" "kilo" "gunshi"
+    [[ "$result" == *"AGENT_ID=gunshi ${TEST_TMP}/bin/kilo --model lmstudio/codellama-7b.Q4_0.gguf" ]]
 }
 
 @test "build_cli_command: opencode global bin絶対パスには node PATH を自動付与する" {
@@ -729,7 +917,8 @@ SH
     chmod +x "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/node"
     sed -i "s#/tmp/test-home#${TEST_TMP}/home#g" "${TEST_TMP}/settings_opencode_global_bin.yaml"
     result=$(build_cli_command "ashigaru1")
-    [ "$result" = "AGENT_ID=ashigaru1 env PATH=${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin:\$PATH env XDG_DATA_HOME=/tmp/mas_xdg XDG_CACHE_HOME=/tmp/mas_cache ${TEST_TMP}/home/.nvm/versions/node/v22.22.0/lib/node_modules/opencode-ai/bin/opencode --model lmstudio/openai/gpt-oss-20b" ]
+    assert_cli_state_isolated "$result" "opencode" "ashigaru1"
+    [[ "$result" == *"AGENT_ID=ashigaru1 env PATH=${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin:\$PATH env XDG_DATA_HOME=/tmp/mas_xdg XDG_CACHE_HOME=/tmp/mas_cache ${TEST_TMP}/home/.nvm/versions/node/v22.22.0/lib/node_modules/opencode-ai/bin/opencode --model lmstudio/openai/gpt-oss-20b" ]]
 }
 
 @test "get_model_display_name: codex は opus/sonnet 既定値ではなく Codex を表示する" {
@@ -760,7 +949,7 @@ SH
     load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
     result=$(build_cli_command_with_startup_prompt "shogun" "codex" "ready:shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *"codex --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen ready:shogun" ]]
+    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox ready:shogun" ]]
 }
 
 @test "build_cli_command: codex は auth を共有しつつ agent ごとに CODEX_HOME を分離する" {
@@ -776,38 +965,44 @@ SH
 @test "build_cli_command_with_startup_prompt: claude は positional prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_with_models.yaml"
     result=$(build_cli_command_with_startup_prompt "karo" "claude" "ready:karo")
-    [ "$result" = "AGENT_ID=karo claude --model sonnet --dangerously-skip-permissions ready:karo" ]
+    assert_cli_state_isolated "$result" "claude" "karo"
+    [[ "$result" == *"AGENT_ID=karo "*claude" --model sonnet --dangerously-skip-permissions ready:karo" ]]
 }
 
 @test "build_cli_command_with_startup_prompt: gemini は interactive prompt フラグを付与する" {
     load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command_with_startup_prompt "ashigaru2" "gemini" "ready:ashigaru2")
-    [ "$result" = "AGENT_ID=ashigaru2 gemini --yolo -i ready:ashigaru2" ]
+    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
+    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo -i ready:ashigaru2" ]]
 }
 
 @test "build_cli_command_with_startup_prompt: opencode は --prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
     result=$(build_cli_command_with_startup_prompt "shogun" "opencode" "ready:shogun")
-    [ "$result" = "AGENT_ID=shogun opencode --model ollama/qwen3-coder:30b --prompt ready:shogun" ]
+    assert_cli_state_isolated "$result" "opencode" "shogun"
+    [[ "$result" == *"AGENT_ID=shogun "*opencode" --model ollama/qwen3-coder:30b --prompt ready:shogun" ]]
 }
 
 @test "build_cli_command_with_startup_prompt: kilo は --prompt を付与する" {
     load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
     result=$(build_cli_command_with_startup_prompt "gunshi" "kilo" "ready:gunshi")
-    [ "$result" = "AGENT_ID=gunshi kilo --model lmstudio/codellama-7b.Q4_0.gguf --prompt ready:gunshi" ]
+    assert_cli_state_isolated "$result" "kilo" "gunshi"
+    [[ "$result" == *"AGENT_ID=gunshi "*kilo" --model lmstudio/codellama-7b.Q4_0.gguf --prompt ready:gunshi" ]]
 }
 
 @test "build_cli_command: cliセクションなし → claude フォールバック" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(build_cli_command "ashigaru1")
-    [[ "$result" == AGENT_ID=ashigaru1\ claude*--dangerously-skip-permissions ]]
+    assert_cli_state_isolated "$result" "claude" "ashigaru1"
+    [[ "$result" == *"AGENT_ID=ashigaru1 "*claude*--dangerously-skip-permissions ]]
 }
 
 @test "build_cli_command: settings読取失敗 → claude フォールバック" {
     load_adapter_with "/nonexistent/settings.yaml"
     result=$(build_cli_command "ashigaru1")
-    [[ "$result" == AGENT_ID=ashigaru1\ claude*--dangerously-skip-permissions ]]
+    assert_cli_state_isolated "$result" "claude" "ashigaru1"
+    [[ "$result" == *"AGENT_ID=ashigaru1 "*claude*--dangerously-skip-permissions ]]
 }
 
 # =============================================================================
@@ -1134,6 +1329,20 @@ SH
     load_adapter_with "${TEST_TMP}/settings_with_models.yaml"
     result=$(get_agent_model "karo")
     [ "$result" = "sonnet" ]
+}
+
+@test "get_agent_model: karo2 は karo model 設定を継承する" {
+    cat > "${TEST_TMP}/settings_karo_family_model.yaml" <<'YAML'
+cli:
+  default: codex
+  agents:
+    karo:
+      type: codex
+      model: gpt-5.5
+YAML
+    load_adapter_with "${TEST_TMP}/settings_karo_family_model.yaml"
+    result=$(get_agent_model "karo2")
+    [ "$result" = "gpt-5.5" ]
 }
 
 @test "get_agent_model: codexエージェントのmodel ashigaru5 → gpt-5" {

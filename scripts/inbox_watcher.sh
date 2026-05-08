@@ -177,10 +177,6 @@ mux_send_ctrl_c() {
     timeout 5 tmux send-keys -t "$PANE_TARGET" C-c 2>/dev/null
 }
 
-mux_send_ctrl_u() {
-    timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
-}
-
 mux_send_escape_double() {
     timeout 5 tmux send-keys -t "$PANE_TARGET" Escape Escape 2>/dev/null
 }
@@ -569,7 +565,7 @@ bootstrap_acknowledged_in_pane() {
     local ack_token=""
     ack_token="ready:${AGENT_ID}"
     [[ -n "$pane_text" && -n "$ack_token" ]] || return 1
-    printf '%s\n' "$pane_text" | grep -Fq "$ack_token"
+    printf '%s\n' "$pane_text" | grep -F "$ack_token" | grep -vq '【初動命令】'
 }
 
 mark_bootstrap_delivered_from_ack() {
@@ -719,6 +715,64 @@ submit_codex_pending_paste_if_needed() {
     return 0
 }
 
+codex_bootstrap_input_visible() {
+    local pane_text="${1:-}"
+
+    printf '%s' "$pane_text" | grep -qiE "【初動命令】あなたは${AGENT_ID}|【初動命令】|イベント駆動規則|連携順序:|準備が整ったら未読inbox監視へ戻れ"
+}
+
+codex_bootstrap_delivery_prompt() {
+    local bootstrap_file="$1"
+
+    printf "【初動命令】あなたは%s。まず 'ready:%s' を1行で即時送信し、次に %s を読み、その内容を Codex 用の正本指示として即適用せよ。比較・diff・読み比べは不要。以後はイベント駆動規則に従え。" \
+        "$AGENT_ID" "$AGENT_ID" "$bootstrap_file"
+}
+
+codex_bootstrap_activity_visible() {
+    local pane_text="${1:-}"
+    local filtered_text=""
+
+    bootstrap_acknowledged_in_pane "$pane_text" && return 0
+    filtered_text="$(printf '%s\n' "$pane_text" | grep -v '【初動命令】' || true)"
+    printf '%s' "$filtered_text" | grep -qiE '(Working|esc to interrupt|^• |^[[:space:]]*└ |Ran |Explored|Read )'
+}
+
+confirm_codex_bootstrap_submitted() {
+    local action_label="${1:-Codex bootstrap submit confirm}"
+    local pane_text=""
+    local attempt
+
+    if ! submit_codex_pending_paste_if_needed "$action_label"; then
+        return 1
+    fi
+
+    for attempt in 1 2 3; do
+        sleep 1
+        pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -60 || true)
+        if codex_bootstrap_activity_visible "$pane_text"; then
+            return 0
+        fi
+        if codex_bootstrap_input_visible "$pane_text"; then
+            echo "[$(date)] [INFO] ${action_label}: bootstrap still visible in composer for $AGENT_ID; sending Enter ($attempt)" >&2
+        else
+            echo "[$(date)] [INFO] ${action_label}: Codex bootstrap not active yet for $AGENT_ID; sending Enter ($attempt)" >&2
+        fi
+        mux_send_enter || return 1
+    done
+
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -60 || true)
+    if codex_bootstrap_activity_visible "$pane_text"; then
+        return 0
+    fi
+    if codex_bootstrap_input_visible "$pane_text"; then
+        echo "[$(date)] WARNING: ${action_label} bootstrap still appears unsubmitted for $AGENT_ID" >&2
+        return 1
+    fi
+
+    echo "[$(date)] WARNING: ${action_label} Codex bootstrap did not show activity for $AGENT_ID" >&2
+    return 1
+}
+
 deliver_pending_bootstrap_if_ready() {
     local runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime"
     local bootstrap_file="$runtime_dir/bootstrap_${AGENT_ID}.md"
@@ -765,11 +819,14 @@ deliver_pending_bootstrap_if_ready() {
 
     msg=$(cat "$bootstrap_file" 2>/dev/null || true)
     [ -n "$msg" ] || return 0
+    if [[ "$effective_cli" == "codex" ]]; then
+        msg=$(codex_bootstrap_delivery_prompt "$bootstrap_file")
+    fi
 
     if ! send_literal_text_and_enter "$msg" "bootstrap retry"; then
         return 1
     fi
-    if [[ "$effective_cli" == "codex" ]] && ! submit_codex_pending_paste_if_needed "bootstrap retry"; then
+    if [[ "$effective_cli" == "codex" ]] && ! confirm_codex_bootstrap_submitted "bootstrap retry"; then
         return 1
     fi
 
@@ -1117,7 +1174,7 @@ PY
 
     if [[ "${AGENT_ID:-}" == "karo" ]]; then
         if [[ "$decision" == "cmd_new" ]]; then
-            echo "queue/inbox/karo.yaml に未読の cmd_new がある。まず queue/shogun_to_karo.yaml を読み、該当 cmd を status: in_progress にし、queue/tasks/ashigaru1.yaml または queue/tasks/ashigaru2.yaml へ task_assigned を即時に切れ。"
+            echo "queue/inbox/karo.yaml に未読の cmd_new がある。まず queue/shogun_to_karo.yaml と active ashigaru の task/report YAML を読み、該当 cmd を status: in_progress にせよ。成果物や工程が分けられるなら ashigaru1/2 で止めず、ashigaru3以降も含めた有用で安全な active ashigaru 全体へ queue/tasks/ashigaru{N}.yaml と task_assigned を即時に切れ。複雑・高リスク・分解困難なら queue/tasks/gunshi.yaml に分析taskを並行投入して gunshi へ task_assigned を送れ。"
             return 0
         fi
         if [[ "$decision" == "report_received" ]]; then
@@ -1126,6 +1183,13 @@ PY
         fi
         echo "$default_nudge"
         return 0
+    fi
+
+    if [[ "${AGENT_ID:-}" == "gunshi" ]]; then
+        if [[ "$decision" == "task_assigned" ]]; then
+            echo "queue/inbox/gunshi.yaml に未読の task_assigned がある。まず queue/tasks/gunshi.yaml を読み、戦略分析・分解案・リスク評価を行い、queue/reports/gunshi_report.yaml を書いて家老へ通知せよ。実装・dashboard更新・cmd close は行うな。"
+            return 0
+        fi
     fi
 
     if [[ "${AGENT_ID:-}" =~ ^ashigaru[0-9]+$ ]]; then
@@ -1544,9 +1608,6 @@ process_unread() {
             echo "[$(date)] All messages read for $AGENT_ID — escalation reset (fast-path)" >&2
         fi
         FIRST_UNREAD_SEEN=0
-        if ! agent_is_busy; then
-            mux_send_ctrl_u
-        fi
         return 0
     fi
 
@@ -1677,9 +1738,6 @@ for s in data.get('specials', []):
             if recover_missing_ashigaru_report_if_idle; then
                 return 0
             fi
-            # Clear stale nudge text from input field (Codex CLI prefills last input on idle).
-            # Only send C-u when agent is idle — during Working it would be disruptive.
-            mux_send_ctrl_u
         fi
     fi
 }

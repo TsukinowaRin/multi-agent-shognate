@@ -201,6 +201,69 @@ confirm_codex_pasted_content_tmux() {
 
     return 0
 }
+
+codex_bootstrap_input_visible_tmux() {
+    local screen_content="${1:-}"
+    local agent_id="${2:-}"
+    [ -n "$agent_id" ] || return 1
+    printf '%s' "$screen_content" | grep -qiE "【初動命令】あなたは${agent_id}|【初動命令】|イベント駆動規則|連携順序:|準備が整ったら未読inbox監視へ戻れ"
+}
+
+codex_bootstrap_delivery_prompt_tmux() {
+    local agent_id="$1"
+    local bootstrap_file="$2"
+
+    printf "【初動命令】あなたは%s。まず 'ready:%s' を1行で即時送信し、次に %s を読み、その内容を Codex 用の正本指示として即適用せよ。比較・diff・読み比べは不要。以後はイベント駆動規則に従え。" \
+        "$agent_id" "$agent_id" "$bootstrap_file"
+}
+
+codex_bootstrap_activity_visible_tmux() {
+    local screen_content="${1:-}"
+    local agent_id="${2:-}"
+    local filtered_content=""
+
+    bootstrap_acknowledged_tmux "" "$agent_id" "$screen_content" && return 0
+    filtered_content="$(printf '%s\n' "$screen_content" | grep -v '【初動命令】' || true)"
+    printf '%s' "$filtered_content" | grep -qiE '(Working|esc to interrupt|^• |^[[:space:]]*└ |Ran |Explored|Read )'
+}
+
+confirm_codex_bootstrap_submitted_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local action_label="${3:-Codex bootstrap submit confirm}"
+    local screen_content=""
+    local attempt
+
+    if ! confirm_codex_pasted_content_tmux "$pane_target" "$agent_id" "$action_label"; then
+        return 1
+    fi
+
+    for attempt in 1 2 3; do
+        sleep 1
+        screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -60 || true)
+        if codex_bootstrap_activity_visible_tmux "$screen_content" "$agent_id"; then
+            return 0
+        fi
+        if codex_bootstrap_input_visible_tmux "$screen_content" "$agent_id"; then
+            echo "[INFO] ${action_label}: bootstrap still visible in composer for ${agent_id}; sending Enter (${attempt})" >&2
+        else
+            echo "[INFO] ${action_label}: Codex bootstrap not active yet for ${agent_id}; sending Enter (${attempt})" >&2
+        fi
+        tmux_send_enter_only "$pane_target" "$action_label" || return 1
+    done
+
+    screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -60 || true)
+    if codex_bootstrap_activity_visible_tmux "$screen_content" "$agent_id"; then
+        return 0
+    fi
+    if codex_bootstrap_input_visible_tmux "$screen_content" "$agent_id"; then
+        echo "[WARN] ${action_label}: bootstrap still appears unsubmitted for ${agent_id} (${pane_target})" >&2
+        return 1
+    fi
+
+    echo "[WARN] ${action_label}: Codex bootstrap did not show activity for ${agent_id} (${pane_target})" >&2
+    return 1
+}
 acquire_startup_lock
 
 # 言語設定を読み取り（デフォルト: ja）
@@ -844,7 +907,7 @@ bootstrap_acknowledged_tmux() {
     if [ -z "$screen_content" ]; then
         screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
     fi
-    printf '%s\n' "$screen_content" | grep -Fq "$ack_token"
+    printf '%s\n' "$screen_content" | grep -F "$ack_token" | grep -vq '【初動命令】'
 }
 
 startup_fastpath_directive() {
@@ -854,7 +917,7 @@ startup_fastpath_directive() {
             echo "初動最適化: 起動直後は自inboxだけ確認し、未読が無ければ即待機。task_assigned を受けたら queue/shogun_to_karo.yaml・自inbox・settings だけで即 cmd 起票し、app.py/tests/README や git status のような実装調査は家老へ委ねよ。"
             ;;
         karo|karo[1-9]*|karo_gashira)
-            echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は inbox・queue/shogun_to_karo.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め。2人以上の active ashigaru で成果物や工程が分けられる cmd なら、初手で少なくとも2本の補完的 subtasks を切ってから待機せよ。dashboard/settings/対象コードは dispatch 後か runtime 矛盾時だけ読め。report_received は report YAML を正本として dashboard 更新と cmd close を最優先せよ。bridge/ntfy/streaks/sample は異常時以外読むな。"
+            echo "初動最適化: 起動直後は自inboxだけ確認して待機。cmd_new は inbox・queue/shogun_to_karo.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め。成果物や工程が分けられる cmd なら、active ashigaru 全体を確認し、ashigaru1/2だけで止めず、ashigaru3以降も含めて有用で安全な数の補完的 subtasks を初手で切ってから待機せよ。複雑・高リスク・分解困難なら初手dispatchを止めずに queue/tasks/gunshi.yaml へ分析taskを並行投入せよ。dashboard/settings/対象コードは dispatch 後か runtime 矛盾時だけ読め。report_received は report YAML を正本として dashboard 更新と cmd close を最優先せよ。bridge/ntfy/streaks/sample は異常時以外読むな。"
             ;;
         ashigaru*)
             echo "初動最適化: 起動直後は自inbox/task だけ確認し、未読も task も無ければ即待機。着手後も自task と対象ファイルに限定して動け。"
@@ -883,8 +946,10 @@ wait_for_cli_ready_tmux() {
         gemini)  ready_pattern='(gemini|Gemini|type your message|Tips to get|yolo mode|Working|esc to interrupt|Initializing the Agent)' ;;
         copilot) ready_pattern='(copilot|GitHub Copilot|/model)' ;;
         kimi)    ready_pattern='(kimi|moonshot|/model)' ;;
+        opencode) ready_pattern='(opencode|OpenCode|/model|ready:)' ;;
+        kilo)    ready_pattern='(kilo|Kilo|/model|ready:)' ;;
         localapi) ready_pattern='(localapi|LocalAPI|ready:|\$)' ;;
-        *)       ready_pattern='(claude|codex|gemini|copilot|kimi|localapi|ready:)' ;;
+        *)       ready_pattern='(claude|codex|gemini|copilot|kimi|opencode|kilo|localapi|ready:)' ;;
     esac
 
     # max_wait=0 でも1回は即時チェックする（for ループでは 0<0 が偽でスキップされるため分離）
@@ -962,6 +1027,10 @@ deliver_bootstrap_tmux() {
     local ready_rc=0
     if [ "$cli_type" = "codex" ]; then
         ready_wait="${MAS_CODEX_BOOTSTRAP_READY_WAIT:-5}"
+    elif [ "$cli_type" = "opencode" ]; then
+        ready_wait="${MAS_OPENCODE_BOOTSTRAP_READY_WAIT:-5}"
+    elif [ "$cli_type" = "kilo" ]; then
+        ready_wait="${MAS_KILO_BOOTSTRAP_READY_WAIT:-5}"
     fi
     wait_for_cli_ready_tmux "$pane_target" "$cli_type" "$ready_wait"
     ready_rc=$?
@@ -983,8 +1052,8 @@ deliver_bootstrap_tmux() {
             return 1
         fi
         clear_runtime_blocker_tmux "$agent_id" "codex-auth-required" "Codex auth prompt not detected during bootstrap delivery."
-        echo "[WARN] CLI '$cli_type' not ready in '$pane_target' after 30s, sending bootstrap anyway" >&2
-        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-timeout" "sending bootstrap anyway after 30s"
+        echo "[WARN] CLI '$cli_type' not ready in '$pane_target' after ${ready_wait}s, sending bootstrap anyway" >&2
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-timeout" "sending bootstrap anyway after ${ready_wait}s"
     fi
 
     if [ ! -f "$pending_file" ]; then
@@ -1004,20 +1073,42 @@ deliver_bootstrap_tmux() {
 
     local msg
     msg="$(cat "$bootstrap_file")"
+    if [ "$cli_type" = "codex" ]; then
+        msg="$(codex_bootstrap_delivery_prompt_tmux "$agent_id" "$bootstrap_file")"
+    fi
     # -l: リテラル送信（日本語・特殊文字をキーシーケンスと誤解釈させない）
     # sleep: CLI がテキストをバッファに受け取ってから Enter を送る
     if ! tmux_send_text_and_enter "$pane_target" "$msg" "bootstrap delivery" "1"; then
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "text or enter send failed"
         return 1
     fi
-    if [ "$cli_type" = "codex" ] && ! confirm_codex_pasted_content_tmux "$pane_target" "$agent_id" "bootstrap delivery"; then
-        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "codex pasted content still pending"
+    if [ "$cli_type" = "codex" ] && ! confirm_codex_bootstrap_submitted_tmux "$pane_target" "$agent_id" "bootstrap delivery"; then
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "codex bootstrap still pending in composer"
         return 1
     fi
     rm -f "$pending_file"
     : > "$delivered_file"
     clear_runtime_blocker_tmux "$agent_id" "codex-auth-required" "Codex auth prompt cleared before bootstrap delivery."
     append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-delivered" "send-keys literal + enter"
+}
+
+should_embed_startup_prompt_in_cli_command() {
+    local cli_type="${1:-}"
+    local mode
+
+    mode="$(printf '%s' "${MAS_CODEX_STARTUP_PROMPT_MODE:-tmux}" | tr '[:upper:]' '[:lower:]')"
+    if [ "$cli_type" = "codex" ]; then
+        case "$mode" in
+            argv|arg|args|inline|positional)
+                return 0
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    fi
+
+    return 0
 }
 
 GOZA_SESSION_NAME="${GOZA_SESSION_NAME:-goza-no-ma}"
@@ -1028,8 +1119,11 @@ GOZA_BOOTSTRAP_RUN_ID="${GOZA_BOOTSTRAP_RUN_ID:-$(date +%Y%m%d_%H%M%S)}"
 GOZA_BOOTSTRAP_LOG="${GOZA_BOOTSTRAP_LOG:-$SCRIPT_DIR/queue/runtime/goza_bootstrap_${GOZA_BOOTSTRAP_RUN_ID}.log}"
 GOZA_VIEW_WIDTH="${GOZA_VIEW_WIDTH:-220}"
 GOZA_VIEW_HEIGHT="${GOZA_VIEW_HEIGHT:-60}"
+GOZA_MIN_RESTORE_PANE_WIDTH="${GOZA_MIN_RESTORE_PANE_WIDTH:-20}"
+GOZA_MIN_RESTORE_PANE_HEIGHT="${GOZA_MIN_RESTORE_PANE_HEIGHT:-6}"
 
 declare -a ASHIGARU_PANES=()
+declare -a KARO_PANES=()
 
 build_ashigaru_grid() {
     local pane_target="$1"
@@ -1059,6 +1153,36 @@ build_ashigaru_grid() {
 
     build_ashigaru_grid "$pane_target" "$start_index" "$first_count" $((depth + 1))
     build_ashigaru_grid "$split_pane" $((start_index + first_count)) "$second_count" $((depth + 1))
+}
+
+build_karo_grid() {
+    local pane_target="$1"
+    local start_index="$2"
+    local pane_count="$3"
+    local depth="${4:-0}"
+    local split_pane="" first_count=0 second_count=0
+
+    if [ "$pane_count" -le 1 ]; then
+        KARO_PANES["$start_index"]="$pane_target"
+        return 0
+    fi
+
+    first_count=$(( (pane_count + 1) / 2 ))
+    second_count=$(( pane_count - first_count ))
+
+    if [ "$second_count" -le 0 ]; then
+        KARO_PANES["$start_index"]="$pane_target"
+        return 0
+    fi
+
+    if [ $(( depth % 2 )) -eq 0 ]; then
+        split_pane="$(tmux split-window -v -t "$pane_target" -P -F '#{pane_id}')"
+    else
+        split_pane="$(tmux split-window -h -t "$pane_target" -P -F '#{pane_id}')"
+    fi
+
+    build_karo_grid "$pane_target" "$start_index" "$first_count" $((depth + 1))
+    build_karo_grid "$split_pane" $((start_index + first_count)) "$second_count" $((depth + 1))
 }
 
 start_goza_layout_autosave() {
@@ -1103,12 +1227,29 @@ write_goza_signature_file() {
     printf '%s\n' "$signature" > "$GOZA_SIGNATURE_FILE"
 }
 
+goza_window_has_tiny_panes() {
+    local window_target="$1"
+    local width height
+
+    while read -r width height; do
+        [[ "$width" =~ ^[0-9]+$ && "$height" =~ ^[0-9]+$ ]] || continue
+        if (( width < GOZA_MIN_RESTORE_PANE_WIDTH || height < GOZA_MIN_RESTORE_PANE_HEIGHT )); then
+            return 0
+        fi
+    done < <(tmux list-panes -t "$window_target" -F '#{pane_width} #{pane_height}' 2>/dev/null || true)
+
+    return 1
+}
+
 save_goza_layout() {
     local session="$1"
     local window_target="${session}:${GOZA_WINDOW_NAME}"
     local pane_count layout signature
 
     tmux has-session -t "$session" 2>/dev/null || return 0
+    if goza_window_has_tiny_panes "$window_target"; then
+        return 0
+    fi
     pane_count="$(tmux list-panes -t "$window_target" 2>/dev/null | wc -l | tr -d '[:space:]')"
     layout="$(tmux display-message -p -t "$window_target" "#{window_layout}" 2>/dev/null || true)"
     signature="$(collect_goza_session_signature "$session")"
@@ -1125,7 +1266,7 @@ restore_goza_layout_if_available() {
     local session="$1"
     local expected_signature="$2"
     local window_target="${session}:${GOZA_WINDOW_NAME}"
-    local current_count saved_count saved_signature saved_layout
+    local current_count saved_count saved_signature saved_layout current_layout
 
     [[ -f "$GOZA_LAYOUT_FILE" ]] || return 0
     current_count="$(tmux list-panes -t "$window_target" 2>/dev/null | wc -l | tr -d '[:space:]')"
@@ -1135,7 +1276,14 @@ restore_goza_layout_if_available() {
     if [[ -n "$expected_signature" && -n "$saved_signature" && "$saved_signature" != "$expected_signature" ]]; then
         return 0
     fi
-    tmux select-layout -t "$window_target" "$saved_layout" >/dev/null 2>&1 || true
+    current_layout="$(tmux display-message -p -t "$window_target" "#{window_layout}" 2>/dev/null || true)"
+    tmux select-layout -t "$window_target" "$saved_layout" >/dev/null 2>&1 || return 0
+    if goza_window_has_tiny_panes "$window_target"; then
+        if [[ -n "$current_layout" ]]; then
+            tmux select-layout -t "$window_target" "$current_layout" >/dev/null 2>&1 || true
+        fi
+        log_info "⚠️  保存済み御座の間レイアウトは pane が小さすぎるため復元しません"
+    fi
 }
 
 resolve_multiagent_pane_target() {
@@ -1243,10 +1391,10 @@ role_linkage_directive() {
     local agent_id="$1"
     case "$agent_id" in
         shogun)
-            echo "連携順序: 殿の指示を受けたら、必ず『将軍→家老→足軽』で委譲せよ。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
+            echo "連携順序: 殿の指示を受けたら、必ず『将軍→筆頭家老→担当家老→足軽』で委譲せよ。家老が複数いる時は queue/runtime/lead_karo（通常 karo1）を筆頭として扱う。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
             ;;
         karo|karo[1-9]*|karo_gashira)
-            echo "連携順序: 家老は担当足軽のみを管理せよ。家老同士の直接連携は禁止。割当は queue/runtime/ashigaru_owner.tsv を正本として従うこと。"
+            echo "連携順序: 家老は queue/runtime/ashigaru_owner.tsv の担当足軽のみを管理せよ。筆頭家老は queue/runtime/lead_karo（通常 karo1）で、将軍への完了報告と全体統合を担う。家老間の自由な直接会話は禁止。依存・衝突・handoff・merge・進捗同期は queue/runtime/karo_coordination.yaml に構造化して記録し、必要な時だけ type: coordination_notice で相手家老を起こせ。"
             ;;
         ashigaru*)
             echo "連携順序: 足軽は自分の task YAML のみ処理し、完了後は queue/runtime/ashigaru_owner.tsv で定義された担当家老へ報告せよ。非担当家老への報告は禁止。"
@@ -1293,7 +1441,7 @@ reporting_chain_directive() {
             echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
             ;;
         karo|karo[1-9]*|karo_gashira)
-            echo "報告規則: タスク完了時は将軍へ要約を返し、人間へ直接報告しない。"
+            echo "報告規則: 筆頭家老（queue/runtime/lead_karo）は将軍へ要約を返す。筆頭以外の家老は queue/runtime/karo_coordination.yaml で筆頭に状況を同期し、人間や将軍へ直接最終報告しない。"
             ;;
         ashigaru*)
             echo "報告規則: 完了報告は必ず家老へ返す。将軍・人間へ直接報告しない。"
@@ -1546,6 +1694,7 @@ if [ "$TOPOLOGY_ADAPTER_LOADED" = true ]; then
         KARO_AGENTS=("${_karo_from_topology[@]}")
     fi
 fi
+LEAD_KARO="${KARO_AGENTS[0]:-karo}"
 
 # shell配列をpythonへ安全に渡せないため、ACTIVEを個別に合流
 KNOWN_ASHIGARU=("${ACTIVE_ASHIGARU[@]}")
@@ -1704,6 +1853,13 @@ fi
 save_goza_layout "$GOZA_SESSION_NAME"
 pkill -f "$SCRIPT_DIR/scripts/goza_layout_autosave.sh ${GOZA_SESSION_NAME} " >/dev/null 2>&1 || true
 tmux kill-session -t "$GOZA_SESSION_NAME" 2>/dev/null && log_info "  └─ 御座の間、撤収完了" || log_info "  └─ 御座の間は存在せず"
+tmux kill-session -t "$RUNTIME_DAEMON_SESSION" 2>/dev/null && log_info "  └─ runtime監視陣、撤収完了" || log_info "  └─ runtime監視陣は存在せず"
+pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh " 2>/dev/null || true
+pkill -f "$SCRIPT_DIR/scripts/watcher_supervisor.sh" 2>/dev/null || true
+pkill -f "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
+pkill -f "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
+pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
+pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
 tmux kill-session -t multiagent 2>/dev/null && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
 tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
 tmux kill-session -t gunshi 2>/dev/null && log_info "  └─ gunshi陣、撤収完了" || log_info "  └─ gunshi陣は存在せず"
@@ -1834,6 +1990,28 @@ else
     for _agent in "${ACTIVE_ASHIGARU[@]}"; do
         printf "%s\tkaro\n" "$_agent" >> "$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
     done
+fi
+printf "%s\n" "$LEAD_KARO" > "$SCRIPT_DIR/queue/runtime/lead_karo"
+if [ "$CLEAN_MODE" = true ] || [ ! -f "$SCRIPT_DIR/queue/runtime/karo_coordination.yaml" ]; then
+    {
+        echo "coordination:"
+        echo "  lead_karo: ${LEAD_KARO}"
+        echo "  active_karo:"
+        for _karo in "${KARO_AGENTS[@]}"; do
+            echo "    - ${_karo}"
+        done
+        echo "  allowed_types:"
+        echo "    - dependency_notice"
+        echo "    - conflict_notice"
+        echo "    - handoff_request"
+        echo "    - merge_request"
+        echo "    - status_sync"
+        echo "  rules:"
+        echo "    - \"karo1/lead_karo owns shogun reporting and final integration.\""
+        echo "    - \"Each karo commands only ashigaru assigned in queue/runtime/ashigaru_owner.tsv.\""
+        echo "    - \"Karo-to-karo inbox messages are only wake-up notices for this board.\""
+        echo "  items: []"
+    } > "$SCRIPT_DIR/queue/runtime/karo_coordination.yaml"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1988,9 +2166,12 @@ ASH_ROOT_PANE="$(tmux split-window -v -l "$ASH_HEIGHT" -t "$GUNSHI_PANE" -P -F '
 
 AGENT_PANES["shogun"]="$SHOGUN_PANE"
 AGENT_PANES["gunshi"]="$GUNSHI_PANE"
-if [ "${#KARO_AGENTS[@]}" -gt 0 ]; then
-    AGENT_PANES["${KARO_AGENTS[0]}"]="$KARO_PANE"
-fi
+
+KARO_PANES=()
+build_karo_grid "$KARO_PANE" 0 "${#KARO_AGENTS[@]}" 0
+for _idx in "${!KARO_AGENTS[@]}"; do
+    AGENT_PANES["${KARO_AGENTS[$_idx]}"]="${KARO_PANES[$_idx]}"
+done
 
 ASHIGARU_PANES=()
 build_ashigaru_grid "$ASH_ROOT_PANE" 0 "$ACTIVE_ASHIGARU_COUNT" 0
@@ -1999,9 +2180,7 @@ for _idx in "${!ACTIVE_ASHIGARU[@]}"; do
 done
 
 BACKEND_AGENT_IDS=("shogun")
-if [ "${#KARO_AGENTS[@]}" -gt 0 ]; then
-    BACKEND_AGENT_IDS+=("${KARO_AGENTS[0]}")
-fi
+BACKEND_AGENT_IDS+=("${KARO_AGENTS[@]}")
 BACKEND_AGENT_IDS+=("gunshi")
 BACKEND_AGENT_IDS+=("${ACTIVE_ASHIGARU[@]}")
 
@@ -2030,7 +2209,7 @@ start_goza_layout_autosave "$GOZA_SESSION_NAME"
 
 SHOGUN_TARGET="${AGENT_PANES[shogun]}"
 GUNSHI_TARGET="${AGENT_PANES[gunshi]}"
-KARO_TARGET="${AGENT_PANES[${KARO_AGENTS[0]:-karo}]}"
+KARO_TARGET="${AGENT_PANES[${LEAD_KARO}]}"
 
 log_success "  └─ 御座の間、構築完了"
 echo ""
@@ -2087,7 +2266,7 @@ if [ "$SETUP_ONLY" = false ]; then
     generate_bootstrap_file "shogun" "$_shogun_cli_type"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         _shogun_startup_prompt="$(bootstrap_message_text "shogun" || true)"
-        if [ -n "$_shogun_startup_prompt" ]; then
+        if [ -n "$_shogun_startup_prompt" ] && should_embed_startup_prompt_in_cli_command "$_shogun_cli_type"; then
             _shogun_cmd=$(build_cli_command_with_startup_prompt "shogun" "$_shogun_cli_type" "$_shogun_startup_prompt")
         fi
     fi
@@ -2115,7 +2294,7 @@ if [ "$SETUP_ONLY" = false ]; then
     generate_bootstrap_file "gunshi" "$_gunshi_cli_type"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         _gunshi_startup_prompt="$(bootstrap_message_text "gunshi" || true)"
-        if [ -n "$_gunshi_startup_prompt" ]; then
+        if [ -n "$_gunshi_startup_prompt" ] && should_embed_startup_prompt_in_cli_command "$_gunshi_cli_type"; then
             _gunshi_cmd=$(build_cli_command_with_startup_prompt "gunshi" "$_gunshi_cli_type" "$_gunshi_startup_prompt")
         fi
     fi
@@ -2129,11 +2308,15 @@ if [ "$SETUP_ONLY" = false ]; then
     sleep 1
 
     declare -A MULTIAGENT_CLI=()
+    declare -a _karo_launch_lines=()
+    declare -a _ashigaru_launch_lines=()
     _karo_launched=0
     _ashigaru_launched=0
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
+        _is_karo_agent=false
         if [[ "$_agent" == karo* ]]; then
+            _is_karo_agent=true
             _agent_cli_type="claude"
             _agent_cmd="claude --model opus --effort max $PERMISSION_FLAG"
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
@@ -2168,7 +2351,7 @@ if [ "$SETUP_ONLY" = false ]; then
         generate_bootstrap_file "$_agent" "$_agent_cli_type"
         if [ "$CLI_ADAPTER_LOADED" = true ]; then
             _agent_startup_prompt="$(bootstrap_message_text "$_agent" || true)"
-            if [ -n "$_agent_startup_prompt" ]; then
+            if [ -n "$_agent_startup_prompt" ] && should_embed_startup_prompt_in_cli_command "$_agent_cli_type"; then
                 _agent_cmd=$(build_cli_command_with_startup_prompt "$_agent" "$_agent_cli_type" "$_agent_startup_prompt")
             fi
         fi
@@ -2177,13 +2360,30 @@ if [ "$SETUP_ONLY" = false ]; then
         printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
         MULTIAGENT_CLI["$_agent"]="$_agent_cli_type"
         tmux set-option -p -t "$_pane_target" @model_name "$(resolve_model_display_name "$_agent")"
-        log_info "  └─ ${_agent}（$(resolve_cli_summary "$_agent" "$_agent_cli_type")）、召喚完了"
+        _agent_display="$_agent"
+        if [[ "$_agent" =~ ^karo([1-9][0-9]*)$ ]]; then
+            _agent_display="Karo${BASH_REMATCH[1]}"
+        elif [[ "$_agent" == "karo" ]]; then
+            _agent_display="Karo"
+        fi
+        _launch_line="  └─ ${_agent_display}（$(resolve_cli_summary "$_agent" "$_agent_cli_type")）、CLI起動完了"
+        if [ "$_is_karo_agent" = true ]; then
+            _karo_launch_lines+=("$_launch_line")
+        else
+            _ashigaru_launch_lines+=("$_launch_line")
+        fi
+    done
+    for _launch_line in "${_karo_launch_lines[@]}"; do
+        log_info "$_launch_line"
     done
     log_info "  └─ 家老（${_karo_launched}名）、召喚完了"
+    for _launch_line in "${_ashigaru_launch_lines[@]}"; do
+        log_info "$_launch_line"
+    done
     if [ "$KESSEN_MODE" = true ]; then
-        log_info "  └─ 足軽（決戦の陣 / Claude系Opus優先: ${_ashigaru_launched}名）"
+        log_info "  └─ 足軽（決戦の陣 / Claude系Opus優先: ${_ashigaru_launched}名）、配置完了"
     else
-        log_info "  └─ 足軽（設定どおり: ${_ashigaru_launched}名）"
+        log_info "  └─ 足軽（設定どおり: ${_ashigaru_launched}名）、配置完了"
     fi
 
     # Gemini / Codex の初回プリフライトを自動処理（並列実行）
@@ -2480,7 +2680,13 @@ echo ""
 echo "     【goza-no-ma セッション】御座の間（本体）"
 echo "     ┌────────────────────────────────────────────────────────────┐"
 echo "     │  Pane: shogun          ← 総大将・プロジェクト統括        │"
-echo "     │  Pane: ${KARO_AGENTS[0]:-karo}   ← 家老・タスク統制             │"
+for _agent in "${KARO_AGENTS[@]}"; do
+    if [ "$_agent" = "$LEAD_KARO" ]; then
+        echo "     │  Pane: ${_agent}  ← 筆頭家老・統合/将軍報告             │"
+    else
+        echo "     │  Pane: ${_agent}  ← 家老・担当足軽統制                 │"
+    fi
+done
 echo "     │  Pane: gunshi          ← 戦略・分析・助言                │"
 for _agent in "${ACTIVE_ASHIGARU[@]}"; do
     echo "     │  Pane: ${_agent}  ← 足軽                                 │"

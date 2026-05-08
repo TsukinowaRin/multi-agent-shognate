@@ -47,6 +47,17 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "御座の間は小さすぎる保存レイアウトを復元・保存しない" {
+    run bash -c '
+        grep -q "GOZA_MIN_RESTORE_PANE_WIDTH" "$1" &&
+        grep -q "GOZA_MIN_RESTORE_PANE_HEIGHT" "$1" &&
+        grep -q "goza_window_has_tiny_panes" "$1" &&
+        grep -Fq "tmux select-layout -t \"\$window_target\" \"\$current_layout\"" "$1" &&
+        grep -q "小さすぎるため復元しません" "$1"
+    ' _ "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "goza helper は goza-no-ma へ直接 attach/switch する" {
     run bats_search 'GOZA_SESSION|switch-client -t "\$GOZA_SESSION"|attach-session -t "\$GOZA_SESSION"|shutsujin_departure\.sh' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
@@ -82,6 +93,16 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動は複数家老全員を goza backend と bootstrap 対象にする" {
+    run bats_search 'build_karo_grid|KARO_PANES|BACKEND_AGENT_IDS\+=\("\$\{KARO_AGENTS\[@\]\}"\)|MULTIAGENT_IDS=\("\$\{KARO_AGENTS\[@\]\}" "\$\{ACTIVE_ASHIGARU\[@\]\}"\)' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は筆頭家老と家老 coordination board を runtime に書く" {
+    run bats_search 'LEAD_KARO="\$\{KARO_AGENTS\[0\]:-karo\}"|queue/runtime/lead_karo|queue/runtime/karo_coordination\.yaml|coordination_notice' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は ntfy_inbox.yaml を確保する" {
     run bats_search "ntfy_inbox\.yaml" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
@@ -112,8 +133,24 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動ログは家老集計を家老明細の直後に出し、足軽配置を最後に出す" {
+    run bash -c '
+        grep -q "_karo_launch_lines" "$1" &&
+        grep -q "_ashigaru_launch_lines" "$1" &&
+        grep -q "Karo.*BASH_REMATCH" "$1" &&
+        grep -q "家老（.*_karo_launched.*名）、召喚完了" "$1" &&
+        grep -q "足軽（設定どおり: .*_ashigaru_launched.*名）、配置完了" "$1"
+    ' _ "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は bootstrap 未配信でも全体を abort しない" {
     run bats_search 'if ! deliver_bootstrap_tmux .*_bootstrap_failed=1|bootstrap 未配信のまま継続' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は OpenCode/Kilo を ready 判定し bootstrap 待ちを短縮する" {
+    run bats_search 'opencode\) ready_pattern=.*OpenCode|kilo\)    ready_pattern=.*Kilo|MAS_OPENCODE_BOOTSTRAP_READY_WAIT:-5|MAS_KILO_BOOTSTRAP_READY_WAIT:-5|after \$\{ready_wait\}s' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -128,7 +165,12 @@ setup_file() {
 }
 
 @test "tmux 起動は Codex bootstrap 後に pasted content が残っていたら追い Enter する" {
-    run bats_search 'codex_pasted_content_pending_tmux|confirm_codex_pasted_content_tmux|pasted content still pending|Confirming Codex pasted content' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
+    run bats_search 'codex_pasted_content_pending_tmux|confirm_codex_bootstrap_submitted_tmux|codex_bootstrap_input_visible|bootstrap still visible in composer|Confirming Codex pasted content' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は Codex bootstrap を短いファイル参照promptで送る" {
+    run bats_search 'codex_bootstrap_delivery_prompt_tmux|codex_bootstrap_delivery_prompt|bootstrap_file.*正本指示|比較・diff・読み比べは不要' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -148,18 +190,23 @@ setup_file() {
     [[ "$output" != *'差分を適用せよ'* ]]
 }
 
-@test "tmux 起動は初動命令を CLI 起動引数へ直接載せる" {
-    run bats_search 'build_cli_command_with_startup_prompt|bootstrap_message_text' "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "tmux 起動は Codex だけ初動命令を起動引数に直載せせず通常TUIを優先する" {
+    run bats_search 'should_embed_startup_prompt_in_cli_command|MAS_CODEX_STARTUP_PROMPT_MODE|build_cli_command_with_startup_prompt|bootstrap_message_text' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は Codex 初動命令本文の ready を activity と誤認しない" {
+    run bats_search "grep -v '【初動命令】'|Codex bootstrap not active yet|bootstrap still visible in composer" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "tmux 起動と watcher は ready:agent を見たら pending bootstrap を掃除する" {
-    run bats_search 'bootstrap_acknowledged_tmux|bootstrap_acknowledged_in_pane|bootstrap acknowledged' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
+    run bats_search "bootstrap_acknowledged_tmux|bootstrap_acknowledged_in_pane|bootstrap acknowledged|grep -vq '【初動命令】'" "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "tmux 起動は karo に cmd_new の即dispatchを指示する" {
-    run bats_search 'cmd_new は inbox・queue/shogun_to_karo\.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め|2人以上の active ashigaru で成果物や工程が分けられる cmd なら、初手で少なくとも2本の補完的 subtasks を切ってから待機せよ|dashboard/settings/対象コードは dispatch 後' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search 'cmd_new は inbox・queue/shogun_to_karo\.yaml・active ashigaru の task/report YAML だけで即 in_progress と task_assigned まで進め|ashigaru1/2だけで止めず、ashigaru3以降も含めて有用で安全な数の補完的 subtasks を初手で切ってから待機せよ|queue/tasks/gunshi\.yaml へ分析taskを並行投入せよ|dashboard/settings/対象コードは dispatch 後' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 

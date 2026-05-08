@@ -27,8 +27,8 @@
 #   T-BUSY-004: send_wakeup_with_escape — skips when agent is busy
 #   T-CODEX-001: send_cli_command — codex /clear → /new conversion
 #   T-CODEX-002: send_cli_command — codex /model → skip
-#   T-CODEX-003: C-u sent when unread=0 and agent is idle
-#   T-CODEX-004: C-u NOT sent when agent is busy
+#   T-CODEX-003: C-u is not used for idle cleanup
+#   T-CODEX-004: busy guard still suppresses disruptive cleanup
 #   T-CODEX-005: send_cli_command — claude /clear passes through as-is
 #   T-CODEX-006: inbox_watcher.sh has agent_is_busy and Codex/Copilot handlers
 #   T-CODEX-007: pane @agent_cli=codex overrides stale CLI_TYPE (Phase2 C-c抑止)
@@ -266,7 +266,7 @@ MOCK
 }
 
 @test "T-CODEX-013a: codex ready判定は起動コマンド行だけでは真にならない" {
-    run bash -c "source '$TEST_HARNESS' && ! codex_ready_prompt_detected \$'AGENT_ID=karo CODEX_HOME=/tmp/x codex --model gpt-5.4 --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen'"
+    run bash -c "source '$TEST_HARNESS' && ! codex_ready_prompt_detected \$'AGENT_ID=karo CODEX_HOME=/tmp/x codex --model gpt-5.4 --search --dangerously-bypass-approvals-and-sandbox'"
     [ "$status" -eq 0 ]
 }
 
@@ -382,7 +382,32 @@ YAML
     grep -q "queue/inbox/karo.yaml に未読の cmd_new がある。" "$MOCK_LOG"
     grep -q "queue/shogun_to_karo.yaml" "$MOCK_LOG"
     grep -q "status: in_progress" "$MOCK_LOG"
-    grep -q "queue/tasks/ashigaru1.yaml" "$MOCK_LOG"
+    grep -q "ashigaru3以降も含めた有用で安全な active ashigaru 全体" "$MOCK_LOG"
+    grep -q "queue/tasks/ashigaru{N}.yaml" "$MOCK_LOG"
+    grep -q "queue/tasks/gunshi.yaml" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010bg: gunshi task_assigned unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: karo
+    type: task_assigned
+    content: "分析せよ。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="gunshi"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/gunshi.yaml に未読の task_assigned がある。" "$MOCK_LOG"
+    grep -q "queue/tasks/gunshi.yaml" "$MOCK_LOG"
+    grep -q "戦略分析・分解案・リスク評価" "$MOCK_LOG"
     ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
@@ -735,53 +760,29 @@ YAML
     echo "$output" | grep -q "not supported on codex"
 }
 
-# --- T-CODEX-003: C-u sent when unread=0 and agent is idle ---
+# --- T-CODEX-003: C-u is not used for idle cleanup ---
 
-@test "T-CODEX-003: C-u cleanup sent when no unread and agent is idle" {
+@test "T-CODEX-003: no C-u cleanup is sent when no unread and agent is idle" {
     run bash -c '
         MOCK_CAPTURE_PANE="› Summarize recent commits
   ? for shortcuts                100% context left"
         source "'"$TEST_HARNESS"'"
-        # Simulate process_unread no-unread path
-        FIRST_UNREAD_SEEN=12345
-        normal_count=0
-        if [ "$normal_count" -gt 0 ] 2>/dev/null; then
-            echo "SHOULD_NOT_REACH"
-        else
-            FIRST_UNREAD_SEEN=0
-            if ! agent_is_busy; then
-                timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
-                echo "C_U_SENT"
-            fi
-        fi
+        ! agent_is_busy
     '
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "C_U_SENT"
-    grep -q "send-keys.*C-u" "$MOCK_LOG"
+    ! grep -q "send-keys.*C-u" "$MOCK_LOG"
+    ! grep -q "mux_send_ctrl_u" "$WATCHER_SCRIPT"
 }
 
-# --- T-CODEX-004: C-u NOT sent when agent is busy ---
+# --- T-CODEX-004: busy guard still suppresses disruptive cleanup ---
 
-@test "T-CODEX-004: C-u cleanup NOT sent when agent is busy" {
+@test "T-CODEX-004: no C-u cleanup is sent when agent is busy" {
     run bash -c '
         MOCK_CAPTURE_PANE="◦ Working on request (10s • esc to interrupt)"
         source "'"$TEST_HARNESS"'"
-        FIRST_UNREAD_SEEN=12345
-        normal_count=0
-        if [ "$normal_count" -gt 0 ] 2>/dev/null; then
-            echo "SHOULD_NOT_REACH"
-        else
-            FIRST_UNREAD_SEEN=0
-            if ! agent_is_busy; then
-                timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
-                echo "C_U_SENT"
-            else
-                echo "C_U_SKIPPED"
-            fi
-        fi
+        agent_is_busy
     '
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "C_U_SKIPPED"
     ! grep -q "C-u" "$MOCK_LOG"
 }
 
@@ -812,8 +813,8 @@ YAML
     # Codex /model skip exists
     grep -q 'not supported on codex' "$WATCHER_SCRIPT"
 
-    # C-u cleanup exists
-    grep -q 'C-u' "$WATCHER_SCRIPT"
+    # Idle cleanup must not erase human input
+    ! grep -q 'mux_send_ctrl_u' "$WATCHER_SCRIPT"
 
     # Copilot handler exists
     grep -q 'copilot --yolo' "$WATCHER_SCRIPT"
@@ -1256,11 +1257,11 @@ MOCK
 @test "T-CODEX-015: watcher は auth 解消後に pending bootstrap を literal 再配信する" {
     run bash -c '
         MOCK_PANE_CLI="codex"
-        MOCK_CAPTURE_PANE=$'"'"'╭────────────────────────╮\n│ >_ OpenAI Codex (v0.118.0) │\n│ model: gpt-5.4 high   /model to change │\n╰────────────────────────╯'"'"'
+        MOCK_CAPTURE_PANE=$'"'"'╭────────────────────────╮\n│ >_ OpenAI Codex (v0.118.0) │\n│ model: gpt-5.4 high   /model to change │\n│ context left │\nRan bootstrap ack'"'"'
         source "'"$TEST_HARNESS"'"
         SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
         mkdir -p "$SCRIPT_DIR/queue/runtime"
-        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        printf "%s\n" "【初動命令】ready:test_agent FULL_BOOTSTRAP_BODY_SHOULD_NOT_BE_PASTED" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
         : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
         deliver_pending_bootstrap_if_ready
         test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
@@ -1269,6 +1270,8 @@ MOCK
     [ "$status" -eq 0 ]
 
     grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+    grep -q "bootstrap_test_agent.md" "$MOCK_LOG"
+    ! grep -q "FULL_BOOTSTRAP_BODY_SHOULD_NOT_BE_PASTED" "$MOCK_LOG"
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
@@ -1467,7 +1470,7 @@ MOCK
         MOCK_PANE_CURRENT_COMMAND="bash"
         MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
         source "'"$TEST_HARNESS"'"
-        build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+        build_cli_command_with_type() { echo "codex --search"; }
         SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
         mkdir -p "$SCRIPT_DIR/queue/runtime"
         printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
@@ -1478,7 +1481,7 @@ MOCK
     '
     [ "$status" -eq 0 ]
 
-    grep -q "send-keys -l -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 codex --search" "$MOCK_LOG"
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
@@ -1489,14 +1492,14 @@ MOCK
         MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
         MOCK_SHOW_OPTION_VALUE="$(date +%s)"
         source "'"$TEST_HARNESS"'"
-        build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+        build_cli_command_with_type() { echo "codex --search"; }
         SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
         mkdir -p "$SCRIPT_DIR/queue/runtime"
         recover_shell_returned_codex_if_needed
     '
     [ "$status" -eq 0 ]
 
-    ! grep -q "send-keys -l -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
+    ! grep -q "send-keys -l -t test:0.0 codex --search" "$MOCK_LOG"
 }
 
 @test "T-CODEX-015e3: watcher は initial bootstrap pending 中の shell-return recovery を抑止する" {
@@ -1505,7 +1508,7 @@ MOCK
         MOCK_PANE_CURRENT_COMMAND="bash"
         MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
         source "'"$TEST_HARNESS"'"
-        build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+        build_cli_command_with_type() { echo "codex --search"; }
         SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
         mkdir -p "$SCRIPT_DIR/queue/runtime"
         printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
@@ -1514,7 +1517,7 @@ MOCK
     '
     [ "$status" -eq 0 ]
 
-    ! grep -q "send-keys -l -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
+    ! grep -q "send-keys -l -t test:0.0 codex --search" "$MOCK_LOG"
 }
 
 @test "T-CODEX-015e4: watcher は runtime startup grace 中の shell-return recovery を抑止する" {
@@ -1523,7 +1526,7 @@ MOCK
         MOCK_PANE_CURRENT_COMMAND="bash"
         MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
         source "'"$TEST_HARNESS"'"
-        build_cli_command_with_type() { echo "codex --search --no-alt-screen"; }
+        build_cli_command_with_type() { echo "codex --search"; }
         SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
         mkdir -p "$SCRIPT_DIR/queue/runtime"
         date +%s > "$SCRIPT_DIR/queue/runtime/runtime_start_epoch"
@@ -1531,7 +1534,7 @@ MOCK
     '
     [ "$status" -eq 0 ]
 
-    ! grep -q "send-keys -l -t test:0.0 codex --search --no-alt-screen" "$MOCK_LOG"
+    ! grep -q "send-keys -l -t test:0.0 codex --search" "$MOCK_LOG"
 }
 
 @test "T-CODEX-015f: watcher は unread が無くても idle loop で Codex runtime prompt を掃除する" {

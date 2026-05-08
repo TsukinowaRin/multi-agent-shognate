@@ -1,7 +1,261 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-06
+最終更新: 2026-05-08
 出典: 直近ユーザープロンプト
+
+## 追補（2026-05-08: Codex native 起動失敗と OpenCode 再ログインを直す）
+### 要求
+1. WSL 上に native Codex CLI がある場合、Shogunate runtime は Windows 側 npm shim（例: `/mnt/c/.../codex`）を優先して起動しないこと。
+2. `command -v` が Windows mount 上の shim を返しても、`HOME` / `NVM_BIN` / `PNPM_HOME` 配下の native executable を先に使うこと。
+3. OpenCode / Kilo は host `auth.json` を参照しつつ、provider SQLite DB と model state を role-local state が未作成のときだけ host から seed し、毎回 API key 入力を求められにくくすること。
+4. 既存の role-local regular file は消さず、古い DB symlink だけ外してから seed すること。複数 pane が host SQLite DB を live 共有しないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n lib/cli_adapter.sh && bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: executable resolver が HOME 配下 native CLI を優先し、OpenCode / Kilo の provider DB / model state seed と DB symlink cleanup が PASS する。
+2. コマンド: `source lib/cli_adapter.sh; build_cli_command shogun`
+   - 期待結果: native WSL `codex` の絶対パスを使い、`/mnt/c/.../codex` を拾わない。
+
+## 追補（2026-05-08: Codex bootstrap の長文 paste 停止を避ける）
+### 要求
+1. Codex 空起動後の bootstrap 配信で、長い初動命令全文を TUI composer へ直接貼り付けず、短い file reference prompt を送ること。
+2. Codex は `queue/runtime/bootstrap_<agent>.md` を自分で読み、そこに書かれた正本指示を適用すること。
+3. startup 側と watcher retry 側の両方で同じ方針にし、`Pasted Content ...` のまま止まる確率を下げること。
+4. OpenCode / Gemini / Claude など Codex 以外の既存 bootstrap 配信は維持すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: Codex bootstrap delivery prompt が bootstrap file path を含み、長い bootstrap 本文を直接送らない回帰が PASS する。
+
+## 追補（2026-05-08: active 足軽全体の初手活用と軍師 routing 復元）
+### 要求
+1. active ashigaru が3体以上いる場合、家老は自然に分割できる cmd を `ashigaru1` / `ashigaru2` だけで止めず、`topology.active_ashigaru` と owner map に基づき、有用で安全な範囲で `ashigaru3+` も初手から使うこと。
+2. watcher / bootstrap の家老向け明示 wake-up 文面は、`queue/tasks/ashigaru1.yaml または queue/tasks/ashigaru2.yaml` に固定せず、`queue/tasks/ashigaru{N}.yaml` と active roster 全体を対象にすること。
+3. フォーク元の軍師設計に合わせ、軍師は実装担当ではなく、L4-L6 の戦略分析・設計判断・根本原因分析・分解支援・複雑QCを担当すること。
+4. 家老は複雑・高リスク・分解困難・疑わしい報告のとき、初手 dispatch を止めずに `queue/tasks/gunshi.yaml` と `task_assigned` で軍師へ並行分析を投げられること。
+5. 軍師自身も event-driven に動き、`queue/tasks/gunshi.yaml` を読んで `queue/reports/gunshi_report.yaml` を返し、足軽管理・実装・dashboard 更新・cmd close は行わないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash scripts/build_instructions.sh && bats tests/unit/test_build_system.bats`
+   - 期待結果: generated Karo instruction に active roster 全体の初手活用、Gunshi consultation rule、Bloom L4-L6 routing、complex QC routing が入る。generated Gunshi instruction に forbidden actions / north star alignment / critical thinking protocol が入る。
+2. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: startup fastpath と watcher wake-up が `ashigaru1/2` 固定を避け、`ashigaru3+` と `queue/tasks/gunshi.yaml` を含む。軍師の `task_assigned` wake-up が専用文面になる。
+
+## 追補（2026-05-08: Shogunate 起動 CLI をホスト環境の実行ファイルへ揃える）
+### 要求
+1. Shogunate runtime で起動する Codex / Claude / Gemini / OpenCode / Kilo / Copilot / Kimi は、Shogunate 固有の古い CLI を使わず、起動時のホスト WSL / Linux / macOS shell が解決する CLI 実行ファイルに準拠すること。
+2. `PATH`、`HOME` 配下の一般的な CLI install path、`NVM_BIN`、`PNPM_HOME` から見つかった実行ファイルを起動コマンドへ絶対パスで埋め込み、tmux pane 内の隔離 `HOME` によって別バージョンへずれないこと。
+3. 認証情報は既存方針どおり host 側を使い、model / reasoning / thinking / CLI state は pane-local に分離すること。
+4. `config/settings.yaml` の `cli.commands.*` に bare command（例: `opencode` / `kilo` / `gemini`）が書かれている場合も、可能なら host 側で解決した絶対パスへ置き換えること。明示された複合 command / 絶対パスは尊重すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: Codex / Claude / Copilot / OpenCode / Kilo の起動コマンドがテスト用 host `PATH` の実行ファイル絶対パスを使う回帰が PASS する。
+2. コマンド: `source lib/cli_adapter.sh; build_cli_command shogun`
+   - 期待結果: `codex` が host shell で解決された実行ファイルパス（例: `/home/.../bin/codex`）として出力され、`CODEX_HOME` は role-local のまま維持される。
+
+## 追補（2026-05-08: Codex の通常入力欄を優先する）
+### 要求
+1. Shogunate runtime の Codex pane は、通常の Codex CLI 入力欄に近い見た目を優先し、既定では初動命令を `codex <prompt>` の起動引数として直載せしないこと。
+2. Codex の role-local `CODEX_HOME`、host auth symlink、YOLO 相当 flag、bootstrap pending / delivered 管理は維持すること。
+3. 必要時には `MAS_CODEX_STARTUP_PROMPT_MODE=argv` で従来の起動引数直載せへ戻せること。
+4. Gemini / OpenCode / Kilo など、起動引数 prompt を使う方が安定する CLI の挙動は変えないこと。
+5. Codex 空起動後の tmux bootstrap 配信で、長い初動命令が入力欄に残る場合は Enter を追送し、未送信のまま delivered 扱いにしないこと。初動命令本文内の `ready:<agent>` は実応答・activity とみなさないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n shutsujin_departure.sh`
+   - 期待結果: shell syntax が PASS する。
+2. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `should_embed_startup_prompt_in_cli_command` / `MAS_CODEX_STARTUP_PROMPT_MODE` と、Codex bootstrap 入力欄残留時の追い Enter、本文中 `ready:<agent>` 誤判定防止の回帰が PASS する。
+
+## 追補（2026-05-07: 御座の間レイアウト復元の最小サイズ保護）
+### 要求
+1. `goza-no-ma` 起動時に、過去に保存された小さい tmux layout により家老・足軽 pane が幅1などの実用不能サイズへ潰れないこと。
+2. 保存済み layout を復元した結果、pane 幅または高さが実用下限を下回る場合は、起動時に生成した既定 layout へ戻すこと。
+3. すでに潰れた layout を自動保存して次回起動へ持ち越さないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n shutsujin_departure.sh`
+   - 期待結果: shell syntax が PASS する。
+2. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `GOZA_MIN_RESTORE_PANE_WIDTH` / `GOZA_MIN_RESTORE_PANE_HEIGHT` と、小さすぎる保存 layout の rollback 契約が PASS する。
+
+## 追補（2026-05-07: 起動ログ整形 / Gemini update nag 抑止 / Codex TUI 入力保護）
+### 要求
+1. CLI 起動ログで、家老と足軽の表示順・集計文が重複して見えないこと。
+2. 複数家老時は `Karo1` / `Karo2` などの明細後に `家老（N名）、召喚完了` を出し、その後に足軽明細と `足軽（N名）、配置完了` を出すこと。
+3. Gemini CLI が Shogunate runtime 内で update 通知を繰り返さないようにすること。Shogunate 側の update と Gemini CLI 自体の update 通知は分離すること。
+4. Codex CLI の通常 TUI と異なる見た目を戻すこと。
+5. Codex pane でユーザー入力中の文字が watcher に消されないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n shutsujin_departure.sh scripts/inbox_watcher.sh lib/cli_adapter.sh`
+   - 期待結果: shell syntax が PASS する。
+2. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_cli_adapter.bats tests/unit/test_send_wakeup.bats tests/unit/test_sync_gemini_settings.bats`
+   - 期待結果: 起動ログ文面、Codex 起動 flag、watcher の C-u 非使用、Gemini update notification 無効化が PASS する。
+
+## 追補（2026-05-07: CoDD を標準 coherence gate として統合）
+### 要求
+1. `https://github.com/yohey-w/codd-dev` の CoDD を、この repository に統合できる形にすること。
+2. CoDD 本体は vendoring せず、標準の外部 coherence gate として導入・更新・実行できること。
+3. `Update.bat` / `scripts/update_manager.py manual` の通常更新で、CoDD package も更新されること。
+4. CoDD package は基本的に最新を取得し、失敗した場合は開発時確認版へフォールバックすること。
+5. WSL / Linux / macOS 側に `python3` / `python3-venv` が無い場合は、導入手順つきエラーを出すこと。
+6. デフォルト導線として `make codd` / `scripts/codd_check.sh verify` を提供すること。
+7. CI でも `codd dag verify` を実行すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/codd_check.sh && bats tests/unit/test_codd_integration.bats`
+   - 期待結果: wrapper、`.codd/codd.yaml`、Makefile target、default CI gate、Windows updater の Python check の回帰が PASS する。
+2. コマンド: `scripts/codd_check.sh help`
+   - 期待結果: install / build / verify / audit、`CODD_AUTO_INSTALL=1`、`CODD_FALLBACK_VERSION` の導線が表示される。
+3. コマンド: `CODD_VERSION_SPEC='>=9999' CODD_FALLBACK_VERSION=1.34.0 scripts/codd_check.sh install && make codd`
+   - 期待結果: latest/spec 導入失敗後に `codd-dev==1.34.0` へフォールバックし、`codd dag verify` を実行できる。
+4. コマンド: `python3 -m unittest tests.unit.test_update_manager`
+   - 期待結果: manual update の integrated tools 呼び出しと既存 update manager 契約が PASS する。
+
+## 追補（2026-05-07: 起動時 ready 判定と全CLI unattended 方針）
+### 要求
+1. 起動時の bootstrap ready 判定で OpenCode / Kilo を未対応 CLI として扱わず、起動済みなら即 ready と判定すること。
+2. OpenCode / Kilo の bootstrap 個別待機は、未判定時に既定30秒待ちで詰まらず、短い既定待機で初動命令を投入すること。
+3. 全CLIは既定で YOLO / unattended 相当で起動すること。
+4. OpenCode / Kilo は CLI flag ではなく、起動前に生成する `opencode.json` の `permission: allow` を正本として権限確認をスキップすること。
+5. OpenCode / Kilo は CLI 内で provider / login を選べない場合があるため、host 側の auth / provider DB と plugin config は role-local HOME へ symlink して使うこと。
+6. 上記 symlink でも Shogunate 側の role ごとの model 指定と起動コマンドは維持し、project `opencode.json` の `permission: allow` を上書きしないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `shutsujin_departure.sh` の ready pattern に `opencode` / `kilo` が含まれ、`MAS_OPENCODE_BOOTSTRAP_READY_WAIT` / `MAS_KILO_BOOTSTRAP_READY_WAIT` の既定が5秒である。
+2. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_opencode_config.bats`
+   - 期待結果: Gemini custom command でも `--yolo` が補完され、OpenCode / Kilo は host 側 DB / plugin config を symlink し、OpenCode / Kilo 用 `opencode.json` に `permission: allow` が出力される。
+3. コマンド: `bash -n shutsujin_departure.sh lib/cli_adapter.sh && python3 -m py_compile scripts/sync_opencode_config.py`
+   - 期待結果: shell / Python 構文が PASS する。
+
+## 追補（2026-05-07: 足軽7人以上で複数家老を実働させる）
+### 要求
+1. 家老1人が担当する足軽は最大6人までとし、7人目から家老を増やすこと。
+2. 自動構成では足軽数に応じて家老数を `ceil(active_ashigaru / 6)` とすること。
+3. 家老が複数いる場合は `karo1` を筆頭家老とし、将軍への報告と全体統合を担わせること。
+4. 足軽は担当家老に均等割り当てし、各家老の担当人数差を最大1以内にすること。
+5. 家老同士は混乱を避けるため、足軽への相互越権や自由な家老間 inbox 直接通信ではなく、共有 coordination board で依存・衝突・handoff を連携すること。
+6. `goza-no-ma` で複数家老の pane を実際に起動し、watcher / bootstrap / runtime CLI sync の対象に含めること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bats tests/unit/test_topology_adapter.bats`
+   - 期待結果: 足軽6人では `karo`、足軽7人では `karo1` / `karo2`、足軽13人では `karo1` / `karo2` / `karo3` になり、owner map の人数差が最大1以内。
+2. コマンド: `bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `shutsujin_departure.sh` が `KARO_AGENTS` 全員へ pane / CLI / bootstrap を割り当てる回帰を持つ。
+3. コマンド: `bash -n shutsujin_departure.sh lib/topology_adapter.sh`
+   - 期待結果: shell 構文が PASS する。
+4. runtime 起動時:
+   - 期待結果: `queue/runtime/lead_karo` に筆頭家老が書かれ、`queue/runtime/karo_coordination.yaml` が作成される。
+
+## 追補（2026-05-07: runtime を Linux / Windows WSL / macOS から一発起動できるようにする）
+### 要求
+1. Shogunate runtime を Linux / WSL terminal から表層 launcher で一発起動できること。
+2. Windows は既存 `Shogunate-Runtime.bat` を正規導線とし、Explorer から Ubuntu/WSL 内で runtime を起動して `goza-no-ma` に attach できること。
+3. macOS は Finder / Terminal から表層 launcher で runtime を起動でき、将来 Shortcuts からも同じ launcher を呼べること。
+4. 既定は clean start とし、必要なら resume / no attach も選べること。
+
+### 受け入れ条件（観測可能）
+1. Linux / WSL terminal: `./Shogunate-Runtime.sh`
+   - 期待結果: `bash shutsujin_departure.sh -c` を実行し、成功後に `tmux attach-session -t goza-no-ma` を実行する。
+2. Windows Explorer: `Shogunate-Runtime.bat`
+   - 期待結果: Ubuntu/WSL で `bash shutsujin_departure.sh -c` を実行し、成功後に `goza-no-ma` へ attach する。
+3. macOS Finder / Terminal: `./Shogunate-Runtime.command`
+   - 期待結果: 同階層の `Shogunate-Runtime.sh` を起動する。
+4. コマンド: `bash -n Shogunate-Runtime.sh Shogunate-Runtime.command && bats tests/unit/test_runtime_launchers.bats`
+   - 期待結果: shell 構文と launcher の参照先が PASS する。
+
+## 追補（2026-05-07: 簡易役職設定を Linux / Windows WSL / macOS から起動できるようにする）
+### 要求
+1. 簡易 runtime 役職設定を Linux / WSL の terminal からすぐ実行できる表層 launcher を用意すること。
+2. Windows Explorer から開ける bat を用意し、実処理は Ubuntu/WSL 内の repo path に移って実行すること。
+3. macOS Terminal / Finder / Shortcuts から起動できる表層 launcher を用意すること。
+4. OS ごとに入口は分けても、実際の設定処理は `scripts/configure_runtime_roles.py` を正本として共有すること。
+
+### 受け入れ条件（観測可能）
+1. Linux / WSL terminal: `./Shogunate-Configure-Roles.sh`
+   - 期待結果: repo root に移動し、`python3 scripts/configure_runtime_roles.py` を起動する。
+2. Windows Explorer: `Shogunate-Configure-Roles.bat`
+   - 期待結果: bat のある Shogunate folder を `wslpath` で変換し、Ubuntu/WSL で `python3 scripts/configure_runtime_roles.py` を起動する。
+3. macOS Finder / Terminal: `Shogunate-Configure-Roles.command`
+   - 期待結果: Finder から開いても repo root に移動し、同じ Python script を起動する。
+4. コマンド: `bash -n Shogunate-Configure-Roles.sh Shogunate-Configure-Roles.command && bats tests/unit/test_configure_role_launchers.bats`
+   - 期待結果: shell 構文と launcher の参照先が PASS する。
+
+## 追補（2026-05-07: CLI種別と足軽数だけを設定する簡易スクリプト）
+### 要求
+1. 各役職の詳細 model ではなく、Codex / Gemini CLI / OpenCode / Kilo などの大まかな CLI 種別だけを選ぶ専用スクリプトを用意すること。
+2. 足軽人数も同じスクリプトから設定できること。
+3. model / reasoning / thinking などの細かい設定は tmux pane 上で各 CLI の手動設定に任せ、次回起動でも pane-local state または既存 runtime sync により保持できること。
+4. CLI 種別を切り替えた時、古い model field が別 CLI に持ち越されて起動エラーを誘発しないこと。
+5. デフォルト設定では、全エージェントの CLI 種別を `codex` にすること。
+6. 対話設定の順番は、`cli.default` → 将軍 → 家老 → 軍師 → 足軽人数 → 足軽ごとの CLI とすること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `python3 scripts/configure_runtime_roles.py --ashigaru-count 3 --shogun gemini --karo codex --gunshi codex --ashigaru1 codex --ashigaru2 opencode --ashigaru3 opencode`
+   - 期待結果: `config/settings.yaml` の `topology.active_ashigaru` と `cli.agents.*.type` が更新され、対象 role の `model` / `reasoning_effort` / `thinking_level` / `thinking_budget` は消える。
+2. コマンド: `python3 scripts/configure_runtime_roles.py`
+   - 期待結果: 対話入力で同じ項目を設定でき、model 入力は求められない。足軽人数を決めた後で足軽ごとの CLI を聞く。
+3. コマンド: `python3 -m py_compile scripts/configure_runtime_roles.py && bats tests/unit/test_configure_runtime_roles.bats`
+   - 期待結果: 構文と回帰が PASS する。
+4. コマンド: 初回生成される `config/settings.yaml` の確認
+   - 期待結果: `shogun` / `gunshi` / `karo` / active `ashigaru` は `type: codex` で、model は pin されない。
+
+## 追補（2026-05-06: 対応CLIのホスト認証を使い、設定・モデル state はペイン別に隔離する）
+### 要求
+1. 認証情報自体はホスト PC / ユーザー home 側の既存ログイン情報を使い、tmux pane ごとの再ログインを不要にすること。
+2. Kilo Code / OpenCode / Codex / Claude Code / Gemini CLI と、可能な範囲でその他対応 CLI も、モデル選択・CLI 設定・履歴などの state は Shogunate runtime の agent / pane ごとに独立させること。
+3. なぜ過去にログイン情報を隔離したのかを docs から遡って説明すること。
+4. secrets は読まず、既存 global auth をコピーしないこと。既知の auth file が存在する場合は、repo-local state home から symlink で参照する。
+
+### 受け入れ条件（観測可能）
+1. `build_cli_command` が OpenCode / Kilo を起動する時、repo-local state home と XDG paths を明示する。
+2. Gemini / Claude / Copilot / Kimi も、CLI が通常 `HOME` / XDG 配下へ保存する state を repo-local state home に向ける。
+3. Codex は role-local `CODEX_HOME` を維持しつつ、ホスト `~/.codex/auth.json` があれば agent local `auth.json` へ symlink する。ホスト auth がない場合だけ、既存の repo-local shared `auth.json` fallback を使える。
+4. README 英日と ExecPlan が、隔離理由と残リスクを説明する。
+5. 関連 unit test が、host auth 参照と pane-local state の両方を確認して PASS する。
+
+### 追補（2026-05-07/08: OpenCode / Kilo の host DB live 共有をやめ、初期 seed にする）
+1. OpenCode / Kilo は host `auth.json` を参照しつつ、`opencode.db` / `kilo.db` / WAL / provider model state を host から live symlink しないこと。
+2. 既存 runtime state に古い DB symlink が残っている場合は、起動時に symlink だけ外すこと。
+3. role-local regular file が無い場合だけ host provider DB / model state を初期コピーし、API key / provider 入力を毎回求められる運用を避けること。
+4. 期待結果: 複数 OpenCode pane 起動時に同じ host DB を同時に触らず、`PRAGMA wal_checkpoint` 系のロック衝突を避けられる。
+5. 検証: `bats tests/unit/test_cli_adapter.bats` が、auth file link、DB symlink cleanup、host DB / model state seed を確認して PASS する。
+
+## 追補（2026-05-06: Windows から runtime / Codex login を一発起動できる bat を追加する）
+### 要求
+1. Shogunate runtime を Explorer から起動できる Windows bat を追加すること。
+2. bat を置いた Shogunate フォルダを WSL path に変換し、そのフォルダ内だけで実行すること。
+3. Codex などのログインは tmux 上の各 CLI pane で行えるため、専用 login bat は表層に置かないこと。
+
+### 受け入れ条件（観測可能）
+1. `Shogunate-Runtime.bat` を実行すると、Ubuntu/WSL で `bash shutsujin_departure.sh -c` が動き、成功後に `goza-no-ma` へ attach する。
+2. README 英日が上記の Windows 起動導線を説明している。
+
+## 追補（2026-05-06: 隔離コピーで混在CLI / 最新preview構成を一通り起動検証する）
+### 要求
+1. 開発中の作業ツリーを汚染しないよう、最新の開発内容を独立フォルダへコピーして、その中だけで runtime を起動すること。
+2. runtime の役職別 CLI / model 設定を以下にすること。
+   - 将軍: Gemini CLI、最新 Gemini preview、Think low。
+   - 家老: GPT-5.5、reasoning high。
+   - 足軽1: GPT-5.5、reasoning medium。
+   - 足軽2: opencode。
+   - 足軽3: opencode。
+   - 軍師: GPT-5.5。
+3. 上記構成で一通り起動し、可能なら軽い smoke task を投入して動作を観測すること。
+4. 認証、usage limit、model access、opencode provider など環境依存で止まる場合は、どの役職がどの理由で止まったかを記録すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: 独立フォルダ作成と tracked 最新内容の展開
+   - 期待結果: 本体 repo ではなく隔離コピー配下で以降の runtime ファイルが生成される。
+2. コマンド: `config/settings.yaml` と生成物 `.gemini/settings.json` / `opencode.json` / `queue/runtime/*.tsv` の確認
+   - 期待結果: 将軍は `gemini-3.1-pro-preview` 相当 + `thinking_level: low`、家老は `gpt-5.5` + high、足軽1は `gpt-5.5` + medium、足軽2/3は opencode、軍師は `gpt-5.5` として扱われる。
+3. コマンド: `bash shutsujin_departure.sh -c`
+   - 期待結果: 隔離 tmux server 上で `goza-no-ma` / runtime 系 session が起動する。
+4. コマンド: 軽い `scripts/inbox_write.sh shogun ...` smoke task
+   - 期待結果: task が完走する、または auth / usage-limit / model access / provider 未設定などの blocker が dashboard / inbox / pane / log で観測できる。
 
 ## 追補（2026-05-06: v4.6.0.0 Android / installer release）
 ### 要求

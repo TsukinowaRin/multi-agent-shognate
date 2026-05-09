@@ -935,6 +935,65 @@ SH
     [[ "$result" == *"AGENT_ID=ashigaru1 env PATH=${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin:\$PATH env XDG_DATA_HOME=/tmp/mas_xdg XDG_CACHE_HOME=/tmp/mas_cache ${TEST_TMP}/home/.nvm/versions/node/v22.22.0/lib/node_modules/opencode-ai/bin/opencode --model lmstudio/openai/gpt-oss-20b" ]]
 }
 
+@test "build_cli_command_with_type: 任意の役職に任意CLIを割り当てても役職別stateになる" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    for cli in claude codex copilot kimi gemini opencode kilo; do
+        make_fake_cli "$cli"
+    done
+
+    local roles=(shogun gunshi karo karo2 ashigaru1 ashigaru9)
+    local clis=(claude codex copilot kimi gemini opencode kilo localapi)
+    local role
+    local cli
+    local result
+
+    for role in "${roles[@]}"; do
+        for cli in "${clis[@]}"; do
+            result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command_with_type "$role" "$cli")
+            [[ "$result" == *"AGENT_ID=${role}"* ]]
+            case "$cli" in
+                codex)
+                    [[ "$result" == *"CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/${role}"* ]]
+                    ;;
+                claude|copilot|kimi|gemini|opencode|kilo)
+                    assert_cli_state_isolated "$result" "$cli" "$role"
+                    ;;
+                localapi)
+                    [[ "$result" == *"python3 scripts/localapi_repl.py"* ]]
+                    ;;
+            esac
+        done
+    done
+}
+
+@test "build_cli_command_with_type: OpenCode/Kilo auth-only共有は全役職で同じ規則になる" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    make_fake_cli opencode
+    make_fake_cli kilo
+
+    local roles=(shogun gunshi karo karo2 ashigaru1 ashigaru9)
+    local role
+    local result
+
+    for role in "${roles[@]}"; do
+        result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command_with_type "$role" "opencode")
+        assert_cli_host_auth_link "$result" ".local/share/opencode/auth.json" "opencode" "$role"
+        assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db" "opencode" "$role"
+        assert_cli_state_symlink_removed "$result" ".local/state/opencode/model.json" "opencode" "$role"
+        assert_cli_state_symlink_removed "$result" ".local/state/opencode/prompt-history.jsonl" "opencode" "$role"
+        [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/opencode/opencode.db"* ]]
+        [[ "$result" == *"AGENT_ID=${role} ${TEST_TMP}/bin/opencode"* ]]
+
+        result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command_with_type "$role" "kilo")
+        assert_cli_host_auth_link "$result" ".local/share/kilo/auth.json" "kilo" "$role"
+        assert_cli_state_symlink_removed "$result" ".local/share/kilo/kilo.db" "kilo" "$role"
+        assert_cli_state_symlink_removed "$result" ".local/state/kilo/model.json" "kilo" "$role"
+        assert_cli_state_symlink_removed "$result" ".local/state/kilo/prompt-history.jsonl" "kilo" "$role"
+        [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/kilo/kilo.db"* ]]
+        [[ "$result" == *"AGENT_ID=${role} ${TEST_TMP}/bin/kilo"* ]]
+    done
+}
+
 @test "get_model_display_name: codex は opus/sonnet 既定値ではなく Codex を表示する" {
     load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
     result=$(get_model_display_name "shogun")

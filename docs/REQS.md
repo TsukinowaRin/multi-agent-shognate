@@ -25,12 +25,15 @@
 2. OpenCode / Kilo の model state、SQLite DB、prompt history、telemetry、その他 runtime state は Shogunate の agent / pane ごとに独立させること。
 3. 起動時に古い DB / model / history symlink が残っている場合は symlink だけ外し、既存の role-local regular file は消さないこと。
 4. plugin manifest は role-local file が未作成のときだけ host から初期コピーし、`node_modules` は host install を link してよい。
+5. 上記の auth / state 分離は、将軍・軍師・家老・複数家老・足軽のどの役職にどの対応 CLI を割り当てた場合でも同じ規則で動くこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash -n lib/cli_adapter.sh && bats tests/unit/test_cli_adapter.bats`
    - 期待結果: OpenCode / Kilo の `auth.json` host link、DB / model / history symlink cleanup、plugin manifest seed が PASS する。
 2. コマンド: `source lib/cli_adapter.sh; build_cli_command shogun`
    - 期待結果: OpenCode / Kilo 起動コマンドで `HOME` / `XDG_*` が pane-local を向き、host DB / model state を symlink または copy しない。
+3. コマンド: `bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: `shogun` / `gunshi` / `karo` / `karo2` / `ashigaruN` に `claude` / `codex` / `copilot` / `kimi` / `gemini` / `opencode` / `kilo` / `localapi` を割り当てる matrix test が PASS する。
 
 ## 追補（2026-05-08: Codex native 起動失敗と OpenCode 再ログインを直す）
 ### 要求

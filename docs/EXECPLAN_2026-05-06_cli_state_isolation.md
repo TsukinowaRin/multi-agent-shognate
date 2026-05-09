@@ -47,6 +47,7 @@ OpenCode / Kilo がユーザー home 側の既存ログイン情報やモデル�
 - 2026-05-06: `bats tests/unit/test_cli_adapter.bats` → PASS (`114` tests)。
 - 2026-05-09: `bats tests/unit/` → PASS (`578` tests)。
 - 2026-05-09: `bash -n lib/cli_adapter.sh scripts/inbox_watcher.sh shutsujin_departure.sh` → PASS。
+- 2026-05-09: `bats tests/unit/test_cli_adapter.bats` に role × CLI matrix を追加し、`shogun` / `gunshi` / `karo` / `karo2` / `ashigaruN` に任意対応 CLI を割り当てても role-local state になることを確認。
 - `git diff --check` → PASS。
 
 ## 実装結果

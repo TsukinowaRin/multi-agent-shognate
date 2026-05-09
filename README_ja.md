@@ -109,10 +109,10 @@ Shogunate runtime から起動する外部 CLI は、既知のログイン認証
 - Codex 起動は既定で通常の対話 TUI を優先します。Shogunate はまず `codex` を空で起動し、その後 tmux 経由で bootstrap prompt を配信します。従来の `codex <bootstrap prompt>` 起動へ戻したい場合だけ `MAS_CODEX_STARTUP_PROMPT_MODE=argv` を指定します。
 - 入力欄の見た目、空入力時のサンプル文言、footer はインストール済み Codex CLI のバージョン側の表示です。Shogunate は Codex TUI を再装飾せず、起動状態を変えていた旧 positional bootstrap prompt だけを避けます。
 - `Claude` / `Copilot` / `Kimi` / `Gemini` / `OpenCode` / `Kilo` は、起動時に `HOME` と XDG paths を `.shogunate/cli-state/<cli>/agents/<agent>/home` 配下へ向けます。既知の host auth file だけ pane-local home へ symlink し、設定・モデル選択・cache・履歴は pane-local に保ちます。Gemini は user settings 全体を共有せず host OAuth credentials を使えるよう、既定で `GEMINI_DEFAULT_AUTH_TYPE=oauth-personal` も付与します。
-- `OpenCode` / `Kilo` は既知の host `auth.json` と plugin 依存ファイルを pane-local home へ symlink します。host provider SQLite DB と model state は role-local file が無いときだけ pane-local home へ初期コピーし、古い DB symlink が残っていれば先に外します。これにより API key の再入力を避けつつ、複数 pane が同じ SQLite DB を live 共有する衝突も避けます。役職ごとの model 選択は Shogunate settings / launch flags 側で維持し、unattended permission は生成される project `opencode.json` を正本にします。
+- `OpenCode` / `Kilo` は既知の host `auth.json` だけを pane-local home へ symlink します。一方で SQLite DB、model state、prompt history、telemetry などの runtime file は pane-local に残します。古い DB / model / history symlink は起動時に外し、既存の role-local regular file は消しません。plugin manifest は未作成時だけ初期コピーし、`node_modules` は再インストールを避けるため host install を link できます。
 - `localapi` は repo 内の local REPL なので、外部 CLI のログイン state 隔離対象ではありません。
 
-この分離の目的は、再ログインの手間を避けつつ、Shogunate の役職別 model / reasoning / 履歴 state と、VSCode や別プロジェクトで使う同じ CLI の state を混ぜないことです。bootstrap は secrets の内容を読んだり表示したりしませんが、OpenCode / Kilo の provider state は CLI が host 認証を再利用できるよう file として初期コピーする場合があります。
+この分離の目的は、再ログインの手間を避けつつ、Shogunate の役職別 model / reasoning / 履歴 state と、VSCode や別プロジェクトで使う同じ CLI の state を混ぜないことです。bootstrap は secrets の内容を読んだり表示したりせず、OpenCode / Kilo の provider database も既定では host からコピーしません。
 
 ### local provider 対応
 

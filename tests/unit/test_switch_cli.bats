@@ -248,7 +248,7 @@ PYEOF
     source "${PROJECT_ROOT}/lib/cli_adapter.sh"
 
     result=$(build_cli_command "ashigaru1")
-    [[ "$result" == MAX_THINKING_TOKENS=0* ]]
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=ashigaru1"* ]]
 }
 
 # =============================================================================

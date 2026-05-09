@@ -417,6 +417,18 @@ make_fake_cli() {
     [ "$result" = "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/codex" ]
 }
 
+@test "_cli_adapter_find_executable: OpenCode公式home binをnvm候補より優先する" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    mkdir -p "${TEST_TMP}/home/.opencode/bin" "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${TEST_TMP}/home/.opencode/bin/opencode"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/opencode"
+    chmod +x "${TEST_TMP}/home/.opencode/bin/opencode" "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/opencode"
+
+    result=$(HOME="${TEST_TMP}/home" PATH="/usr/bin:/bin" _cli_adapter_find_executable "opencode")
+
+    [ "$result" = "${TEST_TMP}/home/.opencode/bin/opencode" ]
+}
+
 # =============================================================================
 # get_cli_type テスト
 # =============================================================================
@@ -866,11 +878,12 @@ SH
     result=$(build_cli_command "shogun")
     assert_cli_state_isolated "$result" "opencode" "shogun"
     assert_cli_host_auth_link "$result" ".local/share/opencode/auth.json" "opencode" "shogun"
-    assert_cli_host_state_seed "$result" ".local/share/opencode/opencode.db" "opencode" "shogun"
-    assert_cli_host_state_seed "$result" ".local/share/opencode/opencode.db-shm" "opencode" "shogun"
-    assert_cli_host_state_seed "$result" ".local/share/opencode/opencode.db-wal" "opencode" "shogun"
-    assert_cli_host_state_seed "$result" ".local/state/opencode/model.json" "opencode" "shogun"
-    assert_cli_host_auth_link "$result" ".config/opencode/package.json" "opencode" "shogun"
+    assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db" "opencode" "shogun"
+    assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db-shm" "opencode" "shogun"
+    assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db-wal" "opencode" "shogun"
+    assert_cli_state_symlink_removed "$result" ".local/state/opencode/model.json" "opencode" "shogun"
+    assert_cli_state_symlink_removed "$result" ".local/state/opencode/prompt-history.jsonl" "opencode" "shogun"
+    assert_cli_host_state_seed "$result" ".config/opencode/package.json" "opencode" "shogun"
     assert_cli_host_dir_link "$result" ".config/opencode/node_modules" "opencode" "shogun"
     [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/opencode/opencode.db"* ]]
     [[ "$result" == *"AGENT_ID=shogun "*opencode" --model ollama/qwen3-coder:30b" ]]
@@ -889,11 +902,12 @@ SH
     result=$(build_cli_command "gunshi")
     assert_cli_state_isolated "$result" "kilo" "gunshi"
     assert_cli_host_auth_link "$result" ".local/share/kilo/auth.json" "kilo" "gunshi"
-    assert_cli_host_state_seed "$result" ".local/share/kilo/kilo.db" "kilo" "gunshi"
-    assert_cli_host_state_seed "$result" ".local/share/kilo/kilo.db-shm" "kilo" "gunshi"
-    assert_cli_host_state_seed "$result" ".local/share/kilo/kilo.db-wal" "kilo" "gunshi"
-    assert_cli_host_state_seed "$result" ".local/state/kilo/model.json" "kilo" "gunshi"
-    assert_cli_host_auth_link "$result" ".config/kilo/package.json" "kilo" "gunshi"
+    assert_cli_state_symlink_removed "$result" ".local/share/kilo/kilo.db" "kilo" "gunshi"
+    assert_cli_state_symlink_removed "$result" ".local/share/kilo/kilo.db-shm" "kilo" "gunshi"
+    assert_cli_state_symlink_removed "$result" ".local/share/kilo/kilo.db-wal" "kilo" "gunshi"
+    assert_cli_state_symlink_removed "$result" ".local/state/kilo/model.json" "kilo" "gunshi"
+    assert_cli_state_symlink_removed "$result" ".local/state/kilo/prompt-history.jsonl" "kilo" "gunshi"
+    assert_cli_host_state_seed "$result" ".config/kilo/package.json" "kilo" "gunshi"
     assert_cli_host_dir_link "$result" ".config/kilo/node_modules" "kilo" "gunshi"
     [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/kilo/kilo.db"* ]]
     [[ "$result" == *"AGENT_ID=gunshi "*kilo" --model lmstudio/codellama-7b.Q4_0.gguf" ]]

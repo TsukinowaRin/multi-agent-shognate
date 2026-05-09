@@ -76,6 +76,8 @@ _cli_adapter_find_executable() {
     # host Linux/WSL 側の user bin を command -v より先に見る。
     for dir in \
         "${HOME:-}/.local/bin" \
+        "${HOME:-}/.opencode/bin" \
+        "${HOME:-}/.kilo/bin" \
         "${HOME:-}/.npm/bin" \
         "${HOME:-}/.npm-global/bin" \
         "${HOME:-}/bin" \
@@ -374,26 +376,28 @@ _cli_adapter_host_auth_links_cmd() {
             ;;
         opencode)
             _cli_adapter_link_host_file_cmd ".local/share/opencode/auth.json" "$state_home"
-            _cli_adapter_seed_host_file_cmd ".local/share/opencode/opencode.db" "$state_home"
-            _cli_adapter_seed_host_file_cmd ".local/share/opencode/opencode.db-shm" "$state_home"
-            _cli_adapter_seed_host_file_cmd ".local/share/opencode/opencode.db-wal" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/opencode.db" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/opencode.db-shm" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/opencode.db-wal" "$state_home"
             _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/telemetry-id" "$state_home"
-            _cli_adapter_seed_host_file_cmd ".local/state/opencode/model.json" "$state_home"
-            _cli_adapter_link_host_file_cmd ".config/opencode/package.json" "$state_home"
-            _cli_adapter_link_host_file_cmd ".config/opencode/package-lock.json" "$state_home"
-            _cli_adapter_link_host_file_cmd ".config/opencode/bun.lock" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/state/opencode/model.json" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/state/opencode/prompt-history.jsonl" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/opencode/package.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/opencode/package-lock.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/opencode/bun.lock" "$state_home"
             _cli_adapter_link_host_dir_cmd ".config/opencode/node_modules" "$state_home"
             ;;
         kilo)
             _cli_adapter_link_host_file_cmd ".local/share/kilo/auth.json" "$state_home"
-            _cli_adapter_seed_host_file_cmd ".local/share/kilo/kilo.db" "$state_home"
-            _cli_adapter_seed_host_file_cmd ".local/share/kilo/kilo.db-shm" "$state_home"
-            _cli_adapter_seed_host_file_cmd ".local/share/kilo/kilo.db-wal" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/kilo/kilo.db" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/kilo/kilo.db-shm" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/kilo/kilo.db-wal" "$state_home"
             _cli_adapter_unlink_state_symlink_cmd ".local/share/kilo/telemetry-id" "$state_home"
-            _cli_adapter_seed_host_file_cmd ".local/state/kilo/model.json" "$state_home"
-            _cli_adapter_link_host_file_cmd ".config/kilo/package.json" "$state_home"
-            _cli_adapter_link_host_file_cmd ".config/kilo/package-lock.json" "$state_home"
-            _cli_adapter_link_host_file_cmd ".config/kilo/bun.lock" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/state/kilo/model.json" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/state/kilo/prompt-history.jsonl" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/kilo/package.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/kilo/package-lock.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/kilo/bun.lock" "$state_home"
             _cli_adapter_link_host_dir_cmd ".config/kilo/node_modules" "$state_home"
             ;;
         copilot)

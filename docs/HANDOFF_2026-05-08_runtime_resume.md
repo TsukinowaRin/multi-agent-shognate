@@ -37,8 +37,8 @@ Codex には長い初動命令を composer へ直接貼らず、`queue/runtime/b
 ### OpenCode / Kilo の認証 state
 
 - `auth.json` は host 側を参照。
-- provider SQLite DB / model state は role-local file が無いときだけ host から初期コピー。
-- 古い DB symlink は外す。
+- provider SQLite DB / model state / prompt history は host から初期コピーせず、pane-local に保持。
+- 古い DB / model / history symlink は外す。
 - host SQLite DB を複数 pane で live 共有しない。
 
 ### 足軽全体活用と軍師 routing

@@ -881,7 +881,7 @@ SH
     assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db" "opencode" "shogun"
     assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db-shm" "opencode" "shogun"
     assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db-wal" "opencode" "shogun"
-    assert_cli_state_symlink_removed "$result" ".local/state/opencode/model.json" "opencode" "shogun"
+    assert_cli_host_state_seed "$result" ".local/state/opencode/model.json" "opencode" "shogun"
     assert_cli_state_symlink_removed "$result" ".local/state/opencode/prompt-history.jsonl" "opencode" "shogun"
     assert_cli_host_state_seed "$result" ".config/opencode/package.json" "opencode" "shogun"
     assert_cli_host_dir_link "$result" ".config/opencode/node_modules" "opencode" "shogun"
@@ -905,7 +905,7 @@ SH
     assert_cli_state_symlink_removed "$result" ".local/share/kilo/kilo.db" "kilo" "gunshi"
     assert_cli_state_symlink_removed "$result" ".local/share/kilo/kilo.db-shm" "kilo" "gunshi"
     assert_cli_state_symlink_removed "$result" ".local/share/kilo/kilo.db-wal" "kilo" "gunshi"
-    assert_cli_state_symlink_removed "$result" ".local/state/kilo/model.json" "kilo" "gunshi"
+    assert_cli_host_state_seed "$result" ".local/state/kilo/model.json" "kilo" "gunshi"
     assert_cli_state_symlink_removed "$result" ".local/state/kilo/prompt-history.jsonl" "kilo" "gunshi"
     assert_cli_host_state_seed "$result" ".config/kilo/package.json" "kilo" "gunshi"
     assert_cli_host_dir_link "$result" ".config/kilo/node_modules" "kilo" "gunshi"
@@ -966,7 +966,7 @@ SH
     done
 }
 
-@test "build_cli_command_with_type: OpenCode/Kilo auth-only共有は全役職で同じ規則になる" {
+@test "build_cli_command_with_type: OpenCode/Kilo auth共有とmodel初期seedは全役職で同じ規則になる" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     make_fake_cli opencode
     make_fake_cli kilo
@@ -979,7 +979,7 @@ SH
         result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command_with_type "$role" "opencode")
         assert_cli_host_auth_link "$result" ".local/share/opencode/auth.json" "opencode" "$role"
         assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db" "opencode" "$role"
-        assert_cli_state_symlink_removed "$result" ".local/state/opencode/model.json" "opencode" "$role"
+        assert_cli_host_state_seed "$result" ".local/state/opencode/model.json" "opencode" "$role"
         assert_cli_state_symlink_removed "$result" ".local/state/opencode/prompt-history.jsonl" "opencode" "$role"
         [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/opencode/opencode.db"* ]]
         [[ "$result" == *"AGENT_ID=${role} ${TEST_TMP}/bin/opencode"* ]]
@@ -987,7 +987,7 @@ SH
         result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command_with_type "$role" "kilo")
         assert_cli_host_auth_link "$result" ".local/share/kilo/auth.json" "kilo" "$role"
         assert_cli_state_symlink_removed "$result" ".local/share/kilo/kilo.db" "kilo" "$role"
-        assert_cli_state_symlink_removed "$result" ".local/state/kilo/model.json" "kilo" "$role"
+        assert_cli_host_state_seed "$result" ".local/state/kilo/model.json" "kilo" "$role"
         assert_cli_state_symlink_removed "$result" ".local/state/kilo/prompt-history.jsonl" "kilo" "$role"
         [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/kilo/kilo.db"* ]]
         [[ "$result" == *"AGENT_ID=${role} ${TEST_TMP}/bin/kilo"* ]]

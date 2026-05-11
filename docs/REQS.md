@@ -19,19 +19,20 @@
 5. コマンド: `git status -sb && git diff --check`
    - 期待結果: docs 変更だけが差分として出て、whitespace error がない。
 
-## 追補（2026-05-09: OpenCode / Kilo は host 認証だけ共有し、モデル設定は pane-local にする）
+## 追補（2026-05-09/11: OpenCode / Kilo は host 認証を共有し、モデル設定は初回だけ host から seed する）
 ### 要求
 1. OpenCode / Kilo は host PC / user home の既知 `auth.json` を参照し、CLI 内で毎回 API key を入力し直さなくてよい状態を目指すこと。
-2. OpenCode / Kilo の model state、SQLite DB、prompt history、telemetry、その他 runtime state は Shogunate の agent / pane ごとに独立させること。
+2. OpenCode / Kilo の `model.json` は role-local file が未作成のときだけ host から初期コピーし、その後の model state は Shogunate の agent / pane ごとに独立させること。
 3. 起動時に古い DB / model / history symlink が残っている場合は symlink だけ外し、既存の role-local regular file は消さないこと。
-4. plugin manifest は role-local file が未作成のときだけ host から初期コピーし、`node_modules` は host install を link してよい。
-5. 上記の auth / state 分離は、将軍・軍師・家老・複数家老・足軽のどの役職にどの対応 CLI を割り当てた場合でも同じ規則で動くこと。
+4. SQLite DB、prompt history、telemetry、その他 runtime state は host から copy / live symlink せず、pane-local に保持すること。
+5. plugin manifest は role-local file が未作成のときだけ host から初期コピーし、`node_modules` は host install を link してよい。
+6. 上記の auth / state 分離は、将軍・軍師・家老・複数家老・足軽のどの役職にどの対応 CLI を割り当てた場合でも同じ規則で動くこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash -n lib/cli_adapter.sh && bats tests/unit/test_cli_adapter.bats`
-   - 期待結果: OpenCode / Kilo の `auth.json` host link、DB / model / history symlink cleanup、plugin manifest seed が PASS する。
+   - 期待結果: OpenCode / Kilo の `auth.json` host link、`model.json` one-shot seed、DB / history symlink cleanup、plugin manifest seed が PASS する。
 2. コマンド: `source lib/cli_adapter.sh; build_cli_command shogun`
-   - 期待結果: OpenCode / Kilo 起動コマンドで `HOME` / `XDG_*` が pane-local を向き、host DB / model state を symlink または copy しない。
+   - 期待結果: OpenCode / Kilo 起動コマンドで `HOME` / `XDG_*` が pane-local を向き、host DB は symlink / copy せず、host `model.json` は role-local file 不在時だけ copy する。
 3. コマンド: `bats tests/unit/test_cli_adapter.bats`
    - 期待結果: `shogun` / `gunshi` / `karo` / `karo2` / `ashigaruN` に `claude` / `codex` / `copilot` / `kimi` / `gemini` / `opencode` / `kilo` / `localapi` を割り当てる matrix test が PASS する。
 
@@ -39,7 +40,7 @@
 ### 要求
 1. WSL 上に native Codex CLI がある場合、Shogunate runtime は Windows 側 npm shim（例: `/mnt/c/.../codex`）を優先して起動しないこと。
 2. `command -v` が Windows mount 上の shim を返しても、`HOME` / `NVM_BIN` / `PNPM_HOME` 配下の native executable を先に使うこと。
-3. OpenCode / Kilo は host `auth.json` を参照し、provider SQLite DB と model state は host から seed しないこと。
+3. OpenCode / Kilo は host `auth.json` を参照し、provider SQLite DB は host から seed しないこと。`model.json` は role-local file がない場合だけ初回 seed すること。
 4. 既存の role-local regular file は消さず、古い DB / model / history symlink だけ外すこと。複数 pane が host SQLite DB を live 共有しないこと。
 
 ### 受け入れ条件（観測可能）
@@ -252,9 +253,9 @@
 ### 追補（2026-05-07/08: OpenCode / Kilo の host DB live 共有をやめる）
 1. OpenCode / Kilo は host `auth.json` を参照しつつ、`opencode.db` / `kilo.db` / WAL / provider model state を host から live symlink しないこと。
 2. 既存 runtime state に古い DB symlink が残っている場合は、起動時に symlink だけ外すこと。
-3. role-local regular file が無い場合も host provider DB / model state は初期コピーせず、pane-local runtime state と host auth file link を分離すること。
+3. role-local `model.json` が無い場合は host model state を初回コピーするが、provider DB / prompt history は初期コピーせず、pane-local runtime state と host auth file link を分離すること。
 4. 期待結果: 複数 OpenCode pane 起動時に同じ host DB を同時に触らず、`PRAGMA wal_checkpoint` 系のロック衝突を避けられる。
-5. 検証: `bats tests/unit/test_cli_adapter.bats` が、auth file link、DB / model / history symlink cleanup、plugin manifest seed を確認して PASS する。
+5. 検証: `bats tests/unit/test_cli_adapter.bats` が、auth file link、model state one-shot seed、DB / history symlink cleanup、plugin manifest seed を確認して PASS する。
 
 ## 追補（2026-05-06: Windows から runtime / Codex login を一発起動できる bat を追加する）
 ### 要求

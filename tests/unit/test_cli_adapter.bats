@@ -643,7 +643,7 @@ YAML
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru5")
     assert_codex_shared_auth_bootstrap "$result" "ashigaru5"
-    [[ "$result" == *"--search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *"--search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: codex は host PATH の実行ファイルを絶対パスで使う" {
@@ -651,49 +651,49 @@ YAML
     make_fake_cli codex
     result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *"NO_UPDATE_NOTIFIER=1 ${TEST_TMP}/bin/codex --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *"NO_UPDATE_NOTIFIER=1 ${TEST_TMP}/bin/codex --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
-@test "build_cli_command: codex + explicit model → codex --model ... --search --dangerously-bypass-approvals-and-sandbox" {
+@test "build_cli_command: codex + explicit model → codex --model ... --search --sandbox danger-full-access --ask-for-approval never" {
     load_adapter_with "${TEST_TMP}/settings_codex_model.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *codex" --model gpt-5.3-codex --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *codex" --model gpt-5.3-codex --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: codex + reasoning_effort → -c model_reasoning_effort を付与" {
     load_adapter_with "${TEST_TMP}/settings_codex_reasoning.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *codex" -c model_reasoning_effort='high' --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *codex" -c model_reasoning_effort='high' --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: codex + explicit model + reasoning_effort none を付与" {
     load_adapter_with "${TEST_TMP}/settings_codex_reasoning.yaml"
     result=$(build_cli_command "gunshi")
     assert_codex_shared_auth_bootstrap "$result" "gunshi"
-    [[ "$result" == *codex" --model gpt-5.4 -c model_reasoning_effort='none' --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *codex" --model gpt-5.4 -c model_reasoning_effort='none' --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: shogun codex は未設定なら reasoning_effort を付けない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_defaults.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *codex" --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: gunshi codex は未設定なら reasoning_effort を付けない" {
     load_adapter_with "${TEST_TMP}/settings_shogun_defaults.yaml"
     result=$(build_cli_command "gunshi")
     assert_codex_shared_auth_bootstrap "$result" "gunshi"
-    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *codex" --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: codex + model auto → --model を付けない" {
     load_adapter_with "${TEST_TMP}/settings_codex_auto.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *codex" --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: codex に UI 断片 left が入っていても --model を付けない" {
@@ -708,20 +708,20 @@ YAML
     load_adapter_with "${TEST_TMP}/settings_codex_invalid_model.yaml"
     result=$(build_cli_command "ashigaru2")
     assert_codex_shared_auth_bootstrap "$result" "ashigaru2"
-    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *codex" --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: codex shared_auth false でも host auth を優先する" {
     load_adapter_with "${TEST_TMP}/settings_codex_shared_auth_off.yaml"
     result=$(build_cli_command "shogun")
-    [[ "$result" == "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && if [ -f ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ]; then ln -sfn ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/shogun/auth.json; else mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun; fi && AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 "*codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == "mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun && if [ -f ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ]; then ln -sfn ${CLI_ADAPTER_HOST_HOME}/.codex/auth.json ${PROJECT_ROOT}/.shogunate/codex/agents/shogun/auth.json; else mkdir -p ${PROJECT_ROOT}/.shogunate/codex/agents/shogun; fi && AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 "*codex" --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: codex shared_auth_file を custom path へ変更できる" {
     load_adapter_with "${TEST_TMP}/settings_codex_shared_auth_custom.yaml"
     result=$(build_cli_command "shogun")
     assert_codex_shared_auth_custom_bootstrap "$result" "shogun"
-    [[ "$result" == *"AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 "*codex" --search --dangerously-bypass-approvals-and-sandbox" ]]
+    [[ "$result" == *"AGENT_ID=shogun CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/shogun NO_UPDATE_NOTIFIER=1 "*codex" --search --sandbox danger-full-access --ask-for-approval never" ]]
 }
 
 @test "build_cli_command: copilot → copilot --yolo" {
@@ -1022,7 +1022,7 @@ SH
     load_adapter_with "${TEST_TMP}/settings_codex_default.yaml"
     result=$(build_cli_command_with_startup_prompt "shogun" "codex" "ready:shogun")
     assert_codex_shared_auth_bootstrap "$result" "shogun"
-    [[ "$result" == *codex" --search --dangerously-bypass-approvals-and-sandbox ready:shogun" ]]
+    [[ "$result" == *codex" --search --sandbox danger-full-access --ask-for-approval never ready:shogun" ]]
 }
 
 @test "build_cli_command: codex は auth を共有しつつ agent ごとに CODEX_HOME を分離する" {

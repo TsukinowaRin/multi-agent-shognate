@@ -90,7 +90,7 @@
 | CLI type | 既定の unattended 方針 |
 |---|---|
 | `claude` | `--dangerously-skip-permissions` |
-| `codex` | `--dangerously-bypass-approvals-and-sandbox` |
+| `codex` | `--sandbox danger-full-access --ask-for-approval never` |
 | `copilot` | `--yolo` |
 | `kimi` | `--yolo` |
 | `gemini` | `--yolo` |

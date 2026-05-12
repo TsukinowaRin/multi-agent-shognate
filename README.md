@@ -88,7 +88,7 @@ In this fork, every agent defaults to an unattended, no-approval-by-default mode
 | CLI type | Default unattended behavior |
 |---|---|
 | `claude` | `--dangerously-skip-permissions` |
-| `codex` | `--dangerously-bypass-approvals-and-sandbox` |
+| `codex` | `--sandbox danger-full-access --ask-for-approval never` |
 | `copilot` | `--yolo` |
 | `kimi` | `--yolo` |
 | `gemini` | `--yolo` |

@@ -821,15 +821,15 @@
 ## 追補（2026-03-17: 全エージェント既定で権限確認をバイパス）
 ### 要求
 1. 全エージェントは、この fork の既定状態で権限確認を挟まないモードで起動すること。
-2. `claude` / `codex` / `copilot` / `kimi` / `gemini` は既存の bypass 系起動フラグを維持すること。
+2. `claude` / `copilot` / `kimi` / `gemini` は既存の bypass 系起動フラグを維持し、`codex` は通常 UI に近い `--sandbox danger-full-access --ask-for-approval never` で承認不要の full access とすること。
 3. `opencode` / `kilo` は project config の生成時に承認不要設定を既定出力し、確認プロンプトが出ない状態を正本とすること。
 4. README 英日には、この既定方針を CLI ごとに分かる形で記載すること。
 5. `codex` は role ごとに repo-local の `CODEX_HOME` を維持しつつ、`auth.json` だけは既定で repo-local shared path から共通利用できること。model / reasoning preset は launch command 側で role ごとに維持し、VSCode や別 Codex CLI へ full state を波及させないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_opencode_config.bats`
-   - 期待結果: 既存 CLI の bypass 起動と、`opencode.json` の `permission: allow` 出力が PASS する。
-2. コマンド: `rg -n "dangerously-skip-permissions|dangerously-bypass-approvals-and-sandbox|--yolo|permission: allow" README.md README_ja.md lib/cli_adapter.sh scripts/sync_opencode_config.py`
+   - 期待結果: 既存 CLI の unattended 起動と、`opencode.json` の `permission: allow` 出力が PASS する。
+2. コマンド: `rg -n "dangerously-skip-permissions|--sandbox danger-full-access --ask-for-approval never|--yolo|permission: allow" README.md README_ja.md lib/cli_adapter.sh scripts/sync_opencode_config.py`
    - 期待結果: 既定の unattended 方針がコードと README に反映されている。
 3. コマンド: `bats tests/unit/test_cli_adapter.bats`
    - 期待結果: Codex 起動コマンドが agent ごとに別 `CODEX_HOME` を持ちつつ、既定では `.shogunate/codex/shared/auth.json` を共通参照し、`shared_auth: false` と custom `shared_auth_file` も回帰込みで PASS する。

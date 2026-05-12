@@ -856,7 +856,7 @@ build_cli_command_with_type() {
             if [[ -n "$reasoning_effort" && "$reasoning_effort" != "auto" ]]; then
                 cmd="$cmd -c model_reasoning_effort='$reasoning_effort'"
             fi
-            cmd="$cmd --search --dangerously-bypass-approvals-and-sandbox"
+            cmd="$cmd --search --sandbox danger-full-access --ask-for-approval never"
             echo "$cmd"
             ;;
         copilot)

@@ -502,6 +502,30 @@ wait_for_goza_client_before_cli_launch() {
     log_success "  └─ 御座の間 attach 検出。CLI起動を開始"
 }
 
+goza_startup_window_enabled() {
+    [ "${MAS_GOZA_STARTUP_WINDOW:-0}" = "1" ] && [ "$SETUP_ONLY" = false ]
+}
+
+create_goza_startup_window() {
+    local shell_cmd=""
+
+    goza_startup_window_enabled || return 0
+    printf -v shell_cmd 'cd %q && while true; do clear; printf "\\n  🏯 Shogunate 起動中\\n\\n  エージェントCLIを裏の overview で起動しています。\\n  起動完了までこの画面で待機してください。\\n\\n  ログ: queue/runtime/shogunate_runtime_launcher.log\\n\\n"; tail -n 18 queue/runtime/shogunate_runtime_launcher.log 2>/dev/null || true; sleep 2; done' "$SCRIPT_DIR"
+    tmux new-window -d -t "$GOZA_SESSION_NAME" -n "$GOZA_STARTUP_WINDOW_NAME" "$shell_cmd" >/dev/null 2>&1 || return 0
+    tmux select-window -t "$GOZA_SESSION_NAME:$GOZA_STARTUP_WINDOW_NAME" >/dev/null 2>&1 || true
+}
+
+finish_goza_startup_window() {
+    local client=""
+
+    goza_startup_window_enabled || return 0
+    while IFS= read -r client; do
+        [ -n "$client" ] || continue
+        tmux switch-client -c "$client" -t "$GOZA_SESSION_NAME:$GOZA_WINDOW_NAME" >/dev/null 2>&1 || true
+    done < <(tmux list-clients -t "$GOZA_SESSION_NAME" -F '#{client_name}' 2>/dev/null || true)
+    tmux kill-window -t "$GOZA_SESSION_NAME:$GOZA_STARTUP_WINDOW_NAME" >/dev/null 2>&1 || true
+}
+
 run_runtime_blocker_notice_tmux() {
     local action="$1"
     shift
@@ -1133,6 +1157,7 @@ should_embed_startup_prompt_in_cli_command() {
 
 GOZA_SESSION_NAME="${GOZA_SESSION_NAME:-goza-no-ma}"
 GOZA_WINDOW_NAME="${GOZA_WINDOW_NAME:-overview}"
+GOZA_STARTUP_WINDOW_NAME="${GOZA_STARTUP_WINDOW_NAME:-startup}"
 GOZA_LAYOUT_FILE="${GOZA_LAYOUT_FILE:-$SCRIPT_DIR/queue/runtime/goza_layout.tsv}"
 GOZA_SIGNATURE_FILE="${GOZA_SIGNATURE_FILE:-$SCRIPT_DIR/queue/runtime/goza_signature.tsv}"
 GOZA_BOOTSTRAP_RUN_ID="${GOZA_BOOTSTRAP_RUN_ID:-$(date +%Y%m%d_%H%M%S)}"
@@ -2164,6 +2189,7 @@ fi
 if [ -n "${MAS_LAUNCHER_RUN_ID:-}" ]; then
     tmux set-option -t "$GOZA_SESSION_NAME" @mas_launcher_run_id "$MAS_LAUNCHER_RUN_ID" >/dev/null 2>&1 || true
 fi
+create_goza_startup_window
 
 if [ "$SILENT_MODE" = true ]; then
     tmux set-environment -t "$GOZA_SESSION_NAME" DISPLAY_MODE "silent"
@@ -2810,6 +2836,7 @@ else
 fi
 echo "  └──────────────────────────────────────────────────────────┘"
 echo ""
+finish_goza_startup_window
 echo "  ════════════════════════════════════════════════════════════"
 echo "   天下布武！勝利を掴め！ (Tenka Fubu! Seize victory!)"
 echo "  ════════════════════════════════════════════════════════════"

@@ -80,9 +80,9 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
   echo "  [INFO] Startup log: $STARTUP_LOG"
   RUN_ID="runtime-$(date +%s)-$$"
   if [[ -n "$CLEAN_ARG" ]]; then
-    MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+    MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   else
-    MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+    MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   fi
   RUNTIME_PID=$!
 

@@ -5,17 +5,18 @@
 
 ## 追補（2026-05-12: Codex TUI は attach 済み御座の間で起動する）
 ### 要求
-1. Shogunate launcher の通常起動では、`goza-no-ma` 作成後に先に tmux attach し、Codex などのエージェント CLI は attach 済み client 上で起動すること。
+1. Shogunate launcher の通常起動では、`goza-no-ma` 作成後に起動中 window へ先に tmux attach し、Codex などのエージェント CLI は裏の `overview` window で attach 済み client 上に起動すること。
 2. detached tmux 内で Codex を先に起動した場合、Codex の入力欄が通常の手動起動時と異なる見た目になるため、既定 launcher は attach 後起動を優先すること。
-3. `./Shogunate-Runtime.sh --no-attach` や直接 `bash shutsujin_departure.sh` では従来どおり非対話 / 自動実行を妨げないこと。
-4. attach 後起動の待機は `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` のときだけ有効にし、待機ログと timeout を持つこと。
-5. Windows Explorer の `Shogunate-Runtime.bat` も canonical launcher を経由し、同じ attach 後起動の挙動に揃えること。
+3. ユーザーが起動コマンド投入中のエージェント pane を誤操作しないよう、起動完了まで `overview` を前面に出さず、起動完了後に自動で `overview` へ切り替えること。
+4. `./Shogunate-Runtime.sh --no-attach` や直接 `bash shutsujin_departure.sh` では従来どおり非対話 / 自動実行を妨げないこと。
+5. attach 後起動の待機は `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` のときだけ有効にし、起動中 window は `MAS_GOZA_STARTUP_WINDOW=1` のときだけ有効にすること。
+6. Windows Explorer の `Shogunate-Runtime.bat` も canonical launcher を経由し、同じ attach 後起動の挙動に揃えること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash -n Shogunate-Runtime.sh shutsujin_departure.sh`
    - 期待結果: shell syntax が PASS する。
 2. コマンド: `bats tests/unit/test_runtime_launchers.bats tests/unit/test_mux_parity.bats`
-   - 期待結果: launcher が `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` で runtime を裏起動し、`goza-no-ma` attach 後に CLI launch が進む構造の回帰が PASS する。
+   - 期待結果: launcher が `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` / `MAS_GOZA_STARTUP_WINDOW=1` で runtime を裏起動し、起動中 window に attach 後、裏の `overview` で CLI launch が進む構造の回帰が PASS する。
 3. コマンド: `./Shogunate-Runtime.sh --no-attach`
    - 期待結果: attach 待機せず従来どおり runtime を起動する。
 

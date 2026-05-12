@@ -52,9 +52,20 @@ setup_file() {
         grep -q "GOZA_MIN_RESTORE_PANE_WIDTH" "$1" &&
         grep -q "GOZA_MIN_RESTORE_PANE_HEIGHT" "$1" &&
         grep -q "goza_window_has_tiny_panes" "$1" &&
+        grep -q "goza_window_is_smaller_than_layout" "$1" &&
         grep -Fq "tmux select-layout -t \"\$window_target\" \"\$current_layout\"" "$1" &&
         grep -q "小さすぎるため復元しません" "$1"
     ' _ "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "御座の間autosaveは小さすぎるpaneを保存しない" {
+    run bash -c '
+        grep -q "MIN_PANE_WIDTH" "$1" &&
+        grep -q "MIN_PANE_HEIGHT" "$1" &&
+        grep -q "window_has_tiny_panes" "$1" &&
+        grep -q "continue" "$1"
+    ' _ "$PROJECT_ROOT/scripts/goza_layout_autosave.sh"
     [ "$status" -eq 0 ]
 }
 

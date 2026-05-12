@@ -106,12 +106,14 @@
 1. `goza-no-ma` 起動時に、過去に保存された小さい tmux layout により家老・足軽 pane が幅1などの実用不能サイズへ潰れないこと。
 2. 保存済み layout を復元した結果、pane 幅または高さが実用下限を下回る場合は、起動時に生成した既定 layout へ戻すこと。
 3. すでに潰れた layout を自動保存して次回起動へ持ち越さないこと。
+4. 保存時より小さい Windows Terminal / tmux client サイズで起動しただけの場合は、保存済み layout を壊れた layout と判定して reset しないこと。
+5. autosave は小さすぎる pane がある状態を保存せず、最大化時などに作った好みの layout を小さい起動 window で上書きしないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash -n shutsujin_departure.sh`
    - 期待結果: shell syntax が PASS する。
 2. コマンド: `bats tests/unit/test_mux_parity.bats`
-   - 期待結果: `GOZA_MIN_RESTORE_PANE_WIDTH` / `GOZA_MIN_RESTORE_PANE_HEIGHT` と、小さすぎる保存 layout の rollback 契約が PASS する。
+   - 期待結果: `GOZA_MIN_RESTORE_PANE_WIDTH` / `GOZA_MIN_RESTORE_PANE_HEIGHT`、小さすぎる保存 layout の rollback、小さい起動 window では reset しない契約、autosave の tiny pane skip が PASS する。
 
 ## 追補（2026-05-07: 起動ログ整形 / Gemini update nag 抑止 / Codex TUI 入力保護）
 ### 要求

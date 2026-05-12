@@ -1241,6 +1241,29 @@ goza_window_has_tiny_panes() {
     return 1
 }
 
+goza_layout_saved_dimensions() {
+    local layout="${1:-}"
+
+    if [[ "$layout" =~ ^[^,]+,([0-9]+)x([0-9]+), ]]; then
+        printf '%s %s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+        return 0
+    fi
+    return 1
+}
+
+goza_window_is_smaller_than_layout() {
+    local window_target="$1"
+    local layout="$2"
+    local saved_width saved_height current_width current_height
+
+    read -r saved_width saved_height < <(goza_layout_saved_dimensions "$layout") || return 1
+    read -r current_width current_height < <(tmux display-message -p -t "$window_target" '#{window_width} #{window_height}' 2>/dev/null || true)
+    [[ "$saved_width" =~ ^[0-9]+$ && "$saved_height" =~ ^[0-9]+$ ]] || return 1
+    [[ "$current_width" =~ ^[0-9]+$ && "$current_height" =~ ^[0-9]+$ ]] || return 1
+
+    (( current_width < saved_width || current_height < saved_height ))
+}
+
 save_goza_layout() {
     local session="$1"
     local window_target="${session}:${GOZA_WINDOW_NAME}"
@@ -1279,6 +1302,9 @@ restore_goza_layout_if_available() {
     current_layout="$(tmux display-message -p -t "$window_target" "#{window_layout}" 2>/dev/null || true)"
     tmux select-layout -t "$window_target" "$saved_layout" >/dev/null 2>&1 || return 0
     if goza_window_has_tiny_panes "$window_target"; then
+        if goza_window_is_smaller_than_layout "$window_target" "$saved_layout"; then
+            return 0
+        fi
         if [[ -n "$current_layout" ]]; then
             tmux select-layout -t "$window_target" "$current_layout" >/dev/null 2>&1 || true
         fi

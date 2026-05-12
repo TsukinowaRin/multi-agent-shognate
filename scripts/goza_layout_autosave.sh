@@ -4,6 +4,8 @@ set -euo pipefail
 SESSION="${1:-}"
 LAYOUT_FILE="${2:-}"
 INTERVAL="${GOZA_LAYOUT_AUTOSAVE_INTERVAL:-1}"
+MIN_PANE_WIDTH="${GOZA_MIN_RESTORE_PANE_WIDTH:-20}"
+MIN_PANE_HEIGHT="${GOZA_MIN_RESTORE_PANE_HEIGHT:-6}"
 
 if [[ -z "$SESSION" || -z "$LAYOUT_FILE" ]]; then
   echo "[ERROR] usage: goza_layout_autosave.sh <session> <layout-file>" >&2
@@ -38,10 +40,29 @@ collect_signature() {
   printf '%s\n' "${agents[@]}" | awk 'NF' | sort -V | paste -sd, -
 }
 
+window_has_tiny_panes() {
+  local width=""
+  local height=""
+
+  while read -r width height; do
+    [[ "$width" =~ ^[0-9]+$ && "$height" =~ ^[0-9]+$ ]] || continue
+    if (( width < MIN_PANE_WIDTH || height < MIN_PANE_HEIGHT )); then
+      return 0
+    fi
+  done < <(tmux list-panes -t "$window_target" -F '#{pane_width} #{pane_height}' 2>/dev/null || true)
+
+  return 1
+}
+
 while tmux has-session -t "$SESSION" 2>/dev/null; do
   pane_count="$(tmux list-panes -t "$window_target" 2>/dev/null | wc -l | tr -d '[:space:]')"
   layout="$(tmux display-message -p -t "$window_target" "#{window_layout}" 2>/dev/null || true)"
   signature="$(collect_signature)"
+
+  if window_has_tiny_panes; then
+    sleep "$INTERVAL"
+    continue
+  fi
 
   if [[ -n "$pane_count" && -n "$layout" ]] && { [[ "$layout" != "$last_layout" ]] || [[ "$pane_count" != "$last_count" ]]; }; then
     mkdir -p "$(dirname "$LAYOUT_FILE")"

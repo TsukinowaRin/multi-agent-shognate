@@ -510,7 +510,7 @@ create_goza_startup_window() {
     local shell_cmd=""
 
     goza_startup_window_enabled || return 0
-    printf -v shell_cmd 'cd %q && while true; do clear; printf "\\n  🏯 Shogunate 起動中\\n\\n  エージェントCLIを裏の overview で起動しています。\\n  起動完了までこの画面で待機してください。\\n\\n  ログ: queue/runtime/shogunate_runtime_launcher.log\\n\\n"; tail -n 18 queue/runtime/shogunate_runtime_launcher.log 2>/dev/null || true; sleep 2; done' "$SCRIPT_DIR"
+    printf -v shell_cmd 'cd %q && printf "\\n  🏯 Shogunate 起動中\\n\\n  エージェントCLIを裏の overview で起動しています。\\n  起動完了までこの画面で待機してください。\\n\\n  ログ: queue/runtime/shogunate_runtime_launcher.log\\n  この画面はログ全文を追記表示します。tmux の copy-mode で遡れます。\\n\\n"; touch queue/runtime/shogunate_runtime_launcher.log; tail -n +1 -F queue/runtime/shogunate_runtime_launcher.log' "$SCRIPT_DIR"
     tmux new-window -d -t "$GOZA_SESSION_NAME" -n "$GOZA_STARTUP_WINDOW_NAME" "$shell_cmd" >/dev/null 2>&1 || return 0
     tmux select-window -t "$GOZA_SESSION_NAME:$GOZA_STARTUP_WINDOW_NAME" >/dev/null 2>&1 || true
 }

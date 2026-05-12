@@ -145,7 +145,7 @@ setup_file() {
 }
 
 @test "tmux 起動は必要時に attach 後まで CLI launch を待機できる" {
-    run bats_search 'wait_for_goza_client_before_cli_launch|MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI|MAS_GOZA_STARTUP_WINDOW|MAS_LAUNCHER_RUN_ID|@mas_launcher_run_id|create_goza_startup_window|finish_goza_startup_window|tmux list-clients -t "\$GOZA_SESSION_NAME"|御座の間 attach 検出' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/Shogunate-Runtime.sh"
+    run bats_search 'wait_for_goza_client_before_cli_launch|MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI|MAS_GOZA_STARTUP_WINDOW|MAS_LAUNCHER_RUN_ID|@mas_launcher_run_id|create_goza_startup_window|finish_goza_startup_window|tail -n \+1 -F queue/runtime/shogunate_runtime_launcher\.log|tmux list-clients -t "\$GOZA_SESSION_NAME"|御座の間 attach 検出' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/Shogunate-Runtime.sh"
     [ "$status" -eq 0 ]
 }
 

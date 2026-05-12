@@ -10,13 +10,14 @@
 3. ユーザーが起動コマンド投入中のエージェント pane を誤操作しないよう、起動完了まで `overview` を前面に出さず、起動完了後に自動で `overview` へ切り替えること。
 4. `./Shogunate-Runtime.sh --no-attach` や直接 `bash shutsujin_departure.sh` では従来どおり非対話 / 自動実行を妨げないこと。
 5. attach 後起動の待機は `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` のときだけ有効にし、起動中 window は `MAS_GOZA_STARTUP_WINDOW=1` のときだけ有効にすること。
-6. Windows Explorer の `Shogunate-Runtime.bat` も canonical launcher を経由し、同じ attach 後起動の挙動に揃えること。
+6. 起動中 window はログ全文を追記表示し、一定行数だけの再描画や `clear` loop による点滅を起こさないこと。忍者武士 AA などの長い出力は tmux copy-mode で遡れること。
+7. Windows Explorer の `Shogunate-Runtime.bat` も canonical launcher を経由し、同じ attach 後起動の挙動に揃えること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash -n Shogunate-Runtime.sh shutsujin_departure.sh`
    - 期待結果: shell syntax が PASS する。
 2. コマンド: `bats tests/unit/test_runtime_launchers.bats tests/unit/test_mux_parity.bats`
-   - 期待結果: launcher が `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` / `MAS_GOZA_STARTUP_WINDOW=1` で runtime を裏起動し、起動中 window に attach 後、裏の `overview` で CLI launch が進む構造の回帰が PASS する。
+   - 期待結果: launcher が `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` / `MAS_GOZA_STARTUP_WINDOW=1` で runtime を裏起動し、起動中 window に attach 後、裏の `overview` で CLI launch が進む。起動中 window は `tail -n +1 -F` でログを追記表示する構造の回帰が PASS する。
 3. コマンド: `./Shogunate-Runtime.sh --no-attach`
    - 期待結果: attach 待機せず従来どおり runtime を起動する。
 

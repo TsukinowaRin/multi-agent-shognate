@@ -482,6 +482,26 @@ mark_cli_launch_attempt_tmux() {
     tmux set-option -p -t "$pane_target" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
 }
 
+wait_for_goza_client_before_cli_launch() {
+    local timeout="${MAS_WAIT_FOR_GOZA_CLIENT_TIMEOUT:-300}"
+    local waited=0
+
+    [ "${MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI:-0}" = "1" ] || return 0
+    [ "$SETUP_ONLY" = false ] || return 0
+
+    log_info "🖥️  御座の間 attach 待機中（CLIは表示端末接続後に起動）..."
+    while ! tmux list-clients -t "$GOZA_SESSION_NAME" -F '#{client_name}' 2>/dev/null | grep -q .; do
+        sleep 1
+        waited=$((waited + 1))
+        if [[ "$timeout" =~ ^[0-9]+$ ]] && [ "$timeout" -gt 0 ] && [ "$waited" -ge "$timeout" ]; then
+            echo "[ERROR] goza-no-ma attach wait timed out after ${timeout}s" >&2
+            echo "        Attach manually or disable MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI." >&2
+            exit 1
+        fi
+    done
+    log_success "  └─ 御座の間 attach 検出。CLI起動を開始"
+}
+
 run_runtime_blocker_notice_tmux() {
     local action="$1"
     shift
@@ -2141,6 +2161,9 @@ if ! tmux new-session -d -x "$GOZA_VIEW_WIDTH" -y "$GOZA_VIEW_HEIGHT" -s "$GOZA_
     echo "[ERROR] tmux session '$GOZA_SESSION_NAME' の作成に失敗しました" >&2
     exit 1
 fi
+if [ -n "${MAS_LAUNCHER_RUN_ID:-}" ]; then
+    tmux set-option -t "$GOZA_SESSION_NAME" @mas_launcher_run_id "$MAS_LAUNCHER_RUN_ID" >/dev/null 2>&1 || true
+fi
 
 if [ "$SILENT_MODE" = true ]; then
     tmux set-environment -t "$GOZA_SESSION_NAME" DISPLAY_MODE "silent"
@@ -2259,6 +2282,8 @@ create_android_compat_sessions
 # STEP 6: CLI 起動（-s / --setup-only のときはスキップ）
 # ═══════════════════════════════════════════════════════════════════════════════
 if [ "$SETUP_ONLY" = false ]; then
+    wait_for_goza_client_before_cli_launch
+
     # CLI の存在チェック（Multi-CLI対応）
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         if ! get_first_available_cli >/dev/null 2>&1; then

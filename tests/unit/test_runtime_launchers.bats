@@ -14,6 +14,12 @@ setup() {
   run grep -F "bash shutsujin_departure.sh" "$PROJECT_ROOT/Shogunate-Runtime.sh"
   [ "$status" -eq 0 ]
 
+  run grep -F "MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1" "$PROJECT_ROOT/Shogunate-Runtime.sh"
+  [ "$status" -eq 0 ]
+
+  run grep -F "MAS_LAUNCHER_RUN_ID" "$PROJECT_ROOT/Shogunate-Runtime.sh"
+  [ "$status" -eq 0 ]
+
   run grep -F "tmux attach-session -t goza-no-ma" "$PROJECT_ROOT/Shogunate-Runtime.sh"
   [ "$status" -eq 0 ]
 }
@@ -22,9 +28,9 @@ setup() {
   run grep -F "wsl.exe -d Ubuntu" "$PROJECT_ROOT/Shogunate-Runtime.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "bash shutsujin_departure.sh" "$PROJECT_ROOT/Shogunate-Runtime.bat"
+  run grep -F "bash ./Shogunate-Runtime.sh" "$PROJECT_ROOT/Shogunate-Runtime.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "tmux attach-session -t goza-no-ma" "$PROJECT_ROOT/Shogunate-Runtime.bat"
+  run grep -F "Shogunate-Runtime.sh" "$PROJECT_ROOT/Shogunate-Runtime.bat"
   [ "$status" -eq 0 ]
 }

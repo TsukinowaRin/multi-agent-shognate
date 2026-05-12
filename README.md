@@ -382,7 +382,7 @@ The direct shell entrypoint is still available:
 bash shutsujin_departure.sh
 ```
 
-The launcher defaults to a clean start and then attaches to `goza-no-ma`. If a CLI needs login, follow the prompt in that CLI's tmux pane. Use `./Shogunate-Runtime.sh --resume` to keep existing runtime state, or `./Shogunate-Runtime.sh --no-attach` to start without attaching.
+The launcher defaults to a clean start, creates `goza-no-ma`, and attaches before agent CLIs are launched. This lets Codex initialize its TUI on the visible terminal, closer to a manual launch. If a CLI needs login, follow the prompt in that CLI's tmux pane. Use `./Shogunate-Runtime.sh --resume` to keep existing runtime state, or `./Shogunate-Runtime.sh --no-attach` to start without attaching.
 
 Role configuration can be opened before launch with `Shogunate-Configure-Roles.bat` on Windows, `./Shogunate-Configure-Roles.sh` on Linux / WSL, or `./Shogunate-Configure-Roles.command` on macOS.
 

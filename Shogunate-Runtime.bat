@@ -60,7 +60,7 @@ if defined CLEAN_ARG (
     echo        Mode: resume existing state
 )
 echo.
-wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && bash shutsujin_departure.sh %CLEAN_ARG%"
+wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && bash ./Shogunate-Runtime.sh %*"
 set "RUNTIME_EXIT=%ERRORLEVEL%"
 if not "%RUNTIME_EXIT%"=="0" (
     echo.
@@ -68,13 +68,6 @@ if not "%RUNTIME_EXIT%"=="0" (
     echo.
     pause
     exit /b %RUNTIME_EXIT%
-)
-
-if "%ATTACH_AFTER%"=="1" (
-    echo.
-    echo   [INFO] Attaching to goza-no-ma. Detach from tmux with Ctrl+B, then D.
-    echo.
-    wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && tmux attach-session -t goza-no-ma"
 )
 
 echo.

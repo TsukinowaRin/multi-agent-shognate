@@ -66,16 +66,59 @@ fi
 
 if [[ -n "$CLEAN_ARG" ]]; then
   echo "  [INFO] Mode: clean start"
-  bash shutsujin_departure.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}"
 else
   echo "  [INFO] Mode: resume existing state"
-  bash shutsujin_departure.sh "${EXTRA_ARGS[@]}"
 fi
 
 if [[ "$ATTACH_AFTER" -eq 1 ]]; then
+  mkdir -p queue/runtime
+  STARTUP_LOG="queue/runtime/shogunate_runtime_launcher.log"
+  : > "$STARTUP_LOG"
+
+  echo "  [INFO] Starting runtime in background."
+  echo "  [INFO] CLI panes will launch after goza-no-ma is attached."
+  echo "  [INFO] Startup log: $STARTUP_LOG"
+  RUN_ID="runtime-$(date +%s)-$$"
+  if [[ -n "$CLEAN_ARG" ]]; then
+    MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+  else
+    MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+  fi
+  RUNTIME_PID=$!
+
+  for _ in $(seq 1 120); do
+    if [[ "$(tmux show-options -t goza-no-ma -v @mas_launcher_run_id 2>/dev/null || true)" == "$RUN_ID" ]]; then
+      break
+    fi
+    if ! kill -0 "$RUNTIME_PID" 2>/dev/null; then
+      echo ""
+      echo "  [ERROR] Runtime exited before goza-no-ma was created."
+      echo "  ----- $STARTUP_LOG -----"
+      tail -120 "$STARTUP_LOG" 2>/dev/null || true
+      exit 1
+    fi
+    sleep 1
+  done
+
+  if [[ "$(tmux show-options -t goza-no-ma -v @mas_launcher_run_id 2>/dev/null || true)" != "$RUN_ID" ]]; then
+    echo ""
+    echo "  [ERROR] Timed out waiting for goza-no-ma."
+    echo "  ----- $STARTUP_LOG -----"
+    tail -120 "$STARTUP_LOG" 2>/dev/null || true
+    exit 1
+  fi
+
   echo ""
-  echo "  [INFO] Attaching to goza-no-ma. Detach from tmux with Ctrl+B, then D."
+  echo "  [INFO] Attaching to goza-no-ma. CLI launch continues inside tmux."
+  echo "  [INFO] Detach from tmux with Ctrl+B, then D."
+  disown "$RUNTIME_PID" 2>/dev/null || true
   exec tmux attach-session -t goza-no-ma
+fi
+
+if [[ -n "$CLEAN_ARG" ]]; then
+  bash shutsujin_departure.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}"
+else
+  bash shutsujin_departure.sh "${EXTRA_ARGS[@]}"
 fi
 
 echo ""

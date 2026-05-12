@@ -386,7 +386,7 @@ cd /path/to/multi-agent-shognate && ./Shogunate-Runtime.sh
 bash shutsujin_departure.sh
 ```
 
-launcher は既定で clean start し、そのまま `goza-no-ma` に attach します。Codex などのログインが必要な場合は、tmux 上で該当 pane の案内に従ってログインします。既存 state を保つ場合は `./Shogunate-Runtime.sh --resume`、attach しない場合は `./Shogunate-Runtime.sh --no-attach` を使います。
+launcher は既定で clean start し、`goza-no-ma` を作成したら先に attach します。Codex などのエージェント CLI は attach 後に起動するため、Codex TUI は通常の手動起動に近い表示端末上で初期化されます。ログインが必要な場合は、tmux 上で該当 pane の案内に従ってログインします。既存 state を保つ場合は `./Shogunate-Runtime.sh --resume`、attach しない場合は `./Shogunate-Runtime.sh --no-attach` を使います。
 
 起動前の役職設定は、Windows では `Shogunate-Configure-Roles.bat`、Linux / WSL では `./Shogunate-Configure-Roles.sh`、macOS では `./Shogunate-Configure-Roles.command` から開けます。
 

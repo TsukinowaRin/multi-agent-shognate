@@ -11,8 +11,8 @@ android {
         applicationId = "com.shogun.android.shognate"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "4.6.0"
+        versionCode = 7
+        versionName = "4.6.0.1-preview"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

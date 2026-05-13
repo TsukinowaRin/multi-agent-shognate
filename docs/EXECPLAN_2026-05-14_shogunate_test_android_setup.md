@@ -40,5 +40,5 @@
 - 2026-05-14: Shogun -> Karo -> Gunshi / Ashigaru1-4 の分担は成立。成果物 `demo-collab-program/index.html` と `README.md` は生成された。
 - 2026-05-14: 実運用上の懸念を観測。Ashigaru3 / Ashigaru4 が Ashigaru1 の `index.html` 完成前に検証・統合報告へ進み、早すぎる `failed` / 補足報告を残した。Karo は dashboard に「未完了」として残し、cmd を完了扱いにしなかった。
 - 2026-05-14: Android 設定画面に初回セットアップ導線、接続リンク / JSON 貼り付け欄、クリップボード import、必須項目表示、保存して接続テストを追加。
-- 2026-05-14: Gemini CLI で Android UX レビューを試みたが、`gemini-2.5-pro` / `gemini-2.5-flash` とも server capacity 429 で実行不可。Codex 単独で実装継続。
+- 2026-05-14: Gemini CLI で Android UX レビューを試みた。初回は旧 `gemini-2.5-*` 明示で server capacity 429。ユーザー指摘後、host 実機 Gemini CLI (`gemini 0.42.0`) のデフォルト model 設定に切り替え、`gemini-3.1-pro-preview` として疎通確認は成功したが、レビュー本番は server capacity 429 が続き未取得。
 - 2026-05-14: Android 実機確認は ADB device `661ecd40` が `unauthorized` のため install / screenshot 不可。Gradle test と debug APK build は成功。

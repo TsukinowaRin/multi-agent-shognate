@@ -46,6 +46,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _updateResult = MutableStateFlow("")
     val updateResult: StateFlow<String> = _updateResult
 
+    private val _connectionTestLoading = MutableStateFlow(false)
+    val connectionTestLoading: StateFlow<Boolean> = _connectionTestLoading
+
+    private val _connectionTestResult = MutableStateFlow("")
+    val connectionTestResult: StateFlow<String> = _connectionTestResult
+
     fun setNotificationEnabled(value: Boolean) {
         _notificationEnabled.value = value
         prefs.edit().putBoolean(PrefsKeys.NOTIFICATION_ENABLED, value).apply()
@@ -100,6 +106,26 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun stopAndApplyUpstreamUpdate() {
         runRemoteUpdateCommand("bash scripts/stop_and_apply_update.sh upstream-sync --restart --requested-by android")
+    }
+
+    fun testSshConnection() {
+        viewModelScope.launch {
+            _connectionTestLoading.value = true
+            _connectionTestResult.value = ""
+            try {
+                sshManager.disconnect()
+                val connect = ensureConnected()
+                _connectionTestResult.value = if (connect.isSuccess) {
+                    "接続OK。将軍タブで送信できます。"
+                } else {
+                    "接続失敗: ${connect.exceptionOrNull()?.message}"
+                }
+            } catch (e: Exception) {
+                _connectionTestResult.value = "接続失敗: ${e.message}"
+            } finally {
+                _connectionTestLoading.value = false
+            }
+        }
     }
 
     private fun runRemoteUpdateCommand(command: String) {

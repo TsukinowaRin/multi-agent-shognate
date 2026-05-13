@@ -27,6 +27,7 @@ import com.shogun.android.ui.theme.*
 import com.shogun.android.util.ConnectionProfiles
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
@@ -44,6 +45,8 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
     val updateLoading by settingsViewModel.updateLoading.collectAsState()
     val updateResult by settingsViewModel.updateResult.collectAsState()
+    val connectionTestLoading by settingsViewModel.connectionTestLoading.collectAsState()
+    val connectionTestResult by settingsViewModel.connectionTestResult.collectAsState()
 
     var host by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST) }
     var port by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR) ?: Defaults.SSH_PORT_STR) }
@@ -53,6 +56,8 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     var projectPath by remember { mutableStateOf(prefs.getString(PrefsKeys.PROJECT_PATH, Defaults.PROJECT_PATH) ?: Defaults.PROJECT_PATH) }
     var shogunSession by remember { mutableStateOf(prefs.getString(PrefsKeys.SHOGUN_SESSION, Defaults.SHOGUN_SESSION) ?: Defaults.SHOGUN_SESSION) }
     var agentsSession by remember { mutableStateOf(prefs.getString(PrefsKeys.AGENTS_SESSION, Defaults.AGENTS_SESSION) ?: Defaults.AGENTS_SESSION) }
+    var connectionProfileText by remember { mutableStateOf("") }
+    var profileImportMessage by remember { mutableStateOf("") }
 
     var saved by remember { mutableStateOf(false) }
     var tapCount by remember { mutableIntStateOf(0) }
@@ -92,12 +97,11 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         saved = true
     }
 
-    val importConnectionProfileFromClipboard = {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val text = clipboard.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+    val applyConnectionProfile: (String, String) -> Unit = { text, sourceLabel ->
         val profile = ConnectionProfiles.parse(text)
         if (profile == null) {
-            Toast.makeText(context, "接続プロファイルを読み取れません", Toast.LENGTH_LONG).show()
+            profileImportMessage = "${sourceLabel}から接続プロファイルを読み取れません"
+            Toast.makeText(context, profileImportMessage, Toast.LENGTH_LONG).show()
         } else {
             host = profile.host
             port = profile.port
@@ -106,9 +110,26 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             shogunSession = profile.shogunSession
             agentsSession = profile.agentsSession
             saved = false
-            Toast.makeText(context, "接続プロファイルを反映しました", Toast.LENGTH_SHORT).show()
+            connectionProfileText = ""
+            profileImportMessage = "接続プロファイルを反映しました。パスワードだけ確認してください。"
+            Toast.makeText(context, profileImportMessage, Toast.LENGTH_SHORT).show()
         }
     }
+
+    val importConnectionProfileFromClipboard = {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val text = clipboard.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+        applyConnectionProfile(text, "クリップボード")
+    }
+
+    val requiredStatus: List<Pair<String, Boolean>> = listOf(
+        "ホスト" to host.isNotBlank(),
+        "ポート" to (port.toIntOrNull()?.let { it > 0 } == true),
+        "ユーザー" to user.isNotBlank(),
+        "プロジェクト" to projectPath.isNotBlank()
+    )
+    val missingRequired = requiredStatus.filterNot { it.second }.map { it.first }
+    val setupReady = missingRequired.isEmpty()
 
     Column(
         modifier = Modifier
@@ -130,6 +151,28 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 }
             }
         )
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFF101820),
+            shape = RoundedCornerShape(6.dp),
+            tonalElevation = 0.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("初回セットアップ", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+                Text("1. PC側で接続プロファイルを作る", color = Color(0xFFD6E4FF), fontSize = 13.sp)
+                Text("2. QR / リンク / JSON をこの画面へ取り込む", color = Color(0xFFD6E4FF), fontSize = 13.sp)
+                Text("3. パスワードまたは秘密鍵を確認して接続テスト", color = Color(0xFFD6E4FF), fontSize = 13.sp)
+                Text(
+                    if (setupReady) "必須項目は入力済みです" else "未入力: ${missingRequired.joinToString(" / ")}",
+                    color = if (setupReady) Matsuba else Color(0xFFFFC857),
+                    fontSize = 12.sp
+                )
+            }
+        }
 
         Text("かんたん接続", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
         Row(
@@ -165,6 +208,47 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         )
 
         OutlinedTextField(
+            value = connectionProfileText,
+            onValueChange = {
+                connectionProfileText = it
+                profileImportMessage = ""
+            },
+            label = { Text("接続リンク / JSON を貼り付け") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 92.dp),
+            placeholder = { Text("shogunate://connect?... または {\"host\":\"...\"}") },
+            minLines = 2,
+            maxLines = 5
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = { applyConnectionProfile(connectionProfileText, "入力欄") },
+                modifier = Modifier.weight(1f),
+                enabled = connectionProfileText.isNotBlank(),
+                shape = RoundedCornerShape(4.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Tetsukon, contentColor = Color.White)
+            ) {
+                Text("入力欄から反映")
+            }
+            OutlinedButton(
+                onClick = importConnectionProfileFromClipboard,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text("クリップボード")
+            }
+        }
+        if (profileImportMessage.isNotBlank()) {
+            Text(profileImportMessage, color = Color(0xFFAABBCC), fontSize = 12.sp)
+        }
+
+        OutlinedTextField(
             value = host,
             onValueChange = { host = it },
             label = { Text("1. SSHホスト / IP") },
@@ -178,13 +262,6 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             fontSize = 12.sp
         )
 
-        OutlinedButton(
-            onClick = importConnectionProfileFromClipboard,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(4.dp)
-        ) {
-            Text("接続リンク / JSON を取り込む")
-        }
         Text(
             "PC 側で android_pairing_profile.sh を実行すると、接続リンクと JSON が出ます。QR を開ける場合はリンクから自動反映できます。",
             color = Color(0xFFAABBCC),
@@ -312,6 +389,34 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             shape = RoundedCornerShape(4.dp)
         ) {
             Text("保存")
+        }
+
+        Button(
+            onClick = {
+                saveSettings()
+                settingsViewModel.testSshConnection()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = setupReady && !connectionTestLoading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Tetsukon,
+                contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(4.dp)
+        ) {
+            Text(if (connectionTestLoading) "接続テスト中..." else "保存して接続テスト")
+        }
+
+        if (connectionTestLoading) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
+        if (connectionTestResult.isNotBlank()) {
+            Text(
+                text = connectionTestResult,
+                color = if (connectionTestResult.startsWith("接続OK")) Matsuba else Color(0xFFFFC857),
+                fontSize = 12.sp
+            )
         }
 
         if (saved) {

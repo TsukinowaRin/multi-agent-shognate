@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-05-13
+最終更新: 2026-05-14
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -11,12 +11,13 @@
 - `docs/HANDOFF_2026-03-29_resume.md` - 旧 handoff。`Shogunate-test` 起点の経緯確認用。
 
 ## Specs
-- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-13 時点では macOS `fswatch` 対応と cross-platform file watcher 要件を含む。
+- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-14 時点では Shogunate-test 実運用検証と Android 接続セットアップ改善を含む。
 - `docs/PUBLISHING.md` - 公開前の個人情報・履歴・退避物の除外ポリシーと確認手順。
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - portable install / uninstaller 事故対応、修正内容、使うべき release、release asset naming の引き継ぎ。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-05-14_shogunate_test_android_setup.md` - Shogunate-test へ最新コードを反映し、Shogun へのデモ制作依頼と Android 接続セットアップ UX 改善を並行して進める計画。
 - `docs/EXECPLAN_2026-05-13_upstream_issue_apply.md` - 本家 open Issue (#151/#143/#48/#131) をこの fork に適用し、README / role instruction / pane mapping regression を同期する計画。
 - `docs/EXECPLAN_2026-05-07_codd_integration.md` - CoDD (`yohey-w/codd-dev`) を標準 coherence gate として導入・更新する計画。
 - `docs/EXECPLAN_2026-05-13_android_agent_targeting.md` - Android App から任意 agent へ送信し、Tailscale / USB 接続プロファイルで SSH セットアップを簡略化する計画。

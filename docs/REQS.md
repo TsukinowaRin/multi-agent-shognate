@@ -1,7 +1,28 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-13
+最終更新: 2026-05-14
 出典: 直近ユーザープロンプト
+
+## 追補（2026-05-14: Shogunate-test 実運用検証と Android 接続セットアップ改善）
+### 要求
+1. `/mnt/d/git_workspace/multi-agent-shognate/Shogunate-test` に現在の開発版コードを反映し、既存の認証・role-local state・queue/log/local config を不要に破壊しないこと。
+2. Shogunate-test で runtime を起動し、作りたいものの指示はユーザーではなく Shogun へ渡すこと。
+3. Shogun には、家老・軍師・足軽が協力して小さなデモプログラムを作るよう指示し、成果物と進捗を確認して報告すること。
+4. Shogunate の実行中に Android App の接続セットアップ UI / UX を改善し、SSH 接続したいユーザーが迷わない導線へ寄せること。
+5. Android App の UI 改善では Gemini CLI をレビュー相手として使い、Codex は実装後の画面・挙動をスクリーンショットや実操作で確認してバグ取りすること。
+6. 不明点、実機・エミュレータ不足、認証待ち、CLI quota などの懸念は明示すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: Shogunate-test で `./Shogunate-Runtime.sh` または同等 launcher を起動
+   - 期待結果: `goza-no-ma` / `goza-runtime` が起動し、Shogun へデモ制作指示を投入できる。
+2. コマンド: `bash scripts/inbox_write.sh shogun ... cmd_new user`
+   - 期待結果: Shogun が指示を受け取り、家老 / 軍師 / 足軽へ分担を開始する。
+3. 成果確認:
+   - 期待結果: Shogunate-test 内に小さなデモプログラム成果物が作成され、最低限のファイル存在・実行・README を確認できる。
+4. コマンド: `cd android && HOME="$PWD/.home" ANDROID_USER_HOME="$PWD/.android-user-home" GRADLE_USER_HOME="$PWD/.gradle-user-home" ./gradlew --no-daemon test`
+   - 期待結果: Android unit test が PASS する。
+5. 可能なら Android emulator / connected device で画面確認:
+   - 期待結果: 接続設定画面が初回セットアップの手順、Tailscale / USB、profile import / deep link を理解しやすく表示する。
 
 ## 追補（2026-05-13: upstream open Issue を fork に適用する）
 ### 要求

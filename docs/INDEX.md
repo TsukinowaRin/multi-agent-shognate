@@ -18,6 +18,7 @@
 
 ## Plans (open)
 - `docs/EXECPLAN_2026-05-07_codd_integration.md` - CoDD (`yohey-w/codd-dev`) を標準 coherence gate として導入・更新する計画。
+- `docs/EXECPLAN_2026-05-13_android_agent_targeting.md` - Android App から任意 agent へ送信し、Tailscale / USB 接続プロファイルで SSH セットアップを簡略化する計画。
 - `docs/EXECPLAN_2026-05-07_runtime_role_config.md` - CLI種別と足軽数だけを設定し、Linux / Windows WSL / macOS launcher から起動できる簡易設定の計画。
 - `docs/EXECPLAN_2026-05-06_cli_state_isolation.md` - 対応CLIのホスト認証利用と pane-local 設定 / モデル state 分離の計画。
 - `docs/EXECPLAN_2026-05-06_isolated_mixed_cli_runtime.md` - 隔離コピーで指定された Gemini preview / GPT-5.5 / opencode 混在 runtime を起動検証する計画。

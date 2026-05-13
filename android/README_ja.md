@@ -16,7 +16,7 @@
 
 | タブ | 機能 |
 |------|------|
-| **将軍** | 将軍ペインへのSSHターミナル。テキスト/音声でコマンド送信。ANSI256色対応、特殊キーバー（Enter, C-c, C-b, 矢印, Tab, ESC等） |
+| **将軍** | 将軍を既定送信先にした遠隔司令ターミナル。送信先チップで家老・軍師・足軽へ切替。テキスト/音声でコマンド送信。ANSI256色対応、特殊キーバー（Enter, C-c, C-b, 矢印, Tab, ESC等） |
 | **エージェント** | 9ペイン一覧表示（家老 + 足軽7 + 軍師）。タップで全画面展開。個別エージェントへのコマンド送信 |
 | **ダッシュボード** | `dashboard.md` をHTML描画。表のテキスト選択・コピー対応 |
 | **設定** | SSH接続設定（ホスト、ポート、ユーザー、鍵/パスワード）、プロジェクトパス、tmuxセッション名 |
@@ -24,6 +24,8 @@
 ### 主要機能
 
 - **音声入力** — 日本語音声認識（連続リスニングモード）。ハンズフリーでコマンド入力
+- **任意エージェント送信** — 将軍タブから `@agent_id` ベースで将軍・家老・軍師・足軽へ送信先を切替
+- **接続プロファイル取込** — host 側 script が出力する Tailscale / USB 用 JSON を設定画面から反映
 - **BGM** — 戦国テーマBGM 3曲内蔵（shogun / shogun-reiwa / shogun-ashigirls）。タップで曲切替。音声入力中は自動ダッキング
 - **レートリミットモニター** — エージェントタブのFABボタンからClaude Max使用量を確認（5h/7dウィンドウ、Sonnet/Opus内訳、セッション/メッセージ数）
 - **スクリーンショット共有** — 他アプリの共有メニューからShogunへ直接送信。SFTP転送
@@ -72,6 +74,20 @@
    - **セッション名**: 将軍・エージェント用のtmuxセッション名
 3. **保存** → **将軍** タブに切替 → 自動接続
 
+### 接続プロファイルでのセットアップ
+
+host 側で次のどちらかを実行すると、Android 設定画面へ取り込める JSON が出力されます。JSON にはパスワード・秘密鍵・token は含まれません。
+
+```bash
+# Tailscale 経由
+scripts/android_pairing_profile.sh --mode tailscale --ssh-port 22
+
+# USB 経由（adb reverse を作成。端末側は host=127.0.0.1, port=2222）
+scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222
+```
+
+出力 JSON をスマホのクリップボードへ入れ、設定画面の **クリップボードから接続設定を反映** を押します。
+
 ### 入力例
 
 - **SSHポート**: `2222`
@@ -108,8 +124,9 @@ Android App
                                             tmux (WSL2/Linux)
                                                    │
                                             ┌──────┴──────┐
-                                            │  capture-pane │ (read)
-                                            │  send-keys    │ (write)
+                                            │  android_agent_bridge.sh │
+                                            │  @agent_id resolve       │
+                                            │  capture-pane/send-keys  │
                                             └──────────────┘
 ```
 

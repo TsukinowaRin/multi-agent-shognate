@@ -449,7 +449,7 @@ SSH でホストへ接続し、そこで次を読みます。
 - `multiagent` tmux session
 - `dashboard.md`
 
-必要なら将軍 pane に命令も送れます。
+必要なら将軍 pane に命令も送れます。新しい APK では将軍タブの送信先チップから、`@agent_id` ベースで将軍・家老・軍師・足軽へ送信先を切り替えられます。既定は将軍です。
 
 さらに、この fork 版 APK からは **ホスト側 Shogunate の更新**も操作できます。
 
@@ -480,6 +480,18 @@ APK 自身の更新は行いません。Android アプリの更新は引き続�
 | 将軍 session | `shogun` |
 | エージェント session | `multiagent` |
 | project path | ホスト上の repo ルート |
+
+接続プロファイルを使う場合:
+
+```bash
+# Tailscale 経由の接続先を出力
+scripts/android_pairing_profile.sh --mode tailscale --ssh-port 22
+
+# USB adb reverse 経由の接続先を出力
+scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222
+```
+
+出力 JSON は Android 設定画面で取り込めます。password / private key / token は含めません。
 
 補足:
 

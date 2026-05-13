@@ -1,7 +1,31 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-08
+最終更新: 2026-05-13
 出典: 直近ユーザープロンプト
+
+## 追補（2026-05-13: Android App から任意の家来へ話しかけやすくする）
+### 要求
+1. Android App の将軍タブは、既定の送信先を `shogun` のまま維持しつつ、家老・軍師・足軽など runtime 上の任意 agent を送信先として選べること。
+2. 送信先選択は pane index に依存せず、tmux pane の `@agent_id` を正として解決すること。
+3. Android 側は `projectPath/scripts/android_agent_bridge.sh` が使える場合、それを通して agent 一覧・capture・send を行い、現行の Android 互換 session (`shogun` / `gunshi` / `multiagent`) だけに依存しないこと。
+4. bridge が使えない設定では、既存の `shogun:main` への送信・capture を fallback として維持すること。
+5. 送信本文は shell quote で壊れやすい文字や改行を含んでも安全に渡せること。
+6. UI はスマホで扱いやすく、選択中 agent、接続状態、入力欄、音声入力、特殊キーが同じ画面で使えること。
+7. SSH 接続セットアップは、host 側で接続プロファイル JSON を発行し、Android 側で取り込めること。
+8. Tailscale 接続では host 側の `tailscale ip -4` を使い、USB 接続では user が信頼済み adb device に対して `adb reverse` を張る方式を使うこと。
+9. 接続プロファイルには password / private key / token を含めず、host / port / user / project path / tmux session など接続先 metadata だけを含めること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/android_agent_bridge.sh`
+   - 期待結果: shell syntax が PASS する。
+2. コマンド: `bats tests/unit/test_android_agent_bridge.bats`
+   - 期待結果: bridge が `@agent_id` で agent を列挙・解決し、base64 経由で tmux `send-keys -l` する契約が PASS する。
+3. コマンド: `cd android && HOME="$PWD/.home" ANDROID_USER_HOME="$PWD/.android-user-home" GRADLE_USER_HOME="$PWD/.gradle-user-home" ./gradlew --no-daemon test`
+   - 期待結果: Android unit test が PASS し、agent target parser が shogun / karo / gunshi / ashigaru を安定順に並べ、connection profile parser が host / port / user を取り込む。
+4. 手動確認:
+   - 期待結果: 将軍タブの送信先チップは `将軍` を既定選択し、一覧取得後に `家老` / `軍師` / `足軽N` へ切り替えて同じ入力欄から送信できる。
+5. コマンド: `bash -n scripts/android_pairing_profile.sh`
+   - 期待結果: shell syntax が PASS し、script 内に secrets を出力する処理がない。
 
 ## 追補（2026-05-12: Codex TUI は attach 済み御座の間で起動する）
 ### 要求

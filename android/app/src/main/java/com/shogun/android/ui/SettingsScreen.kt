@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.shogun.android.ui.theme.*
+import com.shogun.android.util.ConnectionProfiles
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
 import androidx.compose.ui.platform.LocalContext
@@ -90,6 +91,24 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         saved = true
     }
 
+    val importConnectionProfileFromClipboard = {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val text = clipboard.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+        val profile = ConnectionProfiles.parse(text)
+        if (profile == null) {
+            Toast.makeText(context, "接続プロファイルを読み取れません", Toast.LENGTH_LONG).show()
+        } else {
+            host = profile.host
+            port = profile.port
+            user = profile.user
+            if (profile.projectPath.isNotBlank()) projectPath = profile.projectPath
+            shogunSession = profile.shogunSession
+            agentsSession = profile.agentsSession
+            saved = false
+            Toast.makeText(context, "接続プロファイルを反映しました", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -120,6 +139,19 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         )
         Text(
             "初期値は空欄です。実際に使う SSH 接続先の IP またはホスト名だけを入力してください。",
+            color = Color(0xFFAABBCC),
+            fontSize = 12.sp
+        )
+
+        OutlinedButton(
+            onClick = importConnectionProfileFromClipboard,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(4.dp)
+        ) {
+            Text("クリップボードから接続設定を反映")
+        }
+        Text(
+            "接続プロファイルにはパスワードや秘密鍵を含めません。",
             color = Color(0xFFAABBCC),
             fontSize = 12.sp
         )

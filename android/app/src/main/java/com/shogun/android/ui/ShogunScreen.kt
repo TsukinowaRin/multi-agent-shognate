@@ -64,6 +64,11 @@ fun ShogunScreen(
     val paneContent by viewModel.paneContent.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val agentTargets by viewModel.agentTargets.collectAsState()
+    val selectedAgentId by viewModel.selectedAgentId.collectAsState()
+    val selectedAgentLabel = remember(agentTargets, selectedAgentId) {
+        agentTargets.find { it.id == selectedAgentId }?.label ?: "将軍"
+    }
 
     var inputTextValue by remember { mutableStateOf(TextFieldValue("")) }
     var isListening by remember { mutableStateOf(false) }
@@ -166,10 +171,47 @@ fun ShogunScreen(
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = if (isConnected) "接続中 — 将軍セッション" else "未接続",
+                text = if (isConnected) "接続中 — $selectedAgentLabel" else "未接続",
                 color = Zouge,
                 fontSize = 12.sp
             )
+        }
+
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xB0181818))
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            items(agentTargets) { target ->
+                FilterChip(
+                    selected = target.id == selectedAgentId,
+                    onClick = { viewModel.selectAgentTarget(target.id) },
+                    label = {
+                        Text(
+                            text = target.label,
+                            fontSize = 12.sp,
+                            maxLines = 1
+                        )
+                    },
+                    enabled = isConnected,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Shuaka,
+                        selectedLabelColor = Color.White,
+                        containerColor = Surface4,
+                        labelColor = Zouge,
+                        disabledContainerColor = Surface4,
+                        disabledLabelColor = TextMuted
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = isConnected,
+                        selected = target.id == selectedAgentId,
+                        borderColor = BorderStandard,
+                        selectedBorderColor = Kinpaku
+                    )
+                )
+            }
         }
 
         // Pane content display with LazyColumn

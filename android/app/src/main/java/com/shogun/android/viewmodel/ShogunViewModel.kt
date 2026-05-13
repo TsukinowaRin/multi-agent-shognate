@@ -7,8 +7,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.shogun.android.SshForegroundService
 import com.shogun.android.ssh.SshManager
+import com.shogun.android.util.AgentTarget
+import com.shogun.android.util.AgentTargets
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
+import java.util.Base64
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +33,12 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
+    private val _agentTargets = MutableStateFlow(listOf(AgentTargets.default))
+    val agentTargets: StateFlow<List<AgentTarget>> = _agentTargets
+
+    private val _selectedAgentId = MutableStateFlow(AgentTargets.default.id)
+    val selectedAgentId: StateFlow<String> = _selectedAgentId
+
     private var refreshJob: Job? = null
     private var reconnectJob: Job? = null
     @Volatile private var paused = false
@@ -39,17 +48,21 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
         return "$session:main"
     }
 
+    private fun projectPath(): String =
+        prefs.getString(PrefsKeys.PROJECT_PATH, Defaults.PROJECT_PATH)?.trim().orEmpty()
+
+    private fun bridgeCommand(args: String): String? {
+        val path = projectPath()
+        if (path.isBlank()) return null
+        return "cd ${shellQuote(path)} && bash scripts/android_agent_bridge.sh $args"
+    }
+
     fun pauseRefresh() { paused = true }
     fun resumeRefresh() {
         paused = false
         viewModelScope.launch {
-            if (sshManager.isConnected()) {
-                val result = sshManager.execCommand("${Defaults.TMUX} capture-pane -t ${tmuxTarget()} -p -e -S -500")
-                if (result.isSuccess) {
-                    _paneContent.value = result.getOrDefault("")
-                    _errorMessage.value = null
-                }
-            }
+            if (sshManager.isConnected()) refreshAgentTargets()
+            refreshSelectedAgent()
         }
     }
 
@@ -66,6 +79,7 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
                 _isConnected.value = true
                 _errorMessage.value = null
                 startForegroundService()
+                refreshAgentTargets()
                 startAutoRefresh()
             } else {
                 _errorMessage.value = "接続失敗: ${result.exceptionOrNull()?.message}"
@@ -73,39 +87,79 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun selectAgentTarget(agentId: String) {
+        _selectedAgentId.value = agentId
+        viewModelScope.launch { refreshSelectedAgent() }
+    }
+
     private fun startAutoRefresh() {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
             while (isActive) {
                 if (!paused && sshManager.isConnected()) {
-                    val result = sshManager.execCommand("${Defaults.TMUX} capture-pane -t ${tmuxTarget()} -p -e -S -500")
-                    if (result.isSuccess) {
-                        _paneContent.value = result.getOrDefault("")
-                        _errorMessage.value = null
-                    } else {
-                        _errorMessage.value = result.exceptionOrNull()?.message
-                    }
+                    refreshAgentTargets()
+                    refreshSelectedAgent()
                 }
                 delay(3000)
             }
         }
     }
 
+    private suspend fun refreshAgentTargets() {
+        val cmd = bridgeCommand("list") ?: return
+        val result = sshManager.execCommand(cmd)
+        if (result.isSuccess) {
+            val targets = AgentTargets.parseBridgeList(result.getOrDefault(""))
+            _agentTargets.value = targets
+            if (targets.none { it.id == _selectedAgentId.value }) {
+                _selectedAgentId.value = AgentTargets.default.id
+            }
+        }
+    }
+
+    private suspend fun refreshSelectedAgent() {
+        if (!sshManager.isConnected()) return
+        val agentId = _selectedAgentId.value
+        val bridge = bridgeCommand("capture ${shellQuote(agentId)}")
+        val result = if (bridge != null) sshManager.execCommand(bridge) else Result.failure(IllegalStateException("bridge unavailable"))
+        if (result.isSuccess) {
+            _paneContent.value = result.getOrDefault("")
+            _errorMessage.value = null
+            return
+        }
+
+        if (agentId == AgentTargets.default.id) {
+            val fallback = sshManager.execCommand("${Defaults.TMUX} capture-pane -t ${tmuxTarget()} -p -e -S -500")
+            if (fallback.isSuccess) {
+                _paneContent.value = fallback.getOrDefault("")
+                _errorMessage.value = null
+            } else {
+                _errorMessage.value = fallback.exceptionOrNull()?.message
+            }
+        } else {
+            _errorMessage.value = "agent capture failed: ${result.exceptionOrNull()?.message}"
+        }
+    }
+
     fun sendCommand(text: String) {
         viewModelScope.launch {
-            val target = tmuxTarget()
-            val escaped = text.replace("'", "'\\''")
-            // Send text and Enter SEPARATELY with 0.3s gap (Claude Code requirement)
-            sshManager.execCommand("${Defaults.TMUX} send-keys -t $target '$escaped'")
-            delay(300)
-            sshManager.execCommand("${Defaults.TMUX} send-keys -t $target Enter")
-            delay(1500)
-            if (sshManager.isConnected()) {
-                val result = sshManager.execCommand("${Defaults.TMUX} capture-pane -t $target -p -e -S -500")
-                if (result.isSuccess) {
-                    _paneContent.value = result.getOrDefault("")
-                }
+            val agentId = _selectedAgentId.value
+            val encoded = Base64.getEncoder().encodeToString(text.toByteArray(Charsets.UTF_8))
+            val bridge = bridgeCommand("send-b64 ${shellQuote(agentId)} ${shellQuote(encoded)}")
+            val sendResult = if (bridge != null) sshManager.execCommand(bridge) else Result.failure(IllegalStateException("bridge unavailable"))
+            if (sendResult.isFailure && agentId == AgentTargets.default.id) {
+                val target = tmuxTarget()
+                val escaped = text.replace("'", "'\\''")
+                // Send text and Enter SEPARATELY with 0.3s gap (Claude Code requirement)
+                sshManager.execCommand("${Defaults.TMUX} send-keys -t $target '$escaped'")
+                delay(300)
+                sshManager.execCommand("${Defaults.TMUX} send-keys -t $target Enter")
+            } else if (sendResult.isFailure) {
+                _errorMessage.value = "agent send failed: ${sendResult.exceptionOrNull()?.message}"
+                return@launch
             }
+            delay(1500)
+            refreshSelectedAgent()
         }
     }
 
@@ -144,6 +198,8 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
         val intent = Intent(ctx, SshForegroundService::class.java)
         ctx.stopService(intent)
     }
+
+    private fun shellQuote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
 
     override fun onCleared() {
         super.onCleared()

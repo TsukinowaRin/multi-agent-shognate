@@ -445,7 +445,7 @@ It connects to the host over SSH and interacts with:
 - the `multiagent` tmux session
 - `dashboard.md`
 
-It can also send commands into the Shogun pane when needed.
+It can also send commands into the Shogun pane when needed. In the newer APK, the Shogun tab has target chips that switch by tmux `@agent_id`, so the same input can address Shogun, Karo, Gunshi, or Ashigaru. Shogun remains the default target.
 
 The fork APK can also manage **host-side Shogunate updates** over SSH:
 
@@ -476,6 +476,18 @@ Typical values in this fork:
 | Shogun session | `shogun` |
 | Agents session | `multiagent` |
 | project path | the repo root on the host |
+
+For connection profiles:
+
+```bash
+# Tailscale target profile
+scripts/android_pairing_profile.sh --mode tailscale --ssh-port 22
+
+# USB adb reverse target profile
+scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222
+```
+
+The generated JSON can be imported from the Android Settings screen. It does not include passwords, private keys, or tokens.
 
 Notes:
 

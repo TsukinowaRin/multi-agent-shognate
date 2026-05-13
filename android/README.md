@@ -16,7 +16,7 @@ This fork keeps the upstream UI/UX, but adjusts the connection behavior for this
 
 | Tab | Function |
 |-----|----------|
-| **Shogun** | Live SSH terminal to the Shogun pane. Send text/voice commands, view ANSI-colored output with special key bar (Enter, C-c, C-b, arrows, Tab, ESC, etc.) |
+| **Shogun** | Remote command terminal with Shogun selected by default. Target chips switch to Karo, Gunshi, or Ashigaru. Send text/voice commands, view ANSI-colored output, and use the special key bar (Enter, C-c, C-b, arrows, Tab, ESC, etc.) |
 | **Agents** | 9-pane grid view (Karo + 7 Ashigaru + Gunshi). Tap to expand fullscreen. Send commands to individual agents. |
 | **Dashboard** | Renders `dashboard.md` as HTML with full table text selection and copy support. |
 | **Settings** | SSH connection config (host, port, user, key/password), project path, tmux session names. |
@@ -24,6 +24,8 @@ This fork keeps the upstream UI/UX, but adjusts the connection behavior for this
 ### Key Features
 
 - **Voice Input** — Japanese speech recognition with continuous listening mode. Dictate commands hands-free.
+- **Any-Agent Send** — Switch the Shogun tab target by tmux `@agent_id`, then send to Shogun, Karo, Gunshi, or Ashigaru from one input.
+- **Connection Profile Import** — Import the Tailscale / USB JSON emitted by the host-side setup script from the Settings screen.
 - **BGM** — 3 built-in Sengoku-themed tracks (shogun / shogun-reiwa / shogun-ashigirls). Tap to cycle through tracks. Auto-ducks during voice input.
 - **Rate Limit Monitor** — Tap the FAB button on the Agents tab to check Claude Max usage (5h/7d windows, Sonnet/Opus breakdown, session/message counts) with visual progress bars.
 - **Screenshot Sharing** — Share screenshots from other apps directly to Shogun via Android share sheet. Files are SFTP-transferred to the server.
@@ -72,6 +74,20 @@ The fork APK is intentionally distinct from the upstream `multi-agent-shogun.apk
    - **Session Names**: tmux session names for Shogun and Agents
 3. Tap **Save** → switch to **Shogun** tab → auto-connects
 
+### Setup With Connection Profiles
+
+On the host, run one of these commands to print JSON that the Android Settings screen can import. The JSON does not contain passwords, private keys, or tokens.
+
+```bash
+# Tailscale
+scripts/android_pairing_profile.sh --mode tailscale --ssh-port 22
+
+# USB, creates adb reverse. Android connects to host=127.0.0.1, port=2222.
+scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222
+```
+
+Put the JSON on the phone clipboard, then tap **Import connection settings from clipboard** in Settings.
+
 ### Input examples
 
 - **SSH Port**: `2222`
@@ -108,8 +124,9 @@ Android App
                                             tmux (WSL2/Linux)
                                                    │
                                             ┌──────┴──────┐
-                                            │  capture-pane │ (read)
-                                            │  send-keys    │ (write)
+                                            │  android_agent_bridge.sh │
+                                            │  @agent_id resolve       │
+                                            │  capture-pane/send-keys  │
                                             └──────────────┘
 ```
 

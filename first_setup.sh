@@ -256,6 +256,29 @@ else
     fi
 fi
 
+find_command_with_common_paths() {
+    local name="$1"
+    local candidate
+
+    if command -v "$name" &> /dev/null; then
+        command -v "$name"
+        return 0
+    fi
+
+    case "$name" in
+        brew|fswatch)
+            for candidate in "/opt/homebrew/bin/$name" "/usr/local/bin/$name"; do
+                if [ -x "$candidate" ]; then
+                    printf '%s\n' "$candidate"
+                    return 0
+                fi
+            done
+            ;;
+    esac
+
+    return 1
+}
+
 # ============================================================
 # STEP 4.5: Python3 / PyYAML / file watcher チェック
 # ============================================================
@@ -311,10 +334,14 @@ else
 fi
 
 # --- file watcher backend (Linux/WSL: inotifywait, macOS: fswatch) ---
-if command -v inotifywait &> /dev/null; then
+INOTIFYWAIT_CMD="$(find_command_with_common_paths inotifywait || true)"
+FSWATCH_CMD="$(find_command_with_common_paths fswatch || true)"
+BREW_CMD="$(find_command_with_common_paths brew || true)"
+
+if [ -n "$INOTIFYWAIT_CMD" ]; then
     log_success "inotify-tools がインストール済みです"
     RESULTS+=("file watcher: OK (inotifywait)")
-elif command -v fswatch &> /dev/null; then
+elif [ -n "$FSWATCH_CMD" ]; then
     log_success "fswatch がインストール済みです"
     RESULTS+=("file watcher: OK (fswatch)")
 else
@@ -329,9 +356,9 @@ else
             log_warn "30秒間隔の polling fallback で動作します"
             RESULTS+=("file watcher: polling fallback")
         fi
-    elif [ "$(uname -s 2>/dev/null || true)" = "Darwin" ] && command -v brew &> /dev/null; then
+    elif [ "$(uname -s 2>/dev/null || true)" = "Darwin" ] && [ -n "$BREW_CMD" ]; then
         log_info "fswatch をインストール中..."
-        if brew install fswatch 2>/dev/null; then
+        if "$BREW_CMD" install fswatch 2>/dev/null; then
             log_success "fswatch インストール完了"
             RESULTS+=("file watcher: インストール完了 (fswatch)")
         else

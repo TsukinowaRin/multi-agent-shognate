@@ -3,6 +3,29 @@
 # Linux/WSL uses inotifywait, macOS uses fswatch, and a timed polling fallback
 # keeps the runtime alive when neither tool is installed.
 
+file_watch_find_command() {
+    local name="$1"
+    local candidate
+
+    if command -v "$name" >/dev/null 2>&1; then
+        command -v "$name"
+        return 0
+    fi
+
+    case "$name" in
+        fswatch|brew)
+            for candidate in "/opt/homebrew/bin/$name" "/usr/local/bin/$name"; do
+                if [ -x "$candidate" ]; then
+                    printf '%s\n' "$candidate"
+                    return 0
+                fi
+            done
+            ;;
+    esac
+
+    return 1
+}
+
 file_watch_backend() {
     local forced="${MAS_FILE_WATCH_BACKEND:-auto}"
 
@@ -19,9 +42,9 @@ file_watch_backend() {
             ;;
     esac
 
-    if command -v inotifywait >/dev/null 2>&1; then
+    if file_watch_find_command inotifywait >/dev/null 2>&1; then
         printf 'inotifywait\n'
-    elif command -v fswatch >/dev/null 2>&1; then
+    elif file_watch_find_command fswatch >/dev/null 2>&1; then
         printf 'fswatch\n'
     else
         printf 'polling\n'
@@ -31,10 +54,10 @@ file_watch_backend() {
 file_watch_backend_available() {
     case "$(file_watch_backend)" in
         inotifywait)
-            command -v inotifywait >/dev/null 2>&1
+            file_watch_find_command inotifywait >/dev/null 2>&1
             ;;
         fswatch)
-            command -v fswatch >/dev/null 2>&1
+            file_watch_find_command fswatch >/dev/null 2>&1
             ;;
         polling)
             return 0
@@ -49,27 +72,30 @@ file_watch_wait_once() {
     local path="$1"
     local wait_timeout="${2:-30}"
     local backend
+    local watch_cmd
     local pid=""
     local elapsed=0
 
     backend="$(file_watch_backend)"
     case "$backend" in
         inotifywait)
-            if ! command -v inotifywait >/dev/null 2>&1; then
+            watch_cmd="$(file_watch_find_command inotifywait || true)"
+            if [ -z "$watch_cmd" ]; then
                 sleep "$wait_timeout"
                 return 2
             fi
-            inotifywait -q -t "$wait_timeout" -e modify -e close_write "$path" 2>/dev/null
+            "$watch_cmd" -q -t "$wait_timeout" -e modify -e close_write "$path" 2>/dev/null
             return $?
             ;;
         fswatch)
-            if ! command -v fswatch >/dev/null 2>&1; then
+            watch_cmd="$(file_watch_find_command fswatch || true)"
+            if [ -z "$watch_cmd" ]; then
                 sleep "$wait_timeout"
                 return 2
             fi
             # fswatch has no portable timeout flag. Run one-shot mode in the
             # background and enforce our own timeout so escalation still ticks.
-            fswatch -1 "$path" >/dev/null 2>&1 &
+            "$watch_cmd" -1 "$path" >/dev/null 2>&1 &
             pid="$!"
             while kill -0 "$pid" 2>/dev/null; do
                 if [ "$elapsed" -ge "$wait_timeout" ]; then

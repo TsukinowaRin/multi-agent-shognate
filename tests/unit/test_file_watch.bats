@@ -16,7 +16,7 @@ teardown() {
       if [ "$1" = "-v" ]; then
         case "$2" in
           inotifywait) return 1 ;;
-          fswatch) return 0 ;;
+          fswatch) echo fswatch; return 0 ;;
         esac
       fi
       builtin command "$@"
@@ -50,12 +50,6 @@ teardown() {
   touch "$TEST_TMP/inbox.yaml"
   run bash -lc '
     fswatch() { return 0; }
-    command() {
-      if [ "$1" = "-v" ] && [ "$2" = "fswatch" ]; then
-        return 0
-      fi
-      builtin command "$@"
-    }
     source "'"$WATCH_LIB"'"
     MAS_FILE_WATCH_BACKEND=fswatch file_watch_wait_once "'"$TEST_TMP"'/inbox.yaml" 1
   '

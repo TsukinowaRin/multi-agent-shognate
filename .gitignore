@@ -122,6 +122,7 @@
 !scripts/configure_runtime_roles.py
 !scripts/codd_check.sh
 !scripts/goza_no_ma.sh
+!scripts/focus_agent_pane.sh
 !scripts/android_tmux_proxy.py
 !scripts/android_agent_bridge.sh
 !scripts/android_pairing_profile.sh

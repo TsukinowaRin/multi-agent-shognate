@@ -14,6 +14,7 @@ file_watch_find_command() {
 
     case "$name" in
         fswatch|brew)
+            [ "${MAS_FILE_WATCH_DISABLE_COMMON_PATHS:-0}" = "1" ] && return 1
             for candidate in "/opt/homebrew/bin/$name" "/usr/local/bin/$name"; do
                 if [ -x "$candidate" ]; then
                     printf '%s\n' "$candidate"

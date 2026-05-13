@@ -39,6 +39,7 @@ teardown() {
       builtin command "$@"
     }
     source "'"$WATCH_LIB"'"
+    MAS_FILE_WATCH_DISABLE_COMMON_PATHS=1
     file_watch_backend
     file_watch_backend_available
   '
@@ -77,7 +78,7 @@ teardown() {
       builtin command "$@"
     }
     source "'"$WATCH_LIB"'"
-    MAS_FILE_WATCH_BACKEND=fswatch file_watch_wait_once "'"$TEST_TMP"'/inbox.yaml" 1
+    MAS_FILE_WATCH_DISABLE_COMMON_PATHS=1 MAS_FILE_WATCH_BACKEND=fswatch file_watch_wait_once "'"$TEST_TMP"'/inbox.yaml" 1
   '
   [ "$status" -eq 2 ]
 }

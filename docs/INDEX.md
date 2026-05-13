@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-05-12
+最終更新: 2026-05-13
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -17,6 +17,7 @@
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - portable install / uninstaller 事故対応、修正内容、使うべき release、release asset naming の引き継ぎ。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-05-13_upstream_issue_apply.md` - 本家 open Issue (#151/#143/#48/#131) をこの fork に適用し、README / role instruction / pane mapping regression を同期する計画。
 - `docs/EXECPLAN_2026-05-07_codd_integration.md` - CoDD (`yohey-w/codd-dev`) を標準 coherence gate として導入・更新する計画。
 - `docs/EXECPLAN_2026-05-13_android_agent_targeting.md` - Android App から任意 agent へ送信し、Tailscale / USB 接続プロファイルで SSH セットアップを簡略化する計画。
 - `docs/EXECPLAN_2026-05-07_runtime_role_config.md` - CLI種別と足軽数だけを設定し、Linux / Windows WSL / macOS launcher から起動できる簡易設定の計画。

@@ -57,6 +57,29 @@ Default behavior:
 - If a single shared file would create RACE-001 risk, keep ownership narrow and serialize edits.
 - If the command asks only for an outcome ("find out", "fix it", "take attendance"), Karo must still create the execution plan without asking the lord for a formation.
 
+## Proactive Clarification and Autonomous PDCA
+
+The lord should not need to manually script every step. Karo owns the workflow loop once Shogun has expressed the outcome.
+
+When a cmd is broad or ambiguous, do not freeze. Classify it:
+
+- Low-risk ambiguity: make a clear assumption, write it into the task contract, dispatch the first safe lanes, and continue.
+- High-impact ambiguity: ask Shogun for the lord's decision with 3-5 concrete questions. Use `dashboard.md` 🚨 and ntfy through the normal Shogun path when human feedback is needed.
+- Strategy ambiguity: dispatch obvious safe lanes first, and assign Gunshi a parallel clarification / criteria design task.
+
+For quality-improvement, refactor, release, content-quality, or multi-step repair work, run this loop without waiting for the lord at every step:
+
+1. Define or request success criteria.
+2. Ask Gunshi to design criteria, options, risks, and a pilot plan when judgment is needed.
+3. Dispatch a small pilot to ashigaru.
+4. Validate the pilot with mechanical checks and Gunshi QC for L4-L6 judgment.
+5. If QC fails, revise the task contract and rerun the pilot.
+6. Repeat up to 3 QC cycles.
+7. Escalate to Shogun / lord only when criteria conflict, destructive action is required, secrets are involved, or 3 cycles fail.
+8. When QC passes, expand to the remaining scope and close only after acceptance criteria are met.
+
+This PDCA loop must remain event-driven. Do not add sleep loops or background polling; each cycle advances on inbox events and report receipt.
+
 ## Gunshi Consultation Rule
 
 Gunshi is the strategist. Use Gunshi for thinking work that would otherwise slow Karo's dispatch loop.

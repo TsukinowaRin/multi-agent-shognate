@@ -397,6 +397,48 @@ The launcher defaults to a clean start, creates `goza-no-ma`, and first attaches
 
 Role configuration can be opened before launch with `Shogunate-Configure-Roles.bat` on Windows, `./Shogunate-Configure-Roles.sh` on Linux / WSL, or `./Shogunate-Configure-Roles.command` on macOS.
 
+## First Project / Solution Walkthrough
+
+Use one Shogunate install for many project workspaces. A "project" here means the repository or directory you want the agents to modify, similar to a Visual Studio solution.
+
+1. Open the role configurator:
+
+   ```bash
+   ./Shogunate-Configure-Roles.sh
+   ```
+
+   Choose the default CLI family and ashigaru count. You do not need to pick exact models here; model/provider settings can be adjusted inside each CLI pane and are preserved per role.
+
+2. Start Shogunate:
+
+   ```bash
+   ./Shogunate-Runtime.sh
+   ```
+
+   The default view is `goza-no-ma:overview`. Shogun is the normal command target.
+
+3. Tell Shogun what the project workspace is and what "done" means. You can type directly in the Shogun pane, or send from the Android app with Shogun selected.
+
+   Example:
+
+   ```text
+   Work on /home/me/projects/demo-api. Add a small health-check endpoint, update tests, and report the exact test command that passes.
+   ```
+
+   For existing repositories, give the absolute path and the user-visible outcome. For new demo work, give the directory to create under `runtime_sandboxes/` or another explicit workspace.
+
+4. Let Shogun route the request. Shogun writes a command for Karo, Karo splits work across the active ashigaru roster, and Gunshi is used for strategy, architecture, root-cause analysis, or complex QC.
+
+5. Check progress from `dashboard.md`, the Goza panes, or Android. Completion is reported back through Shogun; Karo owns final validation and dashboard updates.
+
+6. To keep the same runtime state for the same project, use:
+
+   ```bash
+   ./Shogunate-Runtime.sh --resume
+   ```
+
+   To switch projects cleanly, start normally and include the new workspace path in the next command. Local Shogunate settings, role CLI preferences, and learned repo docs remain in this install; project-specific source changes stay in the project workspace you named.
+
 Useful commands after startup:
 
 ```bash

@@ -264,6 +264,13 @@ setup() {
     grep -q "Route complex checks to Gunshi via \`queue/tasks/gunshi.yaml\`" "$OUTPUT_DIR/codex-karo.md"
 }
 
+@test "content: codex-karo.md runs proactive clarification and autonomous PDCA" {
+    grep -q "## Proactive Clarification and Autonomous PDCA" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "High-impact ambiguity: ask Shogun for the lord's decision with 3-5 concrete questions" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Repeat up to 3 QC cycles" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "This PDCA loop must remain event-driven" "$OUTPUT_DIR/codex-karo.md"
+}
+
 @test "content: codex-karo.md allows greenfield split before files exist" {
     grep -q "\`target_path\` is the intended output path for the lane" "$OUTPUT_DIR/codex-karo.md"
     grep -q "For greenfield directories, you may split \`app.py\`, \`README.md\`, and \`tests/test_app.py\` in parallel" "$OUTPUT_DIR/codex-karo.md"
@@ -290,6 +297,14 @@ setup() {
     grep -q "north_star_alignment" "$OUTPUT_DIR/codex-gunshi.md"
     grep -q "## Critical Thinking Protocol" "$OUTPUT_DIR/codex-gunshi.md"
     grep -q "Confidence label" "$OUTPUT_DIR/codex-gunshi.md"
+}
+
+@test "content: codex-gunshi.md designs clarification and PDCA without taking over execution" {
+    grep -q "## Proactive Clarification and Autonomous PDCA" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "return 3-5 concrete questions for Shogun / ntfy escalation" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "allow up to 3 QC cycles before escalation" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Gunshi may design the loop, critique outputs, and recommend redo / scale-out" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Gunshi must not assign ashigaru" "$OUTPUT_DIR/codex-gunshi.md"
 }
 
 # =============================================================================

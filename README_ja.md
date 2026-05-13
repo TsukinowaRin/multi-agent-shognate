@@ -401,6 +401,48 @@ launcher は既定で clean start し、`goza-no-ma` を作成したら起動中
 
 起動前の役職設定は、Windows では `Shogunate-Configure-Roles.bat`、Linux / WSL では `./Shogunate-Configure-Roles.sh`、macOS では `./Shogunate-Configure-Roles.command` から開けます。
 
+## 最初の1案件／ソリューションを動かす
+
+Shogunate は案件ごとに毎回インストールするのではなく、1つの Shogunate 環境から複数の作業対象 workspace を扱います。ここでいう「案件」は、Visual Studio のソリューションに近い粒度で、対象 repository や directory を指します。
+
+1. まず役職設定を開きます。
+
+   ```bash
+   ./Shogunate-Configure-Roles.sh
+   ```
+
+   default CLI と足軽人数を選びます。ここでは厳密な model 名まで指定しなくて構いません。provider / model などの細かい設定は各 CLI pane 上で手動設定し、役職ごとに保持されます。
+
+2. Shogunate を起動します。
+
+   ```bash
+   ./Shogunate-Runtime.sh
+   ```
+
+   既定の画面は `goza-no-ma:overview` です。通常の依頼先は将軍です。
+
+3. 将軍に、作業対象 workspace と完了条件を伝えます。将軍 pane に直接入力しても、Android App で送信先を将軍にしたまま送っても構いません。
+
+   例:
+
+   ```text
+   /home/me/projects/demo-api を対象にして。health-check endpoint を追加し、テストも更新して、最後に通ったテストコマンドを報告して。
+   ```
+
+   既存 repository なら絶対 path とユーザーから見える成果を伝えます。デモ作成なら `runtime_sandboxes/` 配下など、作成先 directory を明示します。
+
+4. あとは将軍が家老へ命令を書き、家老が現役足軽へ分担します。設計、根本原因調査、複雑な品質確認が必要な場合は軍師へ回ります。
+
+5. 進捗は `dashboard.md`、御座の間 pane、または Android App から確認します。完了報告は将軍へ戻り、家老が最終確認と dashboard 更新を担当します。
+
+6. 同じ案件の runtime state を保って再開する場合:
+
+   ```bash
+   ./Shogunate-Runtime.sh --resume
+   ```
+
+   別案件へ切り替える場合は通常起動し、次の依頼で新しい workspace path を伝えます。Shogunate 側の役職設定や CLI 設定はこの install に残り、案件固有の source 変更は指定した workspace 側に残ります。
+
 起動後に使う代表コマンド:
 
 ```bash

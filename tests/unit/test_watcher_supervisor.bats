@@ -231,6 +231,41 @@ EOF
   [ "$status" -eq 0 ]
 }
 
+@test "watcher_supervisor: supervisor_tick は goza @agent_id から複数家老と離れた足軽を解決する" {
+  run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
+    tmux() {
+      case "$*" in
+        "has-session -t goza-no-ma") return 0 ;;
+        "list-panes -s -t goza-no-ma -F #{pane_id}") printf "%%1\n%%2\n%%3\n%%4\n%%5\n%%6\n"; return 0 ;;
+        "show-options -p -t %1 -v @agent_id") printf "shogun\n"; return 0 ;;
+        "show-options -p -t %2 -v @agent_id") printf "gunshi\n"; return 0 ;;
+        "show-options -p -t %3 -v @agent_id") printf "karo1\n"; return 0 ;;
+        "show-options -p -t %4 -v @agent_id") printf "karo2\n"; return 0 ;;
+        "show-options -p -t %5 -v @agent_id") printf "ashigaru3\n"; return 0 ;;
+        "show-options -p -t %6 -v @agent_id") printf "ashigaru8\n"; return 0 ;;
+      esac
+      return 0
+    }
+    source "$SUPERVISOR_SNIPPET"
+    refresh_active_ashigaru() { ACTIVE_ASHIGARU=(ashigaru3 ashigaru8); }
+    refresh_karo_agents() { KARO_AGENTS=(karo1 karo2); }
+    cleanup_stale_watchers() { :; }
+    restart_shell_returned_codex_if_needed() { :; }
+    start_watcher_if_missing() { printf "%s=%s\n" "$1" "$2" >> "$TEST_TMP/watchers.log"; }
+    supervisor_tick
+    cat "$TEST_TMP/watchers.log"
+  '
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"shogun=%1"* ]]
+  [[ "$output" == *"gunshi=%2"* ]]
+  [[ "$output" == *"karo1=%3"* ]]
+  [[ "$output" == *"karo2=%4"* ]]
+  [[ "$output" == *"ashigaru3=%5"* ]]
+  [[ "$output" == *"ashigaru8=%6"* ]]
+  [[ "$output" != *"ashigaru1"* ]]
+  [[ "$output" != *"multiagent:agents"* ]]
+}
+
 @test "watcher_supervisor: watcher 起動は tmux watcher window を作る" {
   run env PROJECT_ROOT="$PROJECT_ROOT" bash -lc '
     rg -q "WATCHER_RUNTIME_SESSION|watcher_window_name|tmux new-window -d -t \"\\$WATCHER_RUNTIME_SESSION\" -n \"\\$window_name\" \"\\$shell_cmd\"" "'"$PROJECT_ROOT"'/scripts/watcher_supervisor.sh"

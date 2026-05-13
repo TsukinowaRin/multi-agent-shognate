@@ -3,6 +3,27 @@
 最終更新: 2026-05-13
 出典: 直近ユーザープロンプト
 
+## 追補（2026-05-13: upstream open Issue を fork に適用する）
+### 要求
+1. 本家 `yohey-w/multi-agent-shogun` の open Issue を取得し、この fork に適用可能なものを整理して解決すること。
+2. Issue #151 の pane mapping drift は、`goza-no-ma` の tmux pane option `@agent_id` を正本にした動的解決として維持し、固定 pane index / 旧 session 固定 mapping へ退行しないこと。
+3. Issue #143 の要望として、README / README_ja に「インストール後、最初の1案件／ソリューションをどう始め、設定し、依頼し、確認し、閉じるか」の入門手順を追加すること。
+4. Issue #48 の要望として、家老 / 軍師が曖昧な命令に能動的に質問し、基準設計・pilot・QC・改修・再QCを自律的に回す PDCA 方針を role instruction に入れること。
+5. Issue #131 の agent commerce / wallet / payment integration は、外部決済・秘密情報・契約実行を含むため、今回の通常取り込みでは実装しない。別途明示要求と security design がある場合だけ扱うこと。
+6. Android App 本体に追加変更が入って完成した場合は、APK を検証して prerelease として公開すること。Android 本体に変更がない場合は、不要な APK prerelease を作らないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `gh issue list -R yohey-w/multi-agent-shogun --state open --limit 100 --json number,title,url,updatedAt`
+   - 期待結果: open Issue を確認し、今回適用 / 非適用の判断を docs / commit message / final report に残す。
+2. コマンド: `bats tests/unit/test_mux_parity.bats tests/unit/test_watcher_supervisor.bats`
+   - 期待結果: watcher supervisor と runtime startup が `@agent_id` / active roster / Karo agents を使い、固定 pane index mapping に戻っていないことを確認する。
+3. コマンド: `bash scripts/build_instructions.sh && bats tests/unit/test_build_system.bats`
+   - 期待結果: generated Karo / Gunshi instruction に proactive clarification と autonomous PDCA loop が含まれる。
+4. コマンド: `rg -n "First project|最初の1案件|solution|ソリューション|project workspace" README.md README_ja.md`
+   - 期待結果: 初回案件チュートリアルが英日 README に存在する。
+5. コマンド: `git diff --check`
+   - 期待結果: whitespace error がない。
+
 ## 追補（2026-05-13: Release version と cross-platform installer）
 ### 要求
 1. 今後の release version は本家 upstream version に fork revision を足した `v<upstream-version>.<fork-revision>` を正規形式にすること。

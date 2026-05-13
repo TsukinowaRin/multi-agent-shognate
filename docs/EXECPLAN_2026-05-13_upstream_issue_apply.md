@@ -51,7 +51,7 @@ Out of scope:
 - [x] role instruction を更新し generated files を再生成する。
 - [x] regression test を補強する。
 - [x] 検証する。
-- [ ] commit / push する。
+- [x] commit / push する。
 
 ## Surprises & Discoveries
 
@@ -76,3 +76,7 @@ Validation:
 - `git diff --check` -> PASS
 
 Android App 本体には今回変更を入れていないため、新規 APK prerelease は作成しない。次に Android App 本体を改良した commit では、検証後に prerelease APK を公開する。
+
+Implementation commit:
+
+- `4d9fda8 feat: apply upstream issue guidance`

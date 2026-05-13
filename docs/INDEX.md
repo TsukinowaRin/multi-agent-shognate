@@ -11,7 +11,7 @@
 - `docs/HANDOFF_2026-03-29_resume.md` - 旧 handoff。`Shogunate-test` 起点の経緯確認用。
 
 ## Specs
-- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-12 時点では Codex TUI を attach 済み御座の間で起動する launcher 要件を含む。
+- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-13 時点では macOS `fswatch` 対応と cross-platform file watcher 要件を含む。
 - `docs/PUBLISHING.md` - 公開前の個人情報・履歴・退避物の除外ポリシーと確認手順。
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - portable install / uninstaller 事故対応、修正内容、使うべき release、release asset naming の引き継ぎ。

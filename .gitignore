@@ -57,6 +57,7 @@
 !lib/
 !lib/agent_status.sh
 !lib/cli_adapter.sh
+!lib/file_watch.sh
 !lib/inbox_path.sh
 !lib/ntfy_auth.sh
 !lib/topology_adapter.sh

@@ -28,6 +28,14 @@ if [ -f "$SCRIPT_DIR/lib/cli_adapter.sh" ]; then
     source "$SCRIPT_DIR/lib/cli_adapter.sh"
 fi
 
+if [ -f "$SCRIPT_DIR/lib/file_watch.sh" ]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/lib/file_watch.sh"
+else
+    file_watch_backend_available() { return 0; }
+    file_watch_backend() { printf 'polling\n'; }
+fi
+
 TOPOLOGY_ADAPTER_LOADED=false
 if [ -f "$SCRIPT_DIR/lib/topology_adapter.sh" ]; then
     # shellcheck source=/dev/null
@@ -475,14 +483,14 @@ supervisor_tick() {
 }
 
 if [ "${WATCHER_SUPERVISOR_ONCE:-0}" = "1" ]; then
-    if command -v inotifywait >/dev/null 2>&1; then
+    if file_watch_backend_available; then
         supervisor_tick
     fi
     exit 0
 fi
 
 while true; do
-    if ! command -v inotifywait >/dev/null 2>&1; then
+    if ! file_watch_backend_available; then
         sleep 30
         continue
     fi

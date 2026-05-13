@@ -24,6 +24,21 @@
 5. コマンド: `git diff --check`
    - 期待結果: whitespace error がない。
 
+## 追補（2026-05-13: macOS file watcher と fswatch 対応）
+### 要求
+1. `scripts/inbox_watcher.sh` と `scripts/watcher_supervisor.sh` は Linux / WSL の `inotifywait` だけに依存せず、macOS では `fswatch` を使って inbox 変更を検知できること。
+2. `inotifywait` / `fswatch` のどちらも無い環境では、watcher が即死せず polling fallback で起動を継続すること。
+3. `first_setup.sh` は Linux / WSL では `inotify-tools`、macOS では Homebrew の `fswatch` を推奨・導入し、導入失敗時も polling fallback を明示すること。
+4. 公開対象 whitelist に file watcher helper を含め、README / AGENTS の説明を `inotifywait` 固定から cross-platform watcher へ更新すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n lib/file_watch.sh scripts/inbox_watcher.sh scripts/watcher_supervisor.sh first_setup.sh`
+   - 期待結果: shell syntax が PASS する。
+2. コマンド: `bats tests/unit/test_file_watch.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats`
+   - 期待結果: `fswatch` backend、polling fallback、supervisor / wakeup / pane mapping の回帰が PASS する。
+3. コマンド: `rg -n "fswatch|file watcher|file_watch_backend|inotifywait" lib scripts first_setup.sh README.md README_ja.md AGENTS.md`
+   - 期待結果: macOS `fswatch` と Linux / WSL `inotifywait` の役割が確認でき、`inotifywait` だけを必須扱いする文言が残っていない。
+
 ## 追補（2026-05-13: Release version と cross-platform installer）
 ### 要求
 1. 今後の release version は本家 upstream version に fork revision を足した `v<upstream-version>.<fork-revision>` を正規形式にすること。
@@ -673,7 +688,7 @@
 7. `TMUX_TMPDIR` を使う起動では、socket 用ディレクトリが未作成でも default socket へフォールバックせず、指定先を使うこと。
 8. 起動時の prompt 自動処理と bootstrap 配信でも、text 送信だけで成功扱いせず、`Enter` 失敗を検知すること。
 9. pane の shell 初期化と各エージェント CLI 起動コマンド投入でも、text 送信だけで成功扱いせず、失敗時は起動を継続しないこと。
-10. self-watch 判定は agent 名の suffix 一致ではなく、当該 watcher の `INBOX` 実 path を使って別 clone の `inotifywait` を誤検知しないこと。
+10. self-watch 判定は agent 名の suffix 一致ではなく、当該 watcher の `INBOX` 実 path を使って別 clone の native watcher process を誤検知しないこと。
 11. Codex の rate-limit / usage-limit prompt 自動dismissでも、text 送信だけで成功扱いせず、`Keep current model` / `Hide future rate limit` を含む prompt variant も取りこぼさず、失敗時は nudge / escalation へ進まないこと。
 12. bridge の `sent` / `already_sent` / `already_notified` 出力は、再利用 `cmd_id` が混ざる場合でも重複 `cmd_id` をそのまま並べず、必要なら timestamp 付きで識別できること。
 13. `watcher_supervisor.sh` の stale watcher cleanup は `gunshi` を誤って stale 扱いせず、実際に監督対象外になった watcher だけを kill すること。
@@ -1922,15 +1937,15 @@
 ### 要求
 1. デフォルト運用は zellij UI とし、内部オーケストレーションは tmux で動作させる。
 2. tmux派ユーザー向けに、tmux直接運用導線を維持する。
-3. `inotifywait` 未導入時に watcher が即死し続ける問題を起動時に明示し、不要な起動を抑止する。
+3. 旧 watcher tool 未導入時に watcher が即死し続ける問題を起動時に明示し、不要な起動を抑止する。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `sed -n '1,40p' scripts/goza_zellij.sh scripts/goza_tmux.sh`
    - 期待結果: `goza_zellij.sh` は `--mux tmux --ui zellij`、`goza_tmux.sh` は `--mux tmux --ui tmux` を呼ぶ。
 2. コマンド: `rg -n "--ui|zellij UI \\+ tmux backend|zellij_ui_attach_tmux_target" scripts/goza_no_ma.sh README.md`
    - 期待結果: `--ui` オプションと zellij UI + tmux backend 導線が実装・文書化されている。
-3. コマンド: `rg -n "inotifywait 未導入|command -v inotifywait" shutsujin_departure.sh scripts/shutsujin_zellij.sh`
-   - 期待結果: watcher 起動前に inotifywait 前提チェックが追加されている。
+3. コマンド: `rg -n "file_watch_backend|command -v inotifywait|command -v fswatch" lib/file_watch.sh first_setup.sh`
+   - 期待結果: watcher 起動前に環境に合う file watcher backend を選ぶ導線が追加されている。
 
 ## 追補（2026-02-12: zellij UI attach の安定化）
 ### 要求

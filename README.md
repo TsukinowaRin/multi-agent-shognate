@@ -98,6 +98,16 @@ In this fork, every agent defaults to an unattended, no-approval-by-default mode
 
 OpenCode / Kilo do not expose a stable `--yolo` flag in the current CLI help, so Shogunate treats the generated project `opencode.json` permission setting as the unattended-mode source of truth.
 
+### Runtime File Watcher
+
+Inbox delivery uses a native file watcher when available:
+
+- Linux / WSL: `inotifywait` from `inotify-tools`
+- macOS: `fswatch` from Homebrew
+- fallback: timed polling, which keeps delivery alive but can add up to the watcher timeout before an unread inbox is processed
+
+`first_setup.sh` checks the current OS and installs the recommended watcher where possible. If neither native watcher is available, Shogunate still starts with the polling backend.
+
 ### CLI State / Host Auth
 
 External CLIs launched by the Shogunate runtime reuse host login credentials where known, while keeping model, settings, and history state separate per role / pane.

@@ -100,6 +100,16 @@
 
 OpenCode / Kilo は現行 CLI help 上で安定した `--yolo` flag を公開していないため、Shogunate では起動前に生成する project `opencode.json` の permission 設定を unattended mode の正本として扱います。
 
+### runtime file watcher
+
+inbox 配信は、使える場合は OS 標準に近い watcher を使います。
+
+- Linux / WSL: `inotify-tools` の `inotifywait`
+- macOS: Homebrew の `fswatch`
+- fallback: 時間 polling。配信は維持しますが、未読検知まで watcher timeout 分だけ遅れることがあります
+
+`first_setup.sh` は OS を見て推奨 watcher を確認・導入します。native watcher が無い環境でも、Shogunate は polling backend で起動を継続します。
+
 ### CLI state / ホスト認証
 
 Shogunate runtime から起動する外部 CLI は、既知のログイン認証情報だけホスト PC / ユーザー home のものを使い、モデル設定・CLI 設定・履歴などは役職 / pane ごとに分離します。

@@ -257,9 +257,9 @@ else
 fi
 
 # ============================================================
-# STEP 4.5: Python3 / PyYAML / inotify-tools チェック
+# STEP 4.5: Python3 / PyYAML / file watcher チェック
 # ============================================================
-log_step "STEP 4.5: Python3 / PyYAML / inotify-tools チェック"
+log_step "STEP 4.5: Python3 / PyYAML / file watcher チェック"
 
 # --- python3 ---
 if command -v python3 &> /dev/null; then
@@ -310,26 +310,41 @@ else
     fi
 fi
 
-# --- inotify-tools (inotifywait) ---
+# --- file watcher backend (Linux/WSL: inotifywait, macOS: fswatch) ---
 if command -v inotifywait &> /dev/null; then
     log_success "inotify-tools がインストール済みです"
-    RESULTS+=("inotify-tools: OK")
+    RESULTS+=("file watcher: OK (inotifywait)")
+elif command -v fswatch &> /dev/null; then
+    log_success "fswatch がインストール済みです"
+    RESULTS+=("file watcher: OK (fswatch)")
 else
-    log_warn "inotify-tools がインストールされていません"
+    log_warn "ファイル監視ツールがインストールされていません"
     if command -v apt-get &> /dev/null; then
         log_info "inotify-tools をインストール中..."
         if sudo apt-get install -y inotify-tools 2>/dev/null; then
             log_success "inotify-tools インストール完了"
-            RESULTS+=("inotify-tools: インストール完了")
+            RESULTS+=("file watcher: インストール完了 (inotifywait)")
         else
             log_error "inotify-tools のインストールに失敗しました"
-            RESULTS+=("inotify-tools: インストール失敗")
-            HAS_ERROR=true
+            log_warn "30秒間隔の polling fallback で動作します"
+            RESULTS+=("file watcher: polling fallback")
+        fi
+    elif [ "$(uname -s 2>/dev/null || true)" = "Darwin" ] && command -v brew &> /dev/null; then
+        log_info "fswatch をインストール中..."
+        if brew install fswatch 2>/dev/null; then
+            log_success "fswatch インストール完了"
+            RESULTS+=("file watcher: インストール完了 (fswatch)")
+        else
+            log_warn "fswatch のインストールに失敗しました"
+            log_warn "30秒間隔の polling fallback で動作します"
+            RESULTS+=("file watcher: polling fallback")
         fi
     else
-        log_error "apt-get が見つかりません。手動で inotify-tools をインストールしてください"
-        RESULTS+=("inotify-tools: 未インストール (手動インストール必要)")
-        HAS_ERROR=true
+        log_warn "Linux/WSL は inotify-tools、macOS は fswatch の導入を推奨します"
+        echo "  Ubuntu/Debian: sudo apt-get install inotify-tools"
+        echo "  macOS:         brew install fswatch"
+        log_warn "30秒間隔の polling fallback で動作します"
+        RESULTS+=("file watcher: polling fallback")
     fi
 fi
 

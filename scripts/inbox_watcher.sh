@@ -10,9 +10,10 @@
 #   エージェントが自分でinboxをReadして処理する
 #   冪等: 2回届いてもunreadがなければ何もしない
 #
-# inotifywait でファイル変更を検知（イベント駆動、ポーリングではない）
+# Linux/WSL は inotifywait、macOS は fswatch でファイル変更を検知する。
 # Fallback 1: 30秒タイムアウト（WSL2 inotify不発時の安全網）
-# Fallback 2: rc=1処理（Claude Code atomic write = tmp+rename でinode変更時）
+# Fallback 2: polling backend（監視ツール未導入時の安全網）
+# Fallback 3: rc=1処理（Claude Code atomic write = tmp+rename でinode変更時）
 #
 # エスカレーション（未読メッセージが放置されている場合）:
 #   0〜2分: 通常nudge（send-keys）。ただしWorking中はスキップ
@@ -22,7 +23,7 @@
 
 # ─── Testing guard ───
 # When __INBOX_WATCHER_TESTING__=1, only function definitions are loaded.
-# Argument parsing, inotifywait check, and main loop are skipped.
+# Argument parsing, file watch backend check, and main loop are skipped.
 # Test code sets variables (AGENT_ID, PANE_TARGET, CLI_TYPE, INBOX) externally.
 if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
     set -euo pipefail
@@ -65,6 +66,15 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
         source "$_agent_status_lib"
     fi
 
+    _file_watch_lib="${SCRIPT_DIR}/lib/file_watch.sh"
+    if [ -f "$_file_watch_lib" ]; then
+        # shellcheck source=/dev/null
+        source "$_file_watch_lib"
+    else
+        echo "[inbox_watcher] ERROR: lib/file_watch.sh not found" >&2
+        exit 1
+    fi
+
     # upstream追随: Claude は welcome 直後に stop hook がまだ走らず、
     # idle flag 不在のまま false-busy に陥ることがある。起動時に初期 idle flag を作る。
     if [[ "$CLI_TYPE" == "claude" ]]; then
@@ -72,11 +82,7 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
         echo "[$(date)] Created initial idle flag for $AGENT_ID" >&2
     fi
 
-    # Ensure inotifywait is available
-    if ! command -v inotifywait &>/dev/null; then
-        echo "[inbox_watcher] ERROR: inotifywait not found. Install: sudo apt install inotify-tools" >&2
-        exit 1
-    fi
+    echo "[$(date)] file watch backend: $(file_watch_backend)" >&2
 fi
 
 # ─── Escalation state ───
@@ -1386,7 +1392,7 @@ send_cli_command() {
 }
 
 # ─── Agent self-watch detection ───
-# Check if the agent has an active inotifywait on its inbox.
+# Check if the agent has an active native watcher on its inbox.
 # If yes, the agent will self-wake — no nudge needed.
 agent_has_self_watch() {
     # Codex/Gemini/LocalAPI/Copilot/Kimiは自己watchを持たない想定。
@@ -1408,7 +1414,7 @@ agent_has_self_watch() {
         if [[ -z "$my_pgid" || -z "$pid_pgid" || "$pid_pgid" != "$my_pgid" ]]; then
             return 0
         fi
-    done < <(pgrep -f "inotifywait.*${inbox_pattern}" 2>/dev/null || true)
+    done < <(pgrep -f "(inotifywait|fswatch).*${inbox_pattern}" 2>/dev/null || true)
     return 1
 }
 
@@ -1470,7 +1476,7 @@ agent_is_busy() {
 
 # ─── Send wake-up nudge ───
 # Layered approach:
-#   1. If agent has active inotifywait self-watch → skip (agent wakes itself)
+#   1. If agent has active native self-watch → skip (agent wakes itself)
 #   2. If agent is busy (Working) → skip (nudge during Working loses Enter)
 #   3. tmux send-keys (短いnudgeのみ、timeout 5s)
 send_wakeup() {
@@ -1755,16 +1761,16 @@ maintain_codex_runtime_prompt || true
 deliver_pending_bootstrap_if_ready || true
 process_unread_once
 
-# ─── Main loop: event-driven via inotifywait ───
-# Timeout 30s: WSL2 /mnt/c/ can miss inotify events.
+# ─── Main loop: event-driven via inotifywait/fswatch ───
+# Timeout 30s: WSL2 /mnt/c/ can miss inotify events; fswatch needs our own timeout.
 # Shorter timeout = faster escalation retry for stuck agents.
-INOTIFY_TIMEOUT=30
+FILE_WATCH_TIMEOUT="${FILE_WATCH_TIMEOUT:-30}"
 
 while true; do
     # Block until file is modified OR timeout (safety net for WSL2)
-    # set +e: inotifywait returns 2 on timeout, which would kill script under set -e
+    # set +e: watch backends return non-zero on timeout, which would kill script under set -e
     set +e
-    inotifywait -q -t "$INOTIFY_TIMEOUT" -e modify -e close_write "$INBOX" 2>/dev/null
+    file_watch_wait_once "$INBOX" "$FILE_WATCH_TIMEOUT"
     rc=$?
     set -e
 
@@ -1772,8 +1778,8 @@ while true; do
     # rc=1: watch invalidated — Claude Code uses atomic write (tmp+rename),
     #        which replaces the inode. inotifywait sees DELETE_SELF → rc=1.
     #        File still exists with new inode. Treat as event, re-watch next loop.
-    # rc=2: timeout (30s safety net for WSL2 inotify gaps)
-    # All cases: check for unread, then loop back to inotifywait (re-watches new inode)
+    # rc=2: timeout (30s safety net for WSL2/fswatch/polling gaps)
+    # All cases: check for unread, then loop back to the selected watcher
     sleep 0.3
 
     recover_shell_returned_codex_if_needed || true

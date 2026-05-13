@@ -46,7 +46,7 @@
 | 既定 CLI | upstream 既定 | 全役職 `codex`、model 選択は pane-local CLI state に任せる |
 | CLI 対応範囲 | upstream の中核 CLI | `Gemini CLI`、`OpenCode`、`Kilo`、`localapi`、`Ollama` / `LM Studio` 連携を追加 |
 | Android 配布 | upstream Android アプリ / APK | この repo の Releases にある fork 版 APK を正規配布物として扱う |
-| Windows installer | repo 前提の導線 | Releases の `multi-agent-shognate-installer-<version>.bat` を配布し、置いたフォルダへ portable に導入 |
+| portable installer | repo 前提の導線 | `.bat` / `.sh` / `.command` を配布し、置いたフォルダへ portable に導入 |
 | 家老の動き | 指示に応じて分担 | この fork では、家老が意図から自律的に人数・分担・並列度を決めることを明示 |
 
 ## 基本モデル
@@ -213,25 +213,33 @@ bash scripts/configure_agents.sh
 
 ## インストール方法
 
-### 推奨: Windows portable installer
+### 推奨: portable installer
 
 好きなフォルダにそのまま入れたいなら、この方法が正規導線です。
 
 1. この repo の **GitHub Releases** を開く
-2. `multi-agent-shognate-installer-<version>.bat` をダウンロードする
+2. OS に合う installer をダウンロードする
 3. 将軍システムを置きたいフォルダに置く
 4. 実行する
+
+installer asset:
+
+- Windows: `multi-agent-shognate-installer-<version>.bat`
+- Linux / WSL: `multi-agent-shognate-installer-<version>.sh`
+- macOS: `multi-agent-shognate-installer-<version>.command`
 
 重要な挙動:
 
 - installer は、**ダウンロード元 Release と同じ tag のソース**を取得する
-- 展開先は **`install.bat` を置いたフォルダそのもの**
+- Release asset として公開された installer は、moving `main` ではなく、その version の snapshot に固定される
+- 展開先は **installer を置いたフォルダそのもの**
 - そのフォルダに古い portable Release install があれば、上書き更新モードへ切り替わる
 - 更新モードでは local state / 個人ファイルを保持したまま新しい Release snapshot を適用する
-- WSL2 / Ubuntu を確認し、可能なら `first_setup.sh` まで自動実行する
+- `first_setup.sh` まで自動実行する
+- Windows 版は WSL2 / Ubuntu も確認する
 - その portable install 用の update metadata も初期化する
 
-この fork では、これが Windows の標準インストール方法です。
+この fork では、これが標準インストール方法です。
 
 ### clone / ZIP 展開から手動インストール
 
@@ -297,21 +305,24 @@ bash scripts/upstream_sync.sh --dry-run
 
 ### 2. Release installer / portable install の場合
 
-`multi-agent-shognate-installer-<version>.bat` で入れたものは、stable release channel 扱いです。
+`multi-agent-shognate-installer-<version>.<ext>` で入れたものは、stable release channel 扱いです。
 
-Release tag は `android-v<upstream-version>.<fork-revision>` 形式で運用します。
+Release version は本家 upstream version + fork revision にします。
 先頭 3 つの数字は upstream Shogun の版を表し、
 最後の 1 つはこの fork 側の配布・パッケージ改訂番号です。
-現時点の upstream は `v4.6.0` なので、次の整列例は `android-v4.6.0.0` です。
-installer asset 名は `android-` を含めず、たとえば `v4.6.0.0` のような version 部だけを使います。
+現時点の upstream は `v4.6.0` なので、この repo の整列例は `v4.6.0.0` や `v4.6.0.12` です。
+installer asset 名も `android-` を含めず、同じ version 部だけを使います。
 
-Windows asset の役割はこうです。
+installer asset の役割はこうです。
 
 - `multi-agent-shognate-installer-<version>.bat`
+- `multi-agent-shognate-installer-<version>.sh`
+- `multi-agent-shognate-installer-<version>.command`
   - 初回導入用
   - その場所に古い portable Release install があれば、そのコピーを保持付きで更新する
   - 何も無ければ新規導入する
-  - その bat を置いたフォルダへ対応 Release snapshot を展開する
+  - installer を置いたフォルダへ対応 Release snapshot を展開する
+  - moving `main` には追従しない
   - `first_setup.sh` を実行する
   - そのコピーを Release install として初期化する
 
@@ -516,7 +527,7 @@ scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222
 別のワークスペースで使いたいなら、基本は次です。
 
 - 対象フォルダを作る / 選ぶ
-- そのフォルダに `multi-agent-shognate-installer-<version>.bat` を置く
+- そのフォルダに OS 用の `multi-agent-shognate-installer-<version>.<ext>` を置く
 - その場で実行する
 - そのフォルダに将軍システムを展開させる
 
@@ -567,6 +578,8 @@ multi-agent-shognate/
 ├── scripts/                   # runtime / bootstrap / bridge / watcher
 ├── tests/                     # unit / smoke tests
 ├── install.bat                # Windows installer / bootstrap entry
+├── install.sh                 # Linux / WSL installer / bootstrap entry
+├── install.command            # macOS Finder / Terminal installer wrapper
 ├── Shogunate-Runtime.bat      # Windows runtime launcher
 ├── Shogunate-Runtime.sh       # Linux / WSL runtime launcher
 ├── Shogunate-Runtime.command  # macOS Finder runtime launcher

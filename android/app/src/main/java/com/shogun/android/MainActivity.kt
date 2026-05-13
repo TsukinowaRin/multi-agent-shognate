@@ -45,6 +45,7 @@ import com.shogun.android.ui.DashboardScreen
 import com.shogun.android.ui.SettingsScreen
 import com.shogun.android.ui.ShogunScreen
 import com.shogun.android.ui.theme.ShogunTheme
+import com.shogun.android.util.ConnectionProfiles
 import com.shogun.android.util.Defaults
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
@@ -71,6 +72,7 @@ class MainActivity : ComponentActivity() {
                 ShogunApp()
             }
         }
+        handleConnectionIntent(intent)
         handleShareIntent(intent)
         // Only start NtfyService if notification permission is granted (Android 13+)
         val hasNotifPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -89,7 +91,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        handleConnectionIntent(intent)
         handleShareIntent(intent)
+    }
+
+    private fun handleConnectionIntent(intent: Intent) {
+        val data = intent.data ?: return
+        if (data.scheme != "shogunate" || data.host != "connect") return
+        val profile = ConnectionProfiles.parse(data.toString())
+        if (profile == null) {
+            Toast.makeText(this, "接続リンクを読み取れません", Toast.LENGTH_LONG).show()
+            return
+        }
+        val editor = getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE).edit()
+        ConnectionProfiles.toPrefsMap(profile).forEach { (key, value) ->
+            editor.putString(key, value)
+        }
+        editor.apply()
+        Toast.makeText(this, "SSH接続設定を取り込みました。パスワードだけ確認してください", Toast.LENGTH_LONG).show()
     }
 
     private fun handleShareIntent(intent: Intent) {

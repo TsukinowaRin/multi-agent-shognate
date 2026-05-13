@@ -59,4 +59,16 @@ class AgentTargetsTest {
     fun `connection profile rejects missing required fields`() {
         assertNull(ConnectionProfiles.parse("""{"host":"127.0.0.1"}"""))
     }
+
+    @Test
+    fun `connection profile parses deep link`() {
+        val profile = ConnectionProfiles.parse(
+            "shogunate://connect?host=100.64.1.2&port=22&user=muro&projectPath=%2Frepo%2Fmulti-agent-shognate&shogunSession=shogun&agentsSession=multiagent"
+        )
+
+        assertEquals("100.64.1.2", profile?.host)
+        assertEquals("22", profile?.port)
+        assertEquals("muro", profile?.user)
+        assertEquals("/repo/multi-agent-shognate", profile?.projectPath)
+    }
 }

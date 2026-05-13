@@ -33,6 +33,7 @@ EOF
     [[ "$output" == *'"host": "100.64.1.2"'* ]]
     [[ "$output" == *'"port": "2022"'* ]]
     [[ "$output" == *'"projectPath": "/repo/path"'* ]]
+    [[ "$output" == *'shogunate://connect?host=100.64.1.2&port=2022'* ]]
     [[ "$output" != *password* ]]
     [[ "$output" != *privateKey* ]]
     [[ "$output" != *token* ]]

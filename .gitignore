@@ -69,6 +69,8 @@
 !first_setup.sh
 !setup.sh
 !install.bat
+!install.sh
+!install.command
 !updater.bat
 !Shogunate-Uninstaller.bat
 !Shogunate-Runtime.bat
@@ -120,6 +122,8 @@
 !scripts/codd_check.sh
 !scripts/goza_no_ma.sh
 !scripts/android_tmux_proxy.py
+!scripts/android_agent_bridge.sh
+!scripts/android_pairing_profile.sh
 !scripts/sync_gemini_settings.py
 !scripts/sync_opencode_config.py
 !scripts/sync_runtime_cli_preferences.py

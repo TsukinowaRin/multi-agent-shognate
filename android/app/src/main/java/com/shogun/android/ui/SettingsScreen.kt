@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -130,15 +131,49 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             }
         )
 
+        Text("かんたん接続", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = {
+                    port = "22"
+                    saved = false
+                },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text("Tailscale")
+            }
+            OutlinedButton(
+                onClick = {
+                    host = "127.0.0.1"
+                    port = "2222"
+                    saved = false
+                },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text("USB")
+            }
+        }
+        Text(
+            "Tailscale は PC の 100.x IP をホストへ入力。USB は PC で adb reverse を実行してから、この画面の USB を押します。",
+            color = Color(0xFFAABBCC),
+            fontSize = 12.sp
+        )
+
         OutlinedTextField(
             value = host,
             onValueChange = { host = it },
-            label = { Text("SSHホスト") },
+            label = { Text("1. SSHホスト / IP") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            placeholder = { Text("Tailscale: 100.x.x.x / USB: 127.0.0.1") }
         )
         Text(
-            "初期値は空欄です。実際に使う SSH 接続先の IP またはホスト名だけを入力してください。",
+            "スマホから見える PC のアドレスです。Tailscale なら PC で tailscale ip -4、USB なら 127.0.0.1。",
             color = Color(0xFFAABBCC),
             fontSize = 12.sp
         )
@@ -148,31 +183,39 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(4.dp)
         ) {
-            Text("クリップボードから接続設定を反映")
+            Text("接続リンク / JSON を取り込む")
         }
         Text(
-            "接続プロファイルにはパスワードや秘密鍵を含めません。",
+            "PC 側で android_pairing_profile.sh を実行すると、接続リンクと JSON が出ます。QR を開ける場合はリンクから自動反映できます。",
             color = Color(0xFFAABBCC),
             fontSize = 12.sp
         )
+        SelectionContainer {
+            Text(
+                "USB用PCコマンド: scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222",
+                color = Color(0xFFAABBCC),
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
 
         OutlinedTextField(
             value = port,
             onValueChange = { port = it },
-            label = { Text("SSHポート") },
+            label = { Text("2. SSHポート") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            placeholder = { Text("22") }
+            placeholder = { Text("Tailscale: 22 / USB: 2222") }
         )
 
         OutlinedTextField(
             value = user,
             onValueChange = { user = it },
-            label = { Text("SSHユーザー") },
+            label = { Text("3. SSHユーザー") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            placeholder = { Text("your_username") }
+            placeholder = { Text("PC/WSL/Linux/macOS のユーザー名") }
         )
 
         Row(
@@ -185,7 +228,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                     keyPath = it
                     saved = false
                 },
-                label = { Text("SSH秘密鍵パス") },
+                label = { Text("4. SSH秘密鍵パス（任意）") },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 placeholder = { Text("/data/data/.../id_ed25519") }
@@ -199,7 +242,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             }
         }
         Text(
-            "通常は空欄のまま。鍵認証に失敗した場合でも、パスワードが入っていれば自動で再試行します。",
+            "分からなければ空欄でOK。パスワードで SSH します。",
             color = Color(0xFFAABBCC),
             fontSize = 12.sp
         )
@@ -207,7 +250,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("SSHパスワード（鍵なし時に使用）") },
+            label = { Text("5. SSHパスワード") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             visualTransformation = PasswordVisualTransformation()
@@ -215,18 +258,18 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
 
         Divider()
 
-        Text("プロジェクト設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+        Text("Shogunate の場所", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
 
         OutlinedTextField(
             value = projectPath,
             onValueChange = { projectPath = it },
-            label = { Text("プロジェクトパス（サーバー側）") },
+            label = { Text("6. プロジェクトパス（PC側）") },
             placeholder = { Text("/path/to/multi-agent-shognate") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
         Text(
-            "初期値は空欄です。サーバー上の実際のプロジェクトパスだけを入力してください。",
+            "PC/WSL/Linux/macOS 上の Shogunate フォルダです。接続リンクを使うと自動で入ります。",
             color = Color(0xFFAABBCC),
             fontSize = 12.sp
         )

@@ -3,6 +3,22 @@
 最終更新: 2026-05-13
 出典: 直近ユーザープロンプト
 
+## 追補（2026-05-13: Release version と cross-platform installer）
+### 要求
+1. 今後の release version は本家 upstream version に fork revision を足した `v<upstream-version>.<fork-revision>` を正規形式にすること。
+2. upstream が `v4.6.0` の場合、この repo の release は `v4.6.0.0`、`v4.6.0.12` のように表すこと。
+3. Release asset として公開された installer は moving `main` から取得せず、その release tag の snapshot に固定すること。
+4. Windows だけでなく、Linux / WSL 用 `.sh` installer と macOS Finder / Terminal 用 `.command` installer を提供すること。
+5. Windows / Linux / macOS installer は、同じ folder portable install / in-place update 方針を共有し、既存 local state を保持すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n install.sh install.command`
+   - 期待結果: Unix installer / macOS wrapper の shell syntax が PASS する。
+2. コマンド: `python3 -m unittest tests.unit.test_installer_contract`
+   - 期待結果: installer が tag 固定用の `REPO_REF` / `REPO_REF_KIND` / `REPO_VERSION_LABEL` を持ち、release workflow が `.bat` / `.sh` / `.command` を生成し、正規 tag 例が `v4.6.0.0` になっている。
+3. コマンド: `rg -n "multi-agent-shognate-installer-<version>\\.(bat|sh|command)|v4\\.6\\.0\\.12|moving .main" README.md README_ja.md android/release/README.md .github/workflows/android-release.yml`
+   - 期待結果: docs と workflow が cross-platform installer、upstream 準拠 version、tag snapshot 固定を説明している。
+
 ## 追補（2026-05-13: Android App から任意の家来へ話しかけやすくする）
 ### 要求
 1. Android App の将軍タブは、既定の送信先を `shogun` のまま維持しつつ、家老・軍師・足軽など runtime 上の任意 agent を送信先として選べること。
@@ -14,6 +30,8 @@
 7. SSH 接続セットアップは、host 側で接続プロファイル JSON を発行し、Android 側で取り込めること。
 8. Tailscale 接続では host 側の `tailscale ip -4` を使い、USB 接続では user が信頼済み adb device に対して `adb reverse` を張る方式を使うこと。
 9. 接続プロファイルには password / private key / token を含めず、host / port / user / project path / tmux session など接続先 metadata だけを含めること。
+10. Android 設定画面は「SSHしたいだけ」のユーザーが迷わないよう、Tailscale / USB の簡単選択、番号付き入力、短い説明に整理すること。
+11. PC と Android のクリップボード共有に依存せず、`shogunate://connect?...` deep link と任意の QR 表示で接続 metadata を渡せること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash -n scripts/android_agent_bridge.sh`
@@ -25,7 +43,9 @@
 4. 手動確認:
    - 期待結果: 将軍タブの送信先チップは `将軍` を既定選択し、一覧取得後に `家老` / `軍師` / `足軽N` へ切り替えて同じ入力欄から送信できる。
 5. コマンド: `bash -n scripts/android_pairing_profile.sh`
-   - 期待結果: shell syntax が PASS し、script 内に secrets を出力する処理がない。
+   - 期待結果: shell syntax が PASS し、script 内に secrets を出力する処理がない。`shogunate://connect?...` deep link を出力し、`qrencode` があれば QR を出す。
+6. コマンド: `rg -n "shogunate://connect|VIEW|BROWSABLE|かんたん接続|Tailscale|USB" android/app/src/main android/app/src/main/AndroidManifest.xml android/README.md android/README_ja.md`
+   - 期待結果: Android app が connection deep link を受け取り、設定画面と docs が簡単接続を説明している。
 
 ## 追補（2026-05-12: Codex TUI は attach 済み御座の間で起動する）
 ### 要求

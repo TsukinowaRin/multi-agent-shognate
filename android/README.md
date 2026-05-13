@@ -25,7 +25,7 @@ This fork keeps the upstream UI/UX, but adjusts the connection behavior for this
 
 - **Voice Input** — Japanese speech recognition with continuous listening mode. Dictate commands hands-free.
 - **Any-Agent Send** — Switch the Shogun tab target by tmux `@agent_id`, then send to Shogun, Karo, Gunshi, or Ashigaru from one input.
-- **Connection Profile Import** — Import the Tailscale / USB JSON emitted by the host-side setup script from the Settings screen.
+- **Connection Profile Import** — Import the Tailscale / USB link or JSON emitted by the host-side setup script from the Settings screen.
 - **BGM** — 3 built-in Sengoku-themed tracks (shogun / shogun-reiwa / shogun-ashigirls). Tap to cycle through tracks. Auto-ducks during voice input.
 - **Rate Limit Monitor** — Tap the FAB button on the Agents tab to check Claude Max usage (5h/7d windows, Sonnet/Opus breakdown, session/message counts) with visual progress bars.
 - **Screenshot Sharing** — Share screenshots from other apps directly to Shogun via Android share sheet. Files are SFTP-transferred to the server.
@@ -65,18 +65,13 @@ The fork APK is intentionally distinct from the upstream `multi-agent-shogun.apk
 ## Setup
 
 1. Launch the app → **Settings** tab
-2. Enter SSH connection info:
-   - **Host**: Your server's reachable IP address or hostname
-   - **Port**: 2222
-   - **User**: Your SSH username
-   - **Key Path** or **Password**: Authentication method. In this fork, password auth is the default and key path can stay blank
-   - **Project Path**: Server-side path to the project
-   - **Session Names**: tmux session names for Shogun and Agents
-3. Tap **Save** → switch to **Shogun** tab → auto-connects
+2. In **Quick SSH setup**, choose `Tailscale` or `USB`
+3. Enter SSH user, password, and project path
+4. Tap **Save** → switch to **Shogun** tab → auto-connects
 
 ### Setup With Connection Profiles
 
-On the host, run one of these commands to print JSON that the Android Settings screen can import. The JSON does not contain passwords, private keys, or tokens.
+On the host, run one of these commands to print a `shogunate://connect?...` link and JSON that the Android app can import. If `qrencode` is installed, the script also prints a QR code. The profile does not contain passwords, private keys, or tokens.
 
 ```bash
 # Tailscale
@@ -86,11 +81,12 @@ scripts/android_pairing_profile.sh --mode tailscale --ssh-port 22
 scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222
 ```
 
-Put the JSON on the phone clipboard, then tap **Import connection settings from clipboard** in Settings.
+If a QR appears, scan it with the phone camera. If QR is unavailable, type the displayed host / port / user / projectPath into Settings. Shared clipboard is not required.
 
 ### Input examples
 
-- **SSH Port**: `2222`
+- **SSH Host**: Tailscale uses `100.x.x.x`; USB uses `127.0.0.1`
+- **SSH Port**: Tailscale usually uses `22`; USB uses `2222`
 - **Shogun session**: `shogun`
 - **Agents session**: `multiagent`
 - **Project Path**: `/path/to/multi-agent-shognate`

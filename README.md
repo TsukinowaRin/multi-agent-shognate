@@ -44,7 +44,7 @@ In practice, the intended flow is:
 | default CLI | upstream defaults | all roles default to `codex`; model selection is left to pane-local CLI state |
 | CLI coverage | core upstream CLIs | adds `Gemini CLI`, `OpenCode`, `Kilo`, `localapi`, and local-provider bridges such as `Ollama` / `LM Studio` |
 | Android distribution | upstream Android app / APK | the fork APK in this repo's Releases is the supported distribution |
-| Windows installer | repo-oriented setup flow | Release installer `multi-agent-shognate-installer-<version>.bat` installs portably into the folder where you place it |
+| Portable installer | repo-oriented setup flow | Release installers (`.bat` / `.sh` / `.command`) install portably into the folder where you place them |
 | Karo behavior | splits work when instructed | explicitly allows Karo to infer staffing, routing, and parallelism from the task intent |
 
 ## Core Model
@@ -211,25 +211,33 @@ It can configure:
 
 ## Installation
 
-### Recommended: Windows portable installer
+### Recommended: portable installer
 
 If you want to place the system directly into any folder, this is the supported path.
 
 1. Open this repo's **GitHub Releases**
-2. Download `multi-agent-shognate-installer-<version>.bat`
+2. Download the installer for your OS
 3. Put it into the folder where you want the system installed
 4. Run it
+
+Installer assets:
+
+- Windows: `multi-agent-shognate-installer-<version>.bat`
+- Linux / WSL: `multi-agent-shognate-installer-<version>.sh`
+- macOS: `multi-agent-shognate-installer-<version>.command`
 
 Important behavior:
 
 - the installer downloads the source for the **same Release tag** it was downloaded from
+- it never pulls moving `main` when it was published as a Release asset
 - it installs into the **same folder where the installer itself is placed**
 - if that folder already contains a portable Release install, it switches to in-place update mode
 - in update mode, it preserves local state and personal files, then applies the newer Release snapshot
-- it checks WSL2 / Ubuntu and, when possible, runs `first_setup.sh` automatically
+- it runs `first_setup.sh` automatically
+- the Windows installer also checks WSL2 / Ubuntu
 - it initializes local update metadata for that portable install
 
-This is the standard Windows install path for this fork.
+This is the standard install path for this fork.
 
 ### Manual install from clone or ZIP
 
@@ -282,21 +290,24 @@ That flow:
 
 ### 2. Release installer / portable install
 
-If you installed the system with `multi-agent-shognate-installer-<version>.bat`, that is the stable release channel.
+If you installed the system with `multi-agent-shognate-installer-<version>.<ext>`, that is the stable release channel.
 
-Release tags use the format `android-v<upstream-version>.<fork-revision>`.
+Release versions follow upstream plus a fork revision: `v<upstream-version>.<fork-revision>`.
 The first three numbers track the upstream Shogun version.
 The fourth number is this fork's packaging/release revision.
-Current upstream is `v4.6.0`, so the next aligned example is `android-v4.6.0.0`.
-Installer asset names use only the version part, for example `v4.6.0.0`.
+Current upstream is `v4.6.0`, so aligned examples are `v4.6.0.0` and `v4.6.0.12`.
+Installer asset names use the same version part.
 
-Use the Windows installer like this:
+Use the portable installer like this:
 
 - `multi-agent-shognate-installer-<version>.bat`
+- `multi-agent-shognate-installer-<version>.sh`
+- `multi-agent-shognate-installer-<version>.command`
   - first-time install into the folder where you place the installer
   - if an older portable Release install already exists there, it updates that copy in place
   - otherwise it performs a fresh install
   - downloads the matching Release snapshot
+  - does not follow moving `main`
   - runs `first_setup.sh`
   - initializes Shogunate as a Release install
 
@@ -512,7 +523,7 @@ This system can be used portably.
 If you want it in a different workspace, the intended flow is:
 
 - create or choose the target folder
-- place `multi-agent-shognate-installer-<version>.bat` there
+- place the OS-specific `multi-agent-shognate-installer-<version>.<ext>` there
 - run it in place
 - let it install the Shogunate into that folder
 
@@ -563,6 +574,8 @@ multi-agent-shognate/
 ├── scripts/                   # runtime, bootstrap, bridge, watcher
 ├── tests/                     # unit and smoke tests
 ├── install.bat                # Windows installer / bootstrap entry
+├── install.sh                 # Linux / WSL installer / bootstrap entry
+├── install.command            # macOS Finder / Terminal installer wrapper
 ├── Shogunate-Runtime.bat      # Windows runtime launcher
 ├── Shogunate-Runtime.sh       # Linux / WSL runtime launcher
 ├── Shogunate-Runtime.command  # macOS Finder runtime launcher

@@ -31,6 +31,15 @@ json_escape() {
     printf '%s' "$value"
 }
 
+url_escape() {
+    local value="$1"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$value"
+    else
+        printf '%s' "$value" | sed -e 's/%/%25/g' -e 's/ /%20/g' -e 's/&/%26/g' -e 's/=/%3D/g' -e 's/#/%23/g' -e 's/?/%3F/g'
+    fi
+}
+
 detect_tailscale_host() {
     command -v tailscale >/dev/null 2>&1 || return 1
     tailscale ip -4 2>/dev/null | head -n1
@@ -112,18 +121,30 @@ main() {
             ;;
     esac
 
+    local user
+    local connect_url
+    user="$(id -un)"
+    connect_url="shogunate://connect?host=$(url_escape "$host")&port=$(url_escape "$port")&user=$(url_escape "$user")&projectPath=$(url_escape "$PROJECT_PATH")&shogunSession=$(url_escape "$SHOGUN_SESSION")&agentsSession=$(url_escape "$AGENTS_SESSION")"
+
     cat <<EOF
 {
   "type": "shogunate-android-connection-profile",
   "mode": "$(json_escape "$mode_used")",
   "host": "$(json_escape "$host")",
   "port": "$port",
-  "user": "$(json_escape "$(id -un)")",
+  "user": "$(json_escape "$user")",
   "projectPath": "$(json_escape "$PROJECT_PATH")",
   "shogunSession": "$(json_escape "$SHOGUN_SESSION")",
   "agentsSession": "$(json_escape "$AGENTS_SESSION")"
 }
 EOF
+    printf '\nAndroid deep link:\n%s\n' "$connect_url"
+    if command -v qrencode >/dev/null 2>&1; then
+        printf '\nScan this QR with the Android camera app:\n'
+        qrencode -t ANSIUTF8 "$connect_url"
+    else
+        printf '\nTip: install qrencode to print a scannable QR code in the terminal.\n'
+    fi
 }
 
 main "$@"

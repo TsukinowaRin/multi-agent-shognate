@@ -113,6 +113,7 @@ fun ShogunScreen(
         val keyPath = prefs.getString(PrefsKeys.SSH_KEY_PATH, "") ?: ""
         val password = prefs.getString(PrefsKeys.SSH_PASSWORD, "") ?: ""
         if (host.isBlank() || user.isBlank() || portText.isBlank()) return@LaunchedEffect
+        if (keyPath.isBlank() && password.isBlank()) return@LaunchedEffect
         val port = portText.toIntOrNull() ?: return@LaunchedEffect
         viewModel.connect(host, port, user, keyPath, password)
     }
@@ -219,7 +220,6 @@ fun ShogunScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
         ) {
             if (errorMessage != null) {
                 Text(
@@ -227,24 +227,32 @@ fun ShogunScreen(
                     color = Kurenai,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 13.sp,
-                    modifier = Modifier.padding(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
                 )
             } else {
-                LazyColumn(
-                    state = listState,
+                Box(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .fillMaxSize()
+                        .horizontalScroll(rememberScrollState())
                 ) {
-                    items(lines) { line ->
-                        SelectionContainer {
-                            Text(
-                                text = parseAnsiColors(line),
-                                color = Zouge,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
-                                softWrap = false
-                            )
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        items(lines) { line ->
+                            SelectionContainer {
+                                Text(
+                                    text = parseAnsiColors(line),
+                                    color = Zouge,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }

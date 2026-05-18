@@ -81,7 +81,7 @@ scripts/android_pairing_profile.sh --mode tailscale --ssh-port 22
 scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222
 ```
 
-If a QR appears, scan it with the phone camera. If QR is unavailable, type the displayed host / port / user / projectPath into Settings. Shared clipboard is not required.
+If a QR appears, scan it with the phone camera. If QR is unavailable, type the displayed host / port / user / projectPath into Settings. Shared clipboard is not required. After importing the profile, enter a password or key path before opening the Shogun tab; the app will not auto-connect with empty credentials.
 
 ### Input examples
 
@@ -97,6 +97,7 @@ All connection fields now start empty so no personal or environment-specific val
 
 - If **Key Path is blank**, the app uses `keyboard-interactive,password`.
 - If **Key Path is set**, the app tries public key auth first.
+- If both **Password** and **Key Path** are blank, the app waits for credentials instead of attempting SSH automatically.
 - In this fork, if public key auth fails and a password is present, the app automatically retries with password auth.
 
 ### Prerequisites

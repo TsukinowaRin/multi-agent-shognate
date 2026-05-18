@@ -81,7 +81,7 @@ scripts/android_pairing_profile.sh --mode tailscale --ssh-port 22
 scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222
 ```
 
-QR が出たらスマホのカメラで読みます。QR が使えない場合は、表示された host / port / user / projectPath を設定画面へ手入力します。クリップボード共有は必須ではありません。
+QR が出たらスマホのカメラで読みます。QR が使えない場合は、表示された host / port / user / projectPath を設定画面へ手入力します。クリップボード共有は必須ではありません。プロファイル取込後は、将軍タブを開く前にパスワードまたは鍵パスを入れてください。両方が空欄の間は自動接続しません。
 
 ### 入力例
 
@@ -97,6 +97,7 @@ QR が出たらスマホのカメラで読みます。QR が使えない場合�
 
 - **鍵パスが空欄**なら、`password` / `keyboard-interactive` で接続します。
 - **鍵パスが入っている**場合は、まず鍵認証を試します。
+- **パスワード**と**鍵パス**がどちらも空欄なら、SSH を自動試行せず認証情報の入力を待ちます。
 - このフォーク版では、鍵認証に失敗してもパスワードが入っていれば自動でパスワード認証に再試行します。
 
 ### 前提条件

@@ -41,7 +41,7 @@ OS 別 installer asset (`.bat` / `.sh` / `.command`) を廃止し、GitHub Relea
 - [x] docs を更新。
 - [x] 検証。
 - [x] commit。
-- [ ] push。
+- [x] push。
 
 ## 判断
 

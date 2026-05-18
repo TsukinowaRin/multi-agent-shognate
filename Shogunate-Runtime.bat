@@ -33,7 +33,7 @@ echo   [1/3] Checking Ubuntu on WSL...
 wsl.exe -d Ubuntu -- echo test >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo   [ERROR] Ubuntu on WSL is not ready.
-    echo           Run install.bat first, or finish Ubuntu initial setup.
+    echo           Finish Ubuntu initial setup, then run first_setup.sh in WSL.
     echo.
     pause
     exit /b 1

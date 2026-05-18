@@ -4,7 +4,7 @@
 
 実 Git repo は `multi-agent-shognate/`。作業ブランチは `codex/upstream-v4.6.0-sync`。直前に `upstream/main` (`4ee1377`, tag `v4.6.0`) を merge 済みで、merge commit は `217e2fa`。
 
-今回の release tag は、既存ルール `android-v<upstream-version>.<fork-revision>` に従い `android-v4.6.0.0` とする。配布 asset は `multi-agent-shognate-android-v4.6.0.0.apk` と `multi-agent-shognate-installer-v4.6.0.0.bat`。
+今回の release tag は、既存ルール `android-v<upstream-version>.<fork-revision>` に従い `android-v4.6.0.0` とした。当時の配布 asset は APK と OS 別 installer だったが、installer asset は 2026-05-18 の package distribution 計画で廃止済み。
 
 ## Scope
 
@@ -28,7 +28,7 @@
 - `cd android && ./gradlew --no-daemon test assembleRelease` が PASS する。
 - release asset を `dist/` に作成できる。
 - `bash scripts/prepublish_check.sh` が PASS する。
-- GitHub Release `android-v4.6.0.0` が作成され、APK / installer が添付される。
+- GitHub Release `android-v4.6.0.0` が作成され、当時の APK / installer が添付される。現行 release は APK / package archive を添付する。
 
 ## Steps
 
@@ -78,9 +78,9 @@
   - `cd android && HOME="$PWD/.home" ANDROID_USER_HOME="$PWD/.android-user-home" GRADLE_USER_HOME="$PWD/.gradle-user-home" ./gradlew --no-daemon test assembleRelease` → PASS (`73` tasks; warnings only)
   - `aapt dump badging dist/multi-agent-shognate-android-v4.6.0.0.apk` → `versionCode='6'`, `versionName='4.6.0'`, `application-label:'multi-agent-shognate Android'`
   - `bash scripts/prepublish_check.sh` → PASS
-- Release assets generated:
+- Release assets generated at the time:
   - `dist/multi-agent-shognate-android-v4.6.0.0.apk`
-  - `dist/multi-agent-shognate-installer-v4.6.0.0.bat`
+  - installer asset（現行では廃止）
   - APK sha256: `1b5357c70b64a31ad4d417686c3f78eb0729802fe51e517d8d4e799cc56a6bd8`
   - Installer sha256: `a65dd6856279adf8269145ffc9bf3fc21c402295019f184b92c4b30395112bca`
 - Published:

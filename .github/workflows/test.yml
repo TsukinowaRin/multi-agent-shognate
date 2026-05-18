@@ -64,7 +64,7 @@ jobs:
 
       - name: Run Python unit tests
         run: |
-          python3 -m unittest tests.unit.test_uninstaller_contract tests.unit.test_update_manager
+          python3 -m unittest tests.unit.test_package_distribution tests.unit.test_update_manager
 
       - name: Run root-level tests (except agent_selfwatch)
         run: |

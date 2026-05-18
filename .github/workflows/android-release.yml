@@ -31,6 +31,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          fetch-depth: 0
 
       - name: Run prepublish check
         run: |
@@ -81,48 +84,24 @@ jobs:
           VERSION="${TAG#android-}"
           export VERSION
           APK_ASSET="multi-agent-shognate-android-${VERSION}.apk"
-          INSTALLER_ASSET="multi-agent-shognate-installer-${VERSION}.bat"
-          INSTALLER_SH_ASSET="multi-agent-shognate-installer-${VERSION}.sh"
-          INSTALLER_COMMAND_ASSET="multi-agent-shognate-installer-${VERSION}.command"
+          PACKAGE_TGZ_ASSET="multi-agent-shognate-package.tar.gz"
+          PACKAGE_ZIP_ASSET="multi-agent-shognate-package.zip"
+          VERSIONED_PACKAGE_TGZ_ASSET="multi-agent-shognate-package-${VERSION}.tar.gz"
+          VERSIONED_PACKAGE_ZIP_ASSET="multi-agent-shognate-package-${VERSION}.zip"
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/${APK_ASSET}"
-          python3 - <<'PY'
-          from pathlib import Path
-          import os
-
-          tag = os.environ["TAG"]
-          version = os.environ["VERSION"]
-          Path("dist").mkdir(parents=True, exist_ok=True)
-
-          src = Path("install.bat").read_text(encoding="utf-8")
-          src = src.replace('set "REPO_REF=main"', f'set "REPO_REF={tag}"')
-          src = src.replace('set "REPO_REF_KIND=heads"', 'set "REPO_REF_KIND=tags"')
-          src = src.replace('set "REPO_VERSION_LABEL=main"', f'set "REPO_VERSION_LABEL={tag}"')
-          Path("dist").joinpath(f"multi-agent-shognate-installer-{version}.bat").write_text(
-              src,
-              encoding="utf-8",
-              newline="\r\n",
-          )
-
-          unix_src = Path("install.sh").read_text(encoding="utf-8")
-          unix_src = unix_src.replace('REPO_REF="main"', f'REPO_REF="{tag}"')
-          unix_src = unix_src.replace('REPO_REF_KIND="heads"', 'REPO_REF_KIND="tags"')
-          unix_src = unix_src.replace('REPO_VERSION_LABEL="main"', f'REPO_VERSION_LABEL="{tag}"')
-
-          for suffix, extra in (
-              ("sh", ""),
-              ("command", '\nprintf "\\nPress Enter to close this window... "\nIFS= read -r _ || true\n'),
-          ):
-              out = Path("dist").joinpath(f"multi-agent-shognate-installer-{version}.{suffix}")
-              out.write_text(unix_src + extra, encoding="utf-8", newline="\n")
-              out.chmod(0o755)
-          PY
+          git fetch --force --tags origin "+refs/tags/*:refs/tags/*"
+          git archive --format=tar.gz --prefix=multi-agent-shognate/ "$TAG" -o "dist/${PACKAGE_TGZ_ASSET}"
+          git archive --format=zip --prefix=multi-agent-shognate/ "$TAG" -o "dist/${PACKAGE_ZIP_ASSET}"
+          cp "dist/${PACKAGE_TGZ_ASSET}" "dist/${VERSIONED_PACKAGE_TGZ_ASSET}"
+          cp "dist/${PACKAGE_ZIP_ASSET}" "dist/${VERSIONED_PACKAGE_ZIP_ASSET}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "apk_asset=${APK_ASSET}" >> "$GITHUB_OUTPUT"
-          echo "installer_asset=${INSTALLER_ASSET}" >> "$GITHUB_OUTPUT"
-          echo "installer_sh_asset=${INSTALLER_SH_ASSET}" >> "$GITHUB_OUTPUT"
-          echo "installer_command_asset=${INSTALLER_COMMAND_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "package_tgz_asset=${PACKAGE_TGZ_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "package_zip_asset=${PACKAGE_ZIP_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "versioned_package_tgz_asset=${VERSIONED_PACKAGE_TGZ_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "versioned_package_zip_asset=${VERSIONED_PACKAGE_ZIP_ASSET}" >> "$GITHUB_OUTPUT"
         env:
           TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
 
@@ -132,9 +111,10 @@ jobs:
           name: android-release-assets
           path: |
             dist/${{ steps.asset.outputs.apk_asset }}
-            dist/${{ steps.asset.outputs.installer_asset }}
-            dist/${{ steps.asset.outputs.installer_sh_asset }}
-            dist/${{ steps.asset.outputs.installer_command_asset }}
+            dist/${{ steps.asset.outputs.package_tgz_asset }}
+            dist/${{ steps.asset.outputs.package_zip_asset }}
+            dist/${{ steps.asset.outputs.versioned_package_tgz_asset }}
+            dist/${{ steps.asset.outputs.versioned_package_zip_asset }}
 
       - name: Delete existing release assets for tag
         uses: actions/github-script@v7
@@ -170,9 +150,10 @@ jobs:
           name: ${{ github.event.inputs.release_name || format('multi-agent-shognate {0}', steps.asset.outputs.version) }}
           files: |
             dist/${{ steps.asset.outputs.apk_asset }}
-            dist/${{ steps.asset.outputs.installer_asset }}
-            dist/${{ steps.asset.outputs.installer_sh_asset }}
-            dist/${{ steps.asset.outputs.installer_command_asset }}
+            dist/${{ steps.asset.outputs.package_tgz_asset }}
+            dist/${{ steps.asset.outputs.package_zip_asset }}
+            dist/${{ steps.asset.outputs.versioned_package_tgz_asset }}
+            dist/${{ steps.asset.outputs.versioned_package_zip_asset }}
           generate_release_notes: true
           prerelease: ${{ github.event.inputs.prerelease == true }}
           target_commitish: ${{ github.sha }}

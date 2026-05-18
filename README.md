@@ -23,7 +23,7 @@
 This fork prioritizes:
 
 - `tmux`-centered runtime operation
-- portable installation into any folder
+- package-based installation into a fixed local directory
 - Android remote control via the fork APK
 - broader multi-CLI support than upstream
 - conservative defaults: every role uses `codex`, no model is pinned in `config/settings.yaml`, and the initial active ashigaru are only `ashigaru1` and `ashigaru2`
@@ -44,7 +44,7 @@ In practice, the intended flow is:
 | default CLI | upstream defaults | all roles default to `codex`; model selection is left to pane-local CLI state |
 | CLI coverage | core upstream CLIs | adds `Gemini CLI`, `OpenCode`, `Kilo`, `localapi`, and local-provider bridges such as `Ollama` / `LM Studio` |
 | Android distribution | upstream Android app / APK | the fork APK in this repo's Releases is the supported distribution |
-| Portable installer | repo-oriented setup flow | Release installers (`.bat` / `.sh` / `.command`) install portably into the folder where you place them |
+| Distribution | repo-oriented setup flow | Release packages (`tar.gz` / `zip`) plus cURL bootstrap; npm / npx wrapper is available |
 | Karo behavior | splits work when instructed | explicitly allows Karo to infer staffing, routing, and parallelism from the task intent |
 
 ## Core Model
@@ -221,33 +221,46 @@ It can configure:
 
 ## Installation
 
-### Recommended: portable installer
+### Recommended: cURL package bootstrap
 
-If you want to place the system directly into any folder, this is the supported path.
+Release installation is package-based. The bootstrap downloads the Release package, extracts it into a fixed local directory, removes deprecated installer files from older installs, and runs `first_setup.sh`.
 
-1. Open this repo's **GitHub Releases**
-2. Download the installer for your OS
-3. Put it into the folder where you want the system installed
-4. Run it
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+```
 
-Installer assets:
+Pinned release install:
 
-- Windows: `multi-agent-shognate-installer-<version>.bat`
-- Linux / WSL: `multi-agent-shognate-installer-<version>.sh`
-- macOS: `multi-agent-shognate-installer-<version>.command`
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v4.6.0.12 --prefix "$HOME/.shogunate/shogunate"
+```
+
+The default install directory is `$SHOGUNATE_HOME` or `~/.shogunate/shogunate`.
+
+### npm / npx wrapper
+
+The npm package is a thin wrapper around the same cURL bootstrap:
+
+```bash
+npx @tsukinowarin/shogunate install
+npx @tsukinowarin/shogunate install -- --version v4.6.0.12 --prefix "$HOME/.shogunate/shogunate"
+```
+
+Release assets:
+
+- `multi-agent-shognate-package.tar.gz`
+- `multi-agent-shognate-package.zip`
+- `multi-agent-shognate-package-<version>.tar.gz`
+- `multi-agent-shognate-package-<version>.zip`
 
 Important behavior:
 
-- the installer downloads the source for the **same Release tag** it was downloaded from
-- it never pulls moving `main` when it was published as a Release asset
-- it installs into the **same folder where the installer itself is placed**
-- if that folder already contains a portable Release install, it switches to in-place update mode
-- in update mode, it preserves local state and personal files, then applies the newer Release snapshot
-- it runs `first_setup.sh` automatically
-- the Windows installer also checks WSL2 / Ubuntu
-- it initializes local update metadata for that portable install
-
-This is the standard install path for this fork.
+- package assets are built from the matching Release tag
+- `latest` uses GitHub Releases' latest package asset, not a local OS installer
+- pinned installs use the exact Release tag you pass
+- local state such as `config/settings.yaml`, `queue/`, `logs/`, and `.shogunate/` is not part of the package archive
+- OS-specific installer assets are not published
 
 ### Manual install from clone or ZIP
 
@@ -298,44 +311,24 @@ That flow:
 
 `--dry-run` prints the planned adds / updates / removals / conflicts as JSON and does not modify the worktree.
 
-### 2. Release installer / portable install
+### 2. Release package install
 
-If you installed the system with `multi-agent-shognate-installer-<version>.<ext>`, that is the stable release channel.
+If you installed the system with the cURL bootstrap or npm wrapper, that is the stable release channel.
 
 Release versions follow upstream plus a fork revision: `v<upstream-version>.<fork-revision>`.
 The first three numbers track the upstream Shogun version.
 The fourth number is this fork's packaging/release revision.
 Current upstream is `v4.6.0`, so aligned examples are `v4.6.0.0` and `v4.6.0.12`.
-Installer asset names use the same version part.
+Package asset names use the same version part.
 
-Use the portable installer like this:
+Use package assets like this:
 
-- `multi-agent-shognate-installer-<version>.bat`
-- `multi-agent-shognate-installer-<version>.sh`
-- `multi-agent-shognate-installer-<version>.command`
-  - first-time install into the folder where you place the installer
-  - if an older portable Release install already exists there, it updates that copy in place
-  - otherwise it performs a fresh install
-  - downloads the matching Release snapshot
-  - does not follow moving `main`
-  - runs `first_setup.sh`
-  - initializes Shogunate as a Release install
+- `multi-agent-shognate-package.tar.gz`
+- `multi-agent-shognate-package.zip`
+- `multi-agent-shognate-package-<version>.tar.gz`
+- `multi-agent-shognate-package-<version>.zip`
 
-- install is pinned to the Release tag you downloaded
-- rerunning a newer installer in the same folder updates that portable install while preserving local state
-- that release install keeps using its own release metadata even if the folder lives inside another Git working tree
-
-### Uninstalling a portable install
-
-Portable installs include `Shogunate-Uninstaller.bat` inside the installed folder itself.
-
-- run `Shogunate-Uninstaller.bat` from the installed folder
-- it stops Shogunate tmux sessions if WSL is available
-- it asks whether to preserve personal data outside the install folder or delete everything in the install
-- it removes only Shogunate-managed files inside that folder
-- unrelated files in the same folder are kept
-- it keeps the parent folder itself
-- after uninstall, you can clean-install again into the same folder
+The cURL bootstrap extracts the package into the target directory and runs `first_setup.sh`. Re-running it with a newer version updates that package install while keeping local state. The install is pinned when you pass `--version`.
 
 If you are connected from the Android app, the app can also trigger **host-side** updates over SSH. That does not update the APK itself. It updates the installed Shogunate copy on the host.
 
@@ -352,7 +345,7 @@ Updates keep local state and user-specific assets such as:
 - `skills/local/`
 - runtime state under `queue/`, `logs/`, and `dashboard.md`
 
-If an incoming tracked file collides with local edits, the installer/update flow keeps the local file in place and stores the incoming version under:
+If an incoming tracked file collides with local edits, the package/update flow keeps the local file in place and stores the incoming version under:
 
 - `.shogunate/merge-candidates/<batch>/incoming/...`
 
@@ -575,9 +568,8 @@ This system can be used portably.
 If you want it in a different workspace, the intended flow is:
 
 - create or choose the target folder
-- place the OS-specific `multi-agent-shognate-installer-<version>.<ext>` there
-- run it in place
-- let it install the Shogunate into that folder
+- run the cURL bootstrap with `--prefix <target-folder>`
+- let it extract the Release package and run `first_setup.sh`
 
 That keeps the following scoped to that workspace:
 
@@ -625,9 +617,7 @@ multi-agent-shognate/
 ├── lib/                       # shell helper library
 ├── scripts/                   # runtime, bootstrap, bridge, watcher
 ├── tests/                     # unit and smoke tests
-├── install.bat                # Windows installer / bootstrap entry
-├── install.sh                 # Linux / WSL installer / bootstrap entry
-├── install.command            # macOS Finder / Terminal installer wrapper
+├── bin/shogunate.js           # npm / npx wrapper for package bootstrap
 ├── Shogunate-Runtime.bat      # Windows runtime launcher
 ├── Shogunate-Runtime.sh       # Linux / WSL runtime launcher
 ├── Shogunate-Runtime.command  # macOS Finder runtime launcher
@@ -635,7 +625,6 @@ multi-agent-shognate/
 ├── Shogunate-Configure-Roles.sh       # Linux / WSL role configurator launcher
 ├── Shogunate-Configure-Roles.command  # macOS Finder role configurator launcher
 ├── updater.bat                # Legacy Windows updater script kept for compatibility
-├── Shogunate-Uninstaller.bat  # Windows uninstaller included in installed copies
 ├── first_setup.sh             # first-time setup
 └── shutsujin_departure.sh     # runtime startup
 ```
@@ -660,7 +649,7 @@ bash scripts/prepublish_check.sh
 
 This fork is a better fit if you want:
 
-- portable installation into any folder
+- package installation into a fixed local directory, with an optional custom prefix
 - the fork APK from GitHub Releases
 - broader CLI support including Gemini / OpenCode / Kilo / localapi
 - `goza-no-ma` as the runtime source of truth

@@ -1,0 +1,35 @@
+{
+  "name": "@tsukinowarin/shogunate",
+  "version": "4.6.0-0",
+  "description": "Package bootstrap wrapper for multi-agent-shognate.",
+  "bin": {
+    "shogunate": "bin/shogunate.js"
+  },
+  "files": [
+    "AGENTS.md",
+    "README.md",
+    "README_ja.md",
+    "Shogunate-Runtime.sh",
+    "Shogunate-Runtime.command",
+    "Shogunate-Configure-Roles.sh",
+    "Shogunate-Configure-Roles.command",
+    "bin/",
+    "config/ntfy_auth.env.sample",
+    "context/",
+    "docs/",
+    "first_setup.sh",
+    "instructions/",
+    "lib/",
+    "scripts/*.py",
+    "scripts/*.sh",
+    "templates/"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TsukinowaRin/multi-agent-shognate.git"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -69,11 +69,7 @@
 !shutsujin_departure.sh
 !first_setup.sh
 !setup.sh
-!install.bat
-!install.sh
-!install.command
 !updater.bat
-!Shogunate-Uninstaller.bat
 !Shogunate-Runtime.bat
 !Shogunate-Runtime.sh
 !Shogunate-Runtime.command
@@ -84,6 +80,10 @@
 
 # Development tooling
 !Makefile
+!package.json
+!package-lock.json
+!bin/
+!bin/shogunate.js
 
 # Optional CoDD integration config (runtime outputs under .codd stay ignored unless whitelisted)
 !.codd/
@@ -151,6 +151,7 @@
 !scripts/slim_yaml.py
 !scripts/ensure_generated_instructions.sh
 !scripts/prepublish_check.sh
+!scripts/shogunate_package_bootstrap.sh
 !scripts/upstream_sync.sh
 !scripts/update_manager.py
 !scripts/shell_aliases.sh

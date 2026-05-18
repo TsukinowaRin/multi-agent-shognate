@@ -967,7 +967,7 @@ echo "   天下布武！ (Tenka Fubu!)"
 echo "  ════════════════════════════════════════════════════════════════"
 echo ""
 
-# 依存関係不足の場合は exit 1 を返す（install.bat が検知できるように）
+# 依存関係不足の場合は exit 1 を返す（bootstrap / launcher が検知できるように）
 if [ "$HAS_ERROR" = true ]; then
     exit 1
 fi

@@ -23,7 +23,7 @@
 この fork が重視しているのは次です。
 
 - `tmux` 中心の運用
-- 任意のフォルダへそのまま入れられる portable インストール
+- 固定ローカルディレクトリへ展開する package-based インストール
 - fork 版 APK を使った Android リモート操作
 - upstream より広い Multi-CLI 対応
 - 保守寄りの既定構成: 全役職 `codex`、`config/settings.yaml` では model を pin しない、初期足軽は `ashigaru1` / `ashigaru2` の2名
@@ -46,7 +46,7 @@
 | 既定 CLI | upstream 既定 | 全役職 `codex`、model 選択は pane-local CLI state に任せる |
 | CLI 対応範囲 | upstream の中核 CLI | `Gemini CLI`、`OpenCode`、`Kilo`、`localapi`、`Ollama` / `LM Studio` 連携を追加 |
 | Android 配布 | upstream Android アプリ / APK | この repo の Releases にある fork 版 APK を正規配布物として扱う |
-| portable installer | repo 前提の導線 | `.bat` / `.sh` / `.command` を配布し、置いたフォルダへ portable に導入 |
+| 配布方式 | repo 前提の導線 | Release package (`tar.gz` / `zip`) + cURL bootstrap。npm / npx wrapper も用意 |
 | 家老の動き | 指示に応じて分担 | この fork では、家老が意図から自律的に人数・分担・並列度を決めることを明示 |
 
 ## 基本モデル
@@ -223,33 +223,46 @@ bash scripts/configure_agents.sh
 
 ## インストール方法
 
-### 推奨: portable installer
+### 推奨: cURL package bootstrap
 
-好きなフォルダにそのまま入れたいなら、この方法が正規導線です。
+Release install は package 方式です。bootstrap が Release package をダウンロードし、固定ローカルディレクトリへ展開し、古い installer ファイルが残っていれば削除し、`first_setup.sh` を実行します。
 
-1. この repo の **GitHub Releases** を開く
-2. OS に合う installer をダウンロードする
-3. 将軍システムを置きたいフォルダに置く
-4. 実行する
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+```
 
-installer asset:
+version 固定で入れる場合:
 
-- Windows: `multi-agent-shognate-installer-<version>.bat`
-- Linux / WSL: `multi-agent-shognate-installer-<version>.sh`
-- macOS: `multi-agent-shognate-installer-<version>.command`
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v4.6.0.12 --prefix "$HOME/.shogunate/shogunate"
+```
+
+既定の導入先は `$SHOGUNATE_HOME` または `~/.shogunate/shogunate` です。
+
+### npm / npx wrapper
+
+npm package は同じ cURL bootstrap を呼ぶ薄い wrapper です。
+
+```bash
+npx @tsukinowarin/shogunate install
+npx @tsukinowarin/shogunate install -- --version v4.6.0.12 --prefix "$HOME/.shogunate/shogunate"
+```
+
+Release asset:
+
+- `multi-agent-shognate-package.tar.gz`
+- `multi-agent-shognate-package.zip`
+- `multi-agent-shognate-package-<version>.tar.gz`
+- `multi-agent-shognate-package-<version>.zip`
 
 重要な挙動:
 
-- installer は、**ダウンロード元 Release と同じ tag のソース**を取得する
-- Release asset として公開された installer は、moving `main` ではなく、その version の snapshot に固定される
-- 展開先は **installer を置いたフォルダそのもの**
-- そのフォルダに古い portable Release install があれば、上書き更新モードへ切り替わる
-- 更新モードでは local state / 個人ファイルを保持したまま新しい Release snapshot を適用する
-- `first_setup.sh` まで自動実行する
-- Windows 版は WSL2 / Ubuntu も確認する
-- その portable install 用の update metadata も初期化する
-
-この fork では、これが標準インストール方法です。
+- package asset は対応する Release tag から作る
+- `latest` は GitHub Releases の latest package asset を使い、OS 別 installer は使わない
+- `--version` を指定すると、その Release tag に固定される
+- `config/settings.yaml`、`queue/`、`logs/`、`.shogunate/` などの local state は package archive に含めない
+- OS 別 installer asset は公開しない
 
 ### clone / ZIP 展開から手動インストール
 
@@ -313,44 +326,24 @@ bash scripts/upstream_sync.sh --dry-run
 
 `--dry-run` は add / update / remove / conflict の予定一覧を JSON で出し、worktree は変更しません。
 
-### 2. Release installer / portable install の場合
+### 2. Release package install の場合
 
-`multi-agent-shognate-installer-<version>.<ext>` で入れたものは、stable release channel 扱いです。
+cURL bootstrap または npm wrapper で入れたものは、stable release channel 扱いです。
 
 Release version は本家 upstream version + fork revision にします。
 先頭 3 つの数字は upstream Shogun の版を表し、
 最後の 1 つはこの fork 側の配布・パッケージ改訂番号です。
 現時点の upstream は `v4.6.0` なので、この repo の整列例は `v4.6.0.0` や `v4.6.0.12` です。
-installer asset 名も `android-` を含めず、同じ version 部だけを使います。
+package asset 名も `android-` を含めず、同じ version 部を使います。
 
-installer asset の役割はこうです。
+package asset の役割はこうです。
 
-- `multi-agent-shognate-installer-<version>.bat`
-- `multi-agent-shognate-installer-<version>.sh`
-- `multi-agent-shognate-installer-<version>.command`
-  - 初回導入用
-  - その場所に古い portable Release install があれば、そのコピーを保持付きで更新する
-  - 何も無ければ新規導入する
-  - installer を置いたフォルダへ対応 Release snapshot を展開する
-  - moving `main` には追従しない
-  - `first_setup.sh` を実行する
-  - そのコピーを Release install として初期化する
+- `multi-agent-shognate-package.tar.gz`
+- `multi-agent-shognate-package.zip`
+- `multi-agent-shognate-package-<version>.tar.gz`
+- `multi-agent-shognate-package-<version>.zip`
 
-- install 時点では、ダウンロードした Release tag に固定される
-- 新しい installer を同じフォルダで再実行すれば、local state を保持したままその portable install を更新できる
-- 配置先が別の Git working tree の中でも、portable install 自身の release metadata を見るので Release channel として扱える
-
-### portable install のアンインストール
-
-portable install には、インストール後のフォルダ内に `Shogunate-Uninstaller.bat` が含まれます。
-
-- 配置先フォルダの `Shogunate-Uninstaller.bat` を実行する
-- WSL が使える場合は Shogunate の tmux session を止める
-- 個人データを install 外へ保持するか、この install 内のデータごと全削除するかを選べる
-- そのフォルダ内の Shogunate 管理ファイルだけを削除する
-- 同じフォルダ内の unrelated files は残す
-- 親フォルダ自体は残す
-- その後、同じフォルダへクリーンインストールし直せる
+cURL bootstrap は package を導入先へ展開して `first_setup.sh` を実行します。新しい version で再実行すると、local state を残しながら package install を更新します。`--version` を渡した場合は、その Release tag に固定されます。
 
 Android アプリから SSH で接続している場合は、APK 側から **ホスト上の Shogunate 本体**の更新も実行できます。これは APK 自身の更新ではなく、ホストに入っている Shogunate の更新です。
 
@@ -367,7 +360,7 @@ Android アプリから SSH で接続している場合は、APK 側から **ホ
 - `skills/local/`
 - `queue/`, `logs/`, `dashboard.md` などの runtime state
 
-tracked file が local 編集と衝突した場合は、installer / 更新導線は local file を残したまま incoming version を次へ退避します。
+tracked file が local 編集と衝突した場合は、package / 更新導線は local file を残したまま incoming version を次へ退避します。
 
 - `.shogunate/merge-candidates/<batch>/incoming/...`
 
@@ -579,9 +572,8 @@ scripts/android_pairing_profile.sh --mode usb --ssh-port 22 --android-port 2222
 別のワークスペースで使いたいなら、基本は次です。
 
 - 対象フォルダを作る / 選ぶ
-- そのフォルダに OS 用の `multi-agent-shognate-installer-<version>.<ext>` を置く
-- その場で実行する
-- そのフォルダに将軍システムを展開させる
+- cURL bootstrap に `--prefix <target-folder>` を渡す
+- Release package を展開して `first_setup.sh` まで実行させる
 
 こうすると、次の状態がそのワークスペースに閉じます。
 
@@ -629,9 +621,7 @@ multi-agent-shognate/
 ├── lib/                       # shell helper library
 ├── scripts/                   # runtime / bootstrap / bridge / watcher
 ├── tests/                     # unit / smoke tests
-├── install.bat                # Windows installer / bootstrap entry
-├── install.sh                 # Linux / WSL installer / bootstrap entry
-├── install.command            # macOS Finder / Terminal installer wrapper
+├── bin/shogunate.js           # npm / npx wrapper for package bootstrap
 ├── Shogunate-Runtime.bat      # Windows runtime launcher
 ├── Shogunate-Runtime.sh       # Linux / WSL runtime launcher
 ├── Shogunate-Runtime.command  # macOS Finder runtime launcher
@@ -639,7 +629,6 @@ multi-agent-shognate/
 ├── Shogunate-Configure-Roles.sh       # Linux / WSL 役職設定 launcher
 ├── Shogunate-Configure-Roles.command  # macOS Finder 役職設定 launcher
 ├── updater.bat                # 互換維持のため残している旧 Windows updater
-├── Shogunate-Uninstaller.bat  # インストール済みコピーに含まれる Windows uninstaller
 ├── first_setup.sh             # 初回セットアップ
 └── shutsujin_departure.sh     # runtime 起動
 ```

@@ -3,6 +3,24 @@
 最終更新: 2026-05-18
 出典: 直近ユーザープロンプト
 
+## 追補（2026-05-18: installer asset を廃止し package distribution へ移行する）
+### 要求
+1. `.bat` / `.sh` / `.command` の OS 別 installer asset 配布を廃止し、Release では version 固定の配布 package を正本にすること。
+2. 導入導線は cURL ベースを正本にし、可能なら npm / npx からも同じ導入導線を呼べるようにすること。
+3. Runtime / role configuration 用の `.bat` / `.sh` / `.command` launcher は installer ではないため、Windows WSL / Linux / macOS の起動導線として維持すること。
+4. Release package は moving `main` に依存せず、Release tag の snapshot として固定されること。
+5. 旧 installer / uninstaller asset 名や手順は README / Android release docs / release workflow から外すこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/shogunate_package_bootstrap.sh first_setup.sh`
+   - 期待結果: curl bootstrap と初期 setup に shell syntax error がない。
+2. コマンド: `python3 -m unittest tests.unit.test_package_distribution`
+   - 期待結果: release workflow が installer asset を生成せず package tar/zip と APK を公開し、docs が curl / npm 導線を説明する。
+3. コマンド: `node bin/shogunate.js --help`
+   - 期待結果: npm / npx wrapper が `install` と `run` 導線を説明する。
+4. コマンド: `rg -n "multi-agent-shognate-installer|install\\.bat|install\\.sh|install\\.command|Shogunate-Uninstaller" README.md README_ja.md android/release/README.md .github/workflows/android-release.yml`
+   - 期待結果: 旧 installer 配布導線が残っていない。
+
 ## 追補（2026-05-18: Gemini CLI の再ログインを防ぐ）
 ### 要求
 1. Gemini CLI は host PC / user home の既存 OAuth 認証情報を使い、Shogunate runtime で開くたびに再ログインを求めないこと。
@@ -74,6 +92,8 @@
    - 期待結果: macOS `fswatch` と Linux / WSL `inotifywait` の役割が確認でき、`inotifywait` だけを必須扱いする文言が残っていない。
 
 ## 追補（2026-05-13: Release version と cross-platform installer）
+注記: 2026-05-18 の package distribution 移行により、cross-platform installer asset の要求は廃止済み。release version ルールと tag snapshot 固定の考え方だけを継承する。
+
 ### 要求
 1. 今後の release version は本家 upstream version に fork revision を足した `v<upstream-version>.<fork-revision>` を正規形式にすること。
 2. upstream が `v4.6.0` の場合、この repo の release は `v4.6.0.0`、`v4.6.0.12` のように表すこと。

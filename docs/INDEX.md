@@ -11,12 +11,13 @@
 - `docs/HANDOFF_2026-03-29_resume.md` - 旧 handoff。`Shogunate-test` 起点の経緯確認用。
 
 ## Specs
-- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-18 時点では Gemini CLI の host OAuth 共有と role-local settings 補完を含む。
+- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-18 時点では Gemini CLI の host OAuth 共有、role-local settings 補完、旧 installer asset 廃止と package distribution 移行を含む。
 - `docs/PUBLISHING.md` - 公開前の個人情報・履歴・退避物の除外ポリシーと確認手順。
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
-- `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - portable install / uninstaller 事故対応、修正内容、使うべき release、release asset naming の引き継ぎ。
+- `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - 旧 portable installer / uninstaller 事故対応の履歴。現行配布は package distribution を正とする。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-05-18_package_distribution.md` - OS 別 installer asset を廃止し、GitHub Release package + cURL bootstrap + npm wrapper へ移行する計画。
 - `docs/EXECPLAN_2026-05-14_shogunate_test_android_setup.md` - Shogunate-test へ最新コードを反映し、Shogun へのデモ制作依頼と Android 接続セットアップ UX 改善を並行して進める計画。
 - `docs/EXECPLAN_2026-05-13_upstream_issue_apply.md` - 本家 open Issue (#151/#143/#48/#131) をこの fork に適用し、README / role instruction / pane mapping regression を同期する計画。
 - `docs/EXECPLAN_2026-05-07_codd_integration.md` - CoDD (`yohey-w/codd-dev`) を標準 coherence gate として導入・更新する計画。
@@ -24,7 +25,7 @@
 - `docs/EXECPLAN_2026-05-07_runtime_role_config.md` - CLI種別と足軽数だけを設定し、Linux / Windows WSL / macOS launcher から起動できる簡易設定の計画。
 - `docs/EXECPLAN_2026-05-06_cli_state_isolation.md` - 対応CLIのホスト認証利用と pane-local 設定 / モデル state 分離の計画。
 - `docs/EXECPLAN_2026-05-06_isolated_mixed_cli_runtime.md` - 隔離コピーで指定された Gemini preview / GPT-5.5 / opencode 混在 runtime を起動検証する計画。
-- `docs/EXECPLAN_2026-05-06_android_v4600_release.md` - upstream `v4.6.0` 同期後の Android / installer `android-v4.6.0.0` release 計画。
+- `docs/EXECPLAN_2026-05-06_android_v4600_release.md` - upstream `v4.6.0` 同期後の Android / release 計画。installer asset 部分は package distribution 計画で置き換え。
 - `docs/EXECPLAN_2026-05-06_upstream_v460_sync.md` - upstream `main` / v4.6.0 の最新変更を取り込み、fork 独自機能を保持して再検証する計画（完了）。
 - `docs/EXECPLAN_2026-03-29_isolated_runtime_validation.md` - ワークスペース内 clone / sandbox で runtime を実起動し、実Codex認証待ち・trust prompt・rate-limit / usage-limit prompt・実タスク経路まで検証する計画。
 - `docs/EXECPLAN_2026-04-05_codex_shared_auth.md` - Codex の role local `CODEX_HOME` を保ちながら、`auth.json` だけを repo-local shared path で共通化する実行計画。

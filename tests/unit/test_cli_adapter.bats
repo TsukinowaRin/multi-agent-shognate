@@ -398,6 +398,16 @@ assert_cli_host_state_seed() {
     [[ "$result" == *"if [ -f ${CLI_ADAPTER_HOST_HOME}/${rel_path} ] && [ ! -e ${state_home}/${rel_path} ]; then cp ${CLI_ADAPTER_HOST_HOME}/${rel_path} ${state_home}/${rel_path}; fi"* ]]
 }
 
+assert_gemini_auth_settings_seed() {
+    local result="$1"
+    local agent_id="$2"
+    local state_home="${PROJECT_ROOT}/.shogunate/cli-state/gemini/agents/${agent_id}/home"
+    [[ "$result" == *"${state_home}/.gemini/settings.json"* ]]
+    [[ "$result" == *"selectedType"* ]]
+    [[ "$result" == *"oauth-personal"* ]]
+    [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.gemini/settings.json"* ]]
+}
+
 make_fake_cli() {
     local name="$1"
     mkdir -p "${TEST_TMP}/bin"
@@ -777,7 +787,18 @@ SH
     assert_cli_state_isolated "$result" "gemini" "ashigaru2"
     assert_cli_host_auth_link "$result" ".gemini/oauth_creds.json" "gemini" "ashigaru2"
     assert_cli_host_auth_link "$result" ".gemini/google_accounts.json" "gemini" "ashigaru2"
+    assert_gemini_auth_settings_seed "$result" "ashigaru2"
     [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo" ]]
+}
+
+@test "build_cli_command: gemini はhost settings全体を共有せず認証方式だけrole-localへ書く" {
+    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+    mkdir -p "${TEST_TMP}/home-empty" "${CLI_ADAPTER_HOST_HOME}/.gemini"
+    printf '{"security":{"auth":{"selectedType":"oauth-personal"}},"model":"host-model"}\n' > "${CLI_ADAPTER_HOST_HOME}/.gemini/settings.json"
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
+    assert_gemini_auth_settings_seed "$result" "ashigaru2"
+    [[ "$result" != *"cp ${CLI_ADAPTER_HOST_HOME}/.gemini/settings.json"* ]]
+    [[ "$result" != *"host-model"* ]]
 }
 
 @test "build_cli_command: gemini custom command に --yolo が無ければ補完する" {

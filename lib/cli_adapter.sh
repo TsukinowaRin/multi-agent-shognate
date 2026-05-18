@@ -362,6 +362,69 @@ _cli_adapter_seed_host_file_cmd() {
         "$(_cli_adapter_shell_quote "$dst")"
 }
 
+_cli_adapter_gemini_auth_type() {
+    local auth_type
+    auth_type="$(_cli_adapter_read_yaml "cli.gemini.auth_type" "oauth-personal")"
+    case "$auth_type" in
+        ""|auto|none)
+            return 0
+            ;;
+        oauth-personal|gemini-api-key|vertex-ai|cloud-shell|compute-default-credentials)
+            printf '%s' "$auth_type"
+            ;;
+        *)
+            printf 'oauth-personal'
+            ;;
+    esac
+}
+
+_cli_adapter_gemini_auth_settings_cmd() {
+    local state_home="$1"
+    local auth_type
+    local dst
+    local dst_dir
+    local script
+
+    auth_type="$(_cli_adapter_gemini_auth_type)"
+    [[ -n "$auth_type" ]] || return 0
+
+    dst="${state_home}/.gemini/settings.json"
+    dst_dir="$(dirname "$dst")"
+    script='import json, os, sys
+path, auth_type = sys.argv[1], sys.argv[2]
+data = {}
+if os.path.exists(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            loaded = json.load(f)
+        if isinstance(loaded, dict):
+            data = loaded
+    except Exception:
+        data = {}
+security = data.setdefault("security", {})
+if not isinstance(security, dict):
+    security = {}
+    data["security"] = security
+auth = security.setdefault("auth", {})
+if not isinstance(auth, dict):
+    auth = {}
+    security["auth"] = auth
+auth["selectedType"] = auth_type
+tmp = path + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+os.replace(tmp, path)'
+
+    printf ' && mkdir -p %s && if [ ! -L %s ]; then %s -c %s %s %s; fi' \
+        "$(_cli_adapter_shell_quote "$dst_dir")" \
+        "$(_cli_adapter_shell_quote "$dst")" \
+        "$(_cli_adapter_shell_quote "$CLI_ADAPTER_PYTHON")" \
+        "$(_cli_adapter_shell_quote "$script")" \
+        "$(_cli_adapter_shell_quote "$dst")" \
+        "$(_cli_adapter_shell_quote "$auth_type")"
+}
+
 _cli_adapter_host_auth_links_cmd() {
     local cli_type="$1"
     local state_home="$2"
@@ -373,6 +436,7 @@ _cli_adapter_host_auth_links_cmd() {
         gemini)
             _cli_adapter_link_host_file_cmd ".gemini/oauth_creds.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/google_accounts.json" "$state_home"
+            _cli_adapter_gemini_auth_settings_cmd "$state_home"
             ;;
         opencode)
             _cli_adapter_link_host_file_cmd ".local/share/opencode/auth.json" "$state_home"
@@ -438,18 +502,9 @@ _cli_adapter_prepare_cli_state_cmd() {
 
 _cli_adapter_gemini_auth_env_prefix() {
     local auth_type
-    auth_type="$(_cli_adapter_read_yaml "cli.gemini.auth_type" "oauth-personal")"
-    case "$auth_type" in
-        ""|auto|none)
-            return 0
-            ;;
-        oauth-personal|gemini-api-key|vertex-ai|cloud-shell|compute-default-credentials)
-            printf 'GEMINI_DEFAULT_AUTH_TYPE=%s ' "$(_cli_adapter_shell_quote "$auth_type")"
-            ;;
-        *)
-            printf 'GEMINI_DEFAULT_AUTH_TYPE=oauth-personal '
-            ;;
-    esac
+    auth_type="$(_cli_adapter_gemini_auth_type)"
+    [[ -n "$auth_type" ]] || return 0
+    printf 'GEMINI_DEFAULT_AUTH_TYPE=%s ' "$(_cli_adapter_shell_quote "$auth_type")"
 }
 
 _cli_adapter_cli_state_env_prefix() {

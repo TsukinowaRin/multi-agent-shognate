@@ -1,7 +1,20 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-14
+最終更新: 2026-05-18
 出典: 直近ユーザープロンプト
+
+## 追補（2026-05-18: Gemini CLI の再ログインを防ぐ）
+### 要求
+1. Gemini CLI は host PC / user home の既存 OAuth 認証情報を使い、Shogunate runtime で開くたびに再ログインを求めないこと。
+2. Gemini の full `settings.json` は host から symlink / copy せず、モデル設定・CLI 設定・履歴は役職 / pane ごとに独立させること。
+3. Gemini CLI が認証方式の選択状態を要求する場合は、role-local `.gemini/settings.json` に `security.auth.selectedType` だけを書き、host OAuth credentials と整合させること。
+4. 既存の role-local Gemini settings がある場合は、他の設定を可能な限り保持し、認証方式だけを補完すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n lib/cli_adapter.sh && bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: Gemini 起動コマンドが host `.gemini/oauth_creds.json` / `.gemini/google_accounts.json` を symlink し、host `.gemini/settings.json` 全体は共有せず、role-local `.gemini/settings.json` の `security.auth.selectedType` だけを補完する。
+2. コマンド: `source lib/cli_adapter.sh; build_cli_command ashigaru2`
+   - 期待結果: `GEMINI_DEFAULT_AUTH_TYPE=oauth-personal` と role-local Gemini settings 補完が含まれ、モデル設定は role-local state に残る。
 
 ## 追補（2026-05-14: Shogunate-test 実運用検証と Android 接続セットアップ改善）
 ### 要求

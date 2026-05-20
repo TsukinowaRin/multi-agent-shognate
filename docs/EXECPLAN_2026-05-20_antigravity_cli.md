@@ -20,6 +20,7 @@ Gemini CLI 対応を廃止し、Google Antigravity CLI (`agy`) を Shogunate の
 - `cli.commands.antigravity` の既定は `agy --dangerously-skip-permissions`。
 - role-local state は `.shogunate/cli-state/antigravity/agents/<role>/home`。
 - host auth / account state は `~/.gemini/antigravity-cli/` 配下の必要最小限を symlink し、settings / keybindings / plugin / cache は role-local に残す。
+- 旧 Gemini CLI root auth (`~/.gemini/oauth_creds.json` / `~/.gemini/google_accounts.json`) と `cli.commands.gemini` は Antigravity に流用しない。
 - Gemini thinking alias 生成は廃止し、Antigravity は `/model` や settings の pane-local state に任せる。
 - instruction generator は `antigravity-*` を生成し、`gemini-*` の新規生成を止める。
 
@@ -54,6 +55,7 @@ Gemini CLI 対応を廃止し、Google Antigravity CLI (`agy`) を Shogunate の
 - 既存 config に `type: gemini` が残っている場合は runtime で `antigravity` に正規化する。
 - Antigravity は `agy --dangerously-skip-permissions` を既定コマンドにし、role-local `HOME` / XDG state を使う。
 - host auth は `.gemini/antigravity-cli/` 配下の既知ファイルだけ symlink し、settings / model / cache / history は role-local に残す。
+- 2026-05-20 追補: Antigravity auth は Gemini CLI root auth とは別物として扱い、`.gemini/oauth_creds.json` / `.gemini/google_accounts.json` と `cli.commands.gemini` の fallback は使わない。
 - `scripts/sync_gemini_settings.py` と Gemini generated instructions / tests は廃止した。
 
 ## 検証結果

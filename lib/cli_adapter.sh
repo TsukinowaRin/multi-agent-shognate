@@ -386,8 +386,6 @@ _cli_adapter_host_auth_links_cmd() {
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/google_accounts.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/credentials.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/tokens.json" "$state_home"
-            _cli_adapter_link_host_file_cmd ".gemini/oauth_creds.json" "$state_home"
-            _cli_adapter_link_host_file_cmd ".gemini/google_accounts.json" "$state_home"
             ;;
         opencode)
             _cli_adapter_link_host_file_cmd ".local/share/opencode/auth.json" "$state_home"
@@ -822,9 +820,6 @@ build_cli_command_with_type() {
             antigravity_bin=$(_cli_adapter_pick_executable_cmd "agy" "antigravity")
             local cmd
             cmd=$(_cli_adapter_read_yaml "cli.commands.antigravity" "")
-            if [[ -z "$cmd" ]]; then
-                cmd=$(_cli_adapter_read_yaml "cli.commands.gemini" "")
-            fi
             if [[ -z "$cmd" ]]; then
                 cmd="${antigravity_bin} --dangerously-skip-permissions"
             fi

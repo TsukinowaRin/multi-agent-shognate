@@ -401,6 +401,8 @@ assert_antigravity_auth_links() {
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/oauth_creds.json" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/google_accounts.json" "antigravity" "$agent_id"
     [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
+    [[ "$result" != *"${CLI_ADAPTER_HOST_HOME}/.gemini/oauth_creds.json"* ]]
+    [[ "$result" != *"${CLI_ADAPTER_HOST_HOME}/.gemini/google_accounts.json"* ]]
 }
 
 make_fake_cli() {
@@ -801,6 +803,25 @@ SH
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
     assert_cli_state_isolated "$result" "antigravity" "ashigaru2"
     [[ "$result" == *"AGENT_ID=ashigaru2 "*agy" --dangerously-skip-permissions" ]]
+}
+
+@test "build_cli_command: antigravity は旧 gemini command を流用しない" {
+    cat > "${TEST_TMP}/settings_antigravity_legacy_gemini_command.yaml" << 'YAML'
+cli:
+  default: antigravity
+  agents:
+    shogun:
+      type: antigravity
+      model: auto
+  commands:
+    gemini: "gemini --yolo"
+YAML
+    load_adapter_with "${TEST_TMP}/settings_antigravity_legacy_gemini_command.yaml"
+    mkdir -p "${TEST_TMP}/home-empty"
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
+    assert_cli_state_isolated "$result" "antigravity" "shogun"
+    [[ "$result" == *"AGENT_ID=shogun "*agy" --dangerously-skip-permissions" ]]
+    [[ "$result" != *"gemini --yolo"* ]]
 }
 
 @test "build_cli_command: antigravity explicit model → --model を付与" {

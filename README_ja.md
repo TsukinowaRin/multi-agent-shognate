@@ -44,7 +44,7 @@
 | runtime 構成 | split tmux session が主 | `goza-no-ma:overview` が runtime 正本。`shogun` / `gunshi` / `multiagent` は Android 互換 proxy として維持 |
 | 初期足軽構成 | 歴史的に大きい編成を前提にした記述がある | 既定の現役足軽は `ashigaru1` と `ashigaru2` のみ |
 | 既定 CLI | upstream 既定 | 全役職 `codex`、model 選択は pane-local CLI state に任せる |
-| CLI 対応範囲 | upstream の中核 CLI | `Gemini CLI`、`OpenCode`、`Kilo`、`localapi`、`Ollama` / `LM Studio` 連携を追加 |
+| CLI 対応範囲 | upstream の中核 CLI | `Antigravity CLI`、`OpenCode`、`Kilo`、`localapi`、`Ollama` / `LM Studio` 連携を追加 |
 | Android 配布 | upstream Android アプリ / APK | この repo の Releases にある fork 版 APK を正規配布物として扱う |
 | 配布方式 | repo 前提の導線 | Release package (`tar.gz` / `zip`) + cURL bootstrap。npm / npx wrapper も用意 |
 | 家老の動き | 指示に応じて分担 | この fork では、家老が意図から自律的に人数・分担・並列度を決めることを明示 |
@@ -78,7 +78,7 @@
 | `claude` | Anthropic Claude Code | upstream 同様に対応 |
 | `copilot` | GitHub Copilot CLI | upstream 同様に対応 |
 | `kimi` | Kimi Code | upstream 同様に対応 |
-| `gemini` | Gemini CLI | この fork で明示対応 |
+| `antigravity` | Google Antigravity CLI | この fork で明示対応。旧 `gemini` 設定はこの type に変換 |
 | `opencode` | OpenCode CLI | この fork で追加 |
 | `kilo` | Kilo CLI | この fork で追加 |
 | `localapi` | OpenAI 互換 local endpoint | `Ollama` / `LM Studio` / llama.cpp server など向け |
@@ -93,7 +93,7 @@
 | `codex` | `--sandbox danger-full-access --ask-for-approval never` |
 | `copilot` | `--yolo` |
 | `kimi` | `--yolo` |
-| `gemini` | `--yolo` |
+| `antigravity` | `--dangerously-skip-permissions` |
 | `opencode` | 生成される `opencode.json` に `permission: allow` を入れる |
 | `kilo` | 生成される `opencode.json` に `permission: allow` を入れる |
 | `localapi` | 別の承認レイヤーを持たず、local REPL を直接起動する |
@@ -118,7 +118,7 @@ Shogunate runtime から起動する外部 CLI は、既知のログイン認証
 - `Codex` は各役職を repo-local の別 `CODEX_HOME` で起動します。ホストの `~/.codex/auth.json` があれば role-local `auth.json` から symlink し、存在しない場合だけ従来の repo-local shared auth fallback を使います。model / `reasoning_effort` / 履歴 state は role-local に保ちます。
 - Codex 起動は既定で通常の対話 TUI を優先します。Shogunate はまず `codex` を空で起動し、その後 tmux 経由で bootstrap prompt を配信します。従来の `codex <bootstrap prompt>` 起動へ戻したい場合だけ `MAS_CODEX_STARTUP_PROMPT_MODE=argv` を指定します。
 - 入力欄の見た目、空入力時のサンプル文言、footer はインストール済み Codex CLI のバージョン側の表示です。Shogunate は Codex TUI を再装飾せず、起動状態を変えていた旧 positional bootstrap prompt だけを避けます。
-- `Claude` / `Copilot` / `Kimi` / `Gemini` / `OpenCode` / `Kilo` は、起動時に `HOME` と XDG paths を `.shogunate/cli-state/<cli>/agents/<agent>/home` 配下へ向けます。既知の host auth file だけ pane-local home へ symlink し、設定・モデル選択・cache・履歴は pane-local に保ちます。Gemini は user settings 全体を共有せず host OAuth credentials を使えるよう、既定で `GEMINI_DEFAULT_AUTH_TYPE=oauth-personal` を付与し、role-local の `.gemini/settings.json` へ `security.auth.selectedType` だけを書きます。
+- `Claude` / `Copilot` / `Kimi` / `Antigravity` / `OpenCode` / `Kilo` は、起動時に `HOME` と XDG paths を `.shogunate/cli-state/<cli>/agents/<agent>/home` 配下へ向けます。既知の host auth file だけ pane-local home へ symlink し、設定・モデル選択・cache・履歴は pane-local に保ちます。Antigravity は `.gemini/antigravity-cli/` 配下の既知の host auth file を見つけた場合だけ再利用し、user settings 全体は共有しません。
 - `OpenCode` / `Kilo` は既知の host `auth.json` だけを pane-local home へ symlink します。`model.json` は role-local file が未作成のときだけ host から初期コピーし、その後の model 選択は役職ごとに独立して保持します。一方で SQLite DB、prompt history、telemetry などの runtime file は pane-local に残します。古い DB / model / history symlink は起動時に外し、既存の role-local regular file は消しません。plugin manifest は未作成時だけ初期コピーし、`node_modules` は再インストールを避けるため host install を link できます。
 - `localapi` は repo 内の local REPL なので、外部 CLI のログイン state 隔離対象ではありません。
 
@@ -196,7 +196,7 @@ python3 scripts/configure_runtime_roles.py
 ```bash
 python3 scripts/configure_runtime_roles.py \
   --ashigaru-count 3 \
-  --shogun gemini \
+  --shogun antigravity \
   --karo codex \
   --gunshi codex \
   --ashigaru1 codex \
@@ -217,7 +217,6 @@ bash scripts/configure_agents.sh
 - 役職ごとの CLI type
 - 役職ごとの model
 - Codex reasoning effort
-- Gemini thinking level / budget
 - OpenCode / Kilo provider 設定
 - active Ashigaru 数
 
@@ -655,7 +654,7 @@ bash scripts/prepublish_check.sh
 
 - 好きなフォルダに portable に入れたい
 - GitHub Releases から fork 版 APK を使いたい
-- Gemini / OpenCode / Kilo / localapi まで含めて使いたい
+- Antigravity / OpenCode / Kilo / localapi まで含めて使いたい
 - `goza-no-ma` を runtime 正本として運用したい
 - 保守寄りの既定値で安定運用したい
 

@@ -33,8 +33,8 @@ PYTHON="${SCRIPT_DIR}/.venv/bin/python3"
 # ─── Constants ───
 CLAUDE_STATS="$HOME/.claude/stats-cache.json"
 CODEX_LOG="$HOME/.codex/log/codex-tui.log"
-GEMINI_SETTINGS_PATH="$HOME/.gemini/settings.json"
-GEMINI_PROJECTS_PATH="$HOME/.gemini/projects.json"
+ANTIGRAVITY_SETTINGS_PATH="$HOME/.gemini/antigravity-cli/settings.json"
+ANTIGRAVITY_AUTH_DIR="$HOME/.gemini/antigravity-cli"
 OPENCODE_CONFIG_DIR="$HOME/.config/opencode"
 KILO_CONFIG_DIR="$HOME/.config/kilo"
 TODAY=$(date +%Y-%m-%d)
@@ -85,13 +85,13 @@ done
 # ═══════════════════════════════════════════════════════
 # Phase 2: Group agents by CLI type
 # ═══════════════════════════════════════════════════════
-declare -a CLAUDE_AGENTS=() CODEX_AGENTS=() GEMINI_AGENTS=() OPENCODE_AGENTS=() KILO_AGENTS=() OTHER_AGENTS=()
+declare -a CLAUDE_AGENTS=() CODEX_AGENTS=() ANTIGRAVITY_AGENTS=() OPENCODE_AGENTS=() KILO_AGENTS=() OTHER_AGENTS=()
 
 for agent in "${ALL_AGENTS[@]}"; do
     case "${AGENT_CLI[$agent]}" in
         claude) CLAUDE_AGENTS+=("$agent") ;;
         codex)  CODEX_AGENTS+=("$agent") ;;
-        gemini) GEMINI_AGENTS+=("$agent") ;;
+        antigravity|gemini) ANTIGRAVITY_AGENTS+=("$agent") ;;
         opencode) OPENCODE_AGENTS+=("$agent") ;;
         kilo) KILO_AGENTS+=("$agent") ;;
         *)      OTHER_AGENTS+=("$agent") ;;
@@ -422,10 +422,10 @@ if [[ ${#CODEX_AGENTS[@]} -gt 0 ]] && [[ -f "$CODEX_LOG" ]]; then
     fi
 fi
 
-# --- 3d: Gemini / OpenCode / Kilo telemetry availability ---
-GEMINI_STATE_STATUS="missing"
-if [[ -f "$GEMINI_SETTINGS_PATH" || -f "$GEMINI_PROJECTS_PATH" ]]; then
-    GEMINI_STATE_STATUS="detected"
+# --- 3d: Antigravity / OpenCode / Kilo telemetry availability ---
+ANTIGRAVITY_STATE_STATUS="missing"
+if [[ -d "$ANTIGRAVITY_AUTH_DIR" || -f "$ANTIGRAVITY_SETTINGS_PATH" ]]; then
+    ANTIGRAVITY_STATE_STATUS="detected"
 fi
 
 OPENCODE_STATE_STATUS="missing"
@@ -594,16 +594,16 @@ if [[ ${#CODEX_AGENTS[@]} -gt 0 ]]; then
     fi
 fi
 
-# --- Gemini group ---
-if [[ ${#GEMINI_AGENTS[@]} -gt 0 ]]; then
-    printf "\n── Gemini CLI ────────────────────────\n"
-    printf "  Agents: %s\n" "$(format_agent_list "${GEMINI_AGENTS[@]}")"
+# --- Antigravity group ---
+if [[ ${#ANTIGRAVITY_AGENTS[@]} -gt 0 ]]; then
+    printf "\n── Antigravity CLI ───────────────────\n"
+    printf "  Agents: %s\n" "$(format_agent_list "${ANTIGRAVITY_AGENTS[@]}")"
     if [[ "$LANG_MODE" == "en" ]]; then
-        printf "  Workspace state: %s (~/.gemini)\n" "$GEMINI_STATE_STATUS"
-        printf "  Quota: unavailable (no local quota telemetry discovered under ~/.gemini)\n"
+        printf "  Workspace state: %s (~/.gemini/antigravity-cli)\n" "$ANTIGRAVITY_STATE_STATUS"
+        printf "  Quota: unavailable (no local quota telemetry discovered under ~/.gemini/antigravity-cli)\n"
     else
-        printf "  Workspace state: %s (~/.gemini)\n" "$GEMINI_STATE_STATUS"
-        printf "  Quota: unavailable（~/.gemini 配下にローカルのクォータ指標は未発見）\n"
+        printf "  Workspace state: %s (~/.gemini/antigravity-cli)\n" "$ANTIGRAVITY_STATE_STATUS"
+        printf "  Quota: unavailable（~/.gemini/antigravity-cli 配下にローカルのクォータ指標は未発見）\n"
     fi
 fi
 

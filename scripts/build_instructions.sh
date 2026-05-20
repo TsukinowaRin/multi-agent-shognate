@@ -71,8 +71,8 @@ EOFYAML
         kimi)
             cat "$PARTS_DIR/cli_specific/kimi_tools.md" >> "$output_path"
             ;;
-        gemini)
-            cat "$PARTS_DIR/cli_specific/gemini_tools.md" >> "$output_path"
+        antigravity)
+            cat "$PARTS_DIR/cli_specific/antigravity_tools.md" >> "$output_path"
             ;;
         localapi)
             cat "$PARTS_DIR/cli_specific/localapi_tools.md" >> "$output_path"
@@ -112,11 +112,11 @@ build_instruction_file "kimi" "karo" "kimi-karo.md"
 build_instruction_file "kimi" "ashigaru" "kimi-ashigaru.md"
 build_instruction_file "kimi" "gunshi" "kimi-gunshi.md"
 
-# Build Gemini instruction files
-build_instruction_file "gemini" "shogun" "gemini-shogun.md"
-build_instruction_file "gemini" "karo" "gemini-karo.md"
-build_instruction_file "gemini" "ashigaru" "gemini-ashigaru.md"
-build_instruction_file "gemini" "gunshi" "gemini-gunshi.md"
+# Build Antigravity instruction files
+build_instruction_file "antigravity" "shogun" "antigravity-shogun.md"
+build_instruction_file "antigravity" "karo" "antigravity-karo.md"
+build_instruction_file "antigravity" "ashigaru" "antigravity-ashigaru.md"
+build_instruction_file "antigravity" "gunshi" "antigravity-gunshi.md"
 
 # Build Local API instruction files
 build_instruction_file "localapi" "shogun" "localapi-shogun.md"

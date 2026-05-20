@@ -336,16 +336,6 @@ if [ -f "$SCRIPT_DIR/lib/inbox_path.sh" ]; then
     source "$SCRIPT_DIR/lib/inbox_path.sh"
 fi
 
-sync_gemini_workspace_settings() {
-    local sync_script="$SCRIPT_DIR/scripts/sync_gemini_settings.py"
-    if [ ! -x "$sync_script" ]; then
-        return 0
-    fi
-    if ! python3 "$sync_script" >/dev/null 2>&1; then
-        log_info "⚠️  Gemini workspace settings の同期に失敗しました。既存 .gemini/settings.json を使用して継続します"
-    fi
-}
-
 sync_opencode_like_workspace_settings() {
     local sync_script="$SCRIPT_DIR/scripts/sync_opencode_config.py"
     if [ ! -x "$sync_script" ]; then
@@ -706,21 +696,21 @@ clear_runtime_blocker_tmux() {
     return 0
 }
 
-# Gemini CLI 初回の trust folder プロンプトを自動承認する（1回のみ）
-auto_accept_gemini_trust_prompt_tmux() {
+# Antigravity CLI 初回の trust folder プロンプトを自動承認する（1回のみ）
+auto_accept_antigravity_trust_prompt_tmux() {
     local pane_target="$1"
     local agent_id="$2"
     local cli_type="$3"
     local i
     local pane_text
 
-    [ "$cli_type" = "gemini" ] || return 0
+    [ "$cli_type" = "antigravity" ] || return 0
 
     for i in {1..20}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -60 || true)"
         if echo "$pane_text" | grep -q "Do you trust this folder"; then
-            tmux_send_text_and_enter "$pane_target" "1" "Gemini trust prompt" || return 1
-            log_info "  └─ ${agent_id}: Gemini trust prompt を自動承認"
+            tmux_send_text_and_enter "$pane_target" "1" "Antigravity trust prompt" || return 1
+            log_info "  └─ ${agent_id}: Antigravity trust prompt を自動承認"
             sleep 1
             return 0
         fi
@@ -729,21 +719,21 @@ auto_accept_gemini_trust_prompt_tmux() {
     return 0
 }
 
-# Gemini CLI の高負荷画面（Keep trying/Stop）を自動で継続選択
-auto_retry_gemini_busy_tmux() {
+# Antigravity CLI の高負荷画面（Keep trying/Stop）を自動で継続選択
+auto_retry_antigravity_busy_tmux() {
     local pane_target="$1"
     local agent_id="$2"
     local cli_type="$3"
     local i
     local pane_text
 
-    [ "$cli_type" = "gemini" ] || return 0
+    [ "$cli_type" = "antigravity" ] || return 0
 
     for i in {1..20}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
         if echo "$pane_text" | grep -q "We are currently experiencing high demand"; then
-            tmux_send_text_and_enter "$pane_target" "1" "Gemini high-demand retry" || return 1
-            log_info "  └─ ${agent_id}: Gemini high-demand を自動再試行"
+            tmux_send_text_and_enter "$pane_target" "1" "Antigravity high-demand retry" || return 1
+            log_info "  └─ ${agent_id}: Antigravity high-demand を自動再試行"
             sleep 2
             return 0
         fi
@@ -976,7 +966,7 @@ startup_fastpath_directive() {
 }
 
 # CLIの準備完了をスクリーン内容で確認（pane_current_command の誤判定を回避）
-# codex は node、gemini は node 等で表示されるため、UI文字列パターンで判定する。
+# codex / antigravity は node 等で表示されるため、UI文字列パターンで判定する。
 wait_for_cli_ready_tmux() {
     local pane_target="$1"
     local cli_type="${2:-claude}"
@@ -987,13 +977,13 @@ wait_for_cli_ready_tmux() {
     case "$cli_type" in
         claude)  ready_pattern='(claude code|Claude Code|╰|/model|for shortcuts)' ;;
         codex)   ready_pattern='(openai codex|Codex|context left|/model|for shortcuts|Press Ctrl|Working|esc to interrupt|% left)' ;;
-        gemini)  ready_pattern='(gemini|Gemini|type your message|Tips to get|yolo mode|Working|esc to interrupt|Initializing the Agent)' ;;
+        antigravity)  ready_pattern='(agy|antigravity|Antigravity|type your message|Working|esc to interrupt|Initializing the Agent)' ;;
         copilot) ready_pattern='(copilot|GitHub Copilot|/model)' ;;
         kimi)    ready_pattern='(kimi|moonshot|/model)' ;;
         opencode) ready_pattern='(opencode|OpenCode|/model|ready:)' ;;
         kilo)    ready_pattern='(kilo|Kilo|/model|ready:)' ;;
         localapi) ready_pattern='(localapi|LocalAPI|ready:|\$)' ;;
-        *)       ready_pattern='(claude|codex|gemini|copilot|kimi|opencode|kilo|localapi|ready:)' ;;
+        *)       ready_pattern='(claude|codex|antigravity|agy|copilot|kimi|opencode|kilo|localapi|ready:)' ;;
     esac
 
     # max_wait=0 でも1回は即時チェックする（for ループでは 0<0 が偽でスキップされるため分離）
@@ -1714,7 +1704,6 @@ fi
 
 # 役職正本/CLI最適化指示書の差分がある場合は自動再生成
 ensure_generated_instructions
-sync_gemini_workspace_settings
 sync_opencode_like_workspace_settings
 
 # 有効化する足軽リスト（デフォルト: ashigaru1）
@@ -2313,7 +2302,7 @@ if [ "$SETUP_ONLY" = false ]; then
     # CLI の存在チェック（Multi-CLI対応）
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         if ! get_first_available_cli >/dev/null 2>&1; then
-            echo "[ERROR] No supported CLI found. Install one of: claude, codex, gemini, localapi, copilot, kimi" >&2
+            echo "[ERROR] No supported CLI found. Install one of: claude, codex, agy, localapi, copilot, kimi" >&2
             exit 1
         fi
     else
@@ -2463,32 +2452,32 @@ if [ "$SETUP_ONLY" = false ]; then
         log_info "  └─ 足軽（設定どおり: ${_ashigaru_launched}名）、配置完了"
     fi
 
-    # Gemini / Codex の初回プリフライトを自動処理（並列実行）
-    _gemini_pids=()
+    # Antigravity / Codex の初回プリフライトを自動処理（並列実行）
+    _cli_gate_pids=()
     _cli_gate_handler() {
         local _pane="$1" _agent="$2" _cli="$3"
         auto_skip_codex_update_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_codex_workspace_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_dismiss_codex_rate_limit_prompt_tmux "$_pane" "$_agent" "$_cli"
-        auto_accept_gemini_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
-        auto_retry_gemini_busy_tmux "$_pane" "$_agent" "$_cli"
+        auto_accept_antigravity_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
+        auto_retry_antigravity_busy_tmux "$_pane" "$_agent" "$_cli"
     }
     { _cli_gate_handler "$SHOGUN_TARGET" "shogun" "$_shogun_cli_type"; } 9>&- &
-    _gemini_pids+=($!)
+    _cli_gate_pids+=($!)
     { _cli_gate_handler "$GUNSHI_TARGET" "gunshi" "$_gunshi_cli_type"; } 9>&- &
-    _gemini_pids+=($!)
+    _cli_gate_pids+=($!)
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
         _agent="${MULTIAGENT_IDS[$_idx]}"
         _pane_target="${AGENT_PANES[$_agent]:-}"
         [ -n "$_pane_target" ] || continue
         _pane_cli=$(tmux show-options -p -t "$_pane_target" -v @agent_cli 2>/dev/null || echo "claude")
         { _cli_gate_handler "$_pane_target" "$_agent" "$_pane_cli"; } 9>&- &
-        _gemini_pids+=($!)
+        _cli_gate_pids+=($!)
     done
-    for _pid in "${_gemini_pids[@]}"; do
+    for _pid in "${_cli_gate_pids[@]}"; do
         wait "$_pid" 2>/dev/null || true
     done
-    unset _gemini_pids
+    unset _cli_gate_pids
 
     if [ "$KESSEN_MODE" = true ]; then
         log_success "✅ 決戦の陣で出陣（Claude系Opus優先）"
@@ -2570,7 +2559,7 @@ NINJA_EOF
 
     # 一括起動確認（高速パス）: スクリーン内容ベースで全CLI同時チェック
     # 注: deliver_bootstrap_tmux でも個別に最大30秒待機するため、ここでは短時間チェックのみ。
-    # codex は node、gemini は node 等で表示されるため pane_current_command は使用しない。
+    # codex / antigravity は node 等で表示されるため pane_current_command は使用しない。
     CLI_READY_TIMEOUT="${MAS_CLI_READY_TIMEOUT:-15}"
     if ! [[ "$CLI_READY_TIMEOUT" =~ ^[0-9]+$ ]]; then
         CLI_READY_TIMEOUT=15

@@ -166,48 +166,44 @@ cli:
   default: kimi
 YAML
 
-    # gemini settings
-    cat > "${TEST_TMP}/settings_gemini.yaml" << 'YAML'
+    # antigravity settings
+    cat > "${TEST_TMP}/settings_antigravity.yaml" << 'YAML'
 cli:
   default: claude
   agents:
     ashigaru2:
-      type: gemini
+      type: antigravity
       model: auto
 YAML
 
-    cat > "${TEST_TMP}/settings_gemini_command_without_yolo.yaml" << 'YAML'
+    cat > "${TEST_TMP}/settings_antigravity_command_without_permission.yaml" << 'YAML'
 cli:
-  default: gemini
+  default: antigravity
   agents:
     ashigaru2:
-      type: gemini
+      type: antigravity
       model: auto
   commands:
-    gemini: "gemini"
+    antigravity: "agy"
 YAML
 
-    # gemini thinking settings
-    cat > "${TEST_TMP}/settings_gemini_thinking.yaml" << 'YAML'
+    # antigravity model settings
+    cat > "${TEST_TMP}/settings_antigravity_model.yaml" << 'YAML'
 cli:
-  default: gemini
+  default: antigravity
   agents:
     gunshi:
-      type: gemini
+      type: antigravity
       model: gemini-3-pro-preview
-      thinking_level: low
     ashigaru1:
-      type: gemini
+      type: antigravity
       model: gemini-3-flash-preview
-      thinking_level: minimal
     ashigaru2:
-      type: gemini
+      type: antigravity
       model: gemini-2.5-flash
-      thinking_budget: 0
     ashigaru3:
-      type: gemini
+      type: antigravity
       model: auto
-      thinking_level: high
 YAML
 
     # codex reasoning settings
@@ -234,17 +230,17 @@ cli:
     gunshi:
       type: codex
     ashigaru1:
-      type: gemini
+      type: antigravity
     ashigaru2:
       type: claude
 YAML
 
-    cat > "${TEST_TMP}/settings_shogun_gemini_default.yaml" << 'YAML'
+    cat > "${TEST_TMP}/settings_shogun_antigravity_default.yaml" << 'YAML'
 cli:
-  default: gemini
+  default: antigravity
   agents:
     shogun:
-      type: gemini
+      type: antigravity
       model: auto
 YAML
 
@@ -398,14 +394,13 @@ assert_cli_host_state_seed() {
     [[ "$result" == *"if [ -f ${CLI_ADAPTER_HOST_HOME}/${rel_path} ] && [ ! -e ${state_home}/${rel_path} ]; then cp ${CLI_ADAPTER_HOST_HOME}/${rel_path} ${state_home}/${rel_path}; fi"* ]]
 }
 
-assert_gemini_auth_settings_seed() {
+assert_antigravity_auth_links() {
     local result="$1"
     local agent_id="$2"
-    local state_home="${PROJECT_ROOT}/.shogunate/cli-state/gemini/agents/${agent_id}/home"
-    [[ "$result" == *"${state_home}/.gemini/settings.json"* ]]
-    [[ "$result" == *"selectedType"* ]]
-    [[ "$result" == *"oauth-personal"* ]]
-    [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.gemini/settings.json"* ]]
+    assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/auth.json" "antigravity" "$agent_id"
+    assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/oauth_creds.json" "antigravity" "$agent_id"
+    assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/google_accounts.json" "antigravity" "$agent_id"
+    [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
 }
 
 make_fake_cli() {
@@ -511,10 +506,10 @@ make_fake_cli() {
     [ "$result" = "kimi" ]
 }
 
-@test "get_cli_type: gemini設定 ashigaru2 → gemini" {
-    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+@test "get_cli_type: antigravity設定 ashigaru2 → antigravity" {
+    load_adapter_with "${TEST_TMP}/settings_antigravity.yaml"
     result=$(get_cli_type "ashigaru2")
-    [ "$result" = "gemini" ]
+    [ "$result" = "antigravity" ]
 }
 
 @test "get_cli_type: localapi設定 ashigaru6 → localapi" {
@@ -547,11 +542,11 @@ cli:
   default: codex
   agents:
     karo:
-      type: gemini
+      type: antigravity
 YAML
     load_adapter_with "${TEST_TMP}/settings_karo_family.yaml"
     result=$(get_cli_type "karo2")
-    [ "$result" = "gemini" ]
+    [ "$result" = "antigravity" ]
 }
 
 @test "get_cli_type: 空agent_id → claude" {
@@ -780,89 +775,64 @@ SH
     [[ "$result" == *"AGENT_ID=ashigaru4 "*kimi" --yolo" ]]
 }
 
-@test "build_cli_command: gemini + model auto → gemini --yolo" {
-    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+@test "build_cli_command: antigravity + model auto → agy --dangerously-skip-permissions" {
+    load_adapter_with "${TEST_TMP}/settings_antigravity.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
-    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
-    assert_cli_host_auth_link "$result" ".gemini/oauth_creds.json" "gemini" "ashigaru2"
-    assert_cli_host_auth_link "$result" ".gemini/google_accounts.json" "gemini" "ashigaru2"
-    assert_gemini_auth_settings_seed "$result" "ashigaru2"
-    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo" ]]
+    assert_cli_state_isolated "$result" "antigravity" "ashigaru2"
+    assert_antigravity_auth_links "$result" "ashigaru2"
+    [[ "$result" == *"AGENT_ID=ashigaru2 "*agy" --dangerously-skip-permissions" ]]
 }
 
-@test "build_cli_command: gemini はhost settings全体を共有せず認証方式だけrole-localへ書く" {
-    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
-    mkdir -p "${TEST_TMP}/home-empty" "${CLI_ADAPTER_HOST_HOME}/.gemini"
-    printf '{"security":{"auth":{"selectedType":"oauth-personal"}},"model":"host-model"}\n' > "${CLI_ADAPTER_HOST_HOME}/.gemini/settings.json"
+@test "build_cli_command: antigravity はhost settings全体を共有しない" {
+    load_adapter_with "${TEST_TMP}/settings_antigravity.yaml"
+    mkdir -p "${TEST_TMP}/home-empty" "${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli"
+    printf '{"model":"host-model"}\n' > "${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
-    assert_gemini_auth_settings_seed "$result" "ashigaru2"
-    [[ "$result" != *"cp ${CLI_ADAPTER_HOST_HOME}/.gemini/settings.json"* ]]
+    assert_antigravity_auth_links "$result" "ashigaru2"
+    [[ "$result" != *"cp ${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
+    [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
     [[ "$result" != *"host-model"* ]]
 }
 
-@test "build_cli_command: gemini custom command に --yolo が無ければ補完する" {
-    load_adapter_with "${TEST_TMP}/settings_gemini_command_without_yolo.yaml"
+@test "build_cli_command: antigravity custom command に permission flag が無ければ補完する" {
+    load_adapter_with "${TEST_TMP}/settings_antigravity_command_without_permission.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
-    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
-    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo" ]]
+    assert_cli_state_isolated "$result" "antigravity" "ashigaru2"
+    [[ "$result" == *"AGENT_ID=ashigaru2 "*agy" --dangerously-skip-permissions" ]]
 }
 
-@test "build_cli_command: gemini 3 pro + thinking_level → per-agent alias を使う" {
-    load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
+@test "build_cli_command: antigravity explicit model → --model を付与" {
+    load_adapter_with "${TEST_TMP}/settings_antigravity_model.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "gunshi")
-    assert_cli_state_isolated "$result" "gemini" "gunshi"
-    [[ "$result" == *"AGENT_ID=gunshi GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo --model mas-gunshi" ]]
+    assert_cli_state_isolated "$result" "antigravity" "gunshi"
+    [[ "$result" == *"AGENT_ID=gunshi "*agy" --dangerously-skip-permissions --model gemini-3-pro-preview" ]]
 }
 
-@test "build_cli_command: gemini 3 flash + thinking_level minimal → per-agent alias を使う" {
-    load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
-    mkdir -p "${TEST_TMP}/home-empty"
-    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru1")
-    assert_cli_state_isolated "$result" "gemini" "ashigaru1"
-    [[ "$result" == *"AGENT_ID=ashigaru1 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo --model mas-ashigaru1" ]]
-}
-
-@test "build_cli_command: gemini 2.5 + thinking_budget → per-agent alias を使う" {
-    load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
-    mkdir -p "${TEST_TMP}/home-empty"
-    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
-    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
-    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo --model mas-ashigaru2" ]]
-}
-
-@test "build_cli_command: gemini auto + thinking_level → inferred alias を使う" {
-    load_adapter_with "${TEST_TMP}/settings_gemini_thinking.yaml"
-    mkdir -p "${TEST_TMP}/home-empty"
-    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru3")
-    assert_cli_state_isolated "$result" "gemini" "ashigaru3"
-    [[ "$result" == *"AGENT_ID=ashigaru3 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo --model mas-ashigaru3" ]]
-}
-
-@test "build_cli_command: shogun gemini は未設定なら alias を使わない" {
-    load_adapter_with "${TEST_TMP}/settings_shogun_gemini_default.yaml"
+@test "build_cli_command: shogun antigravity は未設定なら model を付けない" {
+    load_adapter_with "${TEST_TMP}/settings_shogun_antigravity_default.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
-    assert_cli_state_isolated "$result" "gemini" "shogun"
-    [[ "$result" == *"AGENT_ID=shogun GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo" ]]
+    assert_cli_state_isolated "$result" "antigravity" "shogun"
+    [[ "$result" == *"AGENT_ID=shogun "*agy" --dangerously-skip-permissions" ]]
 }
 
-@test "build_cli_command: gemini に gpt 系 model が入っていても auto に丸める" {
-    cat > "${TEST_TMP}/settings_gemini_invalid_model.yaml" << 'YAML'
+@test "build_cli_command: antigravity に gpt 系 model が入っていても auto に丸める" {
+    cat > "${TEST_TMP}/settings_antigravity_invalid_model.yaml" << 'YAML'
 cli:
-  default: gemini
+  default: antigravity
   agents:
     shogun:
-      type: gemini
+      type: antigravity
       model: gpt-5.4
 YAML
-    load_adapter_with "${TEST_TMP}/settings_gemini_invalid_model.yaml"
+    load_adapter_with "${TEST_TMP}/settings_antigravity_invalid_model.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
-    assert_cli_state_isolated "$result" "gemini" "shogun"
-    [[ "$result" == *"AGENT_ID=shogun GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo" ]]
+    assert_cli_state_isolated "$result" "antigravity" "shogun"
+    [[ "$result" == *"AGENT_ID=shogun "*agy" --dangerously-skip-permissions" ]]
 }
 
 @test "build_cli_command: shogun claude は未設定でも thinking無効を既定適用" {
@@ -872,18 +842,18 @@ YAML
     [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --model opus --dangerously-skip-permissions" ]]
 }
 
-@test "build_cli_command: gemini-cliのみ存在時は gemini-cli を使用" {
-    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+@test "build_cli_command: antigravity executable の agy を使用" {
+    load_adapter_with "${TEST_TMP}/settings_antigravity.yaml"
     mkdir -p "${TEST_TMP}/bin"
-    cat > "${TEST_TMP}/bin/gemini-cli" << 'SH'
+    cat > "${TEST_TMP}/bin/agy" << 'SH'
 #!/usr/bin/env bash
 exit 0
 SH
-    chmod +x "${TEST_TMP}/bin/gemini-cli"
+    chmod +x "${TEST_TMP}/bin/agy"
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "ashigaru2")
-    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
-    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal ${TEST_TMP}/bin/gemini-cli --yolo" ]]
+    assert_cli_state_isolated "$result" "antigravity" "ashigaru2"
+    [[ "$result" == *"AGENT_ID=ashigaru2 ${TEST_TMP}/bin/agy --dangerously-skip-permissions" ]]
 }
 
 @test "build_cli_command: localapi → python3 scripts/localapi_repl.py" {
@@ -958,12 +928,12 @@ SH
 
 @test "build_cli_command_with_type: 任意の役職に任意CLIを割り当てても役職別stateになる" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
-    for cli in claude codex copilot kimi gemini opencode kilo; do
+    for cli in claude codex copilot kimi agy opencode kilo; do
         make_fake_cli "$cli"
     done
 
     local roles=(shogun gunshi karo karo2 ashigaru1 ashigaru9)
-    local clis=(claude codex copilot kimi gemini opencode kilo localapi)
+    local clis=(claude codex copilot kimi antigravity opencode kilo localapi)
     local role
     local cli
     local result
@@ -976,7 +946,7 @@ SH
                 codex)
                     [[ "$result" == *"CODEX_HOME=${PROJECT_ROOT}/.shogunate/codex/agents/${role}"* ]]
                     ;;
-                claude|copilot|kimi|gemini|opencode|kilo)
+                claude|copilot|kimi|antigravity|opencode|kilo)
                     assert_cli_state_isolated "$result" "$cli" "$role"
                     ;;
                 localapi)
@@ -1021,10 +991,10 @@ SH
     [ "$result" = "Codex" ]
 }
 
-@test "get_model_display_name: gemini は旧Claude系デフォルトではなく Gemini を表示する" {
-    load_adapter_with "${TEST_TMP}/settings_shogun_gemini_default.yaml"
+@test "get_model_display_name: antigravity は旧Claude系デフォルトではなく Antigravity を表示する" {
+    load_adapter_with "${TEST_TMP}/settings_shogun_antigravity_default.yaml"
     result=$(get_model_display_name "shogun")
-    [ "$result" = "Gemini" ]
+    [ "$result" = "Antigravity" ]
 }
 
 @test "get_model_display_name: claude で gpt系が混入しても Claude 表示へ丸める" {
@@ -1063,12 +1033,13 @@ SH
     [[ "$result" == *"AGENT_ID=karo "*claude" --model sonnet --dangerously-skip-permissions ready:karo" ]]
 }
 
-@test "build_cli_command_with_startup_prompt: gemini は interactive prompt フラグを付与する" {
-    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+@test "build_cli_command_with_startup_prompt: antigravity は startup prompt を起動引数に畳み込まない" {
+    load_adapter_with "${TEST_TMP}/settings_antigravity.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command_with_startup_prompt "ashigaru2" "gemini" "ready:ashigaru2")
-    assert_cli_state_isolated "$result" "gemini" "ashigaru2"
-    [[ "$result" == *"AGENT_ID=ashigaru2 GEMINI_DEFAULT_AUTH_TYPE=oauth-personal "*gemini" --yolo -i ready:ashigaru2" ]]
+    result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command_with_startup_prompt "ashigaru2" "antigravity" "ready:ashigaru2")
+    assert_cli_state_isolated "$result" "antigravity" "ashigaru2"
+    [[ "$result" == *"AGENT_ID=ashigaru2 "*agy" --dangerously-skip-permissions" ]]
+    [[ "$result" != *"ready:ashigaru2"* ]]
 }
 
 @test "build_cli_command_with_startup_prompt: opencode は --prompt を付与する" {
@@ -1145,10 +1116,10 @@ SH
     [ "$result" = "instructions/generated/kimi-shogun.md" ]
 }
 
-@test "get_instruction_file: ashigaru2 + gemini → instructions/generated/gemini-ashigaru.md" {
-    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+@test "get_instruction_file: ashigaru2 + antigravity → instructions/generated/antigravity-ashigaru.md" {
+    load_adapter_with "${TEST_TMP}/settings_antigravity.yaml"
     result=$(get_instruction_file "ashigaru2")
-    [ "$result" = "instructions/generated/gemini-ashigaru.md" ]
+    [ "$result" = "instructions/generated/antigravity-ashigaru.md" ]
 }
 
 @test "get_instruction_file: ashigaru6 + localapi → instructions/generated/localapi-ashigaru.md" {
@@ -1199,10 +1170,10 @@ SH
     [ "$(get_instruction_file shogun kimi)" = "instructions/generated/kimi-shogun.md" ]
     [ "$(get_instruction_file karo kimi)" = "instructions/generated/kimi-karo.md" ]
     [ "$(get_instruction_file ashigaru7 kimi)" = "instructions/generated/kimi-ashigaru.md" ]
-    # gemini
-    [ "$(get_instruction_file shogun gemini)" = "instructions/generated/gemini-shogun.md" ]
-    [ "$(get_instruction_file karo gemini)" = "instructions/generated/gemini-karo.md" ]
-    [ "$(get_instruction_file ashigaru2 gemini)" = "instructions/generated/gemini-ashigaru.md" ]
+    # antigravity
+    [ "$(get_instruction_file shogun antigravity)" = "instructions/generated/antigravity-shogun.md" ]
+    [ "$(get_instruction_file karo antigravity)" = "instructions/generated/antigravity-karo.md" ]
+    [ "$(get_instruction_file ashigaru2 antigravity)" = "instructions/generated/antigravity-ashigaru.md" ]
     # localapi
     [ "$(get_instruction_file shogun localapi)" = "instructions/generated/localapi-shogun.md" ]
     [ "$(get_instruction_file karo localapi)" = "instructions/generated/localapi-karo.md" ]
@@ -1291,33 +1262,33 @@ SH
     [ "$status" -eq 0 ]
 }
 
-@test "validate_cli_availability: gemini mock (PATH操作)" {
+@test "validate_cli_availability: antigravity mock (PATH操作)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     mkdir -p "${TEST_TMP}/bin"
-    echo '#!/bin/bash' > "${TEST_TMP}/bin/gemini"
-    chmod +x "${TEST_TMP}/bin/gemini"
-    PATH="${TEST_TMP}/bin:$PATH" run validate_cli_availability "gemini"
+    echo '#!/bin/bash' > "${TEST_TMP}/bin/agy"
+    chmod +x "${TEST_TMP}/bin/agy"
+    PATH="${TEST_TMP}/bin:$PATH" run validate_cli_availability "antigravity"
     [ "$status" -eq 0 ]
 }
 
 @test "_cli_adapter_pick_executable: PATH外の ~/.local/bin も検出する" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     mkdir -p "${TEST_TMP}/home/.local/bin"
-    echo '#!/bin/bash' > "${TEST_TMP}/home/.local/bin/gemini"
-    chmod +x "${TEST_TMP}/home/.local/bin/gemini"
-    HOME="${TEST_TMP}/home" PATH="/usr/bin:/bin" run _cli_adapter_pick_executable "gemini" "gemini-cli"
+    echo '#!/bin/bash' > "${TEST_TMP}/home/.local/bin/agy"
+    chmod +x "${TEST_TMP}/home/.local/bin/agy"
+    HOME="${TEST_TMP}/home" PATH="/usr/bin:/bin" run _cli_adapter_pick_executable "agy" "antigravity"
     [ "$status" -eq 0 ]
-    [ "$output" = "${TEST_TMP}/home/.local/bin/gemini" ]
+    [ "$output" = "${TEST_TMP}/home/.local/bin/agy" ]
 }
 
 @test "_cli_adapter_pick_executable: PATH外の ~/.nvm 配下も検出する" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     mkdir -p "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin"
-    echo '#!/bin/bash' > "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/gemini"
-    chmod +x "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/gemini"
-    HOME="${TEST_TMP}/home" PATH="/usr/bin:/bin" run _cli_adapter_pick_executable "gemini" "gemini-cli"
+    echo '#!/bin/bash' > "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/agy"
+    chmod +x "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/agy"
+    HOME="${TEST_TMP}/home" PATH="/usr/bin:/bin" run _cli_adapter_pick_executable "agy" "antigravity"
     [ "$status" -eq 0 ]
-    [ "$output" = "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/gemini" ]
+    [ "$output" = "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/agy" ]
 }
 
 @test "validate_cli_availability: localapi python3あり → 0" {
@@ -1361,12 +1332,12 @@ SH
     [[ "$output" == *"Kimi CLI not found"* ]]
 }
 
-@test "validate_cli_availability: gemini未インストール → 1 + エラーメッセージ" {
+@test "validate_cli_availability: antigravity未インストール → 1 + エラーメッセージ" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     mkdir -p "${TEST_TMP}/home-empty"
-    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" run validate_cli_availability "gemini"
+    HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" run validate_cli_availability "antigravity"
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Gemini CLI not found"* ]]
+    [[ "$output" == *"Antigravity CLI not found"* ]]
 }
 
 @test "validate_cli_availability: opencode未インストール → 1 + エラーメッセージ" {
@@ -1475,22 +1446,22 @@ YAML
     [ "$result" = "auto" ]
 }
 
-@test "get_agent_model: gemini CLI ashigaru2 → auto (YAML指定)" {
-    load_adapter_with "${TEST_TMP}/settings_gemini.yaml"
+@test "get_agent_model: antigravity CLI ashigaru2 → auto (YAML指定)" {
+    load_adapter_with "${TEST_TMP}/settings_antigravity.yaml"
     result=$(get_agent_model "ashigaru2")
     [ "$result" = "auto" ]
 }
 
-@test "get_agent_model: gemini CLI に gpt 系 model が入っていても auto に丸める" {
-    cat > "${TEST_TMP}/settings_gemini_invalid_model2.yaml" << 'YAML'
+@test "get_agent_model: antigravity CLI に gpt 系 model が入っていても auto に丸める" {
+    cat > "${TEST_TMP}/settings_antigravity_invalid_model2.yaml" << 'YAML'
 cli:
-  default: gemini
+  default: antigravity
   agents:
     shogun:
-      type: gemini
+      type: antigravity
       model: gpt-5.4
 YAML
-    load_adapter_with "${TEST_TMP}/settings_gemini_invalid_model2.yaml"
+    load_adapter_with "${TEST_TMP}/settings_antigravity_invalid_model2.yaml"
     result=$(get_agent_model "shogun")
     [ "$result" = "auto" ]
 }

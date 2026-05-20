@@ -31,7 +31,8 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
     AGENT_ID="$1"
     PANE_TARGET="$2"
-    CLI_TYPE="${3:-claude}"  # CLI種別（claude/codex/copilot/kimi/gemini/opencode/kilo/localapi）
+    CLI_TYPE="${3:-claude}"  # CLI種別（claude/codex/copilot/kimi/antigravity/opencode/kilo/localapi）
+    [ "$CLI_TYPE" = "gemini" ] && CLI_TYPE="antigravity"
     MUX_TYPE="tmux"
 
     INBOX="$SCRIPT_DIR/queue/inbox/${AGENT_ID}.yaml"
@@ -156,7 +157,7 @@ disable_normal_nudge() {
 
 is_valid_cli_type() {
     case "${1:-}" in
-        claude|codex|copilot|kimi|gemini|opencode|kilo|localapi) return 0 ;;
+        claude|codex|copilot|kimi|antigravity|opencode|kilo|localapi) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -676,13 +677,13 @@ bootstrap_ready_pattern() {
     case "${1:-}" in
         claude) printf '%s\n' '(claude code|Claude Code|╰|/model|for shortcuts)' ;;
         codex) printf '%s\n' '(openai codex|context left|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left)' ;;
-        gemini) printf '%s\n' '(gemini|Gemini|type your message|Tips to get|yolo mode|Working|esc to interrupt|Initializing the Agent)' ;;
+        antigravity) printf '%s\n' '(agy|antigravity|Antigravity|type your message|Working|esc to interrupt|Initializing the Agent)' ;;
         copilot) printf '%s\n' '(copilot|GitHub Copilot|/model)' ;;
         kimi) printf '%s\n' '(kimi|moonshot|/model)' ;;
         localapi) printf '%s\n' '(localapi|LocalAPI|ready:|\\$)' ;;
         opencode) printf '%s\n' '(opencode|OpenCode|/model|ready:)' ;;
         kilo) printf '%s\n' '(kilo|Kilo|/model|ready:)' ;;
-        *) printf '%s\n' '(claude|codex|gemini|copilot|kimi|localapi|opencode|kilo|ready:)' ;;
+        *) printf '%s\n' '(claude|codex|antigravity|agy|copilot|kimi|localapi|opencode|kilo|ready:)' ;;
     esac
 }
 
@@ -1240,7 +1241,7 @@ send_startup_prompt() {
 # ─── Send CLI command via pty direct write ───
 # For /clear and /model only. These are CLI commands, not conversation messages.
 # CLI_TYPE別分岐: claude→そのまま, codex→/clear対応・/modelスキップ,
-#                  copilot/gemini/opencode/kilo/localapi→Ctrl-C+再起動・CLI依存処理
+#                  copilot/antigravity/opencode/kilo/localapi→Ctrl-C+再起動・CLI依存処理
 # 実行時にtmux paneの @agent_cli を再確認し、ドリフト時はpane値を優先する。
 send_cli_command() {
     local cmd="$1"
@@ -1296,19 +1297,19 @@ send_cli_command() {
                 return 0
             fi
             ;;
-        gemini)
+        antigravity)
             if [[ "$cmd" == "/clear" ]]; then
-                echo "[$(date)] [SEND-KEYS] Gemini /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
+                echo "[$(date)] [SEND-KEYS] Antigravity /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 1
-                if ! send_text_and_enter "${GEMINI_RESTART_CMD:-gemini --yolo}" "Gemini restart"; then
+                if ! send_text_and_enter "${ANTIGRAVITY_RESTART_CMD:-agy --dangerously-skip-permissions}" "Antigravity restart"; then
                     return 1
                 fi
                 sleep 2
                 return 0
             fi
             if [[ "$cmd" == /model* ]]; then
-                echo "[$(date)] Skipping $cmd (model switch may be unsupported on gemini CLI)" >&2
+                echo "[$(date)] Skipping $cmd (model switch should be done in Antigravity /model UI)" >&2
                 return 0
             fi
             ;;
@@ -1395,7 +1396,7 @@ send_cli_command() {
 # Check if the agent has an active native watcher on its inbox.
 # If yes, the agent will self-wake — no nudge needed.
 agent_has_self_watch() {
-    # Codex/Gemini/LocalAPI/Copilot/Kimiは自己watchを持たない想定。
+    # Codex/Antigravity/LocalAPI/Copilot/Kimiは自己watchを持たない想定。
     # 自己watch判定はClaudeのみ有効化し、watcher自身のPGIDは除外する。
     local effective_cli
     effective_cli=$(get_effective_cli_type)

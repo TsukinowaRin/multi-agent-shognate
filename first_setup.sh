@@ -180,7 +180,7 @@ RESULTS+=("tmux マウス設定: OK")
 log_step "STEP 3.5: 本フォークの方針"
 
 log_info "このフォークは upstream の tmux 本線を基準にしています"
-log_info "独自差分は Gemini / OpenCode / Kilo / localapi / local provider 対応です"
+log_info "独自差分は Antigravity / OpenCode / Kilo / localapi / local provider 対応です"
 log_info "旧 zellij 実装と旧 goza 資産は Waste/ に退避済みです"
 RESULTS+=("strategy: upstream tmux base + cli extensions")
 
@@ -493,7 +493,7 @@ if [ "$NEED_CLAUDE_INSTALL" = true ]; then
 fi
 
 # ============================================================
-# STEP 5.5: 追加CLIチェック（Codex / Gemini / OpenCode / Kilo）
+# STEP 5.5: 追加CLIチェック（Codex / Antigravity / OpenCode / Kilo）
 # ============================================================
 log_step "STEP 5.5: 追加CLIチェック"
 
@@ -507,15 +507,15 @@ else
     RESULTS+=("Codex CLI: optional (not installed)")
 fi
 
-if command -v gemini &> /dev/null || command -v gemini-cli &> /dev/null; then
-    GEMINI_BIN="$(command -v gemini 2>/dev/null || command -v gemini-cli 2>/dev/null)"
-    GEMINI_VERSION="$("$GEMINI_BIN" --version 2>/dev/null || echo "unknown")"
-    log_success "Gemini CLI がインストール済みです ($GEMINI_VERSION)"
-    RESULTS+=("Gemini CLI: OK ($GEMINI_VERSION)")
+if command -v agy &> /dev/null || command -v antigravity &> /dev/null; then
+    ANTIGRAVITY_BIN="$(command -v agy 2>/dev/null || command -v antigravity 2>/dev/null)"
+    ANTIGRAVITY_VERSION="$("$ANTIGRAVITY_BIN" --version 2>/dev/null || echo "unknown")"
+    log_success "Antigravity CLI がインストール済みです ($ANTIGRAVITY_VERSION)"
+    RESULTS+=("Antigravity CLI: OK ($ANTIGRAVITY_VERSION)")
 else
-    log_info "Gemini CLI は未インストールです（Gemini運用時のみ導入）"
-    log_info "  Gemini CLI を導入し、'gemini' または 'gemini-cli' を PATH に通してください"
-    RESULTS+=("Gemini CLI: optional (not installed)")
+    log_info "Antigravity CLI は未インストールです（Antigravity運用時のみ導入）"
+    log_info "  Antigravity CLI を導入し、'agy' を PATH に通してください"
+    RESULTS+=("Antigravity CLI: optional (not installed)")
 fi
 
 if command -v opencode &> /dev/null; then
@@ -674,7 +674,7 @@ cli:
     ashigaru2:
       type: codex
   commands:
-    gemini: "gemini --yolo"
+    antigravity: "agy --dangerously-skip-permissions"
     localapi: "python3 scripts/localapi_repl.py"
 EOF
     log_success "settings.yaml を作成しました"

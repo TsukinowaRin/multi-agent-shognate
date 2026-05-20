@@ -211,12 +211,12 @@ YAML
     [ "$status" -eq 0 ]  # 0 = busy (from pane detection)
 }
 
-@test "T-005b: agent_is_busy detects Gemini Processing marker" {
+@test "T-005b: agent_is_busy detects Antigravity Processing marker" {
     run bash -c "
         MOCK_CAPTURE_PANE='Processing Initial Instructions'
         source '$WATCHER_HARNESS'
         LAST_CLEAR_TS=0
-        CLI_TYPE='gemini'
+        CLI_TYPE='antigravity'
         agent_is_busy
     "
     [ "$status" -eq 0 ]

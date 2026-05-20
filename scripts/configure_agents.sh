@@ -3,7 +3,7 @@
 # - topology.active_ashigaru
 # - cli.default / cli.agents
 # - multiplexer.default
-# - gunshi / Codex reasoning / Gemini thinking
+# - gunshi / Codex reasoning / Antigravity settings
 
 set -euo pipefail
 
@@ -225,7 +225,7 @@ prompt_model() {
 default_model_for_cli() {
   local cli="$1"
   case "$cli" in
-    gemini) echo "auto" ;;
+    antigravity) echo "auto" ;;
     kimi) echo "auto" ;;
     localapi) echo "auto" ;;
     opencode|kilo) echo "auto" ;;
@@ -237,55 +237,10 @@ default_reasoning_for_role() {
   echo "auto"
 }
 
-default_gemini_level_for_role() {
-  echo "auto"
-}
-
-default_gemini_budget_for_role() {
-  echo ""
-}
-
 prompt_codex_reasoning() {
   local role="$1"
   local default_effort="${2:-auto}"
   prompt_choice "${role} の Codex reasoning_effort を選択" "${default_effort:-auto}" "auto" "none" "low" "medium" "high"
-}
-
-prompt_gemini_thinking_level() {
-  local role="$1"
-  local model="$2"
-  local default_level="${3:-auto}"
-  local normalized_model
-  normalized_model="$(printf '%s' "$model" | tr '[:upper:]' '[:lower:]')"
-  if [[ "$normalized_model" == gemini-2.5* ]]; then
-    echo ""
-    return 0
-  fi
-  if [[ "$normalized_model" == gemini-3-flash* ]]; then
-    prompt_choice "${role} の Gemini thinking_level を選択" "${default_level:-auto}" "auto" "minimal" "low" "medium" "high"
-    return 0
-  fi
-  prompt_choice "${role} の Gemini thinking_level を選択" "${default_level:-auto}" "auto" "low" "high" "minimal" "medium"
-}
-
-prompt_gemini_thinking_budget() {
-  local role="$1"
-  local model="$2"
-  local default_budget="${3:-}"
-  local normalized_model
-  normalized_model="$(printf '%s' "$model" | tr '[:upper:]' '[:lower:]')"
-  if [[ "$normalized_model" != gemini-2.5* ]]; then
-    echo ""
-    return 0
-  fi
-  local input
-  echo "" >&2
-  echo "${role} の Gemini thinking_budget を入力してください（空なら自動 / -1=dynamic / 0=思考最小 / 正数=明示予算）" >&2
-  if [[ -n "$default_budget" ]]; then
-    echo "  default: ${default_budget}" >&2
-  fi
-  read -r -p "> " input >&2
-  echo "${input:-$default_budget}"
 }
 
 default_opencode_like_base_url() {
@@ -356,30 +311,26 @@ emit_opencode_like_yaml() {
 capture_agent_config() {
   local role="$1"
   local cli_fallback="$2"
-  local type model reasoning level budget
+  local type current_type model reasoning
 
-  type="$(prompt_choice "${role} の CLI を選択" "$(read_current_agent_field "$role" "type" "$cli_fallback")" "codex" "gemini" "claude" "localapi" "opencode" "kilo" "kimi" "copilot")"
+  current_type="$(read_current_agent_field "$role" "type" "$cli_fallback")"
+  if [[ "$current_type" == "gemini" ]]; then
+    current_type="antigravity"
+  fi
+  type="$(prompt_choice "${role} の CLI を選択" "$current_type" "codex" "antigravity" "claude" "localapi" "opencode" "kilo" "kimi" "copilot")"
   model="$(prompt_model "$role" "$type" "$(read_current_agent_field "$role" "model" "$(default_model_for_cli "$type")")")"
   reasoning=""
-  level=""
-  budget=""
 
   case "$type" in
     codex)
       reasoning="$(prompt_codex_reasoning "$role" "$(read_current_agent_field "$role" "reasoning_effort" "$(default_reasoning_for_role "$role")")")"
       ;;
-    gemini)
-      level="$(prompt_gemini_thinking_level "$role" "$model" "$(read_current_agent_field "$role" "thinking_level" "$(default_gemini_level_for_role "$role" "$model")")")"
-      budget="$(prompt_gemini_thinking_budget "$role" "$model" "$(read_current_agent_field "$role" "thinking_budget" "$(default_gemini_budget_for_role "$role" "$model")")")"
-      ;;
   esac
 
-  printf '%s%s%s%s%s%s%s%s%s\n' \
+  printf '%s%s%s%s%s\n' \
     "$type" "$CONFIG_CAPTURE_DELIM" \
     "$model" "$CONFIG_CAPTURE_DELIM" \
-    "$reasoning" "$CONFIG_CAPTURE_DELIM" \
-    "$level" "$CONFIG_CAPTURE_DELIM" \
-    "$budget"
+    "$reasoning"
 }
 
 emit_agent_yaml() {
@@ -387,8 +338,6 @@ emit_agent_yaml() {
   local type="$2"
   local model="$3"
   local reasoning="$4"
-  local level="$5"
-  local budget="$6"
 
   echo "    ${role}:"
   echo "      type: ${type}"
@@ -397,12 +346,6 @@ emit_agent_yaml() {
   fi
   if [[ -n "$reasoning" && "$reasoning" != "auto" ]]; then
     echo "      reasoning_effort: ${reasoning}"
-  fi
-  if [[ -n "$level" && "$level" != "auto" ]]; then
-    echo "      thinking_level: ${level}"
-  fi
-  if [[ -n "$budget" ]]; then
-    echo "      thinking_budget: ${budget}"
   fi
 }
 
@@ -423,7 +366,10 @@ echo "=== Multi Agents Shogunate 設定 CUI ===" >&2
 echo "設定ファイル: $SETTINGS_PATH" >&2
 
 mux="$(prompt_choice "multiplexer.default を選択（tmux専用）" "tmux" "tmux")"
-cli_default="$(prompt_choice "cli.default を選択" "$default_cli" "codex" "gemini" "claude" "localapi" "opencode" "kilo" "kimi" "copilot")"
+if [[ "$default_cli" == "gemini" ]]; then
+  default_cli="antigravity"
+fi
+cli_default="$(prompt_choice "cli.default を選択" "$default_cli" "codex" "antigravity" "claude" "localapi" "opencode" "kilo" "kimi" "copilot")"
 
 echo "" >&2
 read -r -p "足軽人数を入力 (1以上) [default: $default_count]: " count_input
@@ -433,14 +379,14 @@ if ! [[ "$ashigaru_count" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-IFS="$CONFIG_CAPTURE_DELIM" read -r SHOGUN_CLI SHOGUN_MODEL SHOGUN_REASONING SHOGUN_GEMINI_LEVEL SHOGUN_GEMINI_BUDGET <<< "$(capture_agent_config "shogun" "$cli_default")"
-IFS="$CONFIG_CAPTURE_DELIM" read -r GUNSHI_CLI GUNSHI_MODEL GUNSHI_REASONING GUNSHI_GEMINI_LEVEL GUNSHI_GEMINI_BUDGET <<< "$(capture_agent_config "gunshi" "$cli_default")"
-IFS="$CONFIG_CAPTURE_DELIM" read -r KARO_CLI KARO_MODEL KARO_REASONING KARO_GEMINI_LEVEL KARO_GEMINI_BUDGET <<< "$(capture_agent_config "karo" "$cli_default")"
+IFS="$CONFIG_CAPTURE_DELIM" read -r SHOGUN_CLI SHOGUN_MODEL SHOGUN_REASONING <<< "$(capture_agent_config "shogun" "$cli_default")"
+IFS="$CONFIG_CAPTURE_DELIM" read -r GUNSHI_CLI GUNSHI_MODEL GUNSHI_REASONING <<< "$(capture_agent_config "gunshi" "$cli_default")"
+IFS="$CONFIG_CAPTURE_DELIM" read -r KARO_CLI KARO_MODEL KARO_REASONING <<< "$(capture_agent_config "karo" "$cli_default")"
 
-declare -a ASHI_CLI ASHI_MODEL ASHI_REASONING ASHI_GEMINI_LEVEL ASHI_GEMINI_BUDGET
+declare -a ASHI_CLI ASHI_MODEL ASHI_REASONING
 for ((i=1; i<=ashigaru_count; i++)); do
   role="ashigaru${i}"
-  IFS="$CONFIG_CAPTURE_DELIM" read -r ASHI_CLI[$i] ASHI_MODEL[$i] ASHI_REASONING[$i] ASHI_GEMINI_LEVEL[$i] ASHI_GEMINI_BUDGET[$i] <<< "$(capture_agent_config "$role" "$cli_default")"
+  IFS="$CONFIG_CAPTURE_DELIM" read -r ASHI_CLI[$i] ASHI_MODEL[$i] ASHI_REASONING[$i] <<< "$(capture_agent_config "$role" "$cli_default")"
 done
 
 USES_OPENCODE_LIKE=false
@@ -506,14 +452,14 @@ fi
   echo "cli:"
   echo "  default: $cli_default"
   echo "  agents:"
-  emit_agent_yaml "shogun" "$SHOGUN_CLI" "$SHOGUN_MODEL" "$SHOGUN_REASONING" "$SHOGUN_GEMINI_LEVEL" "$SHOGUN_GEMINI_BUDGET"
-  emit_agent_yaml "gunshi" "$GUNSHI_CLI" "$GUNSHI_MODEL" "$GUNSHI_REASONING" "$GUNSHI_GEMINI_LEVEL" "$GUNSHI_GEMINI_BUDGET"
-  emit_agent_yaml "karo" "$KARO_CLI" "$KARO_MODEL" "$KARO_REASONING" "$KARO_GEMINI_LEVEL" "$KARO_GEMINI_BUDGET"
+  emit_agent_yaml "shogun" "$SHOGUN_CLI" "$SHOGUN_MODEL" "$SHOGUN_REASONING"
+  emit_agent_yaml "gunshi" "$GUNSHI_CLI" "$GUNSHI_MODEL" "$GUNSHI_REASONING"
+  emit_agent_yaml "karo" "$KARO_CLI" "$KARO_MODEL" "$KARO_REASONING"
   for ((i=1; i<=ashigaru_count; i++)); do
-    emit_agent_yaml "ashigaru${i}" "${ASHI_CLI[$i]}" "${ASHI_MODEL[$i]}" "${ASHI_REASONING[$i]}" "${ASHI_GEMINI_LEVEL[$i]}" "${ASHI_GEMINI_BUDGET[$i]}"
+    emit_agent_yaml "ashigaru${i}" "${ASHI_CLI[$i]}" "${ASHI_MODEL[$i]}" "${ASHI_REASONING[$i]}"
   done
   echo "  commands:"
-  echo "    gemini: \"gemini --yolo\""
+  echo "    antigravity: \"agy --dangerously-skip-permissions\""
   echo "    localapi: \"python3 scripts/localapi_repl.py\""
   echo "    opencode: \"opencode\""
   echo "    kilo: \"kilo\""

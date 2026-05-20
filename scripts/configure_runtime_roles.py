@@ -18,9 +18,10 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SETTINGS = ROOT / "config/settings.yaml"
-ALLOWED_CLIS = ("codex", "gemini", "claude", "opencode", "kilo", "localapi", "kimi", "copilot")
+ALLOWED_CLIS = ("codex", "antigravity", "claude", "opencode", "kilo", "localapi", "kimi", "copilot")
+LEGACY_CLI_ALIASES = {"gemini": "antigravity"}
 CORE_ROLES = ("shogun", "karo", "gunshi")
-MODEL_PREF_KEYS = ("model", "reasoning_effort", "thinking_level", "thinking_budget")
+MODEL_PREF_KEYS = ("model", "reasoning_effort")
 ASHIGARU_RE = re.compile(r"^ashigaru([1-9][0-9]*)$")
 
 
@@ -40,6 +41,7 @@ def save_yaml(path: Path, data: dict[str, Any]) -> None:
 
 def normalize_cli(value: str, *, field: str) -> str:
     normalized = (value or "").strip().lower()
+    normalized = LEGACY_CLI_ALIASES.get(normalized, normalized)
     if normalized not in ALLOWED_CLIS:
         allowed = ", ".join(ALLOWED_CLIS)
         raise SystemExit(f"{field}: unsupported CLI '{value}'. Allowed: {allowed}")
@@ -58,11 +60,15 @@ def current_cli(cfg: dict[str, Any], role: str, fallback: str) -> str:
     agent_cfg = agents.get(role) if isinstance(agents, dict) else None
     if isinstance(agent_cfg, dict):
         value = str(agent_cfg.get("type") or "").strip().lower()
+        value = LEGACY_CLI_ALIASES.get(value, value)
         if value in ALLOWED_CLIS:
             return value
-    if isinstance(agent_cfg, str) and agent_cfg.strip().lower() in ALLOWED_CLIS:
-        return agent_cfg.strip().lower()
+    if isinstance(agent_cfg, str):
+        value = LEGACY_CLI_ALIASES.get(agent_cfg.strip().lower(), agent_cfg.strip().lower())
+        if value in ALLOWED_CLIS:
+            return value
     default_cli = str(cli.get("default") or "").strip().lower() if isinstance(cli, dict) else ""
+    default_cli = LEGACY_CLI_ALIASES.get(default_cli, default_cli)
     if default_cli in ALLOWED_CLIS:
         return default_cli
     return fallback

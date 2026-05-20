@@ -31,9 +31,8 @@ cli:
       model: gpt-5.5
       reasoning_effort: high
     ashigaru1:
-      type: gemini
+      type: antigravity
       model: gemini-3.1-pro-preview
-      thinking_level: low
     ashigaru2:
       type: codex
       model: gpt-5.5
@@ -41,7 +40,7 @@ cli:
       type: opencode
       model: stale/model
   commands:
-    gemini: "gemini --yolo"
+    antigravity: "agy --dangerously-skip-permissions"
     opencode: "opencode"
 YAML
 }
@@ -51,7 +50,7 @@ teardown() {
 }
 
 @test "configure_runtime_roles: CLI種別と足軽数だけを保存し model prefs を削除する" {
-  run bash -lc "cd '$TEST_TMP' && python3 scripts/configure_runtime_roles.py --ashigaru-count 3 --shogun gemini --karo codex --gunshi codex --ashigaru1 codex --ashigaru2 opencode --ashigaru3 opencode"
+  run bash -lc "cd '$TEST_TMP' && python3 scripts/configure_runtime_roles.py --ashigaru-count 3 --shogun antigravity --karo codex --gunshi codex --ashigaru1 codex --ashigaru2 opencode --ashigaru3 opencode"
   [ "$status" -eq 0 ]
 
   run python3 - "$TEST_TMP/config/settings.yaml" <<'PY'
@@ -62,7 +61,7 @@ assert cfg["cli"]["default"] == "codex"
 assert cfg["topology"]["active_ashigaru"] == ["ashigaru1", "ashigaru2", "ashigaru3"]
 assert cfg["topology"]["karo"] == {"mode": "auto", "max_ashigaru_per_karo": 6}
 agents = cfg["cli"]["agents"]
-assert agents["shogun"] == {"type": "gemini"}
+assert agents["shogun"] == {"type": "antigravity"}
 assert agents["gunshi"] == {"type": "codex"}
 assert agents["karo"] == {"type": "codex"}
 assert agents["ashigaru1"] == {"type": "codex"}
@@ -78,7 +77,7 @@ PY
 @test "configure_runtime_roles: 対話入力でも model 入力なしで保存する" {
   run bash -lc "cd '$TEST_TMP' && printf '%s\n' \
     'codex' \
-    'gemini' \
+    'antigravity' \
     'opencode' \
     'kilo' \
     '2' \
@@ -94,7 +93,7 @@ with open(sys.argv[1], encoding='utf-8') as fh:
 assert cfg["cli"]["default"] == "codex"
 assert cfg["topology"]["active_ashigaru"] == ["ashigaru1", "ashigaru2"]
 agents = cfg["cli"]["agents"]
-assert agents["shogun"] == {"type": "gemini"}
+assert agents["shogun"] == {"type": "antigravity"}
 assert agents["karo"] == {"type": "opencode"}
 assert agents["gunshi"] == {"type": "kilo"}
 assert agents["ashigaru1"] == {"type": "claude"}
@@ -107,7 +106,7 @@ PY
 @test "configure_runtime_roles: 対話プロンプトは core roles の後に足軽人数を聞く" {
   run bash -lc "cd '$TEST_TMP' && printf '%s\n' \
     'codex' \
-    'gemini' \
+    'antigravity' \
     'opencode' \
     'kilo' \
     '1' \
@@ -133,7 +132,7 @@ PY
 }
 
 @test "configure_runtime_roles: --preserve-model-prefs では既存詳細設定を残す" {
-  run bash -lc "cd '$TEST_TMP' && python3 scripts/configure_runtime_roles.py --preserve-model-prefs --ashigaru-count 1 --shogun codex --gunshi codex --karo codex --ashigaru1 gemini"
+  run bash -lc "cd '$TEST_TMP' && python3 scripts/configure_runtime_roles.py --preserve-model-prefs --ashigaru-count 1 --shogun codex --gunshi codex --karo codex --ashigaru1 antigravity"
   [ "$status" -eq 0 ]
 
   run python3 - "$TEST_TMP/config/settings.yaml" <<'PY'
@@ -143,9 +142,9 @@ with open(sys.argv[1], encoding='utf-8') as fh:
 agents = cfg["cli"]["agents"]
 assert agents["shogun"]["type"] == "codex"
 assert agents["shogun"]["model"] == "gpt-5.5"
-assert agents["ashigaru1"]["type"] == "gemini"
+assert agents["ashigaru1"]["type"] == "antigravity"
 assert agents["ashigaru1"]["model"] == "gemini-3.1-pro-preview"
-assert agents["ashigaru1"]["thinking_level"] == "low"
+assert "thinking_level" not in agents["ashigaru1"]
 print("ok")
 PY
   [ "$status" -eq 0 ]

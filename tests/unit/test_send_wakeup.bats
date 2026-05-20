@@ -1669,18 +1669,18 @@ PY
     echo "$output" | grep -q "not supported on copilot"
 }
 
-# --- T-GEMINI-001: gemini /clear → Ctrl-C + restart ---
+# --- T-ANTIGRAVITY-001: antigravity /clear → Ctrl-C + restart ---
 
-@test "T-GEMINI-001: send_cli_command sends Ctrl-C + gemini restart for gemini /clear" {
+@test "T-ANTIGRAVITY-001: send_cli_command sends Ctrl-C + agy restart for antigravity /clear" {
     run bash -c '
         source "'"$TEST_HARNESS"'"
-        CLI_TYPE="gemini"
+        CLI_TYPE="antigravity"
         send_cli_command "/clear"
     '
     [ "$status" -eq 0 ]
 
     grep -q "send-keys.*C-c" "$MOCK_LOG"
-    grep -q "send-keys.*gemini --yolo" "$MOCK_LOG"
+    grep -q "send-keys.*agy --dangerously-skip-permissions" "$MOCK_LOG"
     ! grep -q "send-keys.*/clear" "$MOCK_LOG"
 }
 

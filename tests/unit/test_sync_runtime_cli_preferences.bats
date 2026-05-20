@@ -8,10 +8,10 @@ setup() {
 
   cat > "$TEST_TMP/settings.yaml" <<'YAML'
 cli:
-  default: gemini
+  default: antigravity
   agents:
     shogun:
-      type: gemini
+      type: antigravity
       model: auto
     karo:
       type: codex
@@ -21,11 +21,6 @@ topology:
   active_ashigaru:
     - ashigaru1
 YAML
-
-  cat > "$TEST_TMP/gemini_aliases.tsv" <<'TSV'
-agent_id	alias	base_model	thinking_level	thinking_budget	warnings
-shogun	mas-shogun	gemini-3-pro-preview	HIGH		
-TSV
 
   cat > "$TEST_TMP/tmux" <<'SH'
 #!/usr/bin/env bash
@@ -44,7 +39,7 @@ case "$cmd" in
     target="$3"
     option="${5:-}"
     case "$target:$option" in
-      shogun:main:@agent_cli) printf 'gemini\n' ;;
+      shogun:main:@agent_cli) printf 'antigravity\n' ;;
       multiagent:agents.0:@agent_id) printf 'karo\n' ;;
       multiagent:agents.0:@agent_cli) printf 'codex\n' ;;
     esac
@@ -58,7 +53,7 @@ case "$cmd" in
       shogun:main)
         cat <<'OUT'
 YOLO ctrl+y
-/model mas-shogun
+/model gemini-3-pro-preview
 OUT
         ;;
       multiagent:agents.0)
@@ -77,7 +72,6 @@ SH
 
   export MAS_SETTINGS_PATH="$TEST_TMP/settings.yaml"
   export MAS_RUNTIME_PREFS_SUMMARY_PATH="$TEST_TMP/runtime_cli_prefs.tsv"
-  export MAS_GEMINI_SUMMARY_PATH="$TEST_TMP/gemini_aliases.tsv"
   export TMUX_BIN="$TEST_TMP/tmux"
 }
 
@@ -85,7 +79,7 @@ teardown() {
   rm -rf "$TEST_TMP"
 }
 
-@test "sync_runtime_cli_preferences: codex と gemini alias を settings へ同期する" {
+@test "sync_runtime_cli_preferences: codex と antigravity model を settings へ同期する" {
   run python3 "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
   [ "$status" -eq 0 ]
 
@@ -96,14 +90,14 @@ with open(sys.argv[1], encoding='utf-8') as fh:
 shogun = cfg['cli']['agents']['shogun']
 karo = cfg['cli']['agents']['karo']
 assert shogun['model'] == 'gemini-3-pro-preview'
-assert shogun['thinking_level'] == 'high'
+assert 'thinking_level' not in shogun
 assert karo['model'] == 'gpt-5.4'
 assert karo['reasoning_effort'] == 'high'
 print('ok')
 PY
   [ "$status" -eq 0 ]
 
-  run bats_search "shogun\tgemini\tmas-shogun|karo\tcodex\tgpt-5.4\thigh" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  run bats_search "shogun\tantigravity\tgemini-3-pro-preview|karo\tcodex\tgpt-5.4\thigh" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 
@@ -213,10 +207,10 @@ PY
 @test "sync_runtime_cli_preferences: type は live pane から自動上書きしない" {
   cat > "$TEST_TMP/settings.yaml" <<'YAML'
 cli:
-  default: gemini
+  default: antigravity
   agents:
     shogun:
-      type: gemini
+      type: antigravity
       model: auto
 YAML
   cat > "$TEST_TMP/tmux" <<'SH'
@@ -250,13 +244,13 @@ SH
 import sys, yaml
 with open(sys.argv[1], encoding='utf-8') as fh:
     cfg = yaml.safe_load(fh) or {}
-assert cfg['cli']['agents']['shogun']['type'] == 'gemini'
+assert cfg['cli']['agents']['shogun']['type'] == 'antigravity'
 assert cfg['cli']['agents']['shogun']['model'] == 'auto'
 print('ok')
 PY
   [ "$status" -eq 0 ]
 
-  run bats_search "configured-type=gemini, running-cli=claude" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  run bats_search "configured-type=antigravity, running-cli=claude" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 
@@ -328,17 +322,17 @@ print('ok')
 PY
   [ "$status" -eq 0 ]
 
-  run bats_search "ashigaru8\tcodex\t\t\t\t\tnot-configured-skip" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  run bats_search "ashigaru8\tcodex\t\t\tnot-configured-skip" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 
-@test "sync_runtime_cli_preferences: gemini に不正な gpt 系 model が入っていても auto に矯正する" {
+@test "sync_runtime_cli_preferences: antigravity に不正な gpt 系 model が入っていても auto に矯正する" {
   cat > "$TEST_TMP/settings.yaml" <<'YAML'
 cli:
-  default: gemini
+  default: antigravity
   agents:
     shogun:
-      type: gemini
+      type: antigravity
       model: gpt-5.4
 YAML
   cat > "$TEST_TMP/tmux" <<'SH'
@@ -354,13 +348,13 @@ case "$cmd" in
     target="$3"
     option="${5:-}"
     case "$target:$option" in
-      shogun:main:@agent_cli) printf 'gemini\n' ;;
+      shogun:main:@agent_cli) printf 'antigravity\n' ;;
     esac
     ;;
   capture-pane)
     cat <<'OUT'
 YOLO ctrl+y
-/model Auto (Gemini 3)
+/model Auto (Antigravity)
 OUT
     ;;
   *)
@@ -377,13 +371,13 @@ SH
 import sys, yaml
 with open(sys.argv[1], encoding='utf-8') as fh:
     cfg = yaml.safe_load(fh) or {}
-assert cfg['cli']['agents']['shogun']['type'] == 'gemini'
+assert cfg['cli']['agents']['shogun']['type'] == 'antigravity'
 assert cfg['cli']['agents']['shogun']['model'] == 'auto'
 print('ok')
 PY
   [ "$status" -eq 0 ]
 
-  run bats_search "invalid-gemini-model-reset=gpt-5.4" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
+  run bats_search "invalid-antigravity-model-reset=gpt-5.4" "$MAS_RUNTIME_PREFS_SUMMARY_PATH"
   [ "$status" -eq 0 ]
 }
 

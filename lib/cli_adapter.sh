@@ -3,7 +3,7 @@
 # Multi-CLI統合設計書 (reports/design_multi_cli_support.md) §2.2 準拠
 #
 # 提供関数:
-#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "gemini" | "localapi" | "opencode" | "kilo"
+#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "antigravity" | "localapi" | "opencode" | "kilo"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
 #   build_cli_command_with_type(agent_id, cli_type) → 指定CLIでの完全なコマンド文字列
 #   build_cli_command_with_startup_prompt(agent_id, cli_type, prompt) → 初回プロンプト付き完全コマンド
@@ -27,7 +27,7 @@ if [[ -z "$CLI_ADAPTER_PYTHON" || ! -x "$CLI_ADAPTER_PYTHON" ]]; then
 fi
 
 # 許可されたCLI種別
-CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi gemini localapi opencode kilo"
+CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi antigravity localapi opencode kilo"
 
 # --- 内部ヘルパー ---
 
@@ -224,6 +224,15 @@ _cli_adapter_normalize_lower() {
     printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]'
 }
 
+_cli_adapter_normalize_cli_type() {
+    local cli_type
+    cli_type="$(_cli_adapter_normalize_lower "${1:-}")"
+    case "$cli_type" in
+        gemini) echo "antigravity" ;;
+        *) echo "$cli_type" ;;
+    esac
+}
+
 _cli_adapter_shell_quote() {
     printf '%q' "${1:-}"
 }
@@ -362,81 +371,23 @@ _cli_adapter_seed_host_file_cmd() {
         "$(_cli_adapter_shell_quote "$dst")"
 }
 
-_cli_adapter_gemini_auth_type() {
-    local auth_type
-    auth_type="$(_cli_adapter_read_yaml "cli.gemini.auth_type" "oauth-personal")"
-    case "$auth_type" in
-        ""|auto|none)
-            return 0
-            ;;
-        oauth-personal|gemini-api-key|vertex-ai|cloud-shell|compute-default-credentials)
-            printf '%s' "$auth_type"
-            ;;
-        *)
-            printf 'oauth-personal'
-            ;;
-    esac
-}
-
-_cli_adapter_gemini_auth_settings_cmd() {
-    local state_home="$1"
-    local auth_type
-    local dst
-    local dst_dir
-    local script
-
-    auth_type="$(_cli_adapter_gemini_auth_type)"
-    [[ -n "$auth_type" ]] || return 0
-
-    dst="${state_home}/.gemini/settings.json"
-    dst_dir="$(dirname "$dst")"
-    script='import json, os, sys
-path, auth_type = sys.argv[1], sys.argv[2]
-data = {}
-if os.path.exists(path):
-    try:
-        with open(path, encoding="utf-8") as f:
-            loaded = json.load(f)
-        if isinstance(loaded, dict):
-            data = loaded
-    except Exception:
-        data = {}
-security = data.setdefault("security", {})
-if not isinstance(security, dict):
-    security = {}
-    data["security"] = security
-auth = security.setdefault("auth", {})
-if not isinstance(auth, dict):
-    auth = {}
-    security["auth"] = auth
-auth["selectedType"] = auth_type
-tmp = path + ".tmp"
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.replace(tmp, path)'
-
-    printf ' && mkdir -p %s && if [ ! -L %s ]; then %s -c %s %s %s; fi' \
-        "$(_cli_adapter_shell_quote "$dst_dir")" \
-        "$(_cli_adapter_shell_quote "$dst")" \
-        "$(_cli_adapter_shell_quote "$CLI_ADAPTER_PYTHON")" \
-        "$(_cli_adapter_shell_quote "$script")" \
-        "$(_cli_adapter_shell_quote "$dst")" \
-        "$(_cli_adapter_shell_quote "$auth_type")"
-}
-
 _cli_adapter_host_auth_links_cmd() {
     local cli_type="$1"
     local state_home="$2"
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
 
     case "$cli_type" in
         claude)
             _cli_adapter_link_host_file_cmd ".claude/.credentials.json" "$state_home"
             ;;
-        gemini)
+        antigravity)
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/auth.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/oauth_creds.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/google_accounts.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/credentials.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/tokens.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/oauth_creds.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/google_accounts.json" "$state_home"
-            _cli_adapter_gemini_auth_settings_cmd "$state_home"
             ;;
         opencode)
             _cli_adapter_link_host_file_cmd ".local/share/opencode/auth.json" "$state_home"
@@ -480,9 +431,10 @@ _cli_adapter_prepare_cli_state_cmd() {
     local agent_id="$2"
     local state_home
     local cmd
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
 
     case "$cli_type" in
-        claude|copilot|kimi|gemini|opencode|kilo)
+        claude|copilot|kimi|antigravity|opencode|kilo)
             ;;
         *)
             return 0
@@ -500,20 +452,14 @@ _cli_adapter_prepare_cli_state_cmd() {
     printf '%s\n' "$cmd"
 }
 
-_cli_adapter_gemini_auth_env_prefix() {
-    local auth_type
-    auth_type="$(_cli_adapter_gemini_auth_type)"
-    [[ -n "$auth_type" ]] || return 0
-    printf 'GEMINI_DEFAULT_AUTH_TYPE=%s ' "$(_cli_adapter_shell_quote "$auth_type")"
-}
-
 _cli_adapter_cli_state_env_prefix() {
     local cli_type="$1"
     local agent_id="$2"
     local state_home
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
 
     case "$cli_type" in
-        claude|copilot|kimi|gemini|opencode|kilo)
+        claude|copilot|kimi|antigravity|opencode|kilo)
             ;;
         *)
             return 0
@@ -663,19 +609,11 @@ _cli_adapter_default_claude_thinking() {
     fi
 }
 
-_cli_adapter_default_gemini_thinking_level() {
-    echo ""
-}
-
-_cli_adapter_default_gemini_thinking_budget() {
-    echo ""
-}
-
-_cli_adapter_is_valid_gemini_model() {
+_cli_adapter_is_valid_antigravity_model() {
     local model
     model="$(_cli_adapter_normalize_lower "${1:-}")"
     case "$model" in
-        ""|auto|default|gemini*|mas-*) return 0 ;;
+        ""|auto|default|gemini*|antigravity*|agy*|mas-*) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -692,11 +630,6 @@ _cli_adapter_is_valid_codex_model() {
     esac
 }
 
-_cli_adapter_read_raw_gemini_thinking_level() {
-    local agent_id="$1"
-    _cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_level" "")"
-}
-
 get_agent_reasoning_effort() {
     local agent_id="$1"
     local effort
@@ -710,69 +643,18 @@ get_agent_reasoning_effort() {
     esac
 }
 
-get_agent_gemini_thinking_level() {
-    local agent_id="$1"
-    local level
-    local model
-    model="$(_cli_adapter_get_configured_model "$agent_id")"
-    level="$(_cli_adapter_read_raw_gemini_thinking_level "$agent_id")"
-    if [[ -z "$level" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
-        level="$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.karo.thinking_level" "")")"
-    fi
-    case "$level" in
-        auto|"") echo "" ;;
-        minimal|low|medium|high) echo "$level" ;;
-        *) _cli_adapter_default_gemini_thinking_level "$agent_id" "$model" ;;
-    esac
-}
-
-get_agent_gemini_thinking_budget() {
-    local agent_id="$1"
-    local budget
-    local model
-    model="$(_cli_adapter_get_configured_model "$agent_id")"
-    budget="$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking_budget" "")"
-    if [[ -z "$budget" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
-        budget="$(_cli_adapter_read_yaml "cli.agents.karo.thinking_budget" "")"
-    fi
-    case "$budget" in
-        ""|auto|dynamic) echo "" ;;
-        -1|0|[1-9][0-9]*) echo "$budget" ;;
-        *) _cli_adapter_default_gemini_thinking_budget "$agent_id" "$model" ;;
-    esac
-}
-
-get_agent_gemini_runtime_model() {
+get_agent_antigravity_runtime_model() {
     local agent_id="$1"
     local configured_model
     configured_model="$(_cli_adapter_get_configured_model "$agent_id")"
-    if ! _cli_adapter_is_valid_gemini_model "$configured_model"; then
+    if ! _cli_adapter_is_valid_antigravity_model "$configured_model"; then
         configured_model=""
     fi
-    local thinking_level
-    thinking_level="$(get_agent_gemini_thinking_level "$agent_id")"
-    local thinking_budget
-    thinking_budget="$(get_agent_gemini_thinking_budget "$agent_id")"
-
-    if [[ -z "$thinking_level" && -z "$thinking_budget" ]]; then
-        if [[ -n "$configured_model" ]]; then
-            echo "$configured_model"
-            return 0
-        fi
-        get_agent_model "$agent_id"
+    if [[ -n "$configured_model" ]]; then
+        echo "$configured_model"
         return 0
     fi
-
-    if [[ -z "$configured_model" || "$configured_model" == "auto" || "$configured_model" == "default" ]]; then
-        if [[ -n "$thinking_budget" ]]; then
-            echo "mas-${agent_id}"
-            return 0
-        fi
-        echo "mas-${agent_id}"
-        return 0
-    fi
-
-    echo "mas-${agent_id}"
+    get_agent_model "$agent_id"
 }
 
 # _cli_adapter_is_valid_cli cli_type
@@ -801,6 +683,10 @@ get_cli_type() {
     local result
     result=$("$CLI_ADAPTER_PYTHON" -c "
 import re, yaml, sys
+allowed = ('claude','codex','copilot','kimi','antigravity','localapi','opencode','kilo')
+def norm(value):
+    value = str(value or '').strip().lower()
+    return 'antigravity' if value == 'gemini' else value
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
         cfg = yaml.safe_load(f) or {}
@@ -809,21 +695,23 @@ try:
         print('claude'); sys.exit(0)
     agents = cli.get('agents', {})
     if not isinstance(agents, dict):
-        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','gemini','localapi','opencode','kilo') else 'claude')
+        default = norm(cli.get('default', 'claude'))
+        print(default if default in allowed else 'claude')
         sys.exit(0)
     agent_id = '${agent_id}'
     agent_cfg = agents.get(agent_id)
     if agent_cfg is None and re.fullmatch(r'karo[1-9][0-9]*', agent_id):
         agent_cfg = agents.get('karo')
     if isinstance(agent_cfg, dict):
-        t = agent_cfg.get('type', '')
-        if t in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi', 'opencode', 'kilo'):
+        t = norm(agent_cfg.get('type', ''))
+        if t in allowed:
             print(t); sys.exit(0)
     elif isinstance(agent_cfg, str):
-        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi', 'opencode', 'kilo'):
-            print(agent_cfg); sys.exit(0)
-    default = cli.get('default', 'claude')
-    if default in ('claude', 'codex', 'copilot', 'kimi', 'gemini', 'localapi', 'opencode', 'kilo'):
+        t = norm(agent_cfg)
+        if t in allowed:
+            print(t); sys.exit(0)
+    default = norm(cli.get('default', 'claude'))
+    if default in allowed:
         print(default)
     else:
         print('claude', file=sys.stderr)
@@ -860,6 +748,7 @@ build_cli_command() {
 build_cli_command_with_type() {
     local agent_id="$1"
     local cli_type="$2"
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
     local agent_env_prefix=""
     local model
     model=$(get_agent_model "$agent_id")
@@ -928,19 +817,25 @@ build_cli_command_with_type() {
             fi
             _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${cmd}"
             ;;
-        gemini)
-            local gemini_bin
-            gemini_bin=$(_cli_adapter_pick_executable_cmd "gemini" "gemini-cli")
+        antigravity)
+            local antigravity_bin
+            antigravity_bin=$(_cli_adapter_pick_executable_cmd "agy" "antigravity")
             local cmd
-            cmd=$(_cli_adapter_read_yaml "cli.commands.gemini" "${gemini_bin} --yolo")
-            cmd="$(_cli_adapter_resolve_command_binary "$cmd" "gemini" "gemini-cli")"
-            cmd=$(_cli_adapter_append_flag_if_missing "$cmd" "--yolo")
+            cmd=$(_cli_adapter_read_yaml "cli.commands.antigravity" "")
+            if [[ -z "$cmd" ]]; then
+                cmd=$(_cli_adapter_read_yaml "cli.commands.gemini" "")
+            fi
+            if [[ -z "$cmd" ]]; then
+                cmd="${antigravity_bin} --dangerously-skip-permissions"
+            fi
+            cmd="$(_cli_adapter_resolve_command_binary "$cmd" "agy" "antigravity")"
+            cmd=$(_cli_adapter_append_flag_if_missing "$cmd" "--dangerously-skip-permissions")
             local runtime_model
-            runtime_model="$(get_agent_gemini_runtime_model "$agent_id")"
+            runtime_model="$(get_agent_antigravity_runtime_model "$agent_id")"
             if [[ -n "$runtime_model" && "$runtime_model" != "auto" && "$runtime_model" != "default" ]]; then
                 cmd="$cmd --model $runtime_model"
             fi
-            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}$(_cli_adapter_gemini_auth_env_prefix)${cmd}"
+            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${cmd}"
             ;;
         localapi)
             local localapi_cmd
@@ -994,6 +889,7 @@ build_cli_command_with_startup_prompt() {
     local cli_type="${2:-$(get_cli_type "$agent_id")}"
     local prompt="${3:-}"
     local base_cmd
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
 
     base_cmd="$(build_cli_command_with_type "$agent_id" "$cli_type")"
     if [[ -z "$prompt" ]]; then
@@ -1002,9 +898,6 @@ build_cli_command_with_startup_prompt() {
     fi
 
     case "$cli_type" in
-        gemini)
-            printf '%s -i %q\n' "$base_cmd" "$prompt"
-            ;;
         opencode|kilo)
             printf '%s --prompt %q\n' "$base_cmd" "$prompt"
             ;;
@@ -1021,7 +914,7 @@ build_cli_command_with_startup_prompt() {
 # 現在の環境で利用可能なCLIを優先順で1つ返す
 get_first_available_cli() {
     local cli_type
-    for cli_type in codex gemini opencode kilo localapi claude copilot kimi; do
+    for cli_type in codex antigravity opencode kilo localapi claude copilot kimi; do
         case "$cli_type" in
             claude)
                 _cli_adapter_find_executable claude >/dev/null 2>&1 && { echo "claude"; return 0; }
@@ -1035,8 +928,8 @@ get_first_available_cli() {
             kimi)
                 (_cli_adapter_find_executable kimi >/dev/null 2>&1 || _cli_adapter_find_executable kimi-cli >/dev/null 2>&1) && { echo "kimi"; return 0; }
                 ;;
-            gemini)
-                (_cli_adapter_find_executable gemini >/dev/null 2>&1 || _cli_adapter_find_executable gemini-cli >/dev/null 2>&1) && { echo "gemini"; return 0; }
+            antigravity)
+                (_cli_adapter_find_executable agy >/dev/null 2>&1 || _cli_adapter_find_executable antigravity >/dev/null 2>&1) && { echo "antigravity"; return 0; }
                 ;;
             localapi)
                 command -v python3 >/dev/null 2>&1 && { echo "localapi"; return 0; }
@@ -1118,7 +1011,7 @@ get_instruction_file() {
         codex) echo "instructions/generated/codex-${role}.md" ;;
         copilot) echo "instructions/generated/copilot-${role}.md" ;;
         kimi) echo "instructions/generated/kimi-${role}.md" ;;
-        gemini) echo "instructions/generated/gemini-${role}.md" ;;
+        antigravity) echo "instructions/generated/antigravity-${role}.md" ;;
         localapi) echo "instructions/generated/localapi-${role}.md" ;;
         opencode) echo "instructions/generated/opencode-${role}.md" ;;
         kilo) echo "instructions/generated/kilo-${role}.md" ;;
@@ -1131,6 +1024,7 @@ get_instruction_file() {
 # 0=利用可能, 1=利用不可
 validate_cli_availability() {
     local cli_type="$1"
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
     case "$cli_type" in
         claude)
             _cli_adapter_find_executable claude &>/dev/null || {
@@ -1156,9 +1050,9 @@ validate_cli_availability() {
                 return 1
             fi
             ;;
-        gemini)
-            if ! _cli_adapter_find_executable gemini &>/dev/null && ! _cli_adapter_find_executable gemini-cli &>/dev/null; then
-                echo "[ERROR] Gemini CLI not found. Install Gemini CLI and ensure 'gemini' or 'gemini-cli' is in PATH." >&2
+        antigravity)
+            if ! _cli_adapter_find_executable agy &>/dev/null && ! _cli_adapter_find_executable antigravity &>/dev/null; then
+                echo "[ERROR] Antigravity CLI not found. Install Antigravity CLI and ensure 'agy' is in PATH." >&2
                 return 1
             fi
             ;;
@@ -1201,7 +1095,7 @@ get_agent_model() {
     fi
 
     if [[ -n "$model_from_yaml" ]]; then
-        if [[ "$(get_cli_type "$agent_id")" == "gemini" ]] && ! _cli_adapter_is_valid_gemini_model "$model_from_yaml"; then
+        if [[ "$(get_cli_type "$agent_id")" == "antigravity" ]] && ! _cli_adapter_is_valid_antigravity_model "$model_from_yaml"; then
             echo "auto"
             return 0
         fi
@@ -1229,7 +1123,7 @@ get_agent_model() {
         kimi)
             echo "auto"
             ;;
-        gemini)
+        antigravity)
             echo "auto"
             ;;
         localapi)
@@ -1264,7 +1158,7 @@ get_model_display_name() {
             codex)   short="Codex" ;;
             copilot) short="Copilot" ;;
             kimi)    short="Kimi" ;;
-            gemini)  short="Gemini" ;;
+            antigravity)  short="Antigravity" ;;
             localapi) short="Local" ;;
             opencode) short="OpenCode" ;;
             kilo)    short="Kilo" ;;
@@ -1284,7 +1178,8 @@ get_model_display_name() {
         *sonnet*)               short="Sonnet" ;;
         *haiku*)                short="Haiku" ;;
         *k2.5*|*kimi*)          short="Kimi" ;;
-        *gemini*)               short="Gemini" ;;
+        *antigravity*|*agy*)     short="Antigravity" ;;
+        *gemini*)               short="Antigravity" ;;
         *local*)                short="Local" ;;
         *qwen*|*ollama*|*lmstudio*) short="Local" ;;
         *)
@@ -1293,7 +1188,7 @@ get_model_display_name() {
                 codex)   short="Codex" ;;
                 copilot) short="Copilot" ;;
                 kimi)    short="Kimi" ;;
-                gemini)  short="Gemini" ;;
+                antigravity)  short="Antigravity" ;;
                 localapi) short="Local" ;;
                 opencode) short="OpenCode" ;;
                 kilo) short="Kilo" ;;

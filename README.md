@@ -42,7 +42,7 @@ In practice, the intended flow is:
 | runtime layout | split tmux sessions are primary | `goza-no-ma:overview` is the runtime source of truth; `shogun` / `gunshi` / `multiagent` remain as Android-compatible proxy sessions |
 | initial ashigaru roster | historical docs often imply a larger force | the default active ashigaru are only `ashigaru1` and `ashigaru2` |
 | default CLI | upstream defaults | all roles default to `codex`; model selection is left to pane-local CLI state |
-| CLI coverage | core upstream CLIs | adds `Gemini CLI`, `OpenCode`, `Kilo`, `localapi`, and local-provider bridges such as `Ollama` / `LM Studio` |
+| CLI coverage | core upstream CLIs | adds `Antigravity CLI`, `OpenCode`, `Kilo`, `localapi`, and local-provider bridges such as `Ollama` / `LM Studio` |
 | Android distribution | upstream Android app / APK | the fork APK in this repo's Releases is the supported distribution |
 | Distribution | repo-oriented setup flow | Release packages (`tar.gz` / `zip`) plus cURL bootstrap; npm / npx wrapper is available |
 | Karo behavior | splits work when instructed | explicitly allows Karo to infer staffing, routing, and parallelism from the task intent |
@@ -76,7 +76,7 @@ This fork is not tied to a single vendor.
 | `claude` | Anthropic Claude Code | supported as in upstream |
 | `copilot` | GitHub Copilot CLI | supported as in upstream |
 | `kimi` | Kimi Code | supported as in upstream |
-| `gemini` | Gemini CLI | explicitly supported in this fork |
+| `antigravity` | Google Antigravity CLI | explicitly supported in this fork; legacy `gemini` settings are mapped to this type |
 | `opencode` | OpenCode CLI | added in this fork |
 | `kilo` | Kilo CLI | added in this fork |
 | `localapi` | OpenAI-compatible local endpoint | for `Ollama`, `LM Studio`, llama.cpp server, and similar backends |
@@ -91,7 +91,7 @@ In this fork, every agent defaults to an unattended, no-approval-by-default mode
 | `codex` | `--sandbox danger-full-access --ask-for-approval never` |
 | `copilot` | `--yolo` |
 | `kimi` | `--yolo` |
-| `gemini` | `--yolo` |
+| `antigravity` | `--dangerously-skip-permissions` |
 | `opencode` | generated `opencode.json` sets `permission: allow` |
 | `kilo` | generated `opencode.json` sets `permission: allow` |
 | `localapi` | launches the local REPL directly without a separate approval layer |
@@ -116,7 +116,7 @@ External CLIs launched by the Shogunate runtime reuse host login credentials whe
 - `Codex` launches each role with a repo-local `CODEX_HOME`. If host `~/.codex/auth.json` exists, the role-local `auth.json` points to it; if not, the older repo-local shared auth fallback is still available. Model / `reasoning_effort` / history state stays role-local.
 - Codex startup keeps the normal interactive TUI by default: Shogunate launches `codex` first, then delivers the bootstrap prompt through tmux. Set `MAS_CODEX_STARTUP_PROMPT_MODE=argv` only if you need the older `codex <bootstrap prompt>` launch style.
 - The exact composer chrome, placeholder prompts, and footer are owned by the installed Codex CLI version. Shogunate does not restyle the Codex TUI; it only avoids the old positional bootstrap prompt that changed the startup state.
-- `Claude` / `Copilot` / `Kimi` / `Gemini` / `OpenCode` / `Kilo` launch with `HOME` and XDG paths pointed at `.shogunate/cli-state/<cli>/agents/<agent>/home`. Known host auth files are symlinked into that pane-local home, but settings, model selections, caches, and history stay pane-local. Gemini also gets `GEMINI_DEFAULT_AUTH_TYPE=oauth-personal` by default and writes only `security.auth.selectedType` into the role-local `.gemini/settings.json`, so host OAuth credentials can be used without sharing the full user settings file.
+- `Claude` / `Copilot` / `Kimi` / `Antigravity` / `OpenCode` / `Kilo` launch with `HOME` and XDG paths pointed at `.shogunate/cli-state/<cli>/agents/<agent>/home`. Known host auth files are symlinked into that pane-local home, but settings, model selections, caches, and history stay pane-local. Antigravity reuses known host auth files under `.gemini/antigravity-cli/` when present, without sharing the full user settings file.
 - `OpenCode` / `Kilo` symlink known host `auth.json` into the pane-local home. `model.json` is copied from the host only when the role-local file is missing, then later model selections stay independent per role. Their SQLite DB, prompt history, telemetry, and other runtime files stay pane-local. Stale DB / model / history symlinks are removed at startup; existing role-local regular files are left intact. Plugin manifests are copied only when missing, while `node_modules` can be linked to the host install to avoid reinstalling dependencies.
 - `localapi` is an in-repo local REPL and does not have external CLI login state to isolate.
 
@@ -194,7 +194,7 @@ Non-interactive example:
 ```bash
 python3 scripts/configure_runtime_roles.py \
   --ashigaru-count 3 \
-  --shogun gemini \
+  --shogun antigravity \
   --karo codex \
   --gunshi codex \
   --ashigaru1 codex \
@@ -215,7 +215,6 @@ It can configure:
 - CLI type per role
 - model per role
 - Codex `reasoning_effort`
-- Gemini `thinking_level` / `thinking_budget`
 - OpenCode / Kilo provider settings
 - active ashigaru count
 
@@ -651,7 +650,7 @@ This fork is a better fit if you want:
 
 - package installation into a fixed local directory, with an optional custom prefix
 - the fork APK from GitHub Releases
-- broader CLI support including Gemini / OpenCode / Kilo / localapi
+- broader CLI support including Antigravity / OpenCode / Kilo / localapi
 - `goza-no-ma` as the runtime source of truth
 - conservative defaults for stable operation
 

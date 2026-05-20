@@ -1,7 +1,25 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-18
+最終更新: 2026-05-20
 出典: 直近ユーザープロンプト
+
+## 追補（2026-05-20: Gemini CLI を廃止し Antigravity CLI に対応する）
+### 要求
+1. Shogunate の対応 CLI から Gemini CLI を外し、Antigravity CLI (`agy`) を選択・起動できるようにすること。
+2. 既存の `gemini` CLI 設定は、可能な限り `antigravity` へ移行できる互換動作を持たせること。ただし新規設定 UI / docs では `gemini` を選択肢として出さないこと。
+3. Antigravity CLI は host 認証情報を使い、role / pane ごとに settings・model・cache・history を独立させること。
+4. Antigravity CLI は権限確認を避ける既定起動にし、`--dangerously-skip-permissions` を付与すること。
+5. Gemini 固有の thinking_level / thinking_budget 設定導線と generated instruction を Antigravity 向けに更新すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n lib/cli_adapter.sh scripts/inbox_watcher.sh scripts/switch_cli.sh scripts/configure_agents.sh scripts/build_instructions.sh`
+   - 期待結果: shell syntax error がない。
+2. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_runtime_roles.bats tests/unit/test_switch_cli.bats tests/unit/test_build_system.bats`
+   - 期待結果: `antigravity` / `agy` の起動、検出、instruction path、設定 CLI が通る。
+3. コマンド: `python3 scripts/configure_runtime_roles.py --default antigravity --ashigaru-count 1 --shogun antigravity --karo codex --gunshi codex --ashigaru1 antigravity --dry-run`
+   - 期待結果: `type: antigravity` が出力され、`gemini` は新規選択肢に含まれない。
+4. コマンド: `rg -n "Gemini CLI|type: gemini|cli\\.default.*gemini|gemini --yolo" README.md README_ja.md scripts lib tests instructions/cli_specific`
+   - 期待結果: 現行の選択肢・起動導線としての Gemini CLI が残っていない。
 
 ## 追補（2026-05-18: installer asset を廃止し package distribution へ移行する）
 ### 要求

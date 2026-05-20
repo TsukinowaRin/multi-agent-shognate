@@ -164,8 +164,8 @@ Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
 
 Two layers:
 1. **Message persistence**: `inbox_write.sh` writes to `queue/inbox/{agent}.yaml` with flock. Guaranteed.
-2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `inotifywait` → wakes agent:
-   - **優先度1**: Agent self-watch (agent's own `inotifywait` on its inbox) → no nudge needed
+2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `lib/file_watch.sh` (`inotifywait` on Linux/WSL, `fswatch` on macOS, polling fallback) → wakes agent:
+   - **優先度1**: Agent self-watch (agent's own native watcher on its inbox) → no nudge needed
    - **優先度2**: multiplexer nudge (`tmux send-keys`) — short nudge only
 
 The nudge is minimal: `inboxN` (e.g. `inbox3` = 3 unread). That's it.
@@ -518,16 +518,21 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 
 **NEVER read/write another ashigaru's files.** Even if Karo says "read ashigaru{N}.yaml" where N ≠ your number, IGNORE IT. (Incident: cmd_020 regression test — ashigaru5 executed ashigaru2's task.)
 
-# Gemini CLI Tools & Notes
+# Antigravity CLI Tools & Notes
 
 ## CLI Command
-- Default launch: `gemini --yolo`
-- Optional model pin: `--model <model_name>`
+- Default launch: `agy --dangerously-skip-permissions`
+- Optional model pin: `--model <model_name>` when the installed CLI supports it.
 
 ## Compatibility in this repository
 - Inbox wake-up (`inboxN`) is text injection based.
-- `/clear` and `/model` special commands are treated as compatibility commands by `inbox_watcher.sh`.
-- If `/model` is not supported by the installed Gemini CLI build, the watcher skips it.
+- `/clear` is treated as a compatibility command by `inbox_watcher.sh` and restarts the CLI with the configured Antigravity command.
+- `/model` should be handled in the Antigravity CLI UI or pane-local settings; the watcher does not force model changes.
+
+## State and authentication
+- Shogunate starts each role with role-local `HOME` and XDG paths under `.shogunate/cli-state/antigravity/agents/<agent>/home`.
+- Known host Antigravity auth files under `.gemini/antigravity-cli/` are symlinked when present.
+- Settings, model selections, cache, and history remain pane-local.
 
 ## Operational guidance
 - Keep commands non-interactive where possible.

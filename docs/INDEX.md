@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-05-18
+最終更新: 2026-05-20
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -11,12 +11,13 @@
 - `docs/HANDOFF_2026-03-29_resume.md` - 旧 handoff。`Shogunate-test` 起点の経緯確認用。
 
 ## Specs
-- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-18 時点では Gemini CLI の host OAuth 共有、role-local settings 補完、旧 installer asset 廃止と package distribution 移行を含む。
+- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-20 時点では Gemini CLI 廃止と Antigravity CLI (`agy`) 対応、旧 installer asset 廃止と package distribution 移行を含む。
 - `docs/PUBLISHING.md` - 公開前の個人情報・履歴・退避物の除外ポリシーと確認手順。
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - 旧 portable installer / uninstaller 事故対応の履歴。現行配布は package distribution を正とする。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-05-20_antigravity_cli.md` - Gemini CLI 対応を廃止し、Antigravity CLI (`agy`) を runtime / 設定 UI / docs / tests に追加する計画。
 - `docs/EXECPLAN_2026-05-18_package_distribution.md` - OS 別 installer asset を廃止し、GitHub Release package + cURL bootstrap + npm wrapper へ移行する計画。
 - `docs/EXECPLAN_2026-05-14_shogunate_test_android_setup.md` - Shogunate-test へ最新コードを反映し、Shogun へのデモ制作依頼と Android 接続セットアップ UX 改善を並行して進める計画。
 - `docs/EXECPLAN_2026-05-13_upstream_issue_apply.md` - 本家 open Issue (#151/#143/#48/#131) をこの fork に適用し、README / role instruction / pane mapping regression を同期する計画。

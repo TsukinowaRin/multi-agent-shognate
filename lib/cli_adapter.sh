@@ -1019,6 +1019,27 @@ get_instruction_file() {
 # validate_cli_availability(cli_type)
 # 指定CLIがシステムにインストールされているか確認
 # 0=利用可能, 1=利用不可
+_cli_adapter_warn_antigravity_keyring() {
+    [[ "${SHOGUNATE_SKIP_ANTIGRAVITY_KEYRING_CHECK:-}" == "1" ]] && return 0
+    [[ "$(uname -s 2>/dev/null || true)" == "Linux" ]] || return 0
+
+    if ! command -v secret-tool >/dev/null 2>&1; then
+        echo "[WARN] Antigravity CLI may ask for login every time: Linux Secret Service helper 'secret-tool' is not installed. On Ubuntu/WSL, install gnome-keyring and libsecret-tools." >&2
+        return 0
+    fi
+
+    if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+        echo "[WARN] Antigravity CLI may ask for login every time: DBUS_SESSION_BUS_ADDRESS is not set, so the Secret Service keyring may be unreachable." >&2
+        return 0
+    fi
+
+    if command -v busctl >/dev/null 2>&1; then
+        if ! busctl --user --list 2>/dev/null | grep -q 'org.freedesktop.secrets'; then
+            echo "[WARN] Antigravity CLI may ask for login every time: org.freedesktop.secrets is not available on the user DBus. Start/unlock a Secret Service provider such as gnome-keyring." >&2
+        fi
+    fi
+}
+
 validate_cli_availability() {
     local cli_type="$1"
     cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
@@ -1052,6 +1073,7 @@ validate_cli_availability() {
                 echo "[ERROR] Antigravity CLI not found. Install Antigravity CLI and ensure 'agy' is in PATH." >&2
                 return 1
             fi
+            _cli_adapter_warn_antigravity_keyring
             ;;
         localapi)
             if ! command -v python3 &>/dev/null; then

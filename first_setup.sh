@@ -512,6 +512,23 @@ if command -v agy &> /dev/null || command -v antigravity &> /dev/null; then
     ANTIGRAVITY_VERSION="$("$ANTIGRAVITY_BIN" --version 2>/dev/null || echo "unknown")"
     log_success "Antigravity CLI がインストール済みです ($ANTIGRAVITY_VERSION)"
     RESULTS+=("Antigravity CLI: OK ($ANTIGRAVITY_VERSION)")
+    if [ "$(uname -s 2>/dev/null || true)" = "Linux" ]; then
+        if ! command -v secret-tool &> /dev/null; then
+            log_warn "Antigravity のログイン保存には Secret Service が必要です"
+            log_info "  Ubuntu/WSL 例: sudo apt install -y gnome-keyring libsecret-tools"
+            RESULTS+=("Antigravity keyring: warning (secret-tool not installed)")
+        elif [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+            log_warn "Antigravity のログイン保存用 DBus session が見つかりません"
+            RESULTS+=("Antigravity keyring: warning (DBus session missing)")
+        elif command -v busctl &> /dev/null && ! busctl --user --list 2>/dev/null | grep -q 'org.freedesktop.secrets'; then
+            log_warn "Antigravity のログイン保存先 Secret Service が起動していません"
+            log_info "  gnome-keyring などの Secret Service provider を起動 / unlock してください"
+            RESULTS+=("Antigravity keyring: warning (Secret Service unavailable)")
+        else
+            log_success "Antigravity keyring preflight: OK"
+            RESULTS+=("Antigravity keyring: OK")
+        fi
+    fi
 else
     log_info "Antigravity CLI は未インストールです（Antigravity運用時のみ導入）"
     log_info "  Antigravity CLI を導入し、'agy' を PATH に通してください"

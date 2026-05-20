@@ -11,7 +11,7 @@
 - `docs/HANDOFF_2026-03-29_resume.md` - 旧 handoff。`Shogunate-test` 起点の経緯確認用。
 
 ## Specs
-- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-20 時点では Gemini CLI 廃止と Antigravity CLI (`agy`) 対応、旧 installer asset 廃止と package distribution 移行を含む。
+- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-20 時点では Gemini CLI 廃止と Antigravity CLI (`agy`) 対応、Antigravity keyring / Secret Service preflight、旧 installer asset 廃止と package distribution 移行を含む。
 - `docs/PUBLISHING.md` - 公開前の個人情報・履歴・退避物の除外ポリシーと確認手順。
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - 旧 portable installer / uninstaller 事故対応の履歴。現行配布は package distribution を正とする。

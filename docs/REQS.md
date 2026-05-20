@@ -3,6 +3,20 @@
 最終更新: 2026-05-20
 出典: 直近ユーザープロンプト
 
+## 追補（2026-05-20: Antigravity auth が毎回ログインになる問題）
+### 要求
+1. `agy` が host HOME でログイン済みでも毎回ログインを求める原因を切り分けること。
+2. Shogunate 側で安全に検知できる範囲では、Antigravity の keyring / Secret Service 不足を事前警告すること。
+3. secrets の内容は読まず、存在確認や環境チェックだけで判断すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n lib/cli_adapter.sh first_setup.sh`
+   - 期待結果: shell syntax error がない。
+2. コマンド: `bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: Antigravity CLI が存在するが Linux Secret Service helper がない場合、ログイン保持に関する警告が出る。
+3. 運用確認: `agy` のログに `failed to persist token to keyring` / `org.freedesktop.secrets` が出る場合
+   - 期待結果: Shogunate の host auth symlink ではなく、WSL/Linux 側の Secret Service / keyring 導入・起動が必要だと判断できる。
+
 ## 追補（2026-05-20: Antigravity auth を host と共有する）
 ### 要求
 1. Antigravity CLI の role-local HOME でも、host の `agy` が使う OAuth / account 認証情報を共有すること。

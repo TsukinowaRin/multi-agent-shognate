@@ -532,7 +532,7 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 ## State and authentication
 - Shogunate starts each role with role-local `HOME` and XDG paths under `.shogunate/cli-state/antigravity/agents/<agent>/home`.
 - Known host Antigravity auth files under `.gemini/antigravity-cli/` are symlinked when present.
-- Legacy Gemini CLI root auth files such as `.gemini/oauth_creds.json` are not linked. Treat Antigravity CLI as a separate product even though its official settings path currently lives under `.gemini/antigravity-cli/`.
+- Host OAuth/account files that `agy` relies on, such as `.gemini/oauth_creds.json` and `.gemini/google_accounts.json`, are also symlinked. Treat these as auth-only shared files; do not share settings, history, cache, or project state.
 - Settings, model selections, cache, and history remain pane-local.
 
 ## Operational guidance

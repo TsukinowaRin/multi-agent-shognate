@@ -386,6 +386,8 @@ _cli_adapter_host_auth_links_cmd() {
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/google_accounts.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/credentials.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/tokens.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/oauth_creds.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/google_accounts.json" "$state_home"
             ;;
         opencode)
             _cli_adapter_link_host_file_cmd ".local/share/opencode/auth.json" "$state_home"

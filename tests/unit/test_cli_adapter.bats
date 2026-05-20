@@ -401,8 +401,8 @@ assert_antigravity_auth_links() {
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/oauth_creds.json" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/google_accounts.json" "antigravity" "$agent_id"
     [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
-    [[ "$result" != *"${CLI_ADAPTER_HOST_HOME}/.gemini/oauth_creds.json"* ]]
-    [[ "$result" != *"${CLI_ADAPTER_HOST_HOME}/.gemini/google_accounts.json"* ]]
+    assert_cli_host_auth_link "$result" ".gemini/oauth_creds.json" "antigravity" "$agent_id"
+    assert_cli_host_auth_link "$result" ".gemini/google_accounts.json" "antigravity" "$agent_id"
 }
 
 make_fake_cli() {

@@ -3,20 +3,20 @@
 最終更新: 2026-05-20
 出典: 直近ユーザープロンプト
 
-## 追補（2026-05-20: Antigravity auth を旧 Gemini CLI から分離する）
+## 追補（2026-05-20: Antigravity auth を host と共有する）
 ### 要求
-1. Antigravity CLI の host auth 共有は Antigravity 専用領域だけを対象にすること。
-2. 公式 path が `.gemini/antigravity-cli/` 配下であっても、旧 Gemini CLI の root auth (`.gemini/oauth_creds.json` / `.gemini/google_accounts.json` など) は共有しないこと。
-3. 旧 `type: gemini` の互換 alias は runtime 起動不能を避けるため残してよいが、`cli.commands.gemini` や旧 Gemini auth を Antigravity 起動へ流用しないこと。
-4. Docs では Antigravity を Gemini CLI の延長ではなく別 CLI として説明すること。
+1. Antigravity CLI の role-local HOME でも、host の `agy` が使う OAuth / account 認証情報を共有すること。
+2. `.gemini/antigravity-cli/` 配下の auth file に加え、`agy` が参照する host `.gemini/oauth_creds.json` / `.gemini/google_accounts.json` も auth-only で symlink すること。
+3. 共有するのは認証情報だけにし、settings / model / cache / history / project state は役職ごとに独立させること。
+4. `cli.commands.gemini` は Antigravity 起動 command として流用しないこと。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bats tests/unit/test_cli_adapter.bats`
-   - 期待結果: Antigravity 起動 command が旧 Gemini CLI root auth と `cli.commands.gemini` を使わない。
+   - 期待結果: Antigravity 起動 command が host OAuth / account file を symlink し、settings は共有せず、`cli.commands.gemini` は使わない。
 2. コマンド: `bash -n lib/cli_adapter.sh`
    - 期待結果: shell syntax error がない。
-3. コマンド: `rg -n "\\.gemini/oauth_creds|\\.gemini/google_accounts|cli\\.commands\\.gemini" lib/cli_adapter.sh tests/unit/test_cli_adapter.bats`
-   - 期待結果: 実装側には旧 Gemini auth link や command fallback が残らず、テスト上の否定確認だけが残る。
+3. コマンド: `rg -n "cli\\.commands\\.gemini" lib/cli_adapter.sh`
+   - 期待結果: Antigravity 起動 command の fallback が残っていない。
 
 ## 追補（2026-05-20: Gemini CLI を廃止し Antigravity CLI に対応する）
 ### 要求

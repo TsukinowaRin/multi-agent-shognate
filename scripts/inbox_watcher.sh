@@ -610,7 +610,30 @@ cli_launch_grace_active() {
     [ $((now - launch_ts)) -lt "$CLI_STARTUP_GRACE_SECONDS" ]
 }
 
-recover_shell_returned_codex_if_needed() {
+restart_command_for_cli() {
+    local effective_cli="${1:-}"
+    local restart_cmd=""
+
+    if declare -F build_cli_command_with_type >/dev/null 2>&1; then
+        restart_cmd=$(build_cli_command_with_type "$AGENT_ID" "$effective_cli" 2>/dev/null || true)
+    fi
+    if [ -n "$restart_cmd" ]; then
+        printf '%s\n' "$restart_cmd"
+        return 0
+    fi
+
+    case "$effective_cli" in
+        antigravity) printf '%s\n' "${ANTIGRAVITY_RESTART_CMD:-agy --dangerously-skip-permissions}" ;;
+        opencode) printf '%s\n' "${OPENCODE_RESTART_CMD:-opencode}" ;;
+        kilo) printf '%s\n' "${KILO_RESTART_CMD:-kilo}" ;;
+        localapi) printf '%s\n' "${LOCALAPI_RESTART_CMD:-python3 scripts/localapi_repl.py}" ;;
+        copilot) printf '%s\n' "${COPILOT_RESTART_CMD:-copilot --yolo}" ;;
+        codex) printf '%s\n' "${CODEX_RESTART_CMD:-codex --search --sandbox danger-full-access --ask-for-approval never}" ;;
+        *) return 1 ;;
+    esac
+}
+
+recover_shell_returned_cli_if_needed() {
     local effective_cli="${1:-}"
     local current_command=""
     local pane_text=""
@@ -620,13 +643,18 @@ recover_shell_returned_codex_if_needed() {
     if [[ -z "$effective_cli" ]]; then
         effective_cli=$(get_effective_cli_type)
     fi
-    [[ "$effective_cli" == "codex" ]] || return 0
+    case "$effective_cli" in
+        codex|antigravity|opencode|kilo|localapi|copilot) ;;
+        *) return 0 ;;
+    esac
 
     current_command=$(timeout 2 tmux display-message -p -t "$PANE_TARGET" "#{pane_current_command}" 2>/dev/null || true)
-    if [[ "$current_command" == "node" ]]; then
-        LAST_CLI_RESTART_TS=0
-        return 0
-    fi
+    case "$effective_cli:$current_command" in
+        codex:node|antigravity:agy|antigravity:antigravity|opencode:opencode|kilo:kilo|localapi:python3|copilot:copilot)
+            LAST_CLI_RESTART_TS=0
+            return 0
+            ;;
+    esac
 
     case "$current_command" in
         bash|sh|zsh|fish) ;;
@@ -655,22 +683,25 @@ recover_shell_returned_codex_if_needed() {
         return 0
     fi
 
-    if ! declare -F build_cli_command_with_type >/dev/null 2>&1; then
-        return 0
-    fi
-    restart_cmd=$(build_cli_command_with_type "$AGENT_ID" "$effective_cli" 2>/dev/null || true)
+    restart_cmd=$(restart_command_for_cli "$effective_cli" 2>/dev/null || true)
     [ -n "$restart_cmd" ] || return 0
 
     rearm_bootstrap_pending_for_restart
-    if send_text_and_enter "$restart_cmd" "Codex CLI restart" "1"; then
+    mux_send_ctrl_c || true
+    sleep 0.2
+    if send_text_and_enter "$restart_cmd" "${effective_cli} CLI restart" "1"; then
         timeout 2 tmux set-option -p -t "$PANE_TARGET" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
         LAST_CLI_RESTART_TS=$now
-        echo "[$(date)] [INFO] restarted shell-returned Codex pane for $AGENT_ID" >&2
+        echo "[$(date)] [INFO] restarted shell-returned ${effective_cli} pane for $AGENT_ID" >&2
         return 0
     fi
 
-    echo "[$(date)] [WARN] failed to restart shell-returned Codex pane for $AGENT_ID" >&2
+    echo "[$(date)] [WARN] failed to restart shell-returned ${effective_cli} pane for $AGENT_ID" >&2
     return 0
+}
+
+recover_shell_returned_codex_if_needed() {
+    recover_shell_returned_cli_if_needed "$@"
 }
 
 bootstrap_ready_pattern() {
@@ -795,6 +826,9 @@ deliver_pending_bootstrap_if_ready() {
 
     effective_cli=$(get_effective_cli_type)
     recover_shell_returned_codex_if_needed "$effective_cli"
+    if cli_launch_grace_active; then
+        return 0
+    fi
     pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
 
     if bootstrap_acknowledged_in_pane "$pane_text"; then
@@ -1302,9 +1336,10 @@ send_cli_command() {
                 echo "[$(date)] [SEND-KEYS] Antigravity /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 1
-                if ! send_text_and_enter "${ANTIGRAVITY_RESTART_CMD:-agy --dangerously-skip-permissions}" "Antigravity restart"; then
+                if ! send_text_and_enter "$(restart_command_for_cli antigravity)" "Antigravity restart"; then
                     return 1
                 fi
+                timeout 2 tmux set-option -p -t "$PANE_TARGET" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
                 sleep 2
                 return 0
             fi
@@ -1318,9 +1353,10 @@ send_cli_command() {
                 echo "[$(date)] [SEND-KEYS] OpenCode /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 1
-                if ! send_text_and_enter "${OPENCODE_RESTART_CMD:-opencode}" "OpenCode restart"; then
+                if ! send_text_and_enter "$(restart_command_for_cli opencode)" "OpenCode restart"; then
                     return 1
                 fi
+                timeout 2 tmux set-option -p -t "$PANE_TARGET" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
                 sleep 2
                 return 0
             fi
@@ -1334,9 +1370,10 @@ send_cli_command() {
                 echo "[$(date)] [SEND-KEYS] Kilo /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 1
-                if ! send_text_and_enter "${KILO_RESTART_CMD:-kilo}" "Kilo restart"; then
+                if ! send_text_and_enter "$(restart_command_for_cli kilo)" "Kilo restart"; then
                     return 1
                 fi
+                timeout 2 tmux set-option -p -t "$PANE_TARGET" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
                 sleep 2
                 return 0
             fi
@@ -1350,9 +1387,10 @@ send_cli_command() {
                 echo "[$(date)] [SEND-KEYS] LocalAPI /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
                 mux_send_ctrl_c
                 sleep 1
-                if ! send_text_and_enter "${LOCALAPI_RESTART_CMD:-python3 scripts/localapi_repl.py}" "LocalAPI restart"; then
+                if ! send_text_and_enter "$(restart_command_for_cli localapi)" "LocalAPI restart"; then
                     return 1
                 fi
+                timeout 2 tmux set-option -p -t "$PANE_TARGET" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
                 sleep 2
                 return 0
             fi
@@ -1509,6 +1547,11 @@ send_wakeup() {
         return 0
     fi
 
+    if cli_launch_grace_active; then
+        echo "[$(date)] [SKIP] Agent $AGENT_ID CLI launch grace active, deferring nudge" >&2
+        return 0
+    fi
+
     # 優先度2: Agent busy — nudge送信するとEnterが消失するためスキップ
     if agent_is_busy; then
         local busy_cli_wakeup
@@ -1560,6 +1603,11 @@ send_wakeup_with_escape() {
     esac
 
     if agent_has_self_watch; then
+        return 0
+    fi
+
+    if cli_launch_grace_active; then
+        echo "[$(date)] [SKIP] Agent $AGENT_ID CLI launch grace active, deferring Phase 2 nudge" >&2
         return 0
     fi
 
@@ -1757,7 +1805,7 @@ process_unread_once() {
 if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
 
 # ─── Startup: process any existing unread messages ───
-recover_shell_returned_codex_if_needed || true
+recover_shell_returned_cli_if_needed || true
 maintain_codex_runtime_prompt || true
 deliver_pending_bootstrap_if_ready || true
 process_unread_once
@@ -1783,7 +1831,7 @@ while true; do
     # All cases: check for unread, then loop back to the selected watcher
     sleep 0.3
 
-    recover_shell_returned_codex_if_needed || true
+    recover_shell_returned_cli_if_needed || true
     maintain_codex_runtime_prompt || true
     deliver_pending_bootstrap_if_ready || true
 

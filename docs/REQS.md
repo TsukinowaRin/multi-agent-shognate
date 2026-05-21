@@ -3,6 +3,21 @@
 最終更新: 2026-05-21
 出典: 直近ユーザープロンプト
 
+## 追補（2026-05-21: OpenCode pane が bash に戻った後の誤配送を防ぐ）
+### 要求
+1. OpenCode / Antigravity / Kilo / LocalAPI / Copilot を割り当てた pane で CLI プロセスが終了し bash に戻った場合、inbox watcher は自然言語 nudge や bootstrap を bash に送らず、まず role-local の正式起動 command で CLI を復旧すること。
+2. 復旧 command は `build_cli_command_with_type` を優先し、host 認証共有・role-local settings / HOME 分離を維持すること。
+3. shell に残った入力断片へ復旧 command が連結されないよう、復旧前に `Ctrl-C` で入力行を破棄すること。
+4. CLI 起動猶予中は通常 nudge / Escape nudge / pending bootstrap 再配信を抑止すること。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/inbox_watcher.sh`
+   - 期待結果: shell syntax error がない。
+2. コマンド: `bats tests/unit/test_send_wakeup.bats`
+   - 期待結果: shell に戻った OpenCode pane が role-local 起動 command で再起動され、CLI 起動猶予中に nudge が bash へ送られない。
+3. 実機確認: `Shogunate-test` の足軽1 pane
+   - 期待結果: pane current command が `opencode` に戻り、`queue/inbox/*.yaml` や初動命令が bash コマンドとして実行されない。
+
 ## 追補（2026-05-21: Shogunate runtime で Agy を実用可能にする）
 ### 要求
 1. Shogunate の役職に Antigravity CLI (`agy`) を割り当てたとき、host の keyring 認証を使って再ログインなしで起動できるようにすること。

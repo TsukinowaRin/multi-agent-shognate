@@ -1485,6 +1485,28 @@ MOCK
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
+@test "T-OPENCODE-003: watcher は shell に戻った OpenCode pane をrole-local起動コマンドで再起動する" {
+    run bash -c '
+        MOCK_PANE_CLI="opencode"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "HOME=/tmp/role XDG_CONFIG_HOME=/tmp/role/.config opencode"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+        recover_shell_returned_cli_if_needed
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 C-c" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 HOME=/tmp/role XDG_CONFIG_HOME=/tmp/role/.config opencode" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
 @test "T-CODEX-015e2: watcher は起動直後grace中の shell-return recovery を抑止する" {
     run bash -c '
         MOCK_PANE_CLI="codex"
@@ -1500,6 +1522,19 @@ MOCK
     [ "$status" -eq 0 ]
 
     ! grep -q "send-keys -l -t test:0.0 codex --search" "$MOCK_LOG"
+}
+
+@test "T-OPENCODE-004: send_wakeup はCLI起動grace中にbashへnudgeを送らない" {
+    run bash -c '
+        MOCK_SHOW_OPTION_VALUE="$(date +%s)"
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="opencode"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0 queue/inbox" "$MOCK_LOG"
+    ! grep -q "send-keys -l -t test:0.0 inbox" "$MOCK_LOG"
 }
 
 @test "T-CODEX-015e3: watcher は initial bootstrap pending 中の shell-return recovery を抑止する" {

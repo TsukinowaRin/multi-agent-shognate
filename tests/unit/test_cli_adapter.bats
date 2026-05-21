@@ -394,6 +394,28 @@ assert_cli_host_state_seed() {
     [[ "$result" == *"if [ -f ${CLI_ADAPTER_HOST_HOME}/${rel_path} ] && [ ! -e ${state_home}/${rel_path} ]; then cp ${CLI_ADAPTER_HOST_HOME}/${rel_path} ${state_home}/${rel_path}; fi"* ]]
 }
 
+assert_cli_host_state_seed_json_default() {
+    local result="$1"
+    local rel_path="$2"
+    local cli_type="$3"
+    local agent_id="$4"
+    local state_home="${PROJECT_ROOT}/.shogunate/cli-state/${cli_type}/agents/${agent_id}/home"
+    [[ "$result" == *"${CLI_ADAPTER_HOST_HOME}/${rel_path}"* ]]
+    [[ "$result" == *"${state_home}/${rel_path}"* ]]
+    [[ "$result" == *"not data.get(\"recent\") and not data.get(\"favorite\")"* ]]
+}
+
+assert_antigravity_settings_seed() {
+    local result="$1"
+    local agent_id="$2"
+    local state_home="${PROJECT_ROOT}/.shogunate/cli-state/antigravity/agents/${agent_id}/home"
+    [[ "$result" == *"${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
+    [[ "$result" == *"${state_home}/.gemini/antigravity-cli/settings.json"* ]]
+    [[ "$result" == *"data[\"toolPermission\"] = \"always-proceed\""* ]]
+    [[ "$result" == *"data[\"allowNonWorkspaceAccess\"] = True"* ]]
+    [[ "$result" == *"trustedWorkspaces"* ]]
+}
+
 assert_antigravity_auth_links() {
     local result="$1"
     local agent_id="$2"
@@ -405,6 +427,7 @@ assert_antigravity_auth_links() {
     assert_cli_host_auth_link "$result" ".gemini/oauth_creds.json" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/google_accounts.json" "antigravity" "$agent_id"
     assert_cli_host_state_seed "$result" ".gemini/antigravity-cli/cache/onboarding.json" "antigravity" "$agent_id"
+    assert_antigravity_settings_seed "$result" "$agent_id"
 }
 
 make_fake_cli() {
@@ -788,15 +811,14 @@ SH
     [[ "$result" == *"AGENT_ID=ashigaru2 "*agy" --dangerously-skip-permissions" ]]
 }
 
-@test "build_cli_command: antigravity はhost settings全体を共有しない" {
+@test "build_cli_command: antigravity はhost settingsを初期値にしつつrole-localに保持する" {
     load_adapter_with "${TEST_TMP}/settings_antigravity.yaml"
     mkdir -p "${TEST_TMP}/home-empty" "${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli"
     printf '{"model":"host-model"}\n' > "${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
     assert_antigravity_auth_links "$result" "ashigaru2"
-    [[ "$result" != *"cp ${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
     [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
-    [[ "$result" != *"host-model"* ]]
+    [[ "$result" == *"${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
 }
 
 @test "build_cli_command: antigravity custom command に permission flag が無ければ補完する" {
@@ -895,7 +917,7 @@ SH
     assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db" "opencode" "shogun"
     assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db-shm" "opencode" "shogun"
     assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db-wal" "opencode" "shogun"
-    assert_cli_host_state_seed "$result" ".local/state/opencode/model.json" "opencode" "shogun"
+    assert_cli_host_state_seed_json_default "$result" ".local/state/opencode/model.json" "opencode" "shogun"
     assert_cli_state_symlink_removed "$result" ".local/state/opencode/prompt-history.jsonl" "opencode" "shogun"
     assert_cli_host_state_seed "$result" ".config/opencode/package.json" "opencode" "shogun"
     assert_cli_host_dir_link "$result" ".config/opencode/node_modules" "opencode" "shogun"
@@ -993,7 +1015,7 @@ SH
         result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command_with_type "$role" "opencode")
         assert_cli_host_auth_link "$result" ".local/share/opencode/auth.json" "opencode" "$role"
         assert_cli_state_symlink_removed "$result" ".local/share/opencode/opencode.db" "opencode" "$role"
-        assert_cli_host_state_seed "$result" ".local/state/opencode/model.json" "opencode" "$role"
+        assert_cli_host_state_seed_json_default "$result" ".local/state/opencode/model.json" "opencode" "$role"
         assert_cli_state_symlink_removed "$result" ".local/state/opencode/prompt-history.jsonl" "opencode" "$role"
         [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/opencode/opencode.db"* ]]
         [[ "$result" == *"AGENT_ID=${role} ${TEST_TMP}/bin/opencode"* ]]

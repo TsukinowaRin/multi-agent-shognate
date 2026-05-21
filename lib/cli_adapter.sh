@@ -371,6 +371,84 @@ _cli_adapter_seed_host_file_cmd() {
         "$(_cli_adapter_shell_quote "$dst")"
 }
 
+_cli_adapter_seed_host_opencode_model_cmd() {
+    local state_home="$1"
+    local src
+    local dst
+    local script
+
+    src="$(_cli_adapter_host_path ".local/state/opencode/model.json")"
+    [[ -n "$src" ]] || return 0
+    dst="${state_home}/.local/state/opencode/model.json"
+    script='import json, os, shutil, sys
+src, dst = sys.argv[1:3]
+if not os.path.isfile(src):
+    raise SystemExit(0)
+copy = not os.path.exists(dst)
+if not copy:
+    try:
+        with open(dst, "r", encoding="utf-8") as f:
+            data = json.load(f) or {}
+        copy = not data.get("recent") and not data.get("favorite")
+    except Exception:
+        copy = False
+if copy:
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    if os.path.islink(dst):
+        os.unlink(dst)
+    shutil.copy2(src, dst)
+'
+    printf ' && %s -c %s %s %s' \
+        "$(_cli_adapter_shell_quote "$CLI_ADAPTER_PYTHON")" \
+        "$(_cli_adapter_shell_quote "$script")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$dst")"
+}
+
+_cli_adapter_seed_antigravity_settings_cmd() {
+    local state_home="$1"
+    local src
+    local dst
+    local script
+
+    src="$(_cli_adapter_host_path ".gemini/antigravity-cli/settings.json")"
+    [[ -n "$src" ]] || return 0
+    dst="${state_home}/.gemini/antigravity-cli/settings.json"
+    script='import json, os, sys
+src, dst, project_root = sys.argv[1:4]
+data = {}
+source = dst if os.path.isfile(dst) else src
+if os.path.isfile(source):
+    try:
+        with open(source, "r", encoding="utf-8") as f:
+            loaded = json.load(f)
+        if isinstance(loaded, dict):
+            data = loaded
+    except Exception:
+        data = {}
+trusted = data.get("trustedWorkspaces")
+if not isinstance(trusted, list):
+    trusted = []
+if project_root not in trusted:
+    trusted.append(project_root)
+data["trustedWorkspaces"] = trusted
+data["allowNonWorkspaceAccess"] = True
+data["toolPermission"] = "always-proceed"
+os.makedirs(os.path.dirname(dst), exist_ok=True)
+tmp = dst + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+os.replace(tmp, dst)
+'
+    printf ' && %s -c %s %s %s %s' \
+        "$(_cli_adapter_shell_quote "$CLI_ADAPTER_PYTHON")" \
+        "$(_cli_adapter_shell_quote "$script")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$dst")" \
+        "$(_cli_adapter_shell_quote "$CLI_ADAPTER_PROJECT_ROOT")"
+}
+
 _cli_adapter_host_auth_links_cmd() {
     local cli_type="$1"
     local state_home="$2"
@@ -389,6 +467,7 @@ _cli_adapter_host_auth_links_cmd() {
             _cli_adapter_link_host_file_cmd ".gemini/oauth_creds.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/google_accounts.json" "$state_home"
             _cli_adapter_seed_host_file_cmd ".gemini/antigravity-cli/cache/onboarding.json" "$state_home"
+            _cli_adapter_seed_antigravity_settings_cmd "$state_home"
             ;;
         opencode)
             _cli_adapter_link_host_file_cmd ".local/share/opencode/auth.json" "$state_home"
@@ -396,7 +475,7 @@ _cli_adapter_host_auth_links_cmd() {
             _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/opencode.db-shm" "$state_home"
             _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/opencode.db-wal" "$state_home"
             _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/telemetry-id" "$state_home"
-            _cli_adapter_seed_host_file_cmd ".local/state/opencode/model.json" "$state_home"
+            _cli_adapter_seed_host_opencode_model_cmd "$state_home"
             _cli_adapter_unlink_state_symlink_cmd ".local/state/opencode/prompt-history.jsonl" "$state_home"
             _cli_adapter_seed_host_file_cmd ".config/opencode/package.json" "$state_home"
             _cli_adapter_seed_host_file_cmd ".config/opencode/package-lock.json" "$state_home"

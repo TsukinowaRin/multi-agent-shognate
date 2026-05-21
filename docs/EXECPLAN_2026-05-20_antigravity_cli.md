@@ -87,6 +87,8 @@ Gemini CLI 対応を廃止し、Google Antigravity CLI (`agy`) を Shogunate の
 - helper は Linux 上でだけ Secret Service の疎通を確認し、必要なら `gnome-keyring-daemon --start --components=secrets` を試す。
 - helper は既存 keyring を削除・退避・再作成しない。空パスワード keyring への切り替えは user 明示操作だけで行う。
 - host の `.gemini/antigravity-cli/cache/onboarding.json` は、role-local file が未作成のときだけ初期コピーし、Terms / onboarding 画面の繰り返しを避ける。`settings.json` 全体や conversation/cache/history は共有しない。
+- 2026-05-21 追補: Antigravity の `settings.json` は symlink 共有せず、host settings を role-local 初期値として読み込み、Shogunate workspace trust と `toolPermission=always-proceed` / `allowNonWorkspaceAccess=true` を補完する。これにより host のモデル初期値を使いつつ、以後の role-local 変更は独立して保持する。
+- 2026-05-21 追補: OpenCode の `model.json` は role-local に独立保存するが、role 側が空の初期状態（recent / favorite が空）の場合は host の現在値で再シードする。role 側でモデルを選択済みの場合は上書きしない。
 - Agy 実機テストは制限を避けるため1体だけにし、残りの役職は Codex にする。
 
 ### 追加検証

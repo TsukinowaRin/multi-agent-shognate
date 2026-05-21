@@ -9,6 +9,9 @@
 2. `agy` は制限が厳しいため、実機 runtime テストでは Agy を1体だけにし、それ以外の役職は Codex を使うこと。
 3. role-local HOME で初回 Terms / onboarding が繰り返されないよう、host の onboarding 完了 state だけを未作成時に初期コピーすること。
 4. 既存 keyring や secrets は読まず、破壊せず、必要な起動・疎通確認だけ行うこと。
+5. Antigravity / OpenCode などで host の設定を初期値として使いたい場合、認証情報は host と共有しつつ、role-local settings は独立保存すること。
+6. OpenCode の role-local `model.json` が空の初期状態なら、host の現在の `~/.local/state/opencode/model.json` で再シードすること。role 側でモデル選択済みの場合は上書きしないこと。
+7. Antigravity の role-local `settings.json` は host の `~/.gemini/antigravity-cli/settings.json` を初期値にし、起動 workspace を `trustedWorkspaces` に追加し、`toolPermission=always-proceed` / `allowNonWorkspaceAccess=true` を補完すること。
 
 ### 受け入れ条件（観測可能）
 1. コマンド: `bash -n lib/cli_adapter.sh scripts/ensure_antigravity_keyring.sh shutsujin_departure.sh`
@@ -17,6 +20,8 @@
    - 期待結果: Antigravity 起動 command が role-local HOME を維持しつつ、事前に keyring helper を呼び、host onboarding state を未作成時だけ初期コピーする。
 3. 実機確認: Agy 1体 + Codex 残りの Shogunate runtime を test folder で起動する。
    - 期待結果: Agy pane がログインURL待ちではなく通常起動または ready 判定まで進む。制限や prompt timeout がある場合は、その blocker を記録する。
+4. 実機確認: OpenCode を割り当てた role の初期モデル設定を確認する。
+   - 期待結果: role-local `model.json` が空の初期状態なら host の recent model が反映される。role 側で選んだモデルは次回起動でも保持される。
 
 ## 追補（2026-05-20: Antigravity auth が毎回ログインになる問題）
 ### 要求

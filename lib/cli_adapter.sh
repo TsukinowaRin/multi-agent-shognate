@@ -388,6 +388,7 @@ _cli_adapter_host_auth_links_cmd() {
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/tokens.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/oauth_creds.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/google_accounts.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".gemini/antigravity-cli/cache/onboarding.json" "$state_home"
             ;;
         opencode)
             _cli_adapter_link_host_file_cmd ".local/share/opencode/auth.json" "$state_home"
@@ -481,10 +482,20 @@ _cli_adapter_with_cli_state() {
     local command_text="$3"
     local prepare_cmd
     local state_env
+    local keyring_cmd=""
 
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
+    if [[ "$cli_type" == "antigravity" ]]; then
+        keyring_cmd="$(_cli_adapter_shell_quote "${CLI_ADAPTER_PROJECT_ROOT}/scripts/ensure_antigravity_keyring.sh")"
+    fi
     prepare_cmd="$(_cli_adapter_prepare_cli_state_cmd "$cli_type" "$agent_id")"
     state_env="$(_cli_adapter_cli_state_env_prefix "$cli_type" "$agent_id")"
-    if [[ -n "$prepare_cmd" ]]; then
+
+    if [[ -n "$keyring_cmd" && -n "$prepare_cmd" ]]; then
+        printf '%s && %s && %s%s\n' "$keyring_cmd" "$prepare_cmd" "$state_env" "$command_text"
+    elif [[ -n "$keyring_cmd" ]]; then
+        printf '%s && %s\n' "$keyring_cmd" "$command_text"
+    elif [[ -n "$prepare_cmd" ]]; then
         printf '%s && %s%s\n' "$prepare_cmd" "$state_env" "$command_text"
     else
         printf '%s\n' "$command_text"

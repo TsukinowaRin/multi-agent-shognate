@@ -397,12 +397,14 @@ assert_cli_host_state_seed() {
 assert_antigravity_auth_links() {
     local result="$1"
     local agent_id="$2"
+    [[ "$result" == *"${PROJECT_ROOT}/scripts/ensure_antigravity_keyring.sh && mkdir -p"* ]]
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/auth.json" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/oauth_creds.json" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/google_accounts.json" "antigravity" "$agent_id"
     [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
     assert_cli_host_auth_link "$result" ".gemini/oauth_creds.json" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/google_accounts.json" "antigravity" "$agent_id"
+    assert_cli_host_state_seed "$result" ".gemini/antigravity-cli/cache/onboarding.json" "antigravity" "$agent_id"
 }
 
 make_fake_cli() {

@@ -1,7 +1,22 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-20
+最終更新: 2026-05-21
 出典: 直近ユーザープロンプト
+
+## 追補（2026-05-21: Shogunate runtime で Agy を実用可能にする）
+### 要求
+1. Shogunate の役職に Antigravity CLI (`agy`) を割り当てたとき、host の keyring 認証を使って再ログインなしで起動できるようにすること。
+2. `agy` は制限が厳しいため、実機 runtime テストでは Agy を1体だけにし、それ以外の役職は Codex を使うこと。
+3. role-local HOME で初回 Terms / onboarding が繰り返されないよう、host の onboarding 完了 state だけを未作成時に初期コピーすること。
+4. 既存 keyring や secrets は読まず、破壊せず、必要な起動・疎通確認だけ行うこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n lib/cli_adapter.sh scripts/ensure_antigravity_keyring.sh shutsujin_departure.sh`
+   - 期待結果: shell syntax error がない。
+2. コマンド: `bats tests/unit/test_cli_adapter.bats`
+   - 期待結果: Antigravity 起動 command が role-local HOME を維持しつつ、事前に keyring helper を呼び、host onboarding state を未作成時だけ初期コピーする。
+3. 実機確認: Agy 1体 + Codex 残りの Shogunate runtime を test folder で起動する。
+   - 期待結果: Agy pane がログインURL待ちではなく通常起動または ready 判定まで進む。制限や prompt timeout がある場合は、その blocker を記録する。
 
 ## 追補（2026-05-20: Antigravity auth が毎回ログインになる問題）
 ### 要求

@@ -117,6 +117,7 @@
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh
 !scripts/build_instructions.sh
+!scripts/ensure_antigravity_keyring.sh
 !scripts/localapi_repl.py
 !scripts/configure_agents.sh
 !scripts/configure_runtime_roles.py

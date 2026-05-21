@@ -72,3 +72,46 @@ Gemini CLI 対応を廃止し、Google Antigravity CLI (`agy`) を Shogunate の
 
 - Antigravity CLI が実機に無い環境では、`resolve_cli_type_for_agent` が Codex など利用可能 CLI へ fallback する。
 - 既存 `gemini` 設定は当面 `antigravity` alias として読むため、古い config で即時起動不能にならない。
+
+## 2026-05-21 追補: runtime keyring 起動
+
+### 背景
+
+- 実機 WSL では `agy` の OAuth token がファイルではなく Secret Service / GNOME keyring に保存された。
+- `secret-tool` / `gnome-keyring-daemon` が無い、または default collection が locked の場合、ログイン成功後も保存できず、次回また OAuth URL が出た。
+- 空パスワード keyring に切り替えた後、`agy` は `ChainedAuth: authenticated via keyring` / `Print mode: silent auth succeeded` まで進み、再ログインなしで応答した。
+
+### 方針
+
+- Shogunate runtime は Antigravity 起動直前に `scripts/ensure_antigravity_keyring.sh` を呼ぶ。
+- helper は Linux 上でだけ Secret Service の疎通を確認し、必要なら `gnome-keyring-daemon --start --components=secrets` を試す。
+- helper は既存 keyring を削除・退避・再作成しない。空パスワード keyring への切り替えは user 明示操作だけで行う。
+- host の `.gemini/antigravity-cli/cache/onboarding.json` は、role-local file が未作成のときだけ初期コピーし、Terms / onboarding 画面の繰り返しを避ける。`settings.json` 全体や conversation/cache/history は共有しない。
+- Agy 実機テストは制限を避けるため1体だけにし、残りの役職は Codex にする。
+
+### 追加検証
+
+- `bash -n lib/cli_adapter.sh scripts/ensure_antigravity_keyring.sh shutsujin_departure.sh`
+- `bats tests/unit/test_cli_adapter.bats`
+- `Shogunate-test` に最新コードを反映し、`shogun/karo/gunshi/ashigaru2+` は Codex、`ashigaru1` だけ Antigravity にして runtime smoke を行う。
+
+### 実施結果
+
+- `scripts/ensure_antigravity_keyring.sh` を追加し、Antigravity 起動 command の先頭で実行するようにした。
+- `build_cli_command_with_type ashigaru1 antigravity` は、role-local HOME へ入る前に keyring helper を呼び、host auth symlink と onboarding state seed を行う。
+- `Shogunate-test` へ最新コードを反映し、`shogun/karo/gunshi/ashigaru2` は Codex、`ashigaru1` は Antigravity で `bash shutsujin_departure.sh -c -S` を実行した。
+- Runtime は 5/5 agents の ready 判定、初動命令配信、watcher / bridge / runtime CLI preference daemon 起動まで完了した。
+- Antigravity role-local log で `ChainedAuth: authenticated via keyring (effective: keyring)` を確認した。
+- Agy pane は Terms / login prompt ではなく通常 prompt まで進み、直接 `Reply exactly: ready:ashigaru1` を送って `ready:ashigaru1` 応答を確認した。
+
+### 追加検証結果
+
+- `bash -n lib/cli_adapter.sh scripts/ensure_antigravity_keyring.sh shutsujin_departure.sh first_setup.sh` → PASS
+- `bats tests/unit/test_cli_adapter.bats` → PASS (`126` tests; `secret-tool` 導入済み環境の keyring-missing test は skip)
+- `scripts/ensure_antigravity_keyring.sh` → PASS (`status=0`)
+- `git diff --check` → PASS
+
+### 残リスク
+
+- Agy の Terms / onboarding state は `onboarding.json` を未作成時に初期コピーする。host 側で未同意の場合は、ユーザーが host `agy` で一度 onboarding を完了する必要がある。
+- Agy は制限が厳しいため、実機 smoke では1体だけに限定した。複数 Agy 同時運用は未検証。

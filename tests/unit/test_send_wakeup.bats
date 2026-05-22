@@ -10,6 +10,7 @@
 #   T-SW-004: send_wakeup — send-keys failure → return 1
 #   T-SW-005: send_wakeup — no paste-buffer or set-buffer used
 #   T-SW-006: agent_has_self_watch — detects inotifywait process
+#   T-SW-006b: agent_has_self_watch — queries exact INBOX path
 #   T-SW-007: agent_has_self_watch — no inotifywait → returns 1
 #   T-SW-008: send_cli_command — /clear uses send-keys
 #   T-SW-009: send_cli_command — /model uses send-keys
@@ -26,54 +27,33 @@
 #   T-BUSY-004: send_wakeup_with_escape — skips when agent is busy
 #   T-CODEX-001: send_cli_command — codex /clear → /new conversion
 #   T-CODEX-002: send_cli_command — codex /model → skip
-#   T-OPENCODE-001: send_cli_command — opencode /clear → /new conversion
-#   T-OPENCODE-002: send_cli_command — opencode /model → skip
-#   T-CODEX-003: C-u sent when unread=0 and agent is idle
-#   T-CODEX-004: C-u NOT sent when agent is busy
+#   T-CODEX-003: C-u is not used for idle cleanup
+#   T-CODEX-004: busy guard still suppresses disruptive cleanup
 #   T-CODEX-005: send_cli_command — claude /clear passes through as-is
 #   T-CODEX-006: inbox_watcher.sh has agent_is_busy and Codex/Copilot handlers
 #   T-CODEX-007: pane @agent_cli=codex overrides stale CLI_TYPE (Phase2 C-c抑止)
 #   T-CODEX-008: pane @agent_cli=codex overrides stale CLI_TYPE (/clear→/new)
 #   T-CODEX-009: normalize_special_command rejects invalid model_switch payload
 #   T-CODEX-010: unresolved CLI type falls back to codex-safe path
+#   T-CODEX-010b2: rate-limit prompt dismiss failure aborts send_wakeup
+#   T-CODEX-010c2: rate-limit prompt dismiss failure aborts send_wakeup_with_escape
 #   T-CODEX-011: clear_command処理でauto-recovery task_assignedを自動投入
 #   T-CODEX-012: auto-recovery task_assignedは重複投入しない
-#   T-CODEX-016: Codex transcript echo is not treated as stuck input
-#   T-SHOGUN-001: session_has_client — returns 0 when client attached
-#   T-SHOGUN-002: session_has_client — returns 1 when no client
-#   T-SHOGUN-003: send_wakeup — shogun + active + attached → send-keys (post PR#75)
-#   T-SHOGUN-004: send_wakeup — shogun + active + detached → send-keys fallthrough
-#   T-SHOGUN-005: shogun clear_command does not enqueue auto-recovery
-#   T-BUSY-005: agent_is_busy — returns busy during /clear cooldown (LAST_CLEAR_TS)
-#   T-BUSY-006: agent_is_busy — returns idle after /clear cooldown expires
-#   T-BUSY-007: agent_is_busy — /clear cooldown overrides idle pane
-#   T-BUSY-008: agent_is_busy — idle prompt at bottom overrides old busy markers (false-busy fix)
-#   T-BUSY-009: agent_is_busy — 'background terminal running' detected as busy
-#   T-BUSY-010: agent_is_busy — 'Compacting conversation' detected as busy
-#   T-BUSY-011: agent_is_busy — 'esc to interrupt' alone detected as busy
-#   T-BUSY-012: agent_is_busy — OpenCode idle home screen detected as idle
-#   T-BUSY-013: agent_is_busy — OpenCode sidebar busy state detected as busy
-#   T-BUSY-014: agent_is_busy — OpenCode animation row detected as busy
-#   T-BUSY-015: agent_is_busy — blank OpenCode pane falls back to idle
-#   T-BUSY-016: agent_is_busy — OpenCode animation fallback works without python3
-#   T-SHOOK-001: Claude Code throttle uses 60s cooldown (stop-hook-supplementary)
-#   T-SHOOK-002: Claude Code count change bypasses throttle (stop-hook-supplementary)
-#   T-SHOOK-003: Non-Claude CLIs still bypass throttle on count change
-#   T-CRESET-001: send_context_reset — suppresses /clear for karo
-#   T-CRESET-002: send_context_reset — suppresses /clear for gunshi
-#   T-CRESET-003: send_context_reset — sends /clear for ashigaru
-#   T-CRESET-004: send_context_reset — sends /new for opencode
 #   T-COPILOT-001: send_cli_command — copilot /clear → Ctrl-C + restart
 #   T-COPILOT-002: send_cli_command — copilot /model → skip
+#   T-EXTRA-CLI-001: is_valid_cli_type — opencode / kilo を受理
+#   T-OPENCODE-001: send_cli_command — opencode /clear → /new
+#   T-OPENCODE-002: send_cli_command — opencode /model → skip
+#   T-KILO-001: send_cli_command — kilo /clear → Ctrl-C + restart
+#   T-KILO-002: send_cli_command — kilo /model → skip
 
 # --- セットアップ ---
 
 setup_file() {
     export PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
     export WATCHER_SCRIPT="$PROJECT_ROOT/scripts/inbox_watcher.sh"
-    export VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
     [ -f "$WATCHER_SCRIPT" ] || return 1
-    "$VENV_PYTHON" -c "import yaml" 2>/dev/null || return 1
+    python3 -c "import yaml" 2>/dev/null || return 1
 }
 
 setup() {
@@ -98,9 +78,12 @@ MOCK
     # Default mock control variables
     export MOCK_CAPTURE_PANE=""
     export MOCK_SENDKEYS_RC=0
+    export MOCK_SENDKEYS_TEXT_RC=""
+    export MOCK_SENDKEYS_ENTER_RC=""
     export MOCK_PANE_CLI=""
-    export MOCK_PANE_ACTIVE=""
-    export MOCK_LIST_CLIENTS=""
+    export MOCK_PANE_CURRENT_COMMAND="node"
+    export MOCK_PGREP_LOG="$TEST_TMPDIR/pgrep_calls.log"
+    > "$MOCK_PGREP_LOG"
 
     # Test harness: sets up mocks, then sources the REAL inbox_watcher.sh
     # __INBOX_WATCHER_TESTING__=1 skips arg parsing, inotifywait check, and main loop.
@@ -115,7 +98,6 @@ CLI_TYPE="claude"
 INBOX="$TEST_INBOX_DIR/test_agent.yaml"
 LOCKFILE="\${INBOX}.lock"
 SCRIPT_DIR="$PROJECT_ROOT"
-export IDLE_FLAG_DIR="$TEST_TMPDIR"
 
 # Mock external commands (defined before sourcing so they override real commands)
 tmux() {
@@ -125,21 +107,30 @@ tmux() {
         return 0
     fi
     if echo "\$*" | grep -q "send-keys"; then
+        if echo "\$*" | grep -q " Enter"; then
+            if [ -n "\${MOCK_SENDKEYS_ENTER_RC:-}" ]; then
+                return "\${MOCK_SENDKEYS_ENTER_RC}"
+            fi
+        else
+            if [ -n "\${MOCK_SENDKEYS_TEXT_RC:-}" ]; then
+                return "\${MOCK_SENDKEYS_TEXT_RC}"
+            fi
+        fi
         return \${MOCK_SENDKEYS_RC:-0}
     fi
     if echo "\$*" | grep -q "show-options"; then
-        echo "\${MOCK_PANE_CLI:-}"
-        return 0
-    fi
-    if echo "\$*" | grep -q "list-clients"; then
-        [ -n "\${MOCK_LIST_CLIENTS:-}" ] && echo "\$MOCK_LIST_CLIENTS"
+        if echo "\$*" | grep -q "@cli_launch_epoch"; then
+            echo "\${MOCK_SHOW_OPTION_VALUE:-}"
+        else
+            echo "\${MOCK_PANE_CLI:-}"
+        fi
         return 0
     fi
     if echo "\$*" | grep -q "display-message"; then
-        if echo "\$*" | grep -q "pane_active"; then
-            echo "\${MOCK_PANE_ACTIVE:-0}"
+        if echo "\$*" | grep -q "pane_current_command"; then
+            echo "\${MOCK_PANE_CURRENT_COMMAND:-node}"
         else
-            echo "mock_session"
+            echo "mock_pane"
         fi
         return 0
     fi
@@ -155,10 +146,6 @@ export __INBOX_WATCHER_TESTING__=1
 source "$WATCHER_SCRIPT"
 HARNESS
     chmod +x "$TEST_HARNESS"
-
-    # Default: create idle flag so agent_is_busy() returns idle (1) for claude CLI
-    # Tests requiring busy state must rm this file before their run bash -c block
-    touch "$TEST_TMPDIR/shogun_idle_test_agent"
 }
 
 teardown() {
@@ -207,14 +194,20 @@ MOCK
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
-# --- T-SW-004: send-keys failure → return 0 (daemon-safe) + WARNING log ---
-# send_wakeup always returns 0 to avoid killing the watcher under set -euo pipefail.
+# --- T-SW-004: send-keys failure → return 1 ---
 
-@test "T-SW-004: send_wakeup returns 0 when send-keys fails (daemon-safe)" {
+@test "T-SW-004: send_wakeup returns 1 when send-keys fails" {
     run bash -c "MOCK_SENDKEYS_RC=1; source '$TEST_HARNESS' && send_wakeup 2"
-    [ "$status" -eq 0 ]
+    [ "$status" -eq 1 ]
 
     echo "$output" | grep -qi "WARNING\|failed"
+}
+
+@test "T-SW-004b: send_wakeup returns 1 when Enter send fails" {
+    run bash -c "MOCK_SENDKEYS_ENTER_RC=1; source '$TEST_HARNESS' && send_wakeup 2"
+    [ "$status" -eq 1 ]
+
+    echo "$output" | grep -qi "Enter failed\|WARNING"
 }
 
 # --- T-SW-005: no paste-buffer or set-buffer used ---
@@ -245,11 +238,46 @@ MOCK
     [ "$status" -eq 0 ]
 }
 
+@test "T-SW-006b: agent_has_self_watch queries exact INBOX path" {
+    run grep -nE 'escape_extended_regex|inbox_path=.*INBOX|pgrep -f "inotifywait\.\*\$\{inbox_pattern\}"' "$WATCHER_SCRIPT"
+    [ "$status" -eq 0 ]
+}
+
 # --- T-SW-007: agent_has_self_watch — no inotifywait ---
 
 @test "T-SW-007: agent_has_self_watch returns 1 when no inotifywait" {
     run bash -c "source '$TEST_HARNESS' && agent_has_self_watch"
     [ "$status" -eq 1 ]
+}
+
+# --- T-SW-007b: non-claudeはself-watch判定を使わない ---
+
+@test "T-SW-007b: non-claude CLI ignores self-watch process and still nudges" {
+    cat > "$MOCK_PGREP" << 'MOCK'
+#!/bin/bash
+echo "88888 inotifywait -q -t 120 -e modify inbox/test_agent.yaml"
+exit 0
+MOCK
+    chmod +x "$MOCK_PGREP"
+
+    run bash -c "MOCK_PANE_CLI=codex; source '$TEST_HARNESS' && send_wakeup 4"
+    [ "$status" -eq 0 ]
+    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
+@test "T-CODEX-013a: codex ready判定は起動コマンド行だけでは真にならない" {
+    run bash -c "source '$TEST_HARNESS' && ! codex_ready_prompt_detected \$'AGENT_ID=karo CODEX_HOME=/tmp/x codex --model gpt-5.4 --search --dangerously-bypass-approvals-and-sandbox'"
+    [ "$status" -eq 0 ]
+}
+
+@test "T-CODEX-014a: codex ready判定は OpenAI Codex header で真になる" {
+    run bash -c "source '$TEST_HARNESS' && codex_ready_prompt_detected \$'╭────────────────────────╮\n│ >_ OpenAI Codex (v0.118.0) │\n│ model: gpt-5.4 high   /model to change │\n╰────────────────────────╯'"
+    [ "$status" -eq 0 ]
+}
+
+@test "T-EXTRA-CLI-001: is_valid_cli_type accepts opencode and kilo" {
+    run bash -c "source '$TEST_HARNESS' && is_valid_cli_type opencode && is_valid_cli_type kilo"
+    [ "$status" -eq 0 ]
 }
 
 # --- T-SW-008: /clear uses send-keys ---
@@ -276,6 +304,13 @@ MOCK
     grep -q "send-keys.*Enter" "$MOCK_LOG"
 }
 
+@test "T-SW-009b: send_cli_command returns 1 when Enter send fails" {
+    run bash -c "MOCK_SENDKEYS_ENTER_RC=1; source '$TEST_HARNESS' && send_cli_command '/model opus'"
+    [ "$status" -eq 1 ]
+
+    echo "$output" | grep -qi "Enter failed\|WARNING"
+}
+
 # --- T-SW-010: nudge content format ---
 
 @test "T-SW-010: nudge content format is inboxN (backward compatible)" {
@@ -283,6 +318,165 @@ MOCK
     [ "$status" -eq 0 ]
 
     grep -q "send-keys.*inbox7" "$MOCK_LOG"
+}
+
+@test "T-SW-010b: shogun cmd_done unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: karo
+    type: cmd_done
+    content: "cmd_200 が完了した。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="shogun"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010bb: shogun runtime_blocked unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: inbox_watcher
+    type: runtime_blocked
+    content: "karo blocked"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="shogun"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/shogun.yaml に未読の runtime_blocked がある。dashboard.md の runtime-blocked/\\* を確認し、止まっている役職と要対応を殿へ報告せよ。" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010bc: karo cmd_new unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: shogun
+    type: cmd_new
+    content: "cmd_001 を実行せよ。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="karo"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/karo.yaml に未読の cmd_new がある。" "$MOCK_LOG"
+    grep -q "queue/shogun_to_karo.yaml" "$MOCK_LOG"
+    grep -q "status: in_progress" "$MOCK_LOG"
+    grep -q "ashigaru3以降も含めた有用で安全な active ashigaru 全体" "$MOCK_LOG"
+    grep -q "queue/tasks/ashigaru{N}.yaml" "$MOCK_LOG"
+    grep -q "queue/tasks/gunshi.yaml" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010bg: gunshi task_assigned unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: karo
+    type: task_assigned
+    content: "分析せよ。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="gunshi"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/gunshi.yaml に未読の task_assigned がある。" "$MOCK_LOG"
+    grep -q "queue/tasks/gunshi.yaml" "$MOCK_LOG"
+    grep -q "戦略分析・分解案・リスク評価" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010bd: karo report_received unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: ashigaru1
+    type: report_received
+    content: "report done"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="karo"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/karo.yaml に未読の report_received がある。" "$MOCK_LOG"
+    grep -q "queue/reports/ashigaru\\*_report.yaml" "$MOCK_LOG"
+    grep -q "queue/shogun_to_karo.yaml" "$MOCK_LOG"
+    grep -q "dashboard更新・cmd close" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010c: ashigaru task_assigned unread uses explicit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: karo
+    type: task_assigned
+    content: "subtask を割り当てた。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/ashigaru1.yaml に未読の task_assigned がある。" "$MOCK_LOG"
+    grep -q "queue/tasks/ashigaru1.yaml" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010d: ashigaru auto-recovery unread uses explicit recovery wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: inbox_watcher
+    type: task_assigned
+    content: "[auto-recovery] report を閉じよ"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/ashigaru1.yaml に未読の auto-recovery task_assigned がある。" "$MOCK_LOG"
+    grep -q "queue/reports/ashigaru1_report.yaml" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
 # --- T-SW-011: functions exist in inbox_watcher.sh ---
@@ -344,11 +538,9 @@ MOCK
 
 # --- T-ESC-003: unread 2-4min → Escape+nudge ---
 
-@test "T-ESC-003: escalation Phase 2 — unread 2-4min uses Escape+nudge (copilot)" {
-    # Escape escalation is suppressed for claude/codex (Stop hook / safety).
-    # Test with copilot CLI which still uses Escape escalation.
-    export MOCK_PANE_CLI="copilot"
+@test "T-ESC-003: escalation Phase 2 — unread 2-4min uses Escape+nudge" {
     run bash -c '
+        MOCK_PANE_CLI=codex
         source "'"$TEST_HARNESS"'"
         now=$(date +%s)
         FIRST_UNREAD_SEEN=$((now - 180))  # 3 minutes ago
@@ -360,11 +552,43 @@ MOCK
     '
     [ "$status" -eq 0 ]
     echo "$output" | grep -q "PHASE2_ESCAPE_NUDGE"
-    grep -q "send-keys.*C-c" "$MOCK_LOG"
     # Escape was sent
     grep -q "send-keys.*Escape" "$MOCK_LOG"
     # Nudge was also sent
     grep -q "send-keys.*inbox3" "$MOCK_LOG"
+}
+
+@test "T-ESC-003c: shogun cmd_done unread uses explicit wake-up text in phase2" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: karo
+    type: cmd_done
+    content: "cmd_200 が完了した。"
+    read: false
+YAML
+
+    run bash -c '
+        MOCK_PANE_CLI=codex
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="shogun"
+        send_wakeup_with_escape 1
+    '
+    [ "$status" -eq 0 ]
+    grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-ESC-003b: claudeはPhase2でEscapeを送らず通常nudgeにフォールバック" {
+    run bash -c '
+        MOCK_PANE_CLI=claude
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 6
+    '
+    [ "$status" -eq 0 ]
+    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "send-keys.*inbox6" "$MOCK_LOG"
 }
 
 # --- T-ESC-004: unread > 4min → /clear sent ---
@@ -388,10 +612,9 @@ MOCK
 
 # --- T-ESC-005: /clear cooldown → falls back to Escape+nudge ---
 
-@test "T-ESC-005: escalation /clear cooldown — falls back to Escape+nudge (copilot)" {
-    # Escape escalation is suppressed for claude/codex. Test with copilot.
-    export MOCK_PANE_CLI="copilot"
+@test "T-ESC-005: escalation /clear cooldown — falls back to Escape+nudge" {
     run bash -c '
+        MOCK_PANE_CLI=codex
         source "'"$TEST_HARNESS"'"
         now=$(date +%s)
         FIRST_UNREAD_SEEN=$((now - 300))  # 5 minutes ago
@@ -404,7 +627,6 @@ MOCK
     '
     [ "$status" -eq 0 ]
     echo "$output" | grep -q "COOLDOWN_FALLBACK"
-    grep -q "send-keys.*C-c" "$MOCK_LOG"
     grep -q "send-keys.*Escape" "$MOCK_LOG"
     grep -q "send-keys.*inbox4" "$MOCK_LOG"
     ! grep -q "send-keys.*/clear" "$MOCK_LOG"
@@ -412,11 +634,39 @@ MOCK
 
 # --- T-BUSY-001: agent_is_busy detects "Working" ---
 
-@test "T-BUSY-001: agent_is_busy returns 0 (busy) when no idle flag — claude CLI" {
-    rm -f "$TEST_TMPDIR/shogun_idle_test_agent"
+@test "T-BUSY-001: agent_is_busy returns 0 when pane shows Working" {
     run bash -c '
+        MOCK_CAPTURE_PANE="◦ Working on task (12s • esc to interrupt)"
         source "'"$TEST_HARNESS"'"
-        LAST_CLEAR_TS=0
+        agent_is_busy
+    '
+    [ "$status" -eq 0 ]
+}
+
+@test "T-BUSY-001b: agent_is_busy returns 0 when Codex has queued follow-up submission" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="• Working (36s • esc to interrupt)
+
+• Messages to be submitted after next tool call (press esc to interrupt and send immediately)
+  ↳ inbox1
+
+› Explain this codebase"
+        source "'"$TEST_HARNESS"'"
+        agent_is_busy
+    '
+    [ "$status" -eq 0 ]
+}
+
+@test "T-BUSY-001c: agent_is_busy returns 0 when recent Codex Working line is still visible" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="• 着手中
+
+◦ Working (1m 51s • esc to interrupt)
+
+› Write tests for @filename
+
+  gpt-5.4 high · 92% left · <workspace>/multi-agent-shognate"
+        source "'"$TEST_HARNESS"'"
         agent_is_busy
     '
     [ "$status" -eq 0 ]
@@ -437,8 +687,8 @@ MOCK
 # --- T-BUSY-003: send_wakeup skips when agent is busy ---
 
 @test "T-BUSY-003: send_wakeup skips nudge when agent is busy" {
-    rm -f "$TEST_TMPDIR/shogun_idle_test_agent"
     run bash -c '
+        MOCK_CAPTURE_PANE="◦ Thinking about approach (5s • esc to interrupt)"
         source "'"$TEST_HARNESS"'"
         send_wakeup 3
     '
@@ -449,11 +699,25 @@ MOCK
     ! grep -q "send-keys.*inbox" "$MOCK_LOG"
 }
 
+@test "T-BUSY-003b: send_wakeup skips nudge when Codex follow-up is already queued" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="• Messages to be submitted after next tool call (press esc to interrupt and send immediately)
+  ↳ inbox2
+
+› Write tests for @filename"
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -qi "SKIP.*busy"
+    ! grep -q "send-keys.*inbox" "$MOCK_LOG"
+}
+
 # --- T-BUSY-004: send_wakeup_with_escape skips when agent is busy ---
 
 @test "T-BUSY-004: send_wakeup_with_escape skips when agent is busy" {
-    rm -f "$TEST_TMPDIR/shogun_idle_test_agent"
     run bash -c '
+        MOCK_CAPTURE_PANE="◦ Sending request (2s • esc to interrupt)"
         source "'"$TEST_HARNESS"'"
         send_wakeup_with_escape 2
     '
@@ -496,87 +760,29 @@ MOCK
     echo "$output" | grep -q "not supported on codex"
 }
 
-# --- T-OPENCODE-001: opencode /clear → /new conversion ---
+# --- T-CODEX-003: C-u is not used for idle cleanup ---
 
-@test "T-OPENCODE-001: send_cli_command converts /clear to /new for opencode" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="first line\nsecond line\nthird line\n"
-        MOCK_PANE_CLI="opencode"
-        source "'"$TEST_HARNESS"'"
-        CLI_TYPE="opencode"
-        send_cli_command "/clear"
-    '
-    [ "$status" -eq 0 ]
-
-    # /clear is converted to /new after clearing stale input — no Escape or C-c sent.
-    grep -q "send-keys.*C-u" "$MOCK_LOG"
-    grep -q "send-keys.*/new" "$MOCK_LOG"
-    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
-    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
-    ! grep -q "send-keys.*C-c" "$MOCK_LOG"
-}
-
-# --- T-OPENCODE-002: opencode /model → skip with restart-only note ---
-
-@test "T-OPENCODE-002: send_cli_command skips /model for opencode" {
-    run bash -c '
-        source "'"$TEST_HARNESS"'"
-        CLI_TYPE="opencode"
-        send_cli_command "/model opus"
-    '
-    [ "$status" -eq 0 ]
-
-    ! grep -q "send-keys.*/model" "$MOCK_LOG"
-    echo "$output" | grep -q "restart-only"
-}
-
-# --- T-CODEX-003: C-u sent when unread=0 and agent is idle ---
-
-@test "T-CODEX-003: C-u cleanup sent when no unread and agent is idle" {
+@test "T-CODEX-003: no C-u cleanup is sent when no unread and agent is idle" {
     run bash -c '
         MOCK_CAPTURE_PANE="› Summarize recent commits
   ? for shortcuts                100% context left"
         source "'"$TEST_HARNESS"'"
-        # Simulate process_unread no-unread path
-        FIRST_UNREAD_SEEN=12345
-        normal_count=0
-        if [ "$normal_count" -gt 0 ] 2>/dev/null; then
-            echo "SHOULD_NOT_REACH"
-        else
-            FIRST_UNREAD_SEEN=0
-            if ! agent_is_busy; then
-                timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
-                echo "C_U_SENT"
-            fi
-        fi
+        ! agent_is_busy
     '
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "C_U_SENT"
-    grep -q "send-keys.*C-u" "$MOCK_LOG"
+    ! grep -q "send-keys.*C-u" "$MOCK_LOG"
+    ! grep -q "mux_send_ctrl_u" "$WATCHER_SCRIPT"
 }
 
-# --- T-CODEX-004: C-u NOT sent when agent is busy ---
+# --- T-CODEX-004: busy guard still suppresses disruptive cleanup ---
 
-@test "T-CODEX-004: C-u cleanup NOT sent when agent is busy" {
-    rm -f "$TEST_TMPDIR/shogun_idle_test_agent"
+@test "T-CODEX-004: no C-u cleanup is sent when agent is busy" {
     run bash -c '
+        MOCK_CAPTURE_PANE="◦ Working on request (10s • esc to interrupt)"
         source "'"$TEST_HARNESS"'"
-        FIRST_UNREAD_SEEN=12345
-        normal_count=0
-        if [ "$normal_count" -gt 0 ] 2>/dev/null; then
-            echo "SHOULD_NOT_REACH"
-        else
-            FIRST_UNREAD_SEEN=0
-            if ! agent_is_busy; then
-                timeout 2 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null
-                echo "C_U_SENT"
-            else
-                echo "C_U_SKIPPED"
-            fi
-        fi
+        agent_is_busy
     '
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "C_U_SKIPPED"
     ! grep -q "C-u" "$MOCK_LOG"
 }
 
@@ -599,8 +805,7 @@ MOCK
 
 @test "T-CODEX-006: inbox_watcher.sh contains agent_is_busy and Codex/Copilot handlers" {
     grep -q "agent_is_busy()" "$WATCHER_SCRIPT"
-    # Busy detection patterns live in lib/agent_status.sh (shared library)
-    grep -q 'Working|Thinking|Planning|Sending' "$PROJECT_ROOT/lib/agent_status.sh"
+    grep -q 'Working|Thinking|Planning|Sending' "$WATCHER_SCRIPT"
 
     # Codex /clear → /new conversion exists
     grep -q '/new' "$WATCHER_SCRIPT"
@@ -608,8 +813,8 @@ MOCK
     # Codex /model skip exists
     grep -q 'not supported on codex' "$WATCHER_SCRIPT"
 
-    # C-u cleanup exists
-    grep -q 'C-u' "$WATCHER_SCRIPT"
+    # Idle cleanup must not erase human input
+    ! grep -q 'mux_send_ctrl_u' "$WATCHER_SCRIPT"
 
     # Copilot handler exists
     grep -q 'copilot --yolo' "$WATCHER_SCRIPT"
@@ -627,9 +832,8 @@ MOCK
     '
     [ "$status" -eq 0 ]
 
+    grep -q "send-keys.*Escape" "$MOCK_LOG"
     grep -q "send-keys.*inbox2" "$MOCK_LOG"
-    # Codex: Escape escalation is suppressed (avoid interrupting work / human typing)
-    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
     ! grep -q "send-keys.*C-c" "$MOCK_LOG"
 }
 
@@ -647,6 +851,36 @@ MOCK
     grep -q "send-keys.*/new" "$MOCK_LOG"
     ! grep -q "send-keys.*/clear" "$MOCK_LOG"
     ! grep -q "send-keys.*C-c" "$MOCK_LOG"
+}
+
+# --- T-CODEX-009: invalid model_switch payload is rejected ---
+
+@test "T-CODEX-008b: command-layer codex は escalation /clear を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="shogun"
+        CLI_TYPE="claude"
+        send_cli_command "/clear" "escalation"
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys.*/new" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+}
+
+@test "T-CODEX-008c: ashigaru codex は escalation /clear を /new へ変換する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        CLI_TYPE="claude"
+        send_cli_command "/clear" "escalation"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys.*/new" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
 }
 
 # --- T-CODEX-009: invalid model_switch payload is rejected ---
@@ -676,6 +910,679 @@ MOCK
     ! grep -q "send-keys.*C-c" "$MOCK_LOG"
 }
 
+@test "T-CODEX-010b: send_wakeup は Codex rate-limit prompt を dismiss してから nudge する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\nSwitch to gpt-5.1-codex-mini\n3. Keep current model (never show again)'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010b1: send_wakeup は新しい Codex rate-limit prompt variant も dismiss してから nudge する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\n1. Switch to gpt-5.1-codex-mini\n2. Keep current model\n3. Keep… Hide future rate limit\nPress enter to continue'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010b1b: watcher は switch-only Codex confirm prompt を Enter で確定する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'\n› 1. Switch to gpt-5.1-codex-mini Optimized\nfor codex.\n\nPress enter to confirm or esc to go back'"'"'
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010b1c: watcher は折返しされた Codex switch-confirm prompt も Enter で確定する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'\n› 1. Swit…\n           Optim\n           ized\n           for\n           codex\n  2. Keep\n     current\n     model\n  3. Keep… Hide\n           futur\n           e\n           rate\n           limit\n\n  Press enter to c\n  onfirm or esc to go b\n  ack'"'"'
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010b0: send_wakeup は Codex 通常画面では no-prompt を許容して nudge する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'normal codex idle screen'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010b2: send_wakeup は Codex rate-limit prompt dismiss 失敗時に abort する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_SENDKEYS_ENTER_RC=1
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\nKeep current model (never show again)'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 1 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    ! grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+    echo "$output" | grep -qi "prompt dismiss failed\|Enter failed"
+}
+
+@test "T-CODEX-010b2b: send_wakeup は折返しされた Keep current model prompt も dismiss してから nudge する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'\n⚠ Heads up\n  2. Keep\n     current\n     model\n  3. Keep… Hide\n           futur\n           e\n           rate\n           limit'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 2
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010c: send_wakeup_with_escape も Codex rate-limit prompt を dismiss する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\nKeep current model (never show again)'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 4
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010c1: send_wakeup_with_escape も新しい Codex rate-limit prompt variant を dismiss する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\n1. Switch to gpt-5.1-codex-mini\n2. Keep current model\n3. Keep… Hide future rate limit\nPress enter to continue'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 4
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010c0: send_wakeup_with_escape は Codex 通常画面では no-prompt を許容して継続する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'normal codex idle screen'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 4
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    grep -q "send-keys.*Escape" "$MOCK_LOG"
+    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010c2: send_wakeup_with_escape は Codex rate-limit prompt dismiss 失敗時に abort する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_SENDKEYS_ENTER_RC=1
+        MOCK_CAPTURE_PANE=$'"'"'Approaching rate limits\nKeep current model (never show again)'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 4
+    '
+    [ "$status" -eq 1 ]
+
+    grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
+    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox4" "$MOCK_LOG"
+    echo "$output" | grep -qi "prompt dismiss failed\|Enter failed"
+}
+
+@test "T-CODEX-010d: send_wakeup は Codex usage-limit prompt で mini 切替を選ぶ" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s\n%s" "You'\''ve hit your usage limit" "Switch to gpt-5.1-codex-mini" "1. Switch to gpt-5.1-codex-mini")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010d2: send_wakeup は hard usage-limit prompt では 1 を送らず nudge も抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+    ! grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    echo "$output" | grep -qi "Hard Codex usage-limit prompt"
+}
+
+@test "T-CODEX-010d2d: send_wakeup は折返し hard usage-limit prompt でも 1 を送らず nudge も抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s\n%s\n%s" "■ You'\''ve hit your" "usage limit. Upgr" "... try ag" "ain at Apr 8th, 2026 5:20 PM.")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+    ! grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    echo "$output" | grep -qi "Hard Codex usage-limit prompt"
+}
+
+@test "T-CODEX-010d2e: hard usage-limit 検知ログは cooldown 中に重複しない" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        dismiss_codex_rate_limit_prompt_if_present codex || true
+        dismiss_codex_rate_limit_prompt_if_present codex || true
+    '
+    [ "$status" -eq 0 ]
+
+    [ "$(printf "%s" "$output" | grep -c "Hard Codex usage-limit prompt detected")" -eq 1 ]
+}
+
+@test "T-CODEX-010d2b: send_wakeup は hard usage-limit prompt を dashboard 通知へ記録する" {
+    export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice.log"
+    export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice.py"
+    cat > "$MOCK_NOTICE_SCRIPT" <<'MOCK'
+#!/usr/bin/env python3
+import os
+import sys
+
+with open(os.environ["NOTICE_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(" ".join(sys.argv[1:]) + "\n")
+MOCK
+    chmod +x "$MOCK_NOTICE_SCRIPT"
+
+    run bash -c '
+        export MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT="'"$MOCK_NOTICE_SCRIPT"'"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q -- '--agent test_agent --issue codex-hard-usage-limit' "$NOTICE_LOG"
+    grep -q -- '--action record' "$NOTICE_LOG"
+    grep -q -- '--detail You'\''ve hit your usage limit' "$NOTICE_LOG"
+    ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010d2ba: send_wakeup は hard usage-limit prompt を shogun inbox に一度だけ relay する" {
+    export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_relay.log"
+
+    run bash -c '
+        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
+        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+#!/bin/bash
+printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
+MOCK
+        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        export ASW_ENABLE_RUNTIME_BLOCKED_RELAY_TEST=1
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        send_wakeup 1
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    [ "$(wc -l < "$RELAY_LOG")" -eq 1 ]
+    grep -q $'^shogun\t.*runtime_blocked\tinbox_watcher$' "$RELAY_LOG"
+}
+
+@test "T-CODEX-010d2bb: watcher test harness では opt-in なしに runtime_blocked relay しない" {
+    export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_relay_guard.log"
+
+    run bash -c '
+        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
+        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+#!/bin/bash
+printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
+MOCK
+        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    [ ! -f "$RELAY_LOG" ] || [ ! -s "$RELAY_LOG" ]
+}
+
+@test "T-CODEX-010d2bc: shogun hard usage-limit は lord inbox に一度だけ relay する" {
+    export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_human_relay.log"
+
+    run bash -c '
+        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
+        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+#!/bin/bash
+printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
+MOCK
+        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        export ASW_ENABLE_RUNTIME_BLOCKED_HUMAN_RELAY_TEST=1
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        AGENT_ID="shogun"
+        send_wakeup 1
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    [ "$(wc -l < "$RELAY_LOG")" -eq 1 ]
+    grep -q $'^lord\t.*runtime_blocked\tinbox_watcher$' "$RELAY_LOG"
+}
+
+@test "T-CODEX-010d2c: send_wakeup は Codex 通常画面で stale blocked notice を除去する" {
+    export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice_clear.log"
+    export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice_clear.py"
+    cat > "$MOCK_NOTICE_SCRIPT" <<'MOCK'
+#!/usr/bin/env python3
+import os
+import sys
+
+with open(os.environ["NOTICE_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(" ".join(sys.argv[1:]) + "\n")
+MOCK
+    chmod +x "$MOCK_NOTICE_SCRIPT"
+
+    run bash -c '
+        export MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT="'"$MOCK_NOTICE_SCRIPT"'"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'normal codex idle screen'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q -- '--action clear --agent test_agent --issue codex-hard-usage-limit' "$NOTICE_LOG"
+    grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010d3: send_wakeup_with_escape は hard usage-limit prompt では Escape+nudge を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        send_wakeup_with_escape 1
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
+    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
+    ! grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    echo "$output" | grep -qi "Hard Codex usage-limit prompt"
+}
+
+@test "T-CODEX-015: watcher は auth 解消後に pending bootstrap を literal 再配信する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'╭────────────────────────╮\n│ >_ OpenAI Codex (v0.118.0) │\n│ model: gpt-5.4 high   /model to change │\n│ context left │\nRan bootstrap ack'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent FULL_BOOTSTRAP_BODY_SHOULD_NOT_BE_PASTED" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+    grep -q "bootstrap_test_agent.md" "$MOCK_LOG"
+    ! grep -q "FULL_BOOTSTRAP_BODY_SHOULD_NOT_BE_PASTED" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-CODEX-0150: watcher は pane に ready:agent が見えたら pending bootstrap を掃除する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'ready:test_agent\nAGENTS.md を読み始める'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015g: process_unread は hard usage-limit 中に unread ログを連打しない" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
+        source "'"$TEST_HARNESS"'"
+        mkdir -p "'"$TEST_INBOX_DIR"'"
+        cat > "$INBOX" <<'"'"'YAML'"'"'
+messages:
+  - id: msg_1
+    from: shogun
+    type: cmd_new
+    read: false
+    timestamp: "2026-04-09T00:00:00+09:00"
+    content: "cmd_new"
+YAML
+        ASW_DISABLE_ESCALATION=1
+        process_unread timeout
+    '
+    [ "$status" -eq 0 ]
+
+    [[ "$output" == *"Hard Codex usage-limit prompt detected"* ]]
+    [[ "$output" != *"1 unread for test_agent"* ]]
+}
+
+@test "T-CODEX-015h: watcher は Codex pasted content が残っていたら Enter を追送する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'\'"'"''› m[Pasted Content 1442 chars]'"'"'\'"'"''
+        source "'"$TEST_HARNESS"'"
+        submit_codex_pending_paste_if_needed "bootstrap retry"
+    '
+    [ "$status" -ne 0 ]
+}
+
+@test "T-CODEX-015a: watcher は auth prompt 中の pending bootstrap を dashboard 通知へ記録する" {
+    export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice_auth.log"
+    export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice_auth.py"
+    cat > "$MOCK_NOTICE_SCRIPT" <<'MOCK'
+#!/usr/bin/env python3
+import os
+import sys
+
+with open(os.environ["NOTICE_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(" ".join(sys.argv[1:]) + "\n")
+MOCK
+    chmod +x "$MOCK_NOTICE_SCRIPT"
+
+    run bash -c '
+        export MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT="'"$MOCK_NOTICE_SCRIPT"'"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\n1. Sign in with ChatGPT\nPress Enter to continue'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q -- '--action record --agent test_agent --issue codex-auth-required' "$NOTICE_LOG"
+    ! grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015aa: watcher は auth prompt 中の pending bootstrap を shogun inbox に relay する" {
+    export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_auth_relay.log"
+
+    run bash -c '
+        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
+        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+#!/bin/bash
+printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
+MOCK
+        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        export ASW_ENABLE_RUNTIME_BLOCKED_RELAY_TEST=1
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\n1. Sign in with ChatGPT\nPress Enter to continue'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q $'^shogun\t.*runtime_blocked\tinbox_watcher$' "$RELAY_LOG"
+}
+
+@test "T-CODEX-015b: watcher は bootstrap 再配信成功時に auth notice を除去する" {
+    export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice_auth_clear.log"
+    export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice_auth_clear.py"
+    cat > "$MOCK_NOTICE_SCRIPT" <<'MOCK'
+#!/usr/bin/env python3
+import os
+import sys
+
+with open(os.environ["NOTICE_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(" ".join(sys.argv[1:]) + "\n")
+MOCK
+    chmod +x "$MOCK_NOTICE_SCRIPT"
+
+    run bash -c '
+        export MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT="'"$MOCK_NOTICE_SCRIPT"'"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\nfor shortcuts'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q -- '--action clear --agent test_agent --issue codex-auth-required' "$NOTICE_LOG"
+}
+
+@test "T-CODEX-015c: watcher は Codex login server failure も auth-required として保留する" {
+    export NOTICE_LOG="$TEST_TMPDIR/runtime_blocker_notice_auth_login_failure.log"
+    export MOCK_NOTICE_SCRIPT="$TEST_TMPDIR/mock_runtime_blocker_notice_auth_login_failure.py"
+    cat > "$MOCK_NOTICE_SCRIPT" <<'MOCK'
+#!/usr/bin/env python3
+import os
+import sys
+
+with open(os.environ["NOTICE_LOG"], "a", encoding="utf-8") as fh:
+    fh.write(" ".join(sys.argv[1:]) + "\n")
+MOCK
+    chmod +x "$MOCK_NOTICE_SCRIPT"
+
+    run bash -c '
+        export MAS_RUNTIME_BLOCKER_NOTICE_SCRIPT="'"$MOCK_NOTICE_SCRIPT"'"
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Login server error: Login cancelled\naccount/login/start failed: failed to start login server: Port'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q -- '--action record --agent test_agent --issue codex-auth-required' "$NOTICE_LOG"
+    ! grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015d: watcher は Codex process が shell に戻っていたら pending bootstrap を再送しない" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'Update ran successfully! Please restart Codex.'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015e: watcher は shell に戻った Codex pane を再起動する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "codex --search"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+        recover_shell_returned_codex_if_needed
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -l -t test:0.0 codex --search" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-OPENCODE-003: watcher は shell に戻った OpenCode pane をrole-local起動コマンドで再起動する" {
+    run bash -c '
+        MOCK_PANE_CLI="opencode"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "HOME=/tmp/role XDG_CONFIG_HOME=/tmp/role/.config opencode"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+        recover_shell_returned_cli_if_needed
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 C-c" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 HOME=/tmp/role XDG_CONFIG_HOME=/tmp/role/.config opencode" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015e2: watcher は起動直後grace中の shell-return recovery を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        MOCK_SHOW_OPTION_VALUE="$(date +%s)"
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "codex --search"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        recover_shell_returned_codex_if_needed
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0 codex --search" "$MOCK_LOG"
+}
+
+@test "T-OPENCODE-004: send_wakeup はCLI起動grace中にbashへnudgeを送らない" {
+    run bash -c '
+        MOCK_SHOW_OPTION_VALUE="$(date +%s)"
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="opencode"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0 queue/inbox" "$MOCK_LOG"
+    ! grep -q "send-keys -l -t test:0.0 inbox" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015e3: watcher は initial bootstrap pending 中の shell-return recovery を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "codex --search"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        recover_shell_returned_codex_if_needed
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0 codex --search" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015e4: watcher は runtime startup grace 中の shell-return recovery を抑止する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_CAPTURE_PANE=$'"'"'(test_agent) /repo$'"'"'
+        source "'"$TEST_HARNESS"'"
+        build_cli_command_with_type() { echo "codex --search"; }
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        date +%s > "$SCRIPT_DIR/queue/runtime/runtime_start_epoch"
+        recover_shell_returned_codex_if_needed
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys -l -t test:0.0 codex --search" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015f: watcher は unread が無くても idle loop で Codex runtime prompt を掃除する" {
+    run bash -c '
+        grep -q "maintain_codex_runtime_prompt" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
+        grep -q "dismiss_codex_rate_limit_prompt_if_present" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
+        grep -q "codex_switch_confirm_prompt_detected" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
+        grep -q "process_unread_once" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh" &&
+        grep -q "while true; do" "'"$PROJECT_ROOT"'/scripts/inbox_watcher.sh"
+    '
+    [ "$status" -eq 0 ]
+}
+
 # --- T-CODEX-011: clear_command auto-recovery injection ---
 
 @test "T-CODEX-011: process_unread injects auto-recovery task and sends inbox nudge after clear_command" {
@@ -692,7 +1599,7 @@ messages:
     read: false
 YAML
         process_unread event
-        "$VENV_PYTHON" - << "PY" "$INBOX"
+        python3 - << "PY" "$INBOX"
 import sys
 import yaml
 
@@ -720,73 +1627,8 @@ PY
 
     # codex clear path uses /new
     grep -q "send-keys.*/new" "$MOCK_LOG"
-    # After /new, startup prompt is sent (replaces inbox1 nudge for wake-up)
-    grep -q "send-keys.*Session Start" "$MOCK_LOG"
-}
-
-@test "T-SHOGUN-005: process_unread does not auto-recover skipped shogun clear_command" {
-    run bash -c '
-        source "'"$TEST_HARNESS"'"
-        AGENT_ID="shogun"
-        PANE_TARGET="shogun:main"
-        CLI_TYPE="codex"
-        INBOX="'"$TEST_INBOX_DIR"'/shogun.yaml"
-        LOCKFILE="${INBOX}.lock"
-        cat > "$INBOX" << "YAML"
-messages:
-  - id: msg_clear
-    from: karo
-    timestamp: "2026-05-22T03:22:46+09:00"
-    type: clear_command
-    content: refresh
-    read: false
-YAML
-        process_unread event
-        "$VENV_PYTHON" - << "PY" "$INBOX"
-import sys
-import yaml
-
-inbox_path = sys.argv[1]
-with open(inbox_path, "r", encoding="utf-8") as f:
-    data = yaml.safe_load(f) or {}
-
-messages = data.get("messages", []) or []
-msg_clear = [m for m in messages if m.get("id") == "msg_clear"]
-assert len(msg_clear) == 1 and msg_clear[0].get("read") is True
-
-auto = [
-    m for m in messages
-    if m.get("from") == "inbox_watcher"
-    and m.get("type") == "task_assigned"
-    and "[auto-recovery]" in (m.get("content") or "")
-]
-assert auto == []
-print("OK")
-PY
-    '
-    [ "$status" -eq 0 ]
-    echo "$output" | grep -q "OK"
-
-    ! grep -q "send-keys.*/new" "$MOCK_LOG"
-    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
-}
-
-# --- T-OPENCODE-003: OpenCode Phase 2 falls back to plain nudge ---
-
-@test "T-OPENCODE-003: send_wakeup_with_escape falls back to plain nudge for OpenCode" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="first line\nsecond line\nthird line\n"
-        MOCK_PANE_CLI="opencode"
-        source "'"$TEST_HARNESS"'"
-        CLI_TYPE="opencode"
-        send_wakeup_with_escape 3
-    '
-    [ "$status" -eq 0 ]
-
-    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
-    ! grep -q "send-keys.*C-c" "$MOCK_LOG"
-    grep -q "send-keys.*C-u" "$MOCK_LOG"
-    grep -q "send-keys.*inbox3" "$MOCK_LOG"
+    # auto-injected unread should trigger inbox1 nudge
+    grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
 # --- T-CODEX-012: auto-recovery dedupe ---
@@ -805,7 +1647,7 @@ messages:
 YAML
         r1=$(enqueue_recovery_task_assigned)
         r2=$(enqueue_recovery_task_assigned)
-        "$VENV_PYTHON" - << "PY" "$INBOX" "$r1" "$r2"
+        python3 - << "PY" "$INBOX" "$r1" "$r2"
 import sys
 import yaml
 
@@ -825,67 +1667,6 @@ assert r1 == "SKIP_DUPLICATE"
 assert r2 == "SKIP_DUPLICATE"
 print("OK")
 PY
-    '
-    [ "$status" -eq 0 ]
-    echo "$output" | grep -q "OK"
-}
-
-# --- T-CODEX-013: auto-recovery skipped when task is cancelled ---
-
-@test "T-CODEX-013: enqueue_recovery_task_assigned skips if task YAML status is cancelled" {
-    run bash -c '
-        source "'"$TEST_HARNESS"'"
-        # Initialize inbox (required by enqueue_recovery_task_assigned)
-        echo "messages: []" > "$INBOX"
-        # Place task YAML with status: cancelled
-        mkdir -p "$(dirname "$INBOX")/../tasks"
-        cat > "$(dirname "$INBOX")/../tasks/test_agent.yaml" << "YAML"
-worker_id: test_agent
-task_id: subtask_test_cancelled
-status: cancelled
-YAML
-        r=$(enqueue_recovery_task_assigned)
-        # Should return SKIP_CANCELLED:cancelled
-        if [ "$r" = "SKIP_CANCELLED:cancelled" ]; then echo "OK"; else echo "FAIL:$r"; fi
-    '
-    [ "$status" -eq 0 ]
-    echo "$output" | grep -q "OK"
-}
-
-# --- T-CODEX-014: auto-recovery skipped when task is idle ---
-
-@test "T-CODEX-014: enqueue_recovery_task_assigned skips if task YAML status is idle" {
-    run bash -c '
-        source "'"$TEST_HARNESS"'"
-        echo "messages: []" > "$INBOX"
-        mkdir -p "$(dirname "$INBOX")/../tasks"
-        cat > "$(dirname "$INBOX")/../tasks/test_agent.yaml" << "YAML"
-worker_id: test_agent
-task_id: subtask_test_idle
-status: idle
-YAML
-        r=$(enqueue_recovery_task_assigned)
-        if [ "$r" = "SKIP_CANCELLED:idle" ]; then echo "OK"; else echo "FAIL:$r"; fi
-    '
-    [ "$status" -eq 0 ]
-    echo "$output" | grep -q "OK"
-}
-
-# --- T-CODEX-015: auto-recovery proceeds when task is assigned ---
-
-@test "T-CODEX-015: enqueue_recovery_task_assigned proceeds when task YAML status is assigned" {
-    run bash -c '
-        source "'"$TEST_HARNESS"'"
-        echo "messages: []" > "$INBOX"
-        mkdir -p "$(dirname "$INBOX")/../tasks"
-        cat > "$(dirname "$INBOX")/../tasks/test_agent.yaml" << "YAML"
-worker_id: test_agent
-task_id: subtask_test_assigned
-status: assigned
-YAML
-        r=$(enqueue_recovery_task_assigned)
-        # Should return a message ID (not SKIP_*)
-        if [[ "$r" != SKIP_* ]] && [[ "$r" != "ERROR" ]] && [[ -n "$r" ]]; then echo "OK"; else echo "FAIL:$r"; fi
     '
     [ "$status" -eq 0 ]
     echo "$output" | grep -q "OK"
@@ -923,418 +1704,298 @@ YAML
     echo "$output" | grep -q "not supported on copilot"
 }
 
-# --- T-SHOGUN-001: session_has_client — client attached ---
+# --- T-ANTIGRAVITY-001: antigravity /clear → Ctrl-C + restart ---
 
-@test "T-SHOGUN-001: session_has_client returns 0 when client attached" {
+@test "T-ANTIGRAVITY-001: send_cli_command sends Ctrl-C + agy restart for antigravity /clear" {
     run bash -c '
-        MOCK_LIST_CLIENTS="/dev/pts/1: mock_session [200x50 xterm-256color]"
         source "'"$TEST_HARNESS"'"
-        session_has_client
-    '
-    [ "$status" -eq 0 ]
-}
-
-# --- T-SHOGUN-002: session_has_client — no client ---
-
-@test "T-SHOGUN-002: session_has_client returns 1 when no client" {
-    run bash -c '
-        MOCK_LIST_CLIENTS=""
-        source "'"$TEST_HARNESS"'"
-        session_has_client
-    '
-    [ "$status" -ne 0 ]
-}
-
-# --- T-SHOGUN-003: shogun + active pane + client attached → send-keys (post PR#75) ---
-
-@test "T-SHOGUN-003: send_wakeup shogun + active + attached uses send-keys" {
-    run bash -c '
-        MOCK_PANE_ACTIVE="1"
-        MOCK_LIST_CLIENTS="/dev/pts/1: mock_session [200x50 xterm-256color]"
-        source "'"$TEST_HARNESS"'"
-        AGENT_ID="shogun"
-        send_wakeup 2
+        CLI_TYPE="antigravity"
+        send_cli_command "/clear"
     '
     [ "$status" -eq 0 ]
 
-    # Post PR#75: shogun uses send-keys like other agents (display-message path removed)
-    grep -q "send-keys.*inbox2" "$MOCK_LOG"
+    grep -q "send-keys.*C-c" "$MOCK_LOG"
+    grep -q "send-keys.*agy --dangerously-skip-permissions" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
 }
 
-# --- T-SHOGUN-004: shogun + active pane + no client → send-keys fallthrough ---
+# --- T-OPENCODE-001: opencode /clear → /new ---
 
-@test "T-SHOGUN-004: send_wakeup shogun + active + detached falls through to send-keys" {
+@test "T-OPENCODE-001: send_cli_command sends /new for opencode /clear" {
     run bash -c '
-        MOCK_PANE_ACTIVE="1"
-        MOCK_LIST_CLIENTS=""
         source "'"$TEST_HARNESS"'"
-        AGENT_ID="shogun"
-        send_wakeup 2
-    '
-    [ "$status" -eq 0 ]
-
-    # Should NOT show display-message path
-    ! echo "$output" | grep -q "DISPLAY"
-
-    # Should have used send-keys
-    grep -q "send-keys.*inbox2" "$MOCK_LOG"
-}
-
-# --- T-BUSY-005: agent_is_busy during /clear cooldown ---
-
-@test "T-BUSY-005: agent_is_busy returns 0 (busy) during /clear cooldown period" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="› prompt
-  ? for shortcuts                100% context left"
-        source "'"$TEST_HARNESS"'"
-        now=$(date +%s)
-        LAST_CLEAR_TS=$((now - 10))  # /clear sent 10 seconds ago (within 30s cooldown)
-        agent_is_busy
-    '
-    [ "$status" -eq 0 ]
-}
-
-# --- T-BUSY-006: agent_is_busy idle after /clear cooldown expires ---
-
-@test "T-BUSY-006: agent_is_busy returns 1 (idle) after /clear cooldown expires" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="› prompt
-  ? for shortcuts                100% context left"
-        source "'"$TEST_HARNESS"'"
-        now=$(date +%s)
-        LAST_CLEAR_TS=$((now - 40))  # /clear sent 40 seconds ago (past 30s cooldown)
-        agent_is_busy
-    '
-    [ "$status" -eq 1 ]
-}
-
-# --- T-BUSY-007: /clear cooldown overrides idle pane ---
-
-@test "T-BUSY-007: agent_is_busy /clear cooldown overrides idle pane state" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="› Summarize recent commits
-  ? for shortcuts                100% context left"
-        source "'"$TEST_HARNESS"'"
-        now=$(date +%s)
-        LAST_CLEAR_TS=$((now - 5))  # /clear sent 5 seconds ago
-        # Pane looks idle, but cooldown should make it busy
-        if agent_is_busy; then
-            echo "BUSY_DURING_COOLDOWN"
-        else
-            echo "WRONGLY_IDLE"
-        fi
-    '
-    [ "$status" -eq 0 ]
-    echo "$output" | grep -q "BUSY_DURING_COOLDOWN"
-}
-
-# --- T-BUSY-008: idle prompt at bottom overrides old busy markers (false-busy fix) ---
-# Bug: 59ec12f / 69c1ecb — old "Working" or "esc to interrupt" lingered in scroll-back
-# above the idle prompt, causing false-busy. Fix: only check bottom 5 lines, idle first.
-
-@test "T-BUSY-008: agent_is_busy returns idle when idle prompt is below old busy markers" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="$(printf "◦ Working on task (12s • esc to interrupt)\nsome output line\nmore output\n\n❯ ")"
-        source "'"$TEST_HARNESS"'"
-        LAST_CLEAR_TS=0
-        if agent_is_busy; then
-            echo "WRONGLY_BUSY"
-        else
-            echo "CORRECTLY_IDLE"
-        fi
-    '
-    [ "$status" -eq 0 ]
-    echo "$output" | grep -q "CORRECTLY_IDLE"
-}
-
-# --- T-BUSY-009: 'background terminal running' detected as busy ---
-# Bug: 91ebf61 — Codex shows this when a tool is running in background.
-
-@test "T-BUSY-009: agent_is_busy detects 'background terminal running' as busy" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="$(printf "Some output\nbackground terminal running\n")"
-        source "'"$TEST_HARNESS"'"
-        LAST_CLEAR_TS=0
-        CLI_TYPE="codex"  # pane-based detection (non-claude fallback)
-        agent_is_busy
-    '
-    [ "$status" -eq 0 ]
-}
-
-# --- T-BUSY-010: 'Compacting conversation' detected as busy ---
-
-@test "T-BUSY-010: agent_is_busy detects 'Compacting conversation' as busy" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="$(printf "Compacting conversation...\n")"
-        source "'"$TEST_HARNESS"'"
-        LAST_CLEAR_TS=0
-        CLI_TYPE="codex"  # pane-based detection (non-claude fallback)
-        agent_is_busy
-    '
-    [ "$status" -eq 0 ]
-}
-
-# --- T-BUSY-011: 'esc to interrupt' detected as busy ---
-
-@test "T-BUSY-011: agent_is_busy detects 'esc to interrupt' as busy" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="$(printf "◦ Thinking (5s • esc to interrupt)\n")"
-        source "'"$TEST_HARNESS"'"
-        LAST_CLEAR_TS=0
-        CLI_TYPE="codex"  # pane-based detection (non-claude fallback)
-        agent_is_busy
-    '
-    [ "$status" -eq 0 ]
-}
-
-# --- T-BUSY-012: OpenCode idle home screen detected as idle ---
-
-@test "T-BUSY-012: agent_is_busy detects OpenCode home screen as idle" {
-    run bash -c '
-        MOCK_CAPTURE_PANE="$(printf "  ┃\n  ┃  Ask anything...\n  ┃\n\n                                                   ctrl+p commands\n")"
-        MOCK_PANE_CLI="opencode"
-        source "'"$TEST_HARNESS"'"
-        LAST_CLEAR_TS=0
         CLI_TYPE="opencode"
-        agent_is_busy
+        send_cli_command "/clear"
     '
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys.* /new" "$MOCK_LOG"
+    ! grep -q "send-keys.*C-c" "$MOCK_LOG"
+    ! grep -q "send-keys.*opencode" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
 }
 
-# --- T-BUSY-013: OpenCode busy sidebar detected as busy ---
-
-@test "T-BUSY-013: agent_is_busy detects OpenCode busy sidebar as busy" {
+@test "T-OPENCODE-002: send_cli_command skips /model for opencode" {
     run bash -c '
-        MOCK_CAPTURE_PANE="$(printf "  ┃  think something deeper\n     → Skill \"requirements-clarification\"\n\n   ■⬝⬝⬝⬝⬝⬝⬝  esc interrupt\n")"
-        MOCK_PANE_CLI="opencode"
         source "'"$TEST_HARNESS"'"
-        LAST_CLEAR_TS=0
         CLI_TYPE="opencode"
-        agent_is_busy
+        send_cli_command "/model gpt-5.4"
     '
     [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys.*/model" "$MOCK_LOG"
 }
 
-# --- T-BUSY-014: OpenCode busy animation row detected as busy ---
+# --- T-KILO-001: kilo /clear → Ctrl-C + restart ---
 
-@test "T-BUSY-014: agent_is_busy detects OpenCode busy animation row as busy" {
+@test "T-KILO-001: send_cli_command sends Ctrl-C + kilo restart for kilo /clear" {
     run bash -c '
-        MOCK_CAPTURE_PANE="$(printf "   ■⬝⬝⬝⬝⬝⬝⬝\n")"
-        MOCK_PANE_CLI="opencode"
         source "'"$TEST_HARNESS"'"
-        LAST_CLEAR_TS=0
-        CLI_TYPE="opencode"
-        agent_is_busy
+        CLI_TYPE="kilo"
+        send_cli_command "/clear"
     '
     [ "$status" -eq 0 ]
+
+    grep -q "send-keys.*C-c" "$MOCK_LOG"
+    grep -q "send-keys.*kilo" "$MOCK_LOG"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
 }
 
-# --- T-BUSY-015: blank OpenCode pane falls back to idle ---
-
-@test "T-BUSY-015: agent_is_busy treats blank OpenCode pane as idle fallback" {
+@test "T-KILO-002: send_cli_command skips /model for kilo" {
     run bash -c '
-        MOCK_CAPTURE_PANE=""
-        MOCK_PANE_CLI="opencode"
         source "'"$TEST_HARNESS"'"
-        LAST_CLEAR_TS=0
-        CLI_TYPE="opencode"
-        agent_is_busy
-    '
-    [ "$status" -eq 1 ]
-}
-
-@test "T-BUSY-016: OpenCode busy animation fallback works without python3" {
-    run bash -c '
-        PATH="/nonexistent"
-        source "'"$PROJECT_ROOT"'/lib/agent_status.sh"
-        opencode_has_busy_animation "$(printf "   ⬝⬝■⬝⬝⬝⬝⬝  esc interrupt\n")"
+        CLI_TYPE="kilo"
+        send_cli_command "/model gpt-5.4"
     '
     [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys.*/model" "$MOCK_LOG"
 }
 
-# --- T-SHOOK-001: Claude Code throttle uses 60s cooldown (post PR#75: stop-hook supplementary) ---
+# --- T-LOCALAPI-001: localapi /model → :model translation ---
 
-@test "T-SHOOK-001: Claude Code throttle uses 60s cooldown (stop-hook-supplementary)" {
+@test "T-LOCALAPI-001: send_cli_command translates /model for localapi" {
     run bash -c '
         source "'"$TEST_HARNESS"'"
-        CLI_TYPE="claude"
-        LAST_NUDGE_TS=0
-        LAST_NUDGE_COUNT=""
-
-        # First call: should pass through (no throttle)
-        should_throttle_nudge 1
-        rc1=$?
-
-        # Simulate 60s elapsed — cooldown expired for claude (60s, same as default)
-        LAST_NUDGE_TS=$(($(date +%s) - 60))
-        LAST_NUDGE_COUNT=1
-
-        # Second call with same count after 60s: should NOT throttle (cooldown expired)
-        should_throttle_nudge 1
-        rc2=$?
-
-        echo "rc1=$rc1 rc2=$rc2"
+        CLI_TYPE="localapi"
+        send_cli_command "/model qwen2.5-coder"
     '
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "rc1=1 rc2=1"  # 1=not-throttled, 1=not-throttled (60s cooldown expired)
+
+    grep -q "send-keys.*:model qwen2.5-coder" "$MOCK_LOG"
 }
 
-# --- T-SHOOK-002: Claude Code count change bypasses throttle (post PR#75: standard behavior) ---
+# --- T-CODEX-013: busy中の/clearは延期する ---
 
-@test "T-SHOOK-002: Claude Code count change bypasses throttle (stop-hook-supplementary)" {
+@test "T-CODEX-013: send_cli_command defers /clear when agent is busy" {
     run bash -c '
+        MOCK_CAPTURE_PANE="◦ Working on request (9s • esc to interrupt)"
         source "'"$TEST_HARNESS"'"
-        CLI_TYPE="claude"
-        LAST_NUDGE_TS=0
-        LAST_NUDGE_COUNT=""
-
-        # First call: should pass through
-        should_throttle_nudge 1
-        rc1=$?
-
-        # Simulate 30s elapsed, count changed from 1 to 2
-        LAST_NUDGE_TS=$(($(date +%s) - 30))
-
-        # Post PR#75: Claude uses standard throttle logic.
-        # Count change (1→2) bypasses throttle for ALL CLIs including claude.
-        should_throttle_nudge 2
-        rc2=$?
-
-        echo "rc1=$rc1 rc2=$rc2"
+        send_cli_command "/clear"
     '
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "rc1=1 rc2=1"  # Both: 1=not-throttled (count change bypasses)
+
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+    ! grep -q "send-keys.*/new" "$MOCK_LOG"
+    echo "$output" | grep -qi "deferred"
 }
 
-# --- T-SHOOK-003: Non-Claude CLIs bypass throttle on count change ---
+# --- T-CODEX-014: clear_commandはbusy中にauto-recoveryを生成しない ---
 
-@test "T-SHOOK-003: Non-Claude CLIs still bypass throttle on count change" {
+@test "T-CODEX-014: process_unread skips auto-recovery when clear_command is deferred by busy guard" {
     run bash -c '
+        MOCK_CAPTURE_PANE="◦ Thinking deeply (7s • esc to interrupt)"
         source "'"$TEST_HARNESS"'"
-        CLI_TYPE="copilot"
-        LAST_NUDGE_TS=0
-        LAST_NUDGE_COUNT=""
-
-        # First call
-        should_throttle_nudge 1
-        rc1=$?
-
-        # Simulate 30s elapsed, count changed from 1 to 2
-        LAST_NUDGE_TS=$(($(date +%s) - 30))
-
-        # For copilot, count change (1→2) SHOULD bypass throttle
-        should_throttle_nudge 2
-        rc2=$?
-
-        echo "rc1=$rc1 rc2=$rc2"
-    '
-    [ "$status" -eq 0 ]
-    echo "$output" | grep -q "rc1=1 rc2=1"  # Both pass through (count changed)
-}
-
-# --- T-SHOOK-004: all-read reset clears nudge throttle for next inbox1 batch ---
-
-@test "T-SHOOK-004: all-read reset clears nudge throttle for same-count next batch" {
-    run bash -c '
-        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
         CLI_TYPE="codex"
-        cat > "$INBOX" <<YAML
+        INBOX="$TEST_INBOX_DIR/ashigaru1.yaml"
+        LOCKFILE="${INBOX}.lock"
+        cat > "$INBOX" << "YAML"
+messages:
+  - id: msg_clear_busy
+    from: karo
+    timestamp: "2026-03-05T10:00:00+09:00"
+    type: clear_command
+    content: redo
+    read: false
+YAML
+        process_unread event
+        python3 - << "PY" "$INBOX"
+import sys
+import yaml
+
+inbox_path = sys.argv[1]
+with open(inbox_path, "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+
+msg = [m for m in messages if m.get("id") == "msg_clear_busy"]
+assert len(msg) == 1
+assert msg[0].get("read") is True
+
+auto = [
+    m for m in messages
+    if m.get("from") == "inbox_watcher"
+    and m.get("type") == "task_assigned"
+    and "[auto-recovery]" in (m.get("content") or "")
+    and m.get("read") is False
+]
+assert len(auto) == 0
+print("OK")
+PY
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "OK"
+
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+    ! grep -q "send-keys.*/new" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015i: process_unread は assigned task の report 未完を auto-recovery で再通知する" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
+        CLI_TYPE="codex"
+        SCRIPT_DIR="$TEST_TMPDIR/proj"
+        INBOX="$TEST_INBOX_DIR/ashigaru1.yaml"
+        LOCKFILE="${INBOX}.lock"
+        mkdir -p "$SCRIPT_DIR/queue/tasks" "$SCRIPT_DIR/queue/reports"
+        cat > "$INBOX" << "YAML"
 messages: []
 YAML
-        LAST_NUDGE_TS=$(date +%s)
-        LAST_NUDGE_COUNT=1
-        FIRST_UNREAD_SEEN=123
+        cat > "$SCRIPT_DIR/queue/tasks/ashigaru1.yaml" << "YAML"
+task:
+  task_id: subtask_999a
+  status: assigned
+YAML
+        cat > "$SCRIPT_DIR/queue/reports/ashigaru1_report.yaml" << "YAML"
+worker_id: ashigaru1
+task_id: null
+timestamp: ""
+status: idle
+result: null
+YAML
+        process_unread timeout
+        python3 - << "PY" "$INBOX"
+import sys
+import yaml
 
-        process_unread event
-
-        should_throttle_nudge 1
-        rc=$?
-        echo "last_ts=$LAST_NUDGE_TS last_count=${LAST_NUDGE_COUNT:-empty} rc=$rc"
+inbox_path = sys.argv[1]
+with open(inbox_path, "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+auto = [
+    m for m in messages
+    if m.get("from") == "inbox_watcher"
+    and m.get("type") == "task_assigned"
+    and "report" in (m.get("content") or "")
+    and m.get("read") is False
+]
+assert len(auto) == 1
+assert "subtask_999a" in (auto[0].get("content") or "")
+print("OK")
+PY
     '
     [ "$status" -eq 0 ]
-    echo "$output" | grep -q "rc=1"  # 1 = not throttled
+    echo "$output" | grep -q "OK"
+    grep -q "queue/inbox/ashigaru1.yaml に未読の auto-recovery task_assigned がある" "$MOCK_LOG"
 }
 
-# --- T-CODEX-016: Codex transcript echo is not treated as stuck input ---
-
-@test "T-CODEX-016: send_wakeup codex treats transcript echo as delivered" {
+@test "T-CODEX-015j: process_unread は current task の report 完了済みなら recovery しない" {
     run bash -c '
-        MOCK_CAPTURE_PANE="$(printf "› inbox1\n  gpt-5.5 xhigh · ~/repo\n")"
         source "'"$TEST_HARNESS"'"
+        AGENT_ID="ashigaru1"
         CLI_TYPE="codex"
-        send_wakeup 1
+        SCRIPT_DIR="$TEST_TMPDIR/proj"
+        INBOX="$TEST_INBOX_DIR/ashigaru1.yaml"
+        LOCKFILE="${INBOX}.lock"
+        mkdir -p "$SCRIPT_DIR/queue/tasks" "$SCRIPT_DIR/queue/reports"
+        cat > "$INBOX" << "YAML"
+messages: []
+YAML
+        cat > "$SCRIPT_DIR/queue/tasks/ashigaru1.yaml" << "YAML"
+task:
+  task_id: subtask_999a
+  status: assigned
+YAML
+        cat > "$SCRIPT_DIR/queue/reports/ashigaru1_report.yaml" << "YAML"
+worker_id: ashigaru1
+task_id: subtask_999a
+timestamp: "2026-04-09T02:00:00+09:00"
+status: done
+result:
+  summary: done
+YAML
+        process_unread timeout
+        python3 - << "PY" "$INBOX"
+import sys
+import yaml
+
+inbox_path = sys.argv[1]
+with open(inbox_path, "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+auto = [
+    m for m in messages
+    if m.get("from") == "inbox_watcher"
+    and m.get("type") == "task_assigned"
+    and "[auto-recovery]" in (m.get("content") or "")
+]
+assert len(auto) == 0
+print("OK")
+PY
     '
     [ "$status" -eq 0 ]
-
-    echo "$output" | grep -q "cli=codex"
-    ! echo "$output" | grep -q "nudge text still visible"
-    [ "$(grep -c "send-keys -t test:0.0 inbox1" "$MOCK_LOG")" -eq 1 ]
+    echo "$output" | grep -q "OK"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
-# --- T-CRESET-001: send_context_reset suppresses /clear for karo ---
-
-@test "T-CRESET-001: send_context_reset suppresses /clear for karo" {
+@test "T-CODEX-015k: process_unread は同一 task の missing-report recovery を cooldown 中に連打しない" {
     run bash -c '
         source "'"$TEST_HARNESS"'"
-        AGENT_ID="karo"
-        send_context_reset
+        AGENT_ID="ashigaru1"
+        CLI_TYPE="codex"
+        SCRIPT_DIR="$TEST_TMPDIR/proj"
+        INBOX="$TEST_INBOX_DIR/ashigaru1.yaml"
+        LOCKFILE="${INBOX}.lock"
+        mkdir -p "$SCRIPT_DIR/queue/tasks" "$SCRIPT_DIR/queue/reports"
+        cat > "$INBOX" << "YAML"
+messages: []
+YAML
+        cat > "$SCRIPT_DIR/queue/tasks/ashigaru1.yaml" << "YAML"
+task:
+  task_id: subtask_999a
+  status: assigned
+YAML
+        cat > "$SCRIPT_DIR/queue/reports/ashigaru1_report.yaml" << "YAML"
+worker_id: ashigaru1
+task_id: null
+timestamp: ""
+status: idle
+result: null
+YAML
+        process_unread timeout
+        python3 - << "PY" "$INBOX"
+import sys, yaml
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+assert len(messages) == 1
+messages[0]["read"] = True
+with open(sys.argv[1], "w", encoding="utf-8") as f:
+    yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+PY
+        process_unread timeout
+        python3 - << "PY" "$INBOX"
+import sys, yaml
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f) or {}
+messages = data.get("messages", []) or []
+auto = [m for m in messages if m.get("from") == "inbox_watcher" and m.get("type") == "task_assigned"]
+assert len(auto) == 1
+print("OK")
+PY
     '
     [ "$status" -eq 0 ]
-
-    # No send-keys should have occurred
-    ! grep -q "send-keys" "$MOCK_LOG"
-
-    # SKIP message in stderr
-    echo "$output" | grep -q "SKIP.*karo"
-}
-
-# --- T-CRESET-002: send_context_reset suppresses /clear for gunshi ---
-
-@test "T-CRESET-002: send_context_reset suppresses /clear for gunshi" {
-    run bash -c '
-        source "'"$TEST_HARNESS"'"
-        AGENT_ID="gunshi"
-        send_context_reset
-    '
-    [ "$status" -eq 0 ]
-
-    # No send-keys should have occurred
-    ! grep -q "send-keys" "$MOCK_LOG"
-
-    # SKIP message in stderr
-    echo "$output" | grep -q "SKIP.*gunshi"
-}
-
-# --- T-CRESET-003: send_context_reset sends /clear for ashigaru ---
-
-@test "T-CRESET-003: send_context_reset sends /clear for ashigaru" {
-    run bash -c '
-        source "'"$TEST_HARNESS"'"
-        AGENT_ID="ashigaru3"
-        CLI_TYPE="claude"
-        send_context_reset
-    '
-    [ "$status" -eq 0 ]
-
-    # /clear should have been sent via send-keys
-    grep -q "send-keys.*/clear" "$MOCK_LOG"
-}
-
-# --- T-CRESET-004: send_context_reset sends /new for opencode ---
-
-@test "T-CRESET-004: send_context_reset sends /new for opencode" {
-    run bash -c '
-        source "'"$TEST_HARNESS"'"
-        AGENT_ID="ashigaru3"
-        CLI_TYPE="opencode"
-        send_context_reset
-    '
-    [ "$status" -eq 0 ]
-
-    # C-u for input clear, then /new — no Escape (function removed)
-    grep -q "send-keys.*C-u" "$MOCK_LOG"
-    grep -q "send-keys.*/new" "$MOCK_LOG"
-    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
-    ! grep -q "send-keys.*Escape" "$MOCK_LOG"
-    ! grep -q "send-keys.*C-c" "$MOCK_LOG"
+    echo "$output" | grep -q "OK"
 }

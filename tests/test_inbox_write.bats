@@ -1,30 +1,32 @@
 #!/usr/bin/env bats
 # test_inbox_write.bats — inbox_write.sh ユニットテスト
-# リグレッションテスト仕様書 T-001 ~ T-013 実装
+# リグレッションテスト仕様書 T-001 ~ T-012 実装
 #
 # テスト構成:
 #   T-001~T-002: 引数バリデーション
 #   T-003~T-004: 正常書き込み（新規/追記）
 #   T-005: メッセージID一意性
-#   T-006~T-007: デフォルト値（type/from）
+#   T-006~T-007: type/from厳格バリデーションとカスタム値
 #   T-008~T-009: Overflow Protection（50件制限）
 #   T-010: flock競合時のリトライ
 #   T-011: 特殊文字のエスケープ処理
 #   T-012: inbox初期化（ディレクトリ自動作成）
-#   T-013~T-014: lock directory解放
+#   T-013: 足軽→非担当家老の拒否
+#   T-014: 足軽→担当家老の許可
+#   T-015: 家老同士直接通信の拒否
+#   T-016: queue/inboxがファイルでも自動復旧
 
 # --- セットアップ ---
 
 setup_file() {
     export PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
     export INBOX_WRITE_SCRIPT="$PROJECT_ROOT/scripts/inbox_write.sh"
-    export VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
 
     # スクリプト存在確認（前提条件）
     [ -f "$INBOX_WRITE_SCRIPT" ] || return 1
 
-    # venv python3 + PyYAML存在確認
-    "$VENV_PYTHON" -c "import yaml" 2>/dev/null || return 1
+    # python3 + PyYAML存在確認
+    python3 -c "import yaml" 2>/dev/null || return 1
 }
 
 setup() {
@@ -43,9 +45,6 @@ setup() {
     sed "s|SCRIPT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE\[0\]}\")/..*|SCRIPT_DIR=\"$TEST_TMPDIR\"|" \
         "$PROJECT_ROOT/scripts/inbox_write.sh" > "$TEST_SCRIPT_DIR/inbox_write.sh"
     chmod +x "$TEST_SCRIPT_DIR/inbox_write.sh"
-
-    # .venvをプロジェクトルートからシンボリックリンク（inbox_write.shが$SCRIPT_DIR/.venv/bin/python3を参照）
-    ln -sf "$PROJECT_ROOT/.venv" "$TEST_TMPDIR/.venv"
 
     export TEST_INBOX_WRITE="$TEST_SCRIPT_DIR/inbox_write.sh"
 }
@@ -75,21 +74,7 @@ teardown() {
     [[ "$output" =~ "Usage" ]]
 }
 
-# =============================================================================
-# T-002b: 引数バリデーション — type/from未指定でexit 1
-# =============================================================================
-
-@test "T-002b: missing type and from → exit 1" {
-    run bash "$TEST_INBOX_WRITE" "test_agent" "content only"
-    [ "$status" -eq 1 ]
-    [[ "$output" =~ "Usage" ]]
-}
-
-# =============================================================================
-# T-002c: 自己送信ガード — from==targetでexit 1
-# =============================================================================
-
-@test "T-002c: self-send (from==target) → exit 1 with REJECTED" {
+@test "T-002c: self-send (from == target) → exit 1 with REJECTED" {
     run bash "$TEST_INBOX_WRITE" "karo" "self message" "cmd_new" "karo"
     [ "$status" -eq 1 ]
     [[ "$output" =~ "REJECTED" ]]
@@ -107,7 +92,7 @@ teardown() {
     [ -f "$TEST_INBOX_DIR/test_agent.yaml" ]
 
     # python3でYAML検証
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml, sys
 
 with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
@@ -148,7 +133,7 @@ EOF
     [ "$status" -eq 0 ]
 
     # python3で検証
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
@@ -174,7 +159,7 @@ EOF
     bash "$TEST_INBOX_WRITE" "test_agent" "メッセージB" "test_type" "sender_b"
 
     # python3で検証
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
@@ -192,7 +177,7 @@ EOF
 }
 
 # =============================================================================
-# T-006: デフォルト値 — type未指定でwake_up
+# T-006: type/from未指定はエラー
 # =============================================================================
 
 @test "T-006: missing type/from → exit 1 with Usage message" {
@@ -210,7 +195,7 @@ EOF
     [ "$status" -eq 0 ]
 
     # python3で検証
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
@@ -231,7 +216,7 @@ EOF
 
 @test "T-008: overflow protection at 50 messages → oldest read messages removed" {
     # 既読メッセージ60件を事前に作成
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 messages = []
@@ -252,11 +237,11 @@ with open('$TEST_INBOX_DIR/test_agent.yaml', 'w') as f:
 EOF
 
     # 新規メッセージ1件書き込み
-    run bash "$TEST_INBOX_WRITE" "test_agent" "新規メッセージ" "test_type" "other_sender"
+    run bash "$TEST_INBOX_WRITE" "test_agent" "新規メッセージ" "test_type" "sender_new"
     [ "$status" -eq 0 ]
 
     # 検証: 合計50件以下、新規メッセージは存在
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
@@ -278,7 +263,7 @@ EOF
 
 @test "T-009: overflow preserves unread → unread messages are NOT removed even when over 50" {
     # 未読20件 + 既読40件を事前に作成
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 messages = []
@@ -312,11 +297,11 @@ with open('$TEST_INBOX_DIR/test_agent.yaml', 'w') as f:
 EOF
 
     # 新規メッセージ1件書き込み（未読20→21件になる）
-    run bash "$TEST_INBOX_WRITE" "test_agent" "新規未読" "test_type" "other_sender"
+    run bash "$TEST_INBOX_WRITE" "test_agent" "新規未読" "test_type" "sender_new"
     [ "$status" -eq 0 ]
 
     # 検証: 未読21件が全て保持される
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
@@ -359,7 +344,7 @@ SCRIPT_EOF
     wait
 
     # 検証: 8件全てが書き込まれていること
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
@@ -387,11 +372,11 @@ EOF
 ブレース: {key: value}
 配列: [1, 2, 3]"
 
-    run bash "$TEST_INBOX_WRITE" "test_agent" "$SPECIAL_CONTENT" "test_type" "other_sender"
+    run bash "$TEST_INBOX_WRITE" "test_agent" "$SPECIAL_CONTENT" "test_type" "sender_special"
     [ "$status" -eq 0 ]
 
     # 検証: 特殊文字が正しく保存・復元されること
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
@@ -412,6 +397,33 @@ EOF
 }
 
 # =============================================================================
+# T-011b: triple single quotes を含む本文
+# =============================================================================
+
+@test "T-011b: content with triple single quotes → write succeeds and restores exact text" {
+    SPECIAL_CONTENT="前置き ''' 中身
+次の行も維持する"
+
+    run bash "$TEST_INBOX_WRITE" "test_agent" "$SPECIAL_CONTENT" "test_type" "sender_special"
+    [ "$status" -eq 0 ]
+
+    python3 <<EOF
+import yaml
+
+with open('$TEST_INBOX_DIR/test_agent.yaml', encoding='utf-8') as f:
+    data = yaml.safe_load(f)
+
+msg = data['messages'][0]
+expected_content = """前置き ''' 中身
+次の行も維持する"""
+
+assert msg['content'] == expected_content, f'Content mismatch: {msg["content"]!r}'
+
+print('T-011b: PASS')
+EOF
+}
+
+# =============================================================================
 # T-012: inbox初期化 — ディレクトリ自動作成
 # =============================================================================
 
@@ -423,7 +435,7 @@ EOF
     [ ! -d "$TEST_INBOX_DIR" ]
 
     # メッセージ書き込み
-    run bash "$TEST_INBOX_WRITE" "test_agent" "自動作成テスト" "test_type" "other_sender"
+    run bash "$TEST_INBOX_WRITE" "test_agent" "自動作成テスト" "test_type" "sender_auto"
     [ "$status" -eq 0 ]
 
     # ディレクトリとファイルが作成されていることを確認
@@ -431,7 +443,7 @@ EOF
     [ -f "$TEST_INBOX_DIR/test_agent.yaml" ]
 
     # 内容検証
-    "$VENV_PYTHON" <<EOF
+    python3 <<EOF
 import yaml
 
 with open('$TEST_INBOX_DIR/test_agent.yaml') as f:
@@ -443,24 +455,63 @@ print('T-012: PASS')
 EOF
 }
 
-@test "T-013: lock directory is released after successful write" {
-    run bash "$TEST_INBOX_WRITE" "test_agent" "lock release" "test_type" "other_sender"
-    [ "$status" -eq 0 ]
+# =============================================================================
+# T-013: 足軽→非担当家老は拒否
+# =============================================================================
 
-    [ ! -d "$TEST_INBOX_DIR/test_agent.yaml.lock.d" ]
+@test "T-013: ashigaru to non-owner karo is rejected" {
+    mkdir -p "$TEST_TMPDIR/queue/runtime"
+    cat > "$TEST_TMPDIR/queue/runtime/ashigaru_owner.tsv" <<'EOF'
+ashigaru9	karo2
+EOF
+
+    run bash "$TEST_INBOX_WRITE" "karo1" "誤配送テスト" "report_received" "ashigaru9"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "route rejected" ]]
 }
 
-@test "T-014: lock directory is released after python failure" {
-    rm -rf "$TEST_TMPDIR/.venv"
-    mkdir -p "$TEST_TMPDIR/.venv/bin"
-    cat > "$TEST_TMPDIR/.venv/bin/python3" <<'PYFAIL'
-#!/usr/bin/env bash
-exit 1
-PYFAIL
-    chmod +x "$TEST_TMPDIR/.venv/bin/python3"
+# =============================================================================
+# T-014: 足軽→担当家老は許可
+# =============================================================================
 
-    run bash "$TEST_INBOX_WRITE" "test_agent" "lock failure" "test_type" "other_sender"
-    [ "$status" -ne 0 ]
+@test "T-014: ashigaru to owner karo succeeds" {
+    mkdir -p "$TEST_TMPDIR/queue/runtime"
+    cat > "$TEST_TMPDIR/queue/runtime/ashigaru_owner.tsv" <<'EOF'
+ashigaru9	karo2
+EOF
 
-    [ ! -d "$TEST_INBOX_DIR/test_agent.yaml.lock.d" ]
+    run bash "$TEST_INBOX_WRITE" "karo2" "担当配送テスト" "report_received" "ashigaru9"
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_INBOX_DIR/karo2.yaml" ]
+}
+
+# =============================================================================
+# T-015: 家老同士直接通信は拒否
+# =============================================================================
+
+@test "T-015: karo-to-karo direct message is rejected" {
+    run bash "$TEST_INBOX_WRITE" "karo2" "家老間連携テスト" "cmd_new" "karo1"
+    [ "$status" -eq 1 ]
+    [[ "$output" =~ "karo-to-karo free direct communication is forbidden" ]]
+}
+
+@test "T-015b: structured karo coordination notice is allowed" {
+    run bash "$TEST_INBOX_WRITE" "karo2" "coordination board を確認されたし" "coordination_notice" "karo1"
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_INBOX_DIR/karo2.yaml" ]
+}
+
+# =============================================================================
+# T-016: queue/inbox がファイルでも自動復旧
+# =============================================================================
+
+@test "T-016: queue/inbox file is auto-repaired to directory" {
+    rm -rf "$TEST_INBOX_DIR"
+    printf '/tmp/fake-inbox-path\n' > "$TEST_TMPDIR/queue/inbox"
+    [ -f "$TEST_TMPDIR/queue/inbox" ]
+
+    run bash "$TEST_INBOX_WRITE" "shogun" "復旧テスト" "test_type" "sender_repair"
+    [ "$status" -eq 0 ]
+    [ -d "$TEST_TMPDIR/queue/inbox" ]
+    [ -f "$TEST_TMPDIR/queue/inbox/shogun.yaml" ]
 }

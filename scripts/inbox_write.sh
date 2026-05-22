@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # inbox_write.sh — メールボックスへのメッセージ書き込み（排他ロック付き）
 # Usage: bash scripts/inbox_write.sh <target_agent> <content> <type> <from>
 # Example: bash scripts/inbox_write.sh karo "足軽5号、任務完了" report_received ashigaru5
@@ -6,13 +6,15 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET="$1"
-CONTENT="$2"
-TYPE="$3"
-FROM="$4"
+TARGET="${1:-}"
+CONTENT="${2:-}"
+TYPE="${3:-}"
+FROM="${4:-}"
+OWNER_MAP="$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
 
 INBOX="$SCRIPT_DIR/queue/inbox/${TARGET}.yaml"
 LOCKFILE="${INBOX}.lock"
+INBOX_DIR="$(dirname "$INBOX")"
 
 # Validate arguments
 if [ -z "$TARGET" ] || [ -z "$CONTENT" ] || [ -z "$TYPE" ] || [ -z "$FROM" ]; then
@@ -20,117 +22,147 @@ if [ -z "$TARGET" ] || [ -z "$CONTENT" ] || [ -z "$TYPE" ] || [ -z "$FROM" ]; th
     exit 1
 fi
 
-# Self-send guard: reject messages where sender == target
+# Self-send guard: reject messages where sender == target.
 if [ "$FROM" = "$TARGET" ]; then
     echo "[inbox_write] REJECTED: self-send detected (from=$FROM, target=$TARGET)" >&2
     exit 1
 fi
 
+is_karo_agent() {
+    local agent="$1"
+    [[ "$agent" == "karo" || "$agent" == "karo_gashira" || "$agent" =~ ^karo[1-9][0-9]*$ ]]
+}
+
+is_ashigaru_agent() {
+    local agent="$1"
+    [[ "$agent" =~ ^ashigaru[1-9][0-9]*$ ]]
+}
+
+lookup_owner_karo() {
+    local ashigaru="$1"
+    [ -f "$OWNER_MAP" ] || return 1
+    awk -F '\t' -v id="$ashigaru" '$1==id {print $2; found=1; exit} END{if(!found) exit 1}' "$OWNER_MAP"
+}
+
+validate_route_policy() {
+    local owner=""
+    # 家老同士の自由な直接通信は禁止。構造化 coordination board の wake-up notice だけ許可。
+    if is_karo_agent "$FROM" && is_karo_agent "$TARGET" && [ "$FROM" != "$TARGET" ]; then
+        case "$TYPE" in
+            coordination_notice|dependency_notice|conflict_notice|handoff_request|merge_request|status_sync)
+                ;;
+            *)
+                echo "[inbox_write] route rejected: karo-to-karo free direct communication is forbidden ($FROM -> $TARGET, type=$TYPE). Use queue/runtime/karo_coordination.yaml plus coordination_notice." >&2
+                return 1
+                ;;
+        esac
+    fi
+
+    # 足軽→家老は担当固定（owner map がある場合）
+    if is_ashigaru_agent "$FROM" && is_karo_agent "$TARGET"; then
+        owner="$(lookup_owner_karo "$FROM" 2>/dev/null || true)"
+        if [ -n "$owner" ]; then
+            if [ "$TARGET" != "$owner" ]; then
+                echo "[inbox_write] route rejected: $FROM is owned by $owner, cannot send to $TARGET" >&2
+                return 1
+            fi
+        elif [ -f "$OWNER_MAP" ] && [ "$TARGET" != "karo" ]; then
+            # 互換性維持: owner不明時は単一家老(karo)のみ許容
+            echo "[inbox_write] route rejected: owner missing for $FROM in $OWNER_MAP" >&2
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+validate_route_policy
+
 # Initialize inbox if not exists
 if [ ! -f "$INBOX" ]; then
-    mkdir -p "$(dirname "$INBOX")"
+    if [ -f "$INBOX_DIR" ] && [ ! -d "$INBOX_DIR" ]; then
+        rm -f "$INBOX_DIR"
+    fi
+    mkdir -p "$INBOX_DIR"
     echo "messages: []" > "$INBOX"
 fi
 
 # Generate unique message ID (timestamp + 4 random bytes).
-# Use `od` instead of `xxd` because `od` is available on both GNU/Linux and macOS runners by default.
+# Use od instead of xxd because od is available on GNU/Linux and macOS runners.
 MSG_ID="msg_$(date +%Y%m%d_%H%M%S)_$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
 TIMESTAMP=$(date "+%Y-%m-%dT%H:%M:%S")
 
-# Cross-process lock: mkdir coordinates with OpenCode tools; flock is added when available.
-LOCK_DIR="${LOCKFILE}.d"
-
-_acquire_lock() {
-    local i=0
-    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
-        sleep 0.1
-        i=$((i + 1))
-        [ $i -ge 50 ] && return 1  # 5s timeout
-    done
-
-    if command -v flock &>/dev/null; then
-        exec 200>"$LOCKFILE"
-        flock -w 5 200 || {
-            rmdir "$LOCK_DIR" 2>/dev/null
-            return 1
-        }
-    fi
-    return 0
-}
-
-_release_lock() {
-    if command -v flock &>/dev/null; then
-        exec 200>&-
-    fi
-    rmdir "$LOCK_DIR" 2>/dev/null || true
-}
-
-# Atomic write with lock (3 retries)
+# Atomic write with flock (3 retries)
 attempt=0
 max_attempts=3
 
 while [ $attempt -lt $max_attempts ]; do
-    if _acquire_lock; then
-        trap _release_lock EXIT
-        if "$SCRIPT_DIR/.venv/bin/python3" -c "
-import yaml, sys
+    if (
+        flock -w 5 200 || exit 1
+
+        # Add message via python3 (unified YAML handling)
+        python3 - "$INBOX" "$MSG_ID" "$FROM" "$TIMESTAMP" "$TYPE" "$CONTENT" <<'PY' || exit 1
+import os
+import sys
+import tempfile
+
+import yaml
+
+inbox_path, msg_id, msg_from, timestamp, msg_type, content = sys.argv[1:]
 
 try:
     # Load existing inbox
-    with open('$INBOX') as f:
+    with open(inbox_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     # Initialize if needed
     if not data:
         data = {}
-    if not data.get('messages'):
-        data['messages'] = []
+    if not data.get("messages"):
+        data["messages"] = []
 
     # Add new message
     new_msg = {
-        'id': '$MSG_ID',
-        'from': '$FROM',
-        'timestamp': '$TIMESTAMP',
-        'type': '$TYPE',
-        'content': '''$CONTENT''',
-        'read': False
+        "id": msg_id,
+        "from": msg_from,
+        "timestamp": timestamp,
+        "type": msg_type,
+        "content": content,
+        "read": False,
     }
-    data['messages'].append(new_msg)
+    data["messages"].append(new_msg)
 
     # Overflow protection: keep max 50 messages
-    if len(data['messages']) > 50:
-        msgs = data['messages']
-        unread = [m for m in msgs if not m.get('read', False)]
-        read = [m for m in msgs if m.get('read', False)]
+    if len(data["messages"]) > 50:
+        msgs = data["messages"]
+        unread = [m for m in msgs if not m.get("read", False)]
+        read = [m for m in msgs if m.get("read", False)]
         # Keep all unread + newest 30 read messages
-        data['messages'] = unread + read[-30:]
+        data["messages"] = unread + read[-30:]
 
     # Atomic write: tmp file + rename (prevents partial reads)
-    import tempfile, os
-    tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname('$INBOX'), suffix='.tmp')
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(inbox_path), suffix=".tmp")
     try:
-        with os.fdopen(tmp_fd, 'w') as f:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, allow_unicode=True, indent=2)
-        os.replace(tmp_path, '$INBOX')
-    except:
+        os.replace(tmp_path, inbox_path)
+    except Exception:
         os.unlink(tmp_path)
         raise
 
 except Exception as e:
-    print(f'ERROR: {e}', file=sys.stderr)
+    print(f"ERROR: {e}", file=sys.stderr)
     sys.exit(1)
-"; then
-            STATUS=0
-        else
-            STATUS=$?
+PY
+
+    ) 200>"$LOCKFILE"; then
+        # Success
+        if [ -x "$SCRIPT_DIR/scripts/history_book.sh" ]; then
+            bash "$SCRIPT_DIR/scripts/history_book.sh" >/dev/null 2>&1 || true
         fi
-        _release_lock
-        trap - EXIT
-        [ $STATUS -eq 0 ] && exit 0
-        attempt=$((attempt + 1))
-        [ $attempt -lt $max_attempts ] && sleep 1
+        exit 0
     else
-        # Lock timeout
+        # Lock timeout or error
         attempt=$((attempt + 1))
         if [ $attempt -lt $max_attempts ]; then
             echo "[inbox_write] Lock timeout for $INBOX (attempt $attempt/$max_attempts), retrying..." >&2

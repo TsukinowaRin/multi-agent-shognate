@@ -12,7 +12,6 @@
 setup_file() {
     export PROJECT_ROOT
     PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
-    export VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
 
     export WATCHER_SCRIPT="$PROJECT_ROOT/scripts/inbox_watcher.sh"
     export INBOX_WRITE_SCRIPT="$PROJECT_ROOT/scripts/inbox_write.sh"
@@ -21,7 +20,7 @@ setup_file() {
     [ -f "$WATCHER_SCRIPT" ] || return 1
     [ -f "$INBOX_WRITE_SCRIPT" ] || return 1
     [ -f "$ASHIGARU_INSTR" ] || return 1
-    "$VENV_PYTHON" -c "import yaml" 2>/dev/null || return 1
+    python3 -c "import yaml" 2>/dev/null || return 1
 }
 
 setup() {
@@ -79,8 +78,9 @@ teardown() {
 }
 
 @test "TC-FR-002: inotify + timeout fallback is configured" {
-    grep -q "INOTIFY_TIMEOUT=" "$WATCHER_SCRIPT"
-    grep -F -q 'inotifywait -q -t "$INOTIFY_TIMEOUT" -e modify -e close_write "$INBOX"' "$WATCHER_SCRIPT"
+    grep -q "FILE_WATCH_TIMEOUT=" "$WATCHER_SCRIPT"
+    grep -F -q 'file_watch_wait_once "$INBOX" "$FILE_WATCH_TIMEOUT"' "$WATCHER_SCRIPT"
+    grep -q "lib/file_watch.sh" "$WATCHER_SCRIPT"
 }
 
 @test "TC-FR-003: get_unread_info routes task/special messages correctly" {
@@ -109,7 +109,7 @@ YAML
     run bash -c "source '$TEST_HARNESS'; get_unread_info"
     [ "$status" -eq 0 ]
 
-    "$VENV_PYTHON" - << 'PY' "$output" "$TEST_INBOX"
+    python3 - << 'PY' "$output" "$TEST_INBOX"
 import json, sys, yaml
 payload = json.loads(sys.argv[1])
 inbox_path = sys.argv[2]
@@ -130,31 +130,6 @@ PY
     body="$(awk '/get_unread_info\\(\\)/,/^}/' "$WATCHER_SCRIPT")"
     echo "$body" | grep -q "flock"
     echo "$body" | grep -q "os.replace"
-}
-
-@test "TC-FR-004b: get_unread_info does not update when lock is unavailable" {
-    cat > "$TEST_INBOX" << 'YAML'
-messages:
-  - id: msg_clear
-    from: karo
-    timestamp: "2026-02-09T21:00:01"
-    type: clear_command
-    content: /clear
-    read: false
-YAML
-    mkdir "$TEST_INBOX.lock.d"
-
-    run bash -c "source '$TEST_HARNESS'; get_unread_info"
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ '"count": 0' ]]
-
-    "$VENV_PYTHON" - << 'PY' "$TEST_INBOX"
-import sys, yaml
-with open(sys.argv[1]) as f:
-    data = yaml.safe_load(f)
-assert data["messages"][0]["read"] is False
-print("OK")
-PY
 }
 
 @test "TC-FR-005: post-task inbox check rule is documented for ashigaru" {
@@ -201,7 +176,7 @@ PY
     run bash "$INBOX_WRITE_SCRIPT" test_agent "compat-check" task_assigned karo
     [ "$status" -eq 0 ]
 
-    "$VENV_PYTHON" - << 'PY' "$PROJECT_ROOT/queue/inbox/test_agent.yaml"
+    python3 - << 'PY' "$PROJECT_ROOT/queue/inbox/test_agent.yaml"
 import sys, yaml
 p = sys.argv[1]
 with open(p) as f:

@@ -40,7 +40,7 @@
 - [x] package distribution / npm wrapper を upstream base に移植する。
 - [x] launcher / role config / shell aliases を移植する。
 - [x] CLI state isolation と AGY / Kilo / LocalAPI を移植する。
-- [ ] dynamic topology / multi-Karo / event-driven hardening を移植する。
+- [x] dynamic topology / multi-Karo / event-driven hardening を移植する。
 - [x] Android remote control / pairing profile はユーザー指示により初期再構築スコープ外へ移した。
 - [x] CoDD gate はユーザー指示により初期再構築スコープ外へ移した。
 - [ ] build / unit / integration /実機 runtime 検証を実行する。
@@ -102,6 +102,14 @@
 - `bash scripts/build_instructions.sh` passed.
 - `bats tests/unit/test_build_system.bats` passed: 57 tests.
 - CoDD references were intentionally absent from generated instructions and OpenCode agents.
+
+2026-05-22 runtime core:
+
+- `bash -n lib/file_watch.sh lib/inbox_path.sh lib/topology_adapter.sh scripts/goza_no_ma.sh scripts/goza_layout_autosave.sh scripts/focus_agent_pane.sh scripts/history_book.sh scripts/inbox_watcher.sh scripts/inbox_write.sh scripts/karo_done_to_shogun_bridge_daemon.sh scripts/shogun_to_karo_bridge_daemon.sh scripts/stop_hook_inbox.sh scripts/switch_cli.sh scripts/watcher_supervisor.sh shutsujin_departure.sh` passed.
+- `python3 -m py_compile scripts/karo_done_to_shogun_bridge.py scripts/shogun_to_karo_bridge.py scripts/runtime_blocker_notice.py` passed.
+- `python3 -m unittest tests.unit.test_runtime_blocker_notice` passed: 13 tests.
+- `bats tests/unit/test_file_watch.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_bridge_daemons.bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_stop_hook.bats tests/unit/test_switch_cli.bats tests/test_inbox_write.bats tests/agent_selfwatch.bats` passed: 269 tests.
+- Android app compatibility sessions are disabled by default via `MAS_ENABLE_ANDROID_COMPAT=0` and were not included in validation.
 
 ## 復旧
 

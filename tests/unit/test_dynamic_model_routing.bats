@@ -851,7 +851,7 @@ load_adapter_with() {
     run append_model_performance "$perf_file" "subtask_001" "seo_article" 3 "gpt-5.3-codex-spark" "pass" 0.85
     [ "$status" -eq 0 ]
     # ファイルが生成され、1件のhistoryエントリが存在
-    run "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    run "$CLI_ADAPTER_PYTHON" -c "
 import yaml
 with open('${perf_file}') as f:
     doc = yaml.safe_load(f)

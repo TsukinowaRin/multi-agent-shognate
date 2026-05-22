@@ -20,10 +20,15 @@ WATCHER_SCRIPT="$SCRIPT_DIR/scripts/inbox_watcher.sh"
 
 setup_file() {
     export PROJECT_ROOT="$SCRIPT_DIR"
-    export VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
     [ -f "$HOOK_SCRIPT" ] || return 1
     [ -f "$WATCHER_SCRIPT" ] || return 1
-    "$VENV_PYTHON" -c "import yaml" 2>/dev/null || return 1
+    if [ -x "$PROJECT_ROOT/.venv/bin/python3" ] && "$PROJECT_ROOT/.venv/bin/python3" -c "import yaml" >/dev/null 2>&1; then
+        export VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
+    elif command -v python3 >/dev/null 2>&1 && python3 -c "import yaml" >/dev/null 2>&1; then
+        export VENV_PYTHON="$(command -v python3)"
+    else
+        return 1
+    fi
 }
 
 setup() {

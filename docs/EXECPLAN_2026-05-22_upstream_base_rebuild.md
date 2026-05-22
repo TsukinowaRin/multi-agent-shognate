@@ -125,6 +125,18 @@
 - `git diff --check` passed.
 - README no longer references `install.bat` or `android/release`; release archives mark `android/` as `export-ignore`.
 
+2026-05-22 broad regression:
+
+- `bash -n Shogunate-Runtime.sh Shogunate-Configure-Roles.sh scripts/*.sh lib/*.sh first_setup.sh shutsujin_departure.sh` passed.
+- `python3 -m py_compile scripts/*.py` passed.
+- `bash scripts/build_instructions.sh && git diff --exit-code instructions/generated/ .opencode/agents/` passed.
+- `bats tests/unit/test_build_system.bats tests/unit/test_configure_runtime_roles.bats tests/unit/test_configure_agents.bats tests/unit/test_configure_role_launchers.bats tests/unit/test_runtime_launchers.bats tests/unit/test_shell_aliases.bats tests/unit/test_interactive_agent_runner.bats` passed: 70 tests.
+- `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_runtime_cli_pref_daemon.bats tests/unit/test_ratelimit_check.bats` passed: 146 tests.
+- `bats tests/unit/test_file_watch.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_bridge_daemons.bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_stop_hook.bats tests/unit/test_switch_cli.bats tests/test_inbox_write.bats tests/agent_selfwatch.bats` passed: 269 tests.
+- `bats tests/unit/test_ntfy_ack.bats tests/unit/test_slim_yaml.bats tests/unit/test_dynamic_model_routing.bats tests/unit/test_idle_flag.bats` passed: 117 tests.
+- `python3 -m unittest tests.unit.test_package_distribution tests.unit.test_update_manager tests.unit.test_runtime_blocker_notice` passed: 30 tests.
+- `npm pack --dry-run` passed.
+
 ## 復旧
 
 - 失敗した機能群は、その機能群 commit だけを revert する。

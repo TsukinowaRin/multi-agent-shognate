@@ -1,14 +1,25 @@
 #!/usr/bin/env bats
 
-load "../test_helper/bats-support/load"
-load "../test_helper/bats-assert/load"
+assert_success() {
+    [ "$status" -eq 0 ]
+}
+
+assert_output() {
+    if [ "${1:-}" = "--partial" ]; then
+        [[ "$output" == *"$2"* ]]
+    else
+        [ "$output" = "${1:-}" ]
+    fi
+}
 
 setup() {
     export PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
     export TEST_TMPDIR="$(mktemp -d "$BATS_TMPDIR/slim_yaml.XXXXXX")"
     export SHOGUN_QUEUE_DIR="$TEST_TMPDIR/queue"
     export TEST_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
-    [ -x "$TEST_PYTHON" ] || TEST_PYTHON="python3"
+    if [ ! -x "$TEST_PYTHON" ] || ! "$TEST_PYTHON" -c "import yaml" >/dev/null 2>&1; then
+        TEST_PYTHON="$(command -v python3 2>/dev/null || echo python3)"
+    fi
     mkdir -p "$SHOGUN_QUEUE_DIR"/{tasks,reports,inbox}
 }
 
@@ -27,7 +38,7 @@ run_slim() {
 }
 
 run_slim_wrapper() {
-    bash "$PROJECT_ROOT/scripts/slim_yaml.sh" "$@"
+    SHOGUN_PYTHON_BIN="$TEST_PYTHON" bash "$PROJECT_ROOT/scripts/slim_yaml.sh" "$@"
 }
 
 yaml_value() {

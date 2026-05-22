@@ -222,9 +222,9 @@ dashboard.md に掲載 → 殿が承認 → .claude/commands/ にスキル作成
 </td>
 <td>
 
-🖱️ **`install.bat` を実行**
+🐧 **WSL2 / Ubuntu を用意**
 
-右クリック→「管理者として実行」（WSL2が未インストールの場合）。WSL2 + Ubuntu をセットアップします。
+WSL2 が未インストールの場合は、管理者 PowerShell で `wsl --install` を実行し、Windows を再起動してから Ubuntu を開きます。
 
 </td>
 </tr>
@@ -289,26 +289,9 @@ cd /mnt/c/tools/multi-agent-shogun
 ./shutsujin_departure.sh
 ```
 
-### 📱 スマホからアクセス — 専用Androidアプリ（推奨）
+### 📱 スマホ / リモートアクセス — SSH 優先
 
-<p align="center">
-  <img src="android/screenshots/01_shogun_terminal.png" alt="将軍ターミナル" width="200">
-  <img src="android/screenshots/02_agents_grid.png" alt="エージェント一覧" width="200">
-  <img src="android/screenshots/03_dashboard.png" alt="ダッシュボード" width="200">
-</p>
-
-専用のAndroidアプリで10体のAIエージェントをスマホから監視・指揮できる。
-
-| 機能 | 説明 |
-|------|------|
-| **将軍ターミナル** | SSHターミナル + 音声入力 + 特殊キーバー (C-c, C-b, Tab等) |
-| **エージェント一覧** | 9ペイン同時監視。タップで全画面展開 + コマンド送信 |
-| **ダッシュボード** | dashboard.md をレンダリング表示。表のテキストもコピー可 |
-| **レートリミット** | エージェントタブ右下のボタンからClaude Max 5h/7d消費率をプログレスバーで確認 |
-| **音声入力** | Google Speech APIによる日本語連続認識。キーボード音声入力より高精度 |
-| **スクショ共有** | 共有メニューから画像をSFTP転送 |
-
-> **Note:** 現在Androidのみ対応。iOS版は開発者にテスト端末がないため未対応。ニーズがあれば [Issue](https://github.com/yohey-w/multi-agent-shogun/issues) で教えてください。PRも歓迎！
+この Shogunate package 再構築版では APK を配布しません。LAN または Tailscale 越しの SSH で接続し、任意の端末アプリから tmux session に attach します。
 
 #### セットアップ手順
 
@@ -319,28 +302,9 @@ cd /mnt/c/tools/multi-agent-shogun
 
 **手順：**
 
-1. **APKをインストール**
-   1. [`android/release/multi-agent-shogun.apk`](android/release/multi-agent-shogun.apk) をスマホにダウンロード（GitHub上のファイルを開いて「Download raw file」）
-   2. ダウンロード完了の通知をタップ → 「インストール」
-   3. 「提供元不明のアプリ」警告が出たら → 「設定」→ 該当ブラウザの「この提供元を許可」をON → 戻って「インストール」
-   4. インストール完了 → 「開く」
-
-2. **SSH接続情報を設定**（設定タブ）
-
-   | 項目 | 入力例 | 説明 |
-   |------|--------|------|
-   | SSHホスト | `100.xxx.xxx.xxx` | サーバーのIP（Tailscale IPなど） |
-   | SSHポート | `22` | 通常は22 |
-   | SSHユーザー | `your_username` | SSH接続のユーザー名 |
-   | SSH秘密鍵パス | `/data/data/.../id_ed25519` | スマホ上の秘密鍵パス（※1） |
-   | SSHパスワード | `****` | 鍵がない場合はパスワード認証 |
-   | プロジェクトパス | `/mnt/c/tools/multi-agent-shogun` | サーバー側のプロジェクトディレクトリ |
-   | 将軍セッション名 | `shogun` | tmuxの将軍セッション名 |
-   | エージェントセッション名 | `multiagent` | tmuxのエージェントセッション名 |
-
-   ※1 秘密鍵はスマホに転送するか、パスワード認証を使用
-
-3. **保存 → 将軍タブに切り替え** → 自動接続
+1. リモート端末に SSH client を入れます。Android なら Termux が実用的です。
+2. `ssh youruser@your-tailscale-ip` でホストへ接続します。
+3. `first_setup.sh` 後に alias が入っていれば、`css` で将軍、`csm` で家老/足軽の tmux session に attach できます。
 
 **Tailscaleを使う場合（外出先からも接続可能）：**
 
@@ -359,9 +323,9 @@ sudo service ssh start
 [ntfyの設定セクション](#-8-スマホ通知ntfy)を参照。家老からの進捗通知をプッシュで受け取れる。
 
 <details>
-<summary>📟 <b>Termux方式（Androidアプリなし）</b>（クリックで展開）</summary>
+<summary>📟 <b>Termux方式</b>（クリックで展開）</summary>
 
-Termuxを使ったSSH接続でも操作できる。専用アプリと比べて機能は限定的だが、追加のAPKインストールが不要。
+Termux を使うと APK の sideload なしで、デスクトップ端末と同じ tmux runtime に接続できます。
 
 **必要なもの（全部無料）：**
 
@@ -396,8 +360,6 @@ Termuxを使ったSSH接続でも操作できる。専用アプリと比べて�
 **切り方：** Termuxのウィンドウをスワイプで閉じるだけ。tmuxセッションは生き残る。AI部下は黙々と作業を続けている。
 
 </details>
-
-**音声入力：** Androidアプリの音声入力ボタンで喋れば、将軍が自然言語を理解して全軍に指示を出す。
 
 **もっと簡単に：** ntfyを設定すると、プッシュ通知で進捗を受け取れます。
 
@@ -440,17 +402,14 @@ cd ~/multi-agent-shogun
 
 ### WSL2がまだない場合
 
-問題ありません！`install.bat` を実行すると：
-1. WSL2がインストールされているかチェック（なければ自動インストール）
-2. Ubuntuがインストールされているかチェック（なければ自動インストール）
-3. 次のステップ（`first_setup.sh` の実行方法）を案内
+Windows 標準の WSL installer を一度だけ実行します：
 
 **クイックインストールコマンド**（PowerShellを管理者として実行）：
 ```powershell
 wsl --install
 ```
 
-その後、コンピュータを再起動して `install.bat` を再実行してください。
+Windows から再起動を求められたら再起動し、Ubuntu を開いて Shogunate ディレクトリで `first_setup.sh` を実行してください。
 
 </details>
 
@@ -461,15 +420,10 @@ wsl --install
 
 | スクリプト | 用途 | 実行タイミング |
 |-----------|------|---------------|
-| `install.bat` | Windows: WSL2 + Ubuntu のセットアップ | 初回のみ |
 | `first_setup.sh` | tmux、Node.js、Claude Code CLI のインストール + Memory MCP設定 | 初回のみ |
 | `shutsujin_departure.sh` | tmuxセッション作成 + エージェントごとの設定済みCLI起動 + 指示書読み込み + ntfyリスナー起動 | 毎日 |
 | `scripts/switch_cli.sh` | エージェントのCLI/モデルをライブ切替（settings.yaml → /exit → 再起動） | 必要時 |
-
-### `install.bat` が自動で行うこと：
-- ✅ WSL2がインストールされているかチェック（未インストールなら案内）
-- ✅ Ubuntuがインストールされているかチェック（未インストールなら案内）
-- ✅ 次のステップ（`first_setup.sh` の実行方法）を案内
+| `scripts/update_manager.py` | バージョン固定 package update / upstream snapshot 取り込み | 必要時 |
 
 ### `shutsujin_departure.sh` が行うこと：
 - ✅ tmuxセッションを作成（shogun + multiagent）
@@ -1484,11 +1438,6 @@ cp config/ntfy_auth.env.sample config/ntfy_auth.env
 │                      初回セットアップ（1回だけ実行）                   │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  install.bat (Windows)                                              │
-│      │                                                              │
-│      ├── WSL2のチェック/インストール案内                              │
-│      └── Ubuntuのチェック/インストール案内                            │
-│                                                                     │
 │  first_setup.sh (Ubuntu/WSLで手動実行)                               │
 │      │                                                              │
 │      ├── tmuxのチェック/インストール                                  │
@@ -1609,7 +1558,6 @@ alias csm='tmux attach-session -t multiagent'  # 家老・足軽ウィンドウ�
 multi-agent-shogun/
 │
 │  ┌─────────────────── セットアップスクリプト ───────────────────┐
-├── install.bat               # Windows: 初回セットアップ
 ├── first_setup.sh            # Ubuntu/Mac: 初回セットアップ
 ├── shutsujin_departure.sh    # 毎日の起動（指示書自動読み込み）
 │  └────────────────────────────────────────────────────────────┘

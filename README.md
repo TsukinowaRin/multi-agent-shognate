@@ -222,9 +222,9 @@ Skills grow organically from real work — not from a predefined template librar
 </td>
 <td>
 
-🖱️ **Run `install.bat`**
+🐧 **Prepare WSL2 / Ubuntu**
 
-Right-click → "Run as Administrator" (if WSL2 is not installed). Sets up WSL2 + Ubuntu automatically.
+If WSL2 is not installed yet, run `wsl --install` from an Administrator PowerShell, restart Windows, then open Ubuntu.
 
 </td>
 </tr>
@@ -289,26 +289,9 @@ cd /mnt/c/tools/multi-agent-shogun
 ./shutsujin_departure.sh
 ```
 
-### 📱 Mobile Access — Dedicated Android App (Recommended)
+### 📱 Mobile / Remote Access — SSH First
 
-<p align="center">
-  <img src="android/screenshots/01_shogun_terminal.png" alt="Shogun Terminal" width="200">
-  <img src="android/screenshots/02_agents_grid.png" alt="Agents Grid" width="200">
-  <img src="android/screenshots/03_dashboard.png" alt="Dashboard" width="200">
-</p>
-
-Monitor and command 10 AI agents from your phone with the dedicated Android companion app.
-
-| Feature | Description |
-|---------|-------------|
-| **Shogun Terminal** | SSH terminal + voice input + special key bar (C-c, C-b, Tab, etc.) |
-| **Agents Grid** | 9-pane simultaneous monitoring. Tap to expand fullscreen + send commands |
-| **Dashboard** | Renders dashboard.md with full table text selection/copy |
-| **Rate Limit** | Tap the FAB on the Agents tab to check Claude Max 5h/7d usage with progress bars |
-| **Voice Input** | Japanese continuous recognition via Google Speech API — higher accuracy than phone keyboard voice |
-| **Screenshot Share** | Share images via Android share menu → SFTP transfer to server |
-
-> **Note:** Android only for now. No iOS version — the developer doesn't own an iPhone. If there's demand, please open an [Issue](https://github.com/yohey-w/multi-agent-shogun/issues). PRs welcome!
+The Shogunate package does not ship an APK in this rebuild. Use SSH over LAN or Tailscale, then attach to the tmux sessions from any terminal client.
 
 #### Setup
 
@@ -319,28 +302,9 @@ Monitor and command 10 AI agents from your phone with the dedicated Android comp
 
 **Steps:**
 
-1. **Install APK**
-   1. Download [`android/release/multi-agent-shogun.apk`](android/release/multi-agent-shogun.apk) on your phone (open the file on GitHub → "Download raw file")
-   2. Tap the download notification → "Install"
-   3. If "Unknown sources" warning appears → "Settings" → enable "Allow from this source" for your browser → go back → "Install"
-   4. Done → "Open"
-
-2. **Configure SSH** (Settings tab)
-
-   | Field | Example | Description |
-   |-------|---------|-------------|
-   | SSH Host | `100.xxx.xxx.xxx` | Server IP (e.g., Tailscale IP) |
-   | SSH Port | `22` | Usually 22 |
-   | SSH User | `your_username` | SSH login username |
-   | SSH Key Path | `/data/data/.../id_ed25519` | Private key path on phone (*1) |
-   | SSH Password | `****` | Use if no key available |
-   | Project Path | `/mnt/c/tools/multi-agent-shogun` | Server-side project directory |
-   | Shogun Session | `shogun` | tmux session name for Shogun |
-   | Agent Session | `multiagent` | tmux session name for agents |
-
-   *1 Transfer your private key to the phone, or use password authentication
-
-3. **Save → Switch to Shogun tab** → auto-connects
+1. Install an SSH client on the remote device. Termux is a practical Android option.
+2. Connect to the host: `ssh youruser@your-tailscale-ip`.
+3. Run `css` for the Shogun pane or `csm` for Karo/Ashigaru panes after `first_setup.sh` has installed aliases.
 
 **Using Tailscale (connect from anywhere):**
 
@@ -359,9 +323,9 @@ Install the Tailscale app on your phone, log in with the same account, and use t
 See [ntfy setup section](#-8-phone-notifications-ntfy) for push notifications from Karo on task completion.
 
 <details>
-<summary>📟 <b>Termux Method (without the Android app)</b> (click to expand)</summary>
+<summary>📟 <b>Termux Method</b> (click to expand)</summary>
 
-SSH via Termux also works. More limited than the dedicated app, but requires no APK sideloading.
+SSH via Termux requires no APK sideloading and uses the same tmux runtime as desktop terminals.
 
 **Requirements (all free):**
 
@@ -436,17 +400,14 @@ cd ~/multi-agent-shogun
 
 ### If you don't have WSL2 yet
 
-No problem! Running `install.bat` will:
-1. Check if WSL2 is installed (auto-install if not)
-2. Check if Ubuntu is installed (auto-install if not)
-3. Guide you through next steps (running `first_setup.sh`)
+Run the Windows built-in installer once:
 
 **Quick install command** (run PowerShell as Administrator):
 ```powershell
 wsl --install
 ```
 
-Then restart your computer and run `install.bat` again.
+Then restart your computer if Windows asks, open Ubuntu, and run `first_setup.sh` from the Shogunate directory.
 
 </details>
 
@@ -457,15 +418,10 @@ Then restart your computer and run `install.bat` again.
 
 | Script | Purpose | When to run |
 |--------|---------|-------------|
-| `install.bat` | Windows: WSL2 + Ubuntu setup | First time only |
 | `first_setup.sh` | Install tmux, Node.js, Claude Code CLI + Memory MCP config | First time only |
 | `shutsujin_departure.sh` | Create tmux sessions + launch the configured CLI for each agent + load instructions + start ntfy listener | Daily |
 | `scripts/switch_cli.sh` | Live switch agent CLI/model (settings.yaml → /exit → relaunch) | As needed |
-
-### What `install.bat` does automatically:
-- ✅ Checks if WSL2 is installed (guides you if not)
-- ✅ Checks if Ubuntu is installed (guides you if not)
-- ✅ Shows next steps (how to run `first_setup.sh`)
+| `scripts/update_manager.py` | Version-fixed package update / upstream snapshot import | As needed |
 
 ### What `shutsujin_departure.sh` does:
 - ✅ Creates tmux sessions (shogun + multiagent)
@@ -1540,11 +1496,6 @@ Priority: Token > Basic > None. If neither is set, no auth headers are sent (bac
 │                    First-Time Setup (run once)                       │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  install.bat (Windows)                                              │
-│      │                                                              │
-│      ├── Check/guide WSL2 installation                              │
-│      └── Check/guide Ubuntu installation                            │
-│                                                                     │
 │  first_setup.sh (run manually in Ubuntu/WSL)                        │
 │      │                                                              │
 │      ├── Check/install tmux                                         │
@@ -1665,7 +1616,6 @@ To apply aliases: run `source ~/.bashrc` or restart your terminal (PowerShell: `
 multi-agent-shogun/
 │
 │  ┌──────────────── Setup Scripts ────────────────────┐
-├── install.bat               # Windows: First-time setup
 ├── first_setup.sh            # Ubuntu/Mac: First-time setup
 ├── shutsujin_departure.sh    # Daily deployment (auto-loads instructions)
 │  └──────────────────────────────────────────────────┘

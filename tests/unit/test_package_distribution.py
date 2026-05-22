@@ -39,6 +39,10 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("assembleRelease", text)
         self.assertNotIn(".apk", text)
 
+    def test_package_archive_excludes_android_app(self):
+        attrs = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+        self.assertIn("android/ export-ignore", attrs)
+
     def test_docs_describe_curl_and_npm_package_distribution(self):
         docs = "\n".join(
             [
@@ -52,6 +56,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("multi-agent-shognate-package.zip", docs)
         self.assertIn("v5.0.0.0", docs)
         self.assertIn("v5.0.0.12", docs)
+        self.assertNotIn("install.bat", docs)
+        self.assertNotIn("android/release", docs)
         self.assertNotIn("multi-agent-shognate-installer-<version>", docs)
 
 

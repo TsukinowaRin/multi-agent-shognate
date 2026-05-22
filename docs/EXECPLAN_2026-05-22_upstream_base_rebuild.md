@@ -42,6 +42,7 @@
 - [x] CLI state isolation と AGY / Kilo / LocalAPI を移植する。
 - [x] dynamic topology / multi-Karo / event-driven hardening を移植する。
 - [x] package/release update manager を移植し、CoDD/Android 依存なしの no-op extension point に整理する。
+- [x] README / package archive を package-first 方針へ合わせ、`install.bat` と APK 配布案内を外す。
 - [x] Android remote control / pairing profile はユーザー指示により初期再構築スコープ外へ移した。
 - [x] CoDD gate はユーザー指示により初期再構築スコープ外へ移した。
 - [ ] build / unit / integration /実機 runtime 検証を実行する。
@@ -117,6 +118,12 @@
 - `bash -n scripts/upstream_sync.sh scripts/stop_and_apply_update.sh scripts/shogunate_package_bootstrap.sh` passed.
 - `python3 -m py_compile scripts/update_manager.py` passed.
 - `python3 -m unittest tests.unit.test_update_manager tests.unit.test_package_distribution` passed: 16 tests.
+
+2026-05-22 package docs cleanup:
+
+- `python3 -m unittest tests.unit.test_package_distribution tests.unit.test_update_manager` passed: 17 tests.
+- `git diff --check` passed.
+- README no longer references `install.bat` or `android/release`; release archives mark `android/` as `export-ignore`.
 
 ## 復旧
 

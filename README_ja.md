@@ -45,6 +45,18 @@ bash shutsujin_departure.sh                # 全エージェント起動
 
 > 詳しいインストール手順（Windows含む）と「最初の30分の歩き方」は下記 [🚀 クイックスタート](#-クイックスタート) と [📖 基本的な使い方](#-基本的な使い方) を参照。
 
+### Shogunate package 配布
+
+この Shogunate 再構築版では、moving branch checkout ではなく、バージョン固定の Release package からも導入できます。配布 asset は `multi-agent-shognate-package.tar.gz` と `multi-agent-shognate-package.zip` です。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+npx @tsukinowarin/shogunate install
+npx @tsukinowarin/shogunate install -- --version v5.0.0.12 --prefix "$HOME/.shogunate/shogunate"
+```
+
+version tag は本家 version に fork revision を足した形式にします。例: `v5.0.0.0`、`v5.0.0.12`。
+
 将軍ペインに命令を入力：
 
 > 「ユーザー認証の REST API を作って」

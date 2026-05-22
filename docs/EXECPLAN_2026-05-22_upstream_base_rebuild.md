@@ -24,11 +24,10 @@
    - Antigravity / Kilo / LocalAPI support
    - dynamic topology / multi-Karo
    - event-driven runtime hardening
-   - Android remote control and pairing profile
-   - CoDD external coherence gate
    - docs / handoff / ExecPlan workflow
-3. まず低衝突の package / docs / CoDD / launcher を移植し、その後 runtime core と Android を移植する。
-4. 移植時は current Shogunate branch から必要箇所を参照するが、upstream の最新ファイル構造を優先して統合する。
+3. まず低衝突の package / docs / launcher を移植し、その後 runtime core を移植する。
+4. CoDD gate と Android app / APK 対応は今回の初期再構築では外す。後段の独立 PR 候補として再評価する。
+5. 移植時は current Shogunate branch から必要箇所を参照するが、upstream の最新ファイル構造を優先して統合する。
 
 ## 進捗
 
@@ -42,8 +41,8 @@
 - [ ] launcher / role config / shell aliases を移植する。
 - [ ] CLI state isolation と AGY / Kilo / LocalAPI を移植する。
 - [ ] dynamic topology / multi-Karo / event-driven hardening を移植する。
-- [ ] Android remote control / pairing profile を移植する。
-- [ ] CoDD gate を移植する。
+- [x] Android remote control / pairing profile はユーザー指示により初期再構築スコープ外へ移した。
+- [x] CoDD gate はユーザー指示により初期再構築スコープ外へ移した。
 - [ ] build / unit / integration /実機 runtime 検証を実行する。
 - [ ] PR 分離候補と最終差分をまとめる。
 
@@ -53,8 +52,7 @@
 2. 低衝突ファイルを移植して最初の checkpoint commit を作る。
 3. runtime core を小さく移植し、shell syntax と Bats を通す。
 4. CLI adapter と watcher を移植し、Codex / OpenCode / Antigravity / Kilo / LocalAPI の代表起動 command をテストする。
-5. Android app を移植し、unit test と可能なら debug build / adb 確認を行う。
-6. 隔離 test folder に作業ブランチを反映し、実 tmux runtime を起動する。
+5. 隔離 test folder に作業ブランチを反映し、実 tmux runtime を起動する。
 
 ## 棚卸し結果
 
@@ -64,12 +62,12 @@
 - `launchers_setup`: `Shogunate-Runtime.*`、role configure launcher、shell alias、初期設定。
 - `cli_state_and_extra_cli`: host auth sharing、role-local settings、Antigravity / Kilo / LocalAPI。
 - `runtime_core`: `goza-no-ma`、watcher、bridge daemon、multi-Karo topology、runtime recovery。
-- `android_remote`: Android app、SSH profile import、agent target bridge、host update。
-- `codd_gate`: CoDD wrapper、agent-native gate、CI / Makefile entrypoint。
+- `android_remote`: 今回は統合しない。後段で必要性を再評価する。
+- `codd_gate`: 今回は統合しない。後段で必要性を再評価する。
 - `docs_instructions_agents`: generated instructions、role docs、handoff / ExecPlan docs。
-- `tests`: runtime / CLI / Android / package / CoDD regression tests。
+- `tests`: runtime / CLI / package regression tests。
 
-移植順は、低衝突の `package_distribution` / `launchers_setup` / `codd_gate` から始め、その後 `cli_state_and_extra_cli` と `runtime_core` を統合する。
+移植順は、低衝突の `package_distribution` / `launchers_setup` から始め、その後 `cli_state_and_extra_cli` と `runtime_core` を統合する。
 
 ## 検証
 
@@ -78,7 +76,6 @@
 - `bats tests/unit/...`
 - `python3 -m unittest ...`
 - `npm pack --dry-run`
-- `cd android && ./gradlew --no-daemon test`
 - 隔離 runtime で `./Shogunate-Runtime.sh`
 - `git diff --check`
 

@@ -45,6 +45,18 @@ bash shutsujin_departure.sh                # launch all agents
 
 > For full install steps (incl. Windows) and the first-30-minutes walkthrough, see [🚀 Quick Start](#-quick-start) and the basic usage section below.
 
+### Shogunate Package Distribution
+
+This Shogunate rebuild can also be installed from version-fixed release packages instead of a moving branch checkout. The release assets are `multi-agent-shognate-package.tar.gz` and `multi-agent-shognate-package.zip`.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+npx @tsukinowarin/shogunate install
+npx @tsukinowarin/shogunate install -- --version v5.0.0.12 --prefix "$HOME/.shogunate/shogunate"
+```
+
+Version tags follow the upstream version plus a fork revision, for example `v5.0.0.0` or `v5.0.0.12`.
+
 Type a command in the Shogun pane:
 
 > "Build a REST API for user authentication"

@@ -17,29 +17,25 @@ bash scripts/inbox_write.sh karo "cmd_048を書いた。実行せよ。" cmd_new
 bash scripts/inbox_write.sh karo "足軽5号、任務完了。報告YAML確認されたし。" report_received ashigaru5
 
 # Karo → Ashigaru
-bash scripts/inbox_write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+bash scripts/inbox_write.sh ashigaru3 "subtask_001 を割り当てた。まず queue/tasks/ashigaru3.yaml を読み、作業開始せよ。" task_assigned karo
 ```
 
 Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
-**Agents NEVER call tmux send-keys directly.**
+**Agents NEVER call multiplexer send-keys/action directly.**
 
 ## Delivery Mechanism
 
 Two layers:
 1. **Message persistence**: `inbox_write.sh` writes to `queue/inbox/{agent}.yaml` with flock. Guaranteed.
-2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `inotifywait` → wakes agent:
-   - **Priority 1**: Agent self-watch (agent's own `inotifywait` on its inbox) → no nudge needed
-   - **Priority 2**: `tmux send-keys` — short nudge only (text and Enter sent separately, 0.3s gap)
+2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `lib/file_watch.sh` (`inotifywait` on Linux/WSL, `fswatch` on macOS, polling fallback) → wakes agent:
+   - **優先度1**: Agent self-watch (agent's own native watcher on its inbox) → no nudge needed
+   - **優先度2**: multiplexer nudge (`tmux send-keys`) — short nudge only
 
 The nudge is minimal: `inboxN` (e.g. `inbox3` = 3 unread). That's it.
-**Agent reads the inbox file itself.** Message content never travels through tmux — only a short wake-up signal.
+**Agent reads the inbox file itself.** Message content never travels through multiplexer transport — only a short wake-up signal.
 
-Safety note (shogun):
-- If the Shogun pane is active (the Lord is typing), `inbox_watcher.sh` must not inject keystrokes. It should use tmux `display-message` only.
-- Escalation keystrokes (`Escape×2`, context reset, `C-u`) must be suppressed for shogun to avoid clobbering human input.
-
-Special cases (CLI commands sent via `tmux send-keys`):
-- `type: clear_command` → sends context reset command via send-keys (Claude/Copilot/Kimi: `/clear`, Codex/OpenCode: `/new`)
+Special cases (CLI commands sent via watcher transport):
+- `type: clear_command` → sends `/clear` + Enter via send-keys
 - `type: model_switch` → sends the /model command via send-keys
 
 ## Agent Self-Watch Phase Policy (cmd_107)
@@ -61,8 +57,8 @@ Read-cost controls:
 | Elapsed | Action | Trigger |
 |---------|--------|---------|
 | 0〜2 min | Standard pty nudge | Normal delivery |
-| 2〜4 min | Escape×2 + nudge | Copilot/Kimi use Escape×2 + Ctrl-C + nudge. Claude/Codex/OpenCode use a plain nudge instead |
-| 4 min+ | Context reset sent (max once per 5 min, skipped for Codex) | Force session reset + YAML re-read |
+| 2〜4 min | Escape×2 + nudge | Cursor position bug workaround |
+| 4 min+ | `/clear` sent (max once per 5 min) | Force session reset + YAML re-read |
 
 ## Inbox Processing Protocol (karo/ashigaru/gunshi)
 
@@ -81,7 +77,49 @@ When you receive `inboxN` (e.g. `inbox3`):
 3. Only then go idle
 
 This is NOT optional. If you skip this and a redo message is waiting,
-you will be stuck idle until the next nudge escalation or task reassignment.
+you will be stuck idle until the escalation sends `/clear` (~4 min).
+
+### `task_assigned` Handling Rule
+
+When ashigaru receives `type: task_assigned`:
+
+1. Mark the inbox entry `read: true`
+2. **Immediately read `queue/tasks/ashigaru{N}.yaml` before any other work file**
+3. Treat that task YAML as the sole source of truth for `task_id`, `parent_cmd`, `description`, and `target_path`
+4. Do not guess the task from old report YAMLs, stale inbox text, or prior dashboard entries
+
+When karo sends `type: task_assigned`:
+
+- The inbox message should include the assigned `task_id`
+- The inbox message should name the exact task file path, e.g. `queue/tasks/ashigaru3.yaml`
+- Keep the text short, but never omit the task file reference
+
+When gunshi receives `type: task_assigned`:
+
+1. Mark the inbox entry `read: true`
+2. Immediately read `queue/tasks/gunshi.yaml`
+3. Produce strategy / decomposition / risk / evaluation output only
+4. Write `queue/reports/gunshi_report.yaml`
+5. Notify Karo with `bash scripts/inbox_write.sh karo "軍師、分析完了。queue/reports/gunshi_report.yaml を確認されたし。" report_received gunshi`
+6. Do not implement files, assign ashigaru, update `dashboard.md`, or close cmds
+
+## Karo Autonomy Rule
+
+The lord does not need to specify a formation name.
+
+- Shogun may give only the intent and expected outcome.
+- Karo must infer the deployment plan from the command itself.
+- Karo is responsible for choosing decomposition, headcount, sequencing, parallelism, and worker personas.
+- "How should we split this?" is normally **not** a question to bounce back upward. Decide and execute.
+
+### Active Ashigaru Scope
+
+For attendance, force summaries, and task distribution:
+
+- Use `config/settings.yaml` → `topology.active_ashigaru` as the current force roster.
+- Treat inactive ashigaru as non-existent for the current command, even if old report/task files still exist.
+- Historical files are archive evidence, not proof of current deployment.
+- If runtime ownership data exists, use it only to map the active roster to the responsible karo.
 
 ## Redo Protocol
 
@@ -89,19 +127,52 @@ When Karo determines a task needs to be redone:
 
 1. Karo writes new task YAML with new task_id (e.g., `subtask_097d` → `subtask_097d2`), adds `redo_of` field
 2. Karo sends `clear_command` type inbox message (NOT `task_assigned`)
-3. inbox_watcher delivers context reset to the agent（Claude/Copilot/Kimi: `/clear`, Codex/OpenCode: `/new`）→ session reset
+3. inbox_watcher delivers `/clear` to the agent → session reset
 4. Agent recovers via Session Start procedure, reads new task YAML, starts fresh
 
-Race condition is eliminated: context reset wipes old context. Agent re-reads YAML with new task_id.
+Race condition is eliminated: `/clear` wipes old context. Agent re-reads YAML with new task_id.
 
-## Report Flow (interrupt prevention)
+## Report Flow (interrupt prevention + completion relay)
 
 | Direction | Method | Reason |
 |-----------|--------|--------|
-| Ashigaru/Gunshi → Karo | Report YAML + inbox_write | File-based notification |
-| Karo → Shogun/Lord | dashboard.md update only | **inbox to shogun FORBIDDEN** — prevents interrupting Lord's input |
-| Karo → Gunshi | YAML + inbox_write | Strategic task delegation |
+| Ashigaru → Karo | Report YAML + inbox_write | File-based notification |
+| Gunshi → Karo | `queue/reports/gunshi_report.yaml` + inbox_write | Strategic analysis / QC notification |
+| Karo → Gunshi | `queue/tasks/gunshi.yaml` + inbox_write | Strategic task delegation |
+| Karo → Shogun/Lord | dashboard.md update only | Karo itself does not inbox the Shogun directly |
 | Top → Down | YAML + inbox_write | Standard wake-up |
+
+### System Completion Relay
+
+To avoid losing completion reports on long-running cmds:
+
+- Karo remains responsible for updating `dashboard.md` and closing the cmd in `queue/shogun_to_karo.yaml`
+- Infrastructure may then emit `type: cmd_done` into `queue/inbox/shogun.yaml`
+- This `cmd_done` is a **system-generated relay**, not direct Karo chatter
+
+Therefore:
+
+- **Karo still must not manually inbox the Shogun for normal completion**
+- **Shogun must treat `cmd_done` as the signal to read `dashboard.md` and report to the Lord immediately**
+
+### Karo Relay Discipline
+
+During normal `report_received` handling, Karo must assume the relay daemon is responsible for forwarding `cmd_done`.
+
+Therefore, after the final ashigaru report arrives:
+
+1. Read the relevant `queue/reports/ashigaru*_report.yaml`
+2. Close the cmd in `queue/shogun_to_karo.yaml`
+3. Update `dashboard.md`
+4. Stop
+
+Do **not** audit relay internals during ordinary completion:
+
+- no reading `scripts/karo_done_to_shogun_bridge_daemon.sh`
+- no reading `queue/runtime/karo_done_to_shogun.tsv`
+- no reading `scripts/ntfy.sh`, `saytask/streaks.yaml*`, or `*.sample` unless the cmd explicitly requires it
+
+If the relay appears broken, record that as a blocker in `dashboard.md` after closing what can be closed. Normal completion should stay on the happy path.
 
 ## File Operation Rule
 
@@ -127,3 +198,18 @@ bash scripts/inbox_write.sh karo "足軽{N}号、任務完了でござる。報�
 
 That's it. No state checking, no retry, no delivery verification.
 The inbox_write guarantees persistence. inbox_watcher handles delivery.
+
+## Verification Contract For Implementation Tasks
+
+When an ashigaru claims a test, build, or CLI verification passed:
+
+1. The report must record the exact command in `result.verification.command`
+2. The report must record the exact working directory in `result.verification.cwd`
+3. The report must record the observed result in `result.verification.result`
+4. "It should pass" or "module import looked fine" is not verification
+
+When karo closes an implementation cmd after `report_received`:
+
+1. Re-run the reported verification command from the reported working directory
+2. If the command fails, do not mark the cmd done
+3. If the report omits reproducible verification for modified code/files, treat the report as incomplete

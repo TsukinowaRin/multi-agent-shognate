@@ -6,8 +6,6 @@
 |----|--------|---------|--------|
 | F004 | Polling/wait loops | Event-driven (inbox) | Wastes API credits |
 | F005 | Skip context reading | Always read first | Prevents errors |
-| F006 | Edit generated files directly (`instructions/generated/*.md`, `AGENTS.md`, `.github/copilot-instructions.md`, `agents/default/system.md`) | Edit source templates (`CLAUDE.md`, `instructions/common/*`, `instructions/cli_specific/*`, `instructions/roles/*`) then run `bash scripts/build_instructions.sh` | CI "Build Instructions Check" fails when generated files drift from templates |
-| F007 | `git push` without the Lord's explicit approval | Ask the Lord first | Prevents leaking secrets / unreviewed changes |
 
 ## Shogun Forbidden Actions
 
@@ -37,11 +35,18 @@
 
 **Always confirm your ID first:**
 ```bash
-tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'
+if [ -n "$AGENT_ID" ]; then
+  echo "$AGENT_ID"
+elif [ -n "$TMUX_PANE" ]; then
+  tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'
+else
+  echo "[ERROR] AGENT_ID unavailable" >&2
+  exit 1
+fi
 ```
 Output: `ashigaru3` → You are Ashigaru 3. The number is your ID.
 
-Why `@agent_id` not `pane_index`: pane_index shifts on pane reorganization. @agent_id is set by shutsujin_departure.sh at startup and never changes.
+Why this works: `AGENT_ID` is the primary source of truth, and tmux pane option `@agent_id` is the fallback when shell environment is incomplete.
 
 **Your files ONLY:**
 ```

@@ -39,7 +39,7 @@
 - [x] Shogunate 独自機能を file / feature map として棚卸しする。
 - [x] package distribution / npm wrapper を upstream base に移植する。
 - [x] launcher / role config / shell aliases を移植する。
-- [ ] CLI state isolation と AGY / Kilo / LocalAPI を移植する。
+- [x] CLI state isolation と AGY / Kilo / LocalAPI を移植する。
 - [ ] dynamic topology / multi-Karo / event-driven hardening を移植する。
 - [x] Android remote control / pairing profile はユーザー指示により初期再構築スコープ外へ移した。
 - [x] CoDD gate はユーザー指示により初期再構築スコープ外へ移した。
@@ -93,6 +93,15 @@
 - `bash -n lib/topology_adapter.sh Shogunate-Runtime.sh Shogunate-Configure-Roles.sh scripts/configure_agents.sh scripts/ensure_generated_instructions.sh scripts/install_shell_aliases.sh scripts/shell_aliases.sh` passed.
 - `python3 -m py_compile scripts/configure_runtime_roles.py` passed.
 - `bats tests/unit/test_configure_runtime_roles.bats tests/unit/test_configure_agents.bats tests/unit/test_configure_role_launchers.bats tests/unit/test_runtime_launchers.bats tests/unit/test_shell_aliases.bats tests/unit/test_interactive_agent_runner.bats` passed: 13 tests.
+
+2026-05-22 CLI state / extra CLI / instructions:
+
+- `bash -n lib/cli_adapter.sh scripts/ensure_antigravity_keyring.sh scripts/ratelimit_check.sh scripts/runtime_cli_pref_daemon.sh` passed.
+- `python3 -m py_compile scripts/localapi_repl.py scripts/sync_opencode_config.py scripts/sync_runtime_cli_preferences.py` passed.
+- `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_opencode_config.bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_runtime_cli_pref_daemon.bats tests/unit/test_ratelimit_check.bats` passed: 146 tests.
+- `bash scripts/build_instructions.sh` passed.
+- `bats tests/unit/test_build_system.bats` passed: 57 tests.
+- CoDD references were intentionally absent from generated instructions and OpenCode agents.
 
 ## 復旧
 

@@ -4,13 +4,13 @@
 #
 # テスト構成:
 #   - ビルド実行テスト: スクリプト正常終了、ディレクトリ生成
-#   - ファイル生成テスト: claude/codex/copilot/opencode各ロールの生成確認
+#   - ファイル生成テスト: claude/codex/copilot各ロールの生成確認
 #   - 内容検証テスト: 空でないこと、ロール名・CLI固有セクション含有
 #   - AGENTS.md / copilot-instructions.md 生成テスト
 #   - 冪等性テスト: 2回ビルドで差分なし
 #
 # Phase 2+3未実装テストについて:
-#   copilot/opencode生成、AGENTS.md、copilot-instructions.md のテストは
+#   copilot生成、AGENTS.md、copilot-instructions.md のテストは
 #   build_instructions.shが拡張されるまでFAILする（受入基準）。
 #   SKIP は使用しない（SKIP=0ルール遵守）。
 
@@ -55,6 +55,15 @@ setup() {
     [ "$count" -ge 6 ]
 }
 
+@test "build: OpenCode agent definitions are generated" {
+    [ -f "$PROJECT_ROOT/.opencode/agents/shogun.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/karo.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/karo2.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/ashigaru8.md" ]
+    grep -q "mode: primary" "$PROJECT_ROOT/.opencode/agents/shogun.md"
+    grep -q "Canonical agent_id: \`ashigaru8\`" "$PROJECT_ROOT/.opencode/agents/ashigaru8.md"
+}
+
 # =============================================================================
 # ファイル生成テスト — Claude
 # =============================================================================
@@ -72,7 +81,7 @@ setup() {
 }
 
 # =============================================================================
-# ファイル生成テスト — Codex / OpenCode
+# ファイル生成テスト — Codex
 # =============================================================================
 
 @test "codex: codex-shogun.md generated" {
@@ -85,40 +94,6 @@ setup() {
 
 @test "codex: codex-ashigaru.md generated" {
     [ -f "$OUTPUT_DIR/codex-ashigaru.md" ]
-}
-
-@test "opencode: opencode-shogun.md generated [R6]" {
-    [ -f "$OUTPUT_DIR/opencode-shogun.md" ]
-}
-
-@test "opencode: opencode-karo.md generated [R6]" {
-    [ -f "$OUTPUT_DIR/opencode-karo.md" ]
-}
-
-@test "opencode: opencode-ashigaru.md generated [R6]" {
-    [ -f "$OUTPUT_DIR/opencode-ashigaru.md" ]
-}
-
-@test "opencode: opencode-gunshi.md generated [R6]" {
-    [ -f "$OUTPUT_DIR/opencode-gunshi.md" ]
-}
-
-@test "opencode: generated markdown is LF-only and has no trailing whitespace [R6]" {
-    local file
-
-    for file in "$OUTPUT_DIR"/opencode-*.md "$PROJECT_ROOT"/.opencode/agents/*.md; do
-        [ -f "$file" ] || continue
-
-        if LC_ALL=C grep -n $'\r' "$file"; then
-            echo "CR line ending found in $file" >&2
-            return 1
-        fi
-
-        if grep -nE '[[:blank:]]+$' "$file"; then
-            echo "Trailing whitespace found in $file" >&2
-            return 1
-        fi
-    done
 }
 
 # =============================================================================
@@ -165,22 +140,6 @@ setup() {
     [ -s "$OUTPUT_DIR/codex-ashigaru.md" ]
 }
 
-@test "content: opencode-shogun.md is not empty" {
-    [ -s "$OUTPUT_DIR/opencode-shogun.md" ]
-}
-
-@test "content: opencode-karo.md is not empty" {
-    [ -s "$OUTPUT_DIR/opencode-karo.md" ]
-}
-
-@test "content: opencode-ashigaru.md is not empty" {
-    [ -s "$OUTPUT_DIR/opencode-ashigaru.md" ]
-}
-
-@test "content: opencode-gunshi.md is not empty" {
-    [ -s "$OUTPUT_DIR/opencode-gunshi.md" ]
-}
-
 # =============================================================================
 # 内容検証テスト — ロール名含有
 # =============================================================================
@@ -205,24 +164,156 @@ setup() {
     grep -qi "karo\|家老" "$OUTPUT_DIR/codex-karo.md"
 }
 
+@test "content: codex-karo.md requires task_assigned to name task_id and queue/tasks path" {
+    grep -q "task_id" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "queue/tasks/ashigaru1.yaml" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Bad:" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md uses active_ashigaru as force roster" {
+    grep -q "topology.active_ashigaru" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "If only \`ashigaru1\` and \`ashigaru2\` are active, then the force size is two" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md documents lead karo and coordination board" {
+    grep -q "queue/runtime/lead_karo" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "queue/runtime/karo_coordination.yaml" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md does not hardcode ashigaru1-4/5-8 lanes" {
+    ! grep -q "Ashigaru 1-4" "$OUTPUT_DIR/codex-karo.md"
+    ! grep -q "Ashigaru 5-8" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-shogun.md uses active_ashigaru for current force recognition" {
+    grep -q "topology.active_ashigaru" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "If only \`ashigaru1\` and \`ashigaru2\` are active, then \"all ashigaru\" means those two" "$OUTPUT_DIR/codex-shogun.md"
+}
+
+@test "content: codex-shogun.md enforces event-driven dispatch and cmd_done wakeups" {
+    grep -q "event-driven dispatcher" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "\`type: cmd_done\`" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "\`type: runtime_blocked\`" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "No \`sleep\`, no background monitor, no periodic re-check while idle" "$OUTPUT_DIR/codex-shogun.md"
+}
+
+@test "content: codex-shogun.md keeps task_assigned on dispatch fast path only" {
+    grep -q "Read only the minimum routing sources needed to create the cmd" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Do \*\*not\*\* open implementation targets such as \`app.py\`, test files, README files" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Do \*\*not\*\* run project tests, \`git status\`, or codebase-wide searches" "$OUTPUT_DIR/codex-shogun.md"
+}
+
 @test "content: codex-ashigaru.md contains ashigaru role reference" {
     grep -qi "ashigaru\|足軽" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
-@test "content: opencode-shogun.md contains shogun role reference" {
-    grep -qi "shogun\|将軍" "$OUTPUT_DIR/opencode-shogun.md"
+@test "content: codex-ashigaru.md handles task_assigned by reading queue/tasks first" {
+    grep -q "On \`task_assigned\` receipt" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "queue/tasks/ashigaru{N}.yaml" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
-@test "content: opencode-karo.md contains karo role reference" {
-    grep -qi "karo\|家老" "$OUTPUT_DIR/opencode-karo.md"
+@test "content: codex-ashigaru.md treats missing new target_path as normal greenfield work" {
+    grep -q "If \`target_path\` points to a new deliverable that does not exist yet, treat that as normal" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Create the parent directory as needed and proceed with implementation" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "target_path\` is the intended output path" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
-@test "content: opencode-ashigaru.md contains ashigaru role reference" {
-    grep -qi "ashigaru\|足軽" "$OUTPUT_DIR/opencode-ashigaru.md"
+@test "content: codex-ashigaru.md requires exact contract match with sibling lane artifacts" {
+    grep -q "If sibling-lane artifacts such as \`README.md\`, \`tests/test_app.py\`, or \`app.py\` already exist, re-read them and match their public identifiers exactly" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Do not invent near-synonyms" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "must use the exact same function names, exception names, CLI behavior, and JSON keys" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
-@test "content: opencode-gunshi.md contains gunshi role reference" {
-    grep -qi "gunshi\|軍師" "$OUTPUT_DIR/opencode-gunshi.md"
+@test "content: codex-ashigaru.md requires exact verification command and cwd before claiming pass" {
+    grep -q "result.verification.command" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "result.verification.cwd" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Do not write \`pass\` unless the exact command really exited 0 in that exact directory" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-ashigaru.md enforces event-driven standby after report" {
+    grep -q "Ashigaru must work only from assigned events" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "return to standby immediately" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "No sleep loop, no periodic status re-check" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-karo.md reruns reported verification before closing implementation cmd" {
+    grep -q "rerun the exact \`result.verification.command\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "treat the report as incomplete and reassign instead of closing" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md enforces inbox-driven wakeups only" {
+    grep -q "Karo must remain event-driven at all times" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "\`cmd_new\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "\`report_received\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not run sleep loops, pane polling, or ad-hoc background monitors" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md dispatches cmd_new before broad reading" {
+    grep -q "When \`queue/inbox/karo.yaml\` receives \`type: cmd_new\`, dispatch first and expand context later" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Mark the cmd \`status: in_progress\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Immediately send \`type: task_assigned\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do \*\*not\*\* inspect target code, README, test files, or broad repo state before the first dispatch" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md forces initial multi-ashigaru split when the cmd is naturally parallel" {
+    grep -q "If two or more active ashigaru are available and the cmd naturally splits into independent early lanes" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "the first dispatch must use the active roster broadly" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "assign lanes across all useful active ashigaru in order, including \`ashigaru3+\` when present" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do \*\*not\*\* stop at \`ashigaru1\` / \`ashigaru2\` when \`ashigaru3+\` are active" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md tells karo when to use gunshi" {
+    grep -q "## Gunshi Consultation Rule" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Assign a \`queue/tasks/gunshi.yaml\` analysis task" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not wait for Gunshi before the first dispatch when obvious safe lanes already exist" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Gunshi does \*\*not\*\* implement files, manage ashigaru, update \`dashboard.md\`, or close the cmd" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "### Bloom Level → Agent Routing" "$OUTPUT_DIR/codex-karo.md"
+    grep -q '"Investigating root cause/structure?" | L4 Analyze | \*\*Gunshi\*\*' "$OUTPUT_DIR/codex-karo.md"
+    grep -q "## Quality Control Routing" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Route complex checks to Gunshi via \`queue/tasks/gunshi.yaml\`" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md runs proactive clarification and autonomous PDCA" {
+    grep -q "## Proactive Clarification and Autonomous PDCA" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "High-impact ambiguity: ask Shogun for the lord's decision with 3-5 concrete questions" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Repeat up to 3 QC cycles" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "This PDCA loop must remain event-driven" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md allows greenfield split before files exist" {
+    grep -q "\`target_path\` is the intended output path for the lane" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "For greenfield directories, you may split \`app.py\`, \`README.md\`, and \`tests/test_app.py\` in parallel" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not treat the absence of those files at dispatch time as a reason to serialize the work" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md writes explicit shared contract into parallel app and README/tests lanes" {
+    grep -q "When those parallel lanes must share a public contract, write the exact same contract into both task descriptions before dispatch" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Name the public function(s), exception type(s), CLI entrypoint behavior, and required output keys explicitly" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not write vague instructions such as \"align with README/tests\"" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "For the common split of \`app.py\` vs \`README.md\` + \`tests/test_app.py\`" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-gunshi.md enforces event-driven standby after analysis" {
+    grep -q "Gunshi must also remain event-driven" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "return to standby immediately" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "No sleep loop, no periodic re-analysis" "$OUTPUT_DIR/codex-gunshi.md"
+}
+
+@test "content: codex-gunshi.md keeps upstream strategist safeguards" {
+    grep -q "## Forbidden Actions" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Manage ashigaru inboxes or assign work" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "## North Star Alignment" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "north_star_alignment" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "## Critical Thinking Protocol" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Confidence label" "$OUTPUT_DIR/codex-gunshi.md"
+}
+
+@test "content: codex-gunshi.md designs clarification and PDCA without taking over execution" {
+    grep -q "## Proactive Clarification and Autonomous PDCA" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "return 3-5 concrete questions for Shogun / ntfy escalation" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "allow up to 3 QC cycles before escalation" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Gunshi may design the loop, critique outputs, and recommend redo / scale-out" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Gunshi must not assign ashigaru" "$OUTPUT_DIR/codex-gunshi.md"
 }
 
 # =============================================================================
@@ -236,10 +327,6 @@ setup() {
 
 @test "content: codex files contain Codex-specific content" {
     grep -qi "codex\|AGENTS.md\|Codex" "$OUTPUT_DIR/codex-shogun.md"
-}
-
-@test "content: opencode files contain OpenCode-specific content [R6]" {
-    grep -qi "opencode\|OpenCode\|--agent" "$OUTPUT_DIR/opencode-shogun.md"
 }
 
 @test "content: copilot files contain Copilot-specific content [Phase 2+3]" {
@@ -258,165 +345,10 @@ setup() {
     [ -f "$PROJECT_ROOT/AGENTS.md" ] && grep -qi "codex\|agent" "$PROJECT_ROOT/AGENTS.md"
 }
 
-# =============================================================================
-# OpenCode instruction generation (R6)
-# =============================================================================
-
-@test "opencode-inst: instructions/generated/opencode-shogun.md generated [R6]" {
-    [ -f "$OUTPUT_DIR/opencode-shogun.md" ]
-}
-
-@test "opencode-inst: instructions/generated/opencode-karo.md generated [R6]" {
-    [ -f "$OUTPUT_DIR/opencode-karo.md" ]
-}
-
-@test "opencode-inst: instructions/generated/opencode-ashigaru.md generated [R6]" {
-    [ -f "$OUTPUT_DIR/opencode-ashigaru.md" ]
-}
-
-@test "opencode-inst: instructions/generated/opencode-gunshi.md generated [R6]" {
-    [ -f "$OUTPUT_DIR/opencode-gunshi.md" ]
-}
-
-@test "opencode-agent: .opencode/agents/shogun.md generated [R6]" {
-    [ -f "$PROJECT_ROOT/.opencode/agents/shogun.md" ]
-}
-
-@test "opencode-agent: generated agent frontmatter contains permission section [R6]" {
-    grep -q '^permission:' "$PROJECT_ROOT/.opencode/agents/shogun.md"
-}
-
-@test "opencode-agent: tracked agent frontmatter excludes runtime routing [R6]" {
-    PROJECT_ROOT="$PROJECT_ROOT" "$PROJECT_ROOT/.venv/bin/python3" - <<'PYEOF'
-from pathlib import Path
-import os
-import yaml
-
-project_root = Path(os.environ["PROJECT_ROOT"])
-agents_dir = project_root / ".opencode" / "agents"
-for path in sorted(agents_dir.glob("*.md")):
-    if path.name.endswith("-runtime.md"):
-        continue
-    text = path.read_text(encoding="utf-8")
-    frontmatter = yaml.safe_load(text.split("---", 2)[1])
-    assert "model" not in frontmatter, f"{path.name}: tracked generated agent must not depend on local settings.yaml"
-    assert "variant" not in frontmatter, f"{path.name}: tracked generated agent must not depend on local settings.yaml"
-PYEOF
-}
-
-@test "opencode-agent: ashigaru1 read permissions allow own inbox/report/task [R6]" {
-    PROJECT_ROOT="$PROJECT_ROOT" "$PROJECT_ROOT/.venv/bin/python3" - <<'PYEOF'
-from pathlib import Path
-import os
-import yaml
-
-project_root = Path(os.environ["PROJECT_ROOT"])
-text = (project_root / ".opencode/agents/ashigaru1.md").read_text(encoding="utf-8")
-parts = text.split("---", 2)
-frontmatter = yaml.safe_load(parts[1])
-perm = frontmatter["permission"]
-
-assert perm["question"] == "deny"
-assert perm["read"]["queue/inbox/*"] == "deny"
-assert perm["read"]["queue/inbox/ashigaru1.yaml"] == "allow"
-assert perm["read"]["queue/tasks/*"] == "deny"
-assert perm["read"]["queue/tasks/ashigaru1.yaml"] == "allow"
-assert perm["read"]["queue/reports/*"] == "deny"
-assert perm["read"]["queue/reports/ashigaru1_report.yaml"] == "allow"
-
-for tool_name in ("glob", "list"):
-    assert perm[tool_name]["queue/inbox/*"] == "deny"
-    assert perm[tool_name]["queue/inbox/ashigaru1.yaml"] == "allow"
-    assert perm[tool_name]["queue/tasks/*"] == "deny"
-    assert perm[tool_name]["queue/tasks/ashigaru1.yaml"] == "allow"
-    assert perm[tool_name]["queue/reports/*"] == "deny"
-    assert perm[tool_name]["queue/reports/ashigaru1_report.yaml"] == "allow"
-PYEOF
-}
-
-@test "opencode-agent: grep permission is intentionally not path-scoped [R6]" {
-    PROJECT_ROOT="$PROJECT_ROOT" "$PROJECT_ROOT/.venv/bin/python3" - <<'PYEOF'
-from pathlib import Path
-import os
-import yaml
-
-agents_dir = Path(os.environ["PROJECT_ROOT"]) / ".opencode/agents"
-for path in sorted(agents_dir.glob("*.md")):
-    text = path.read_text(encoding="utf-8")
-    frontmatter = yaml.safe_load(text.split("---", 2)[1])
-    perm = frontmatter["permission"]
-    assert "grep" not in perm, f"{path.name}: grep must inherit '*: allow', not path-scoped rules"
-    assert "grep intentionally inherits '*: allow'" in text, f"{path.name}: missing intentional grep comment"
-PYEOF
-}
-
-@test "opencode-agent: shogun can read reports for oversight [R6]" {
-    PROJECT_ROOT="$PROJECT_ROOT" "$PROJECT_ROOT/.venv/bin/python3" - <<'PYEOF'
-from pathlib import Path
-import os
-import yaml
-
-path = Path(os.environ["PROJECT_ROOT"]) / ".opencode/agents/shogun.md"
-text = path.read_text(encoding="utf-8")
-frontmatter = yaml.safe_load(text.split("---", 2)[1])
-perm = frontmatter["permission"]
-
-assert perm["read"]["queue/reports/*"] == "allow"
-assert perm["glob"]["queue/reports/*"] == "allow"
-assert perm["list"]["queue/reports/*"] == "allow"
-assert perm["edit"]["queue/reports/*"] == "deny"
-PYEOF
-}
-
-@test "opencode-agent: inbox edits are denied for every role [R6]" {
-    PROJECT_ROOT="$PROJECT_ROOT" "$PROJECT_ROOT/.venv/bin/python3" - <<'PYEOF'
-from pathlib import Path
-import os
-import yaml
-
-agents_dir = Path(os.environ["PROJECT_ROOT"]) / ".opencode/agents"
-for path in sorted(agents_dir.glob("*.md")):
-    text = path.read_text(encoding="utf-8")
-    frontmatter = yaml.safe_load(text.split("---", 2)[1])
-    edit = frontmatter["permission"]["edit"]
-    inbox_rules = {key: value for key, value in edit.items() if key.startswith("queue/inbox/")}
-    exact_rule = edit.get("queue/inbox/*.yaml")
-    unexpected_rules = {key: value for key, value in inbox_rules.items() if key != "queue/inbox/*.yaml"}
-
-    assert exact_rule == "deny", f"{path.name}: queue/inbox/*.yaml edit rule missing or not deny: {exact_rule!r}"
-    assert not unexpected_rules, f"{path.name}: unexpected inbox edit rules: {unexpected_rules}"
-PYEOF
-}
-
-@test "opencode-agent: invalid permission YAML fails generation [R6]" {
-    local permissions_file
-    permissions_file="$BATS_TEST_TMPDIR/opencode-permissions.invalid.yaml"
-
-    printf 'roles: [invalid\n' > "$permissions_file"
-    run env OPENCODE_PERMISSIONS_FILE="$permissions_file" bash "$BUILD_SCRIPT"
-
-    [ "$status" -ne 0 ]
-}
-
-@test "opencode-config: root edit permissions deny inbox YAML [R6]" {
-    PROJECT_ROOT="$PROJECT_ROOT" "$PROJECT_ROOT/.venv/bin/python3" - <<'PYEOF'
-from pathlib import Path
-import os
-import yaml
-
-config = yaml.safe_load((Path(os.environ["PROJECT_ROOT"]) / "config/opencode-permissions.yaml").read_text(encoding="utf-8"))
-assert config["common"]["edit_deny"]
-assert "queue/inbox/*.yaml" in config["common"]["edit_deny"]
-PYEOF
-}
-
-@test "opencode-tool: mark-as-read enforces current agent and inbox lock [R6]" {
-    local tool_file="$PROJECT_ROOT/.opencode/tools/mark-as-read.ts"
-
-    grep -q 'process.env.OPENCODE_AGENT_ID' "$tool_file"
-    grep -q 'Refusing to mark another agent' "$tool_file"
-    grep -q 'withInboxLock' "$tool_file"
-    grep -q '.lock.d' "$tool_file"
+@test "agents: AGENTS.md does not advertise fixed ashigaru1-8 roster" {
+    ! grep -q "Ashigaru 1-8" "$PROJECT_ROOT/AGENTS.md"
+    grep -q "Active Ashigaru" "$PROJECT_ROOT/AGENTS.md"
+    grep -q "topology.active_ashigaru" "$PROJECT_ROOT/AGENTS.md"
 }
 
 # =============================================================================
@@ -430,75 +362,6 @@ PYEOF
 @test "copilot-inst: contains Copilot-specific content [Phase 2+3]" {
     [ -f "$PROJECT_ROOT/.github/copilot-instructions.md" ] && \
         grep -qi "copilot" "$PROJECT_ROOT/.github/copilot-instructions.md"
-}
-
-# =============================================================================
-# 冪等性テスト
-# =============================================================================
-
-# =============================================================================
-# Codex /clear → /new 変換テスト
-# =============================================================================
-# Codex CLIは/clearでセッション終了するため、AGENTS.mdおよびcodex-*.mdで
-# /clearが命令として残存していないことを検証する。
-# 比較表や変換説明の文脈での/clear言及はOK。
-
-@test "codex-clear: AGENTS.md has no /clear Recovery section" {
-    # /clear Recoveryは/new Recoveryに変換されるべき
-    run grep -c "## /clear Recovery" "$PROJECT_ROOT/AGENTS.md"
-    [ "$output" = "0" ]
-}
-
-@test "codex-clear: AGENTS.md has /new Recovery section" {
-    grep -q "## /new Recovery" "$PROJECT_ROOT/AGENTS.md"
-}
-
-@test "codex-clear: AGENTS.md has no 'Forbidden after /clear'" {
-    run grep -c "Forbidden after /clear" "$PROJECT_ROOT/AGENTS.md"
-    [ "$output" = "0" ]
-}
-
-@test "codex-clear: AGENTS.md has no 'sends \`/clear\` + Enter via send-keys' (unconverted)" {
-    # 変換済みは「sends /new + Enter」になっているべき
-    run grep -c 'sends `/clear` + Enter via send-keys$' "$PROJECT_ROOT/AGENTS.md"
-    [ "$output" = "0" ]
-}
-
-@test "codex-clear: AGENTS.md has no 'delivers \`/clear\` to the agent' (unconverted)" {
-    # 変換済みは「delivers /new to the agent」になっているべき
-    run grep -c 'delivers `/clear` to the agent →' "$PROJECT_ROOT/AGENTS.md"
-    [ "$output" = "0" ]
-}
-
-@test "codex-clear: AGENTS.md has no '/clear wipes old context'" {
-    run grep -c '`/clear` wipes old context' "$PROJECT_ROOT/AGENTS.md"
-    [ "$output" = "0" ]
-}
-
-@test "codex-clear: codex-ashigaru.md has no bare '/clear' in escalation table" {
-    # 比較表(codex_tools.md由来)以外で/clearが命令として現れないこと
-    # エスカレーション行に「/clear sent」があればNG
-    run grep -c '`/clear` sent (max once' "$OUTPUT_DIR/codex-ashigaru.md"
-    [ "$output" = "0" ]
-}
-
-@test "codex-clear: codex-ashigaru.md protocol uses CLI-neutral context reset" {
-    # protocol.mdのclear_command行がCLI中立表現になっていること
-    grep -q "context reset command via send-keys" "$OUTPUT_DIR/codex-ashigaru.md"
-}
-
-@test "codex-clear: codex-karo.md has no bare '/clear' in redo protocol" {
-    # Redo Protocolで「delivers /clear to the agent →」がそのまま残っていないこと
-    run grep -c 'delivers `/clear` to the agent →' "$OUTPUT_DIR/codex-karo.md"
-    [ "$output" = "0" ]
-}
-
-@test "codex-clear: codex-gunshi.md protocol uses CLI-neutral context reset" {
-    grep -q "context reset command via send-keys" "$OUTPUT_DIR/codex-gunshi.md"
-}
-
-@test "codex-clear: codex-shogun.md protocol uses CLI-neutral context reset" {
-    grep -q "context reset command via send-keys" "$OUTPUT_DIR/codex-shogun.md"
 }
 
 # =============================================================================

@@ -33,6 +33,10 @@ PYTHON="${SCRIPT_DIR}/.venv/bin/python3"
 # ─── Constants ───
 CLAUDE_STATS="$HOME/.claude/stats-cache.json"
 CODEX_LOG="$HOME/.codex/log/codex-tui.log"
+ANTIGRAVITY_SETTINGS_PATH="$HOME/.gemini/antigravity-cli/settings.json"
+ANTIGRAVITY_AUTH_DIR="$HOME/.gemini/antigravity-cli"
+OPENCODE_CONFIG_DIR="$HOME/.config/opencode"
+KILO_CONFIG_DIR="$HOME/.config/kilo"
 TODAY=$(date +%Y-%m-%d)
 
 # Warning thresholds
@@ -81,13 +85,15 @@ done
 # ═══════════════════════════════════════════════════════
 # Phase 2: Group agents by CLI type
 # ═══════════════════════════════════════════════════════
-declare -a CLAUDE_AGENTS=() CODEX_AGENTS=() OPENCODE_AGENTS=() OTHER_AGENTS=()
+declare -a CLAUDE_AGENTS=() CODEX_AGENTS=() ANTIGRAVITY_AGENTS=() OPENCODE_AGENTS=() KILO_AGENTS=() OTHER_AGENTS=()
 
 for agent in "${ALL_AGENTS[@]}"; do
     case "${AGENT_CLI[$agent]}" in
         claude) CLAUDE_AGENTS+=("$agent") ;;
         codex)  CODEX_AGENTS+=("$agent") ;;
+        antigravity|gemini) ANTIGRAVITY_AGENTS+=("$agent") ;;
         opencode) OPENCODE_AGENTS+=("$agent") ;;
+        kilo) KILO_AGENTS+=("$agent") ;;
         *)      OTHER_AGENTS+=("$agent") ;;
     esac
 done
@@ -159,37 +165,6 @@ extract_latest_codex_status_block() {
             printf "%s", last
         }
     ' <<< "$1"
-}
-
-extract_codex_context_left() {
-    awk '
-        /context left/ && match($0, /([0-9]+)%/, m) {
-            context = m[1]
-        }
-        /Context window:/ && match($0, /([0-9]+)% left/, m) {
-            fallback = m[1]
-        }
-        /[0-9]+% left/ && /·/ && match($0, /([0-9]+)% left/, m) {
-            context = m[1]
-        }
-        END {
-            if (context != "") {
-                print context
-            } else if (fallback != "") {
-                print fallback
-            }
-        }
-    ' <<< "$1"
-}
-
-normalize_reset_value() {
-    local reset_value="${1:-}"
-
-    if [[ -n "${reset_value//[[:space:]]/}" ]]; then
-        printf '%s' "$reset_value"
-    else
-        printf 'unknown'
-    fi
 }
 
 # ═══════════════════════════════════════════════════════
@@ -351,17 +326,18 @@ if [[ ${#CODEX_AGENTS[@]} -gt 0 ]]; then
 
     for agent in "${CODEX_AGENTS[@]}"; do
         pane="${AGENT_PANE[$agent]}"
-        _pane_snapshot=$(capture_tmux_pane_zoomed "$pane" -80)
 
-        # Context: use a zoomed capture so the Codex prompt or recent /status block survives narrow panes.
-        ctx=$(extract_codex_context_left "$_pane_snapshot" || true)
+        # Context: read from status bar (always visible, no /status needed)
+        ctx=$(tmux capture-pane -t "$pane" -p -S -5 2>/dev/null \
+            | grep -oE '[0-9]+% left' | tail -1 \
+            | grep -oE '[0-9]+' || echo "?")
         [[ -z "$ctx" ]] && ctx="?"
         CODEX_CONTEXT["$agent"]="$ctx"
 
         # Quota: capture the latest /status block from a zoomed pane so narrow tiled panes do not
         # truncate "% left" and reset timestamps.
         if ! $_rl_quota_done; then
-            _status_out="$_pane_snapshot"
+            _status_out=$(capture_tmux_pane_zoomed "$pane" -80)
             _status_block=$(extract_latest_codex_status_block "$_status_out")
 
             if [[ ! "$_status_block" =~ [0-9]+%[[:space:]]left ]]; then
@@ -446,6 +422,22 @@ if [[ ${#CODEX_AGENTS[@]} -gt 0 ]] && [[ -f "$CODEX_LOG" ]]; then
     fi
 fi
 
+# --- 3d: Antigravity / OpenCode / Kilo telemetry availability ---
+ANTIGRAVITY_STATE_STATUS="missing"
+if [[ -d "$ANTIGRAVITY_AUTH_DIR" || -f "$ANTIGRAVITY_SETTINGS_PATH" ]]; then
+    ANTIGRAVITY_STATE_STATUS="detected"
+fi
+
+OPENCODE_STATE_STATUS="missing"
+if [[ -d "$OPENCODE_CONFIG_DIR" ]]; then
+    OPENCODE_STATE_STATUS="detected"
+fi
+
+KILO_STATE_STATUS="missing"
+if [[ -d "$KILO_CONFIG_DIR" ]]; then
+    KILO_STATE_STATUS="detected"
+fi
+
 # ═══════════════════════════════════════════════════════
 # Phase 4: Display
 # ═══════════════════════════════════════════════════════
@@ -456,6 +448,20 @@ if [[ "$LANG_MODE" == "en" ]]; then
 else
     printf "══ レートリミット状況 (%s) ══\n" "$TODAY"
 fi
+
+format_agent_list() {
+    local result=""
+    local agent=""
+    for agent in "$@"; do
+        local model="${AGENT_MODEL[$agent]}"
+        if [[ -n "$result" ]]; then
+            result="${result}, ${agent}(${model})"
+        else
+            result="${agent}(${model})"
+        fi
+    done
+    printf '%s\n' "$result"
+}
 
 # --- Claude group ---
 if [[ ${#CLAUDE_AGENTS[@]} -gt 0 ]]; then
@@ -561,21 +567,21 @@ if [[ ${#CODEX_AGENTS[@]} -gt 0 ]]; then
     # Quota display from /status
     printf "  Quota (%s)\n" "${codex_model:-gpt-5.3-codex}"
     if [[ -n "$CODEX_ACCT_5H_LEFT" ]]; then
-        printf "  5h limit: %s%% left (resets %s)\n" "$CODEX_ACCT_5H_LEFT" "$(normalize_reset_value "$CODEX_ACCT_5H_RESET")"
+        printf "  5h limit: %s%% left (resets %s)\n" "$CODEX_ACCT_5H_LEFT" "$CODEX_ACCT_5H_RESET"
     else
         printf "  5h limit: N/A\n"
     fi
     if [[ -n "$CODEX_ACCT_7D_LEFT" ]]; then
-        printf "  Weekly limit: %s%% left (resets %s)\n" "$CODEX_ACCT_7D_LEFT" "$(normalize_reset_value "$CODEX_ACCT_7D_RESET")"
+        printf "  Weekly limit: %s%% left (resets %s)\n" "$CODEX_ACCT_7D_LEFT" "$CODEX_ACCT_7D_RESET"
     else
         printf "  Weekly limit: N/A\n"
     fi
     # Model-level quota
     if [[ -n "$CODEX_MODEL_5H_LEFT" ]]; then
         printf "  %s:\n" "${CODEX_MODEL_LABEL:-Model}"
-        printf "  5h limit: %s%% left (resets %s)\n" "$CODEX_MODEL_5H_LEFT" "$(normalize_reset_value "$CODEX_MODEL_5H_RESET")"
+        printf "  5h limit: %s%% left (resets %s)\n" "$CODEX_MODEL_5H_LEFT" "$CODEX_MODEL_5H_RESET"
         if [[ -n "$CODEX_MODEL_7D_LEFT" ]]; then
-            printf "  Weekly limit: %s%% left (resets %s)\n" "$CODEX_MODEL_7D_LEFT" "$(normalize_reset_value "$CODEX_MODEL_7D_RESET")"
+            printf "  Weekly limit: %s%% left (resets %s)\n" "$CODEX_MODEL_7D_LEFT" "$CODEX_MODEL_7D_RESET"
         fi
     fi
 
@@ -588,16 +594,43 @@ if [[ ${#CODEX_AGENTS[@]} -gt 0 ]]; then
     fi
 fi
 
-# --- OpenCode ---
+# --- Antigravity group ---
+if [[ ${#ANTIGRAVITY_AGENTS[@]} -gt 0 ]]; then
+    printf "\n── Antigravity CLI ───────────────────\n"
+    printf "  Agents: %s\n" "$(format_agent_list "${ANTIGRAVITY_AGENTS[@]}")"
+    if [[ "$LANG_MODE" == "en" ]]; then
+        printf "  Workspace state: %s (~/.gemini/antigravity-cli)\n" "$ANTIGRAVITY_STATE_STATUS"
+        printf "  Quota: unavailable (no local quota telemetry discovered under ~/.gemini/antigravity-cli)\n"
+    else
+        printf "  Workspace state: %s (~/.gemini/antigravity-cli)\n" "$ANTIGRAVITY_STATE_STATUS"
+        printf "  Quota: unavailable（~/.gemini/antigravity-cli 配下にローカルのクォータ指標は未発見）\n"
+    fi
+fi
+
+# --- OpenCode group ---
 if [[ ${#OPENCODE_AGENTS[@]} -gt 0 ]]; then
-    printf "\n── OpenCode ─────────────────────────\n"
-    # OpenCode exposes usage/cost statistics via `opencode stats`; limits depend on the provider/subscription.
-    printf "  Usage: opencode stats shows token and cost statistics; usage limits are provider-specific.\n"
-    for agent in "${OPENCODE_AGENTS[@]}"; do
-        cli="${AGENT_CLI[$agent]}"
-        model="${AGENT_MODEL[$agent]}"
-        printf "  %s: %s (%s)\n" "$agent" "$cli" "$model"
-    done
+    printf "\n── OpenCode ──────────────────────────\n"
+    printf "  Agents: %s\n" "$(format_agent_list "${OPENCODE_AGENTS[@]}")"
+    if [[ "$LANG_MODE" == "en" ]]; then
+        printf "  Workspace state: %s (~/.config/opencode)\n" "$OPENCODE_STATE_STATUS"
+        printf "  Quota: unavailable (project config detected, but no local rate-limit counters found)\n"
+    else
+        printf "  Workspace state: %s (~/.config/opencode)\n" "$OPENCODE_STATE_STATUS"
+        printf "  Quota: unavailable（project config はあるが、ローカルの rate-limit counter は未発見）\n"
+    fi
+fi
+
+# --- Kilo group ---
+if [[ ${#KILO_AGENTS[@]} -gt 0 ]]; then
+    printf "\n── Kilo ──────────────────────────────\n"
+    printf "  Agents: %s\n" "$(format_agent_list "${KILO_AGENTS[@]}")"
+    if [[ "$LANG_MODE" == "en" ]]; then
+        printf "  Workspace state: %s (~/.config/kilo)\n" "$KILO_STATE_STATUS"
+        printf "  Quota: unavailable (no local rate-limit counters found)\n"
+    else
+        printf "  Workspace state: %s (~/.config/kilo)\n" "$KILO_STATE_STATUS"
+        printf "  Quota: unavailable（ローカルの rate-limit counter は未発見）\n"
+    fi
 fi
 
 # --- Other CLIs ---

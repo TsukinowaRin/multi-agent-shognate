@@ -55,7 +55,7 @@ roles:
       - queue/ntfy_inbox.yaml
       - saytask/tasks.yaml
     read_allow:
-      - queue/inbox/karo.yaml
+      - queue/inbox/{agent_id}.yaml
       - queue/shogun_to_karo.yaml
       - queue/shogun_to_karo_archive.yaml
       - queue/tasks/ashigaru*.yaml

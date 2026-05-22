@@ -3,24 +3,34 @@
 # Multi-CLI統合設計書 (reports/design_multi_cli_support.md) §2.2 準拠
 #
 # 提供関数:
-#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "opencode"
+#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "antigravity" | "localapi" | "opencode" | "kilo"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
+#   build_cli_command_with_type(agent_id, cli_type) → 指定CLIでの完全なコマンド文字列
+#   build_cli_command_with_startup_prompt(agent_id, cli_type, prompt) → 初回プロンプト付き完全コマンド
+#   get_role_instruction_file(agent_id)     → 役職共通指示書パス
 #   get_instruction_file(agent_id [,cli_type]) → 指示書パス
 #   validate_cli_availability(cli_type)     → 0=OK, 1=NG
 #   get_agent_model(agent_id)               → "opus" | "sonnet" | "haiku" | "k2.5"
 #   get_startup_prompt(agent_id)            → 初期プロンプト文字列 or ""
-#   get_startup_prompt_arg(agent_id)        → 起動コマンド向けプロンプト引数 or ""
 
 # プロジェクトルートを基準にsettings.yamlのパスを解決
 CLI_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLI_ADAPTER_PROJECT_ROOT="$(cd "${CLI_ADAPTER_DIR}/.." && pwd)"
 CLI_ADAPTER_SETTINGS="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
+CLI_ADAPTER_HOST_HOME="${CLI_ADAPTER_HOST_HOME:-${HOME:-}}"
+CLI_ADAPTER_PYTHON="${CLI_ADAPTER_PROJECT_ROOT}/.venv/bin/python3"
+if [[ -x "$CLI_ADAPTER_PYTHON" ]] && ! "$CLI_ADAPTER_PYTHON" -c "import yaml" >/dev/null 2>&1; then
+    CLI_ADAPTER_PYTHON=""
+fi
+if [[ -z "$CLI_ADAPTER_PYTHON" || ! -x "$CLI_ADAPTER_PYTHON" ]]; then
+    CLI_ADAPTER_PYTHON="$(command -v python3 2>/dev/null || echo python3)"
+fi
 
 # 許可されたCLI種別
-CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi opencode"
+CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi antigravity localapi opencode kilo"
 
 # normalize_opencode_model(model)
-# OpenCode向けにprovider-qualifiedなモデル名へ正規化する。
+# OpenCode 向けに provider-qualified なモデル名へ正規化する。
 normalize_opencode_model() {
     local model="${1:-}"
 
@@ -67,7 +77,7 @@ _cli_adapter_read_yaml() {
     local key_path="$1"
     local fallback="${2:-}"
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
@@ -94,17 +104,687 @@ except Exception:
     fi
 }
 
-# _cli_adapter_shell_quote value
-# シェル引数として安全に埋め込めるように quote する
-_cli_adapter_shell_quote() {
-    local value="$1"
-    local venv_python="$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3"
+_cli_adapter_find_executable() {
+    local name="$1"
+    local resolved=""
+    local dir=""
+    local candidate=""
+    local native_resolved=""
+    local windows_resolved=""
 
-    if [[ -x "$venv_python" ]]; then
-        "$venv_python" -c 'import shlex, sys; print(shlex.quote(sys.argv[1]))' "$value" 2>/dev/null && return 0
+    # WSL の PATH には Windows npm shim が先に入ることがあるため、
+    # host Linux/WSL 側の user bin を command -v より先に見る。
+    for dir in \
+        "${HOME:-}/.local/bin" \
+        "${HOME:-}/.opencode/bin" \
+        "${HOME:-}/.kilo/bin" \
+        "${HOME:-}/.npm/bin" \
+        "${HOME:-}/.npm-global/bin" \
+        "${HOME:-}/bin" \
+        "${NVM_BIN:-}" \
+        "${PNPM_HOME:-}"
+    do
+        [ -n "$dir" ] || continue
+        if [ -x "$dir/$name" ] && ! _cli_adapter_is_windows_mount_path "$dir/$name"; then
+            printf '%s\n' "$dir/$name"
+            return 0
+        fi
+    done
+
+    for candidate in "${HOME:-}"/.nvm/versions/node/*/bin/"$name"; do
+        [ -x "$candidate" ] || continue
+        _cli_adapter_is_windows_mount_path "$candidate" && continue
+        native_resolved="$candidate"
+    done
+    if [[ -n "$native_resolved" ]]; then
+        printf '%s\n' "$native_resolved"
+        return 0
     fi
 
-    printf '%q\n' "$value"
+    if resolved="$(command -v "$name" 2>/dev/null)"; then
+        if _cli_adapter_is_windows_mount_path "$resolved"; then
+            windows_resolved="$resolved"
+        else
+            printf '%s\n' "$resolved"
+            return 0
+        fi
+    fi
+
+    local path_dirs=()
+    IFS=':' read -r -a path_dirs <<< "${PATH:-}"
+    for dir in "${path_dirs[@]}"; do
+        [ -n "$dir" ] || continue
+        candidate="$dir/$name"
+        [ -x "$candidate" ] || continue
+        if _cli_adapter_is_windows_mount_path "$candidate"; then
+            [ -n "$windows_resolved" ] || windows_resolved="$candidate"
+            continue
+        fi
+        printf '%s\n' "$candidate"
+        return 0
+    done
+
+    if [[ -n "$windows_resolved" ]]; then
+        printf '%s\n' "$windows_resolved"
+        return 0
+    fi
+
+    return 1
+}
+
+_cli_adapter_is_windows_mount_path() {
+    case "${1:-}" in
+        /mnt/[a-zA-Z]/*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# _cli_adapter_pick_executable primary fallback
+# primary が存在しなければ fallback を返す（どちらも無い場合は primary）
+_cli_adapter_pick_executable() {
+    local primary="$1"
+    local fallback="$2"
+    local resolved=""
+
+    if resolved="$(_cli_adapter_find_executable "$primary" 2>/dev/null)"; then
+        printf '%s\n' "$resolved"
+        return 0
+    fi
+    if resolved="$(_cli_adapter_find_executable "$fallback" 2>/dev/null)"; then
+        printf '%s\n' "$resolved"
+        return 0
+    fi
+    echo "$primary"
+}
+
+_cli_adapter_pick_executable_cmd() {
+    local primary="$1"
+    local fallback="${2:-$1}"
+    local resolved=""
+
+    resolved="$(_cli_adapter_pick_executable "$primary" "$fallback")"
+    _cli_adapter_shell_quote "$resolved"
+}
+
+_cli_adapter_resolve_command_binary() {
+    local cmd="${1:-}"
+    local primary="$2"
+    local fallback="${3:-$2}"
+    local resolved=""
+
+    [[ -n "$cmd" ]] || {
+        printf '%s\n' "$cmd"
+        return 0
+    }
+
+    resolved="$(_cli_adapter_pick_executable_cmd "$primary" "$fallback")"
+    case "$cmd" in
+        "$primary")
+            printf '%s\n' "$resolved"
+            ;;
+        "$primary "*)
+            printf '%s%s\n' "$resolved" "${cmd#"$primary"}"
+            ;;
+        "$fallback")
+            printf '%s\n' "$resolved"
+            ;;
+        "$fallback "*)
+            printf '%s%s\n' "$resolved" "${cmd#"$fallback"}"
+            ;;
+        *)
+            printf '%s\n' "$cmd"
+            ;;
+    esac
+}
+
+# _cli_adapter_get_configured_model agent_id
+# settings.yaml で明示設定されたモデルのみ返す
+_cli_adapter_get_configured_model() {
+    local agent_id="$1"
+    local model
+
+    model=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.model" "")
+    if [[ -z "$model" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
+        model=$(_cli_adapter_read_yaml "cli.agents.karo.model" "")
+    fi
+    if [[ -n "$model" ]]; then
+        echo "$model"
+        return 0
+    fi
+
+    model=$(_cli_adapter_read_yaml "models.${agent_id}" "")
+    if [[ -z "$model" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
+        model=$(_cli_adapter_read_yaml "models.karo" "")
+    fi
+    echo "$model"
+}
+
+# _cli_adapter_normalize_lower value
+_cli_adapter_normalize_lower() {
+    printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]'
+}
+
+_cli_adapter_normalize_cli_type() {
+    local cli_type
+    cli_type="$(_cli_adapter_normalize_lower "${1:-}")"
+    case "$cli_type" in
+        gemini) echo "antigravity" ;;
+        *) echo "$cli_type" ;;
+    esac
+}
+
+_cli_adapter_shell_quote() {
+    printf '%q' "${1:-}"
+}
+
+_cli_adapter_prefix_node_path_for_global_bin() {
+    local cmd="${1:-}"
+    local node_root=""
+    local node_bin=""
+
+    [[ -n "$cmd" ]] || {
+        printf '%s\n' "$cmd"
+        return 0
+    }
+
+    [[ "$cmd" == *"PATH="* ]] && {
+        printf '%s\n' "$cmd"
+        return 0
+    }
+
+    if [[ "$cmd" =~ (/[^[:space:]]+)/lib/node_modules/[^[:space:]]+ ]]; then
+        node_root="${BASH_REMATCH[1]}"
+        node_bin="${node_root}/bin"
+        if [[ -x "${node_bin}/node" ]]; then
+            printf 'env PATH=%s:$PATH %s\n' "$node_bin" "$cmd"
+            return 0
+        fi
+    fi
+
+    printf '%s\n' "$cmd"
+}
+
+_cli_adapter_append_flag_if_missing() {
+    local cmd="${1:-}"
+    local flag="${2:-}"
+
+    [[ -n "$flag" ]] || {
+        printf '%s\n' "$cmd"
+        return 0
+    }
+    if [[ " $cmd " == *" $flag "* ]]; then
+        printf '%s\n' "$cmd"
+    else
+        printf '%s %s\n' "$cmd" "$flag"
+    fi
+}
+
+_cli_adapter_codex_home() {
+    local agent_id="$1"
+    printf '%s/.shogunate/codex/agents/%s' "$CLI_ADAPTER_PROJECT_ROOT" "$agent_id"
+}
+
+_cli_adapter_cli_state_home() {
+    local cli_type="$1"
+    local agent_id="$2"
+    printf '%s/.shogunate/cli-state/%s/agents/%s/home' "$CLI_ADAPTER_PROJECT_ROOT" "$cli_type" "$agent_id"
+}
+
+_cli_adapter_host_path() {
+    local rel_path="${1:-}"
+    [[ -n "$CLI_ADAPTER_HOST_HOME" && -n "$rel_path" ]] || return 0
+    printf '%s/%s' "$CLI_ADAPTER_HOST_HOME" "$rel_path"
+}
+
+_cli_adapter_link_host_file_cmd() {
+    local rel_path="$1"
+    local state_home="$2"
+    local src
+    local dst
+    local dst_dir
+
+    src="$(_cli_adapter_host_path "$rel_path")"
+    [[ -n "$src" ]] || return 0
+    dst="${state_home}/${rel_path}"
+    dst_dir="$(dirname "$dst")"
+
+    printf ' && mkdir -p %s && if [ -f %s ]; then ln -sfn %s %s; fi' \
+        "$(_cli_adapter_shell_quote "$dst_dir")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$dst")"
+}
+
+_cli_adapter_link_host_dir_cmd() {
+    local rel_path="$1"
+    local state_home="$2"
+    local src
+    local dst
+    local dst_dir
+
+    src="$(_cli_adapter_host_path "$rel_path")"
+    [[ -n "$src" ]] || return 0
+    dst="${state_home}/${rel_path}"
+    dst_dir="$(dirname "$dst")"
+
+    printf ' && mkdir -p %s && if [ -d %s ]; then ln -sfn %s %s; fi' \
+        "$(_cli_adapter_shell_quote "$dst_dir")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$dst")"
+}
+
+_cli_adapter_unlink_state_symlink_cmd() {
+    local rel_path="$1"
+    local state_home="$2"
+    local dst
+    local dst_dir
+
+    dst="${state_home}/${rel_path}"
+    dst_dir="$(dirname "$dst")"
+
+    printf ' && mkdir -p %s && if [ -L %s ]; then rm -f %s; fi' \
+        "$(_cli_adapter_shell_quote "$dst_dir")" \
+        "$(_cli_adapter_shell_quote "$dst")" \
+        "$(_cli_adapter_shell_quote "$dst")"
+}
+
+_cli_adapter_seed_host_file_cmd() {
+    local rel_path="$1"
+    local state_home="$2"
+    local src
+    local dst
+    local dst_dir
+
+    src="$(_cli_adapter_host_path "$rel_path")"
+    [[ -n "$src" ]] || return 0
+    dst="${state_home}/${rel_path}"
+    dst_dir="$(dirname "$dst")"
+
+    printf ' && mkdir -p %s && if [ -L %s ]; then rm -f %s; fi && if [ -f %s ] && [ ! -e %s ]; then cp %s %s; fi' \
+        "$(_cli_adapter_shell_quote "$dst_dir")" \
+        "$(_cli_adapter_shell_quote "$dst")" \
+        "$(_cli_adapter_shell_quote "$dst")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$dst")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$dst")"
+}
+
+_cli_adapter_seed_host_opencode_model_cmd() {
+    local state_home="$1"
+    local src
+    local dst
+    local script
+
+    src="$(_cli_adapter_host_path ".local/state/opencode/model.json")"
+    [[ -n "$src" ]] || return 0
+    dst="${state_home}/.local/state/opencode/model.json"
+    script='import json, os, shutil, sys
+src, dst = sys.argv[1:3]
+if not os.path.isfile(src):
+    raise SystemExit(0)
+copy = not os.path.exists(dst)
+if not copy:
+    try:
+        with open(dst, "r", encoding="utf-8") as f:
+            data = json.load(f) or {}
+        copy = not data.get("recent") and not data.get("favorite")
+    except Exception:
+        copy = False
+if copy:
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    if os.path.islink(dst):
+        os.unlink(dst)
+    shutil.copy2(src, dst)
+'
+    printf ' && %s -c %s %s %s' \
+        "$(_cli_adapter_shell_quote "$CLI_ADAPTER_PYTHON")" \
+        "$(_cli_adapter_shell_quote "$script")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$dst")"
+}
+
+_cli_adapter_seed_antigravity_settings_cmd() {
+    local state_home="$1"
+    local src
+    local dst
+    local script
+
+    src="$(_cli_adapter_host_path ".gemini/antigravity-cli/settings.json")"
+    [[ -n "$src" ]] || return 0
+    dst="${state_home}/.gemini/antigravity-cli/settings.json"
+    script='import json, os, sys
+src, dst, project_root = sys.argv[1:4]
+data = {}
+source = dst if os.path.isfile(dst) else src
+if os.path.isfile(source):
+    try:
+        with open(source, "r", encoding="utf-8") as f:
+            loaded = json.load(f)
+        if isinstance(loaded, dict):
+            data = loaded
+    except Exception:
+        data = {}
+trusted = data.get("trustedWorkspaces")
+if not isinstance(trusted, list):
+    trusted = []
+if project_root not in trusted:
+    trusted.append(project_root)
+data["trustedWorkspaces"] = trusted
+data["allowNonWorkspaceAccess"] = True
+data["toolPermission"] = "always-proceed"
+os.makedirs(os.path.dirname(dst), exist_ok=True)
+tmp = dst + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+os.replace(tmp, dst)
+'
+    printf ' && %s -c %s %s %s %s' \
+        "$(_cli_adapter_shell_quote "$CLI_ADAPTER_PYTHON")" \
+        "$(_cli_adapter_shell_quote "$script")" \
+        "$(_cli_adapter_shell_quote "$src")" \
+        "$(_cli_adapter_shell_quote "$dst")" \
+        "$(_cli_adapter_shell_quote "$CLI_ADAPTER_PROJECT_ROOT")"
+}
+
+_cli_adapter_host_auth_links_cmd() {
+    local cli_type="$1"
+    local state_home="$2"
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
+
+    case "$cli_type" in
+        claude)
+            _cli_adapter_link_host_file_cmd ".claude/.credentials.json" "$state_home"
+            ;;
+        antigravity)
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/auth.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/oauth_creds.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/google_accounts.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/credentials.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/tokens.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/oauth_creds.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/google_accounts.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".gemini/antigravity-cli/cache/onboarding.json" "$state_home"
+            _cli_adapter_seed_antigravity_settings_cmd "$state_home"
+            ;;
+        opencode)
+            _cli_adapter_link_host_file_cmd ".local/share/opencode/auth.json" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/opencode.db" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/opencode.db-shm" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/opencode.db-wal" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/opencode/telemetry-id" "$state_home"
+            _cli_adapter_seed_host_opencode_model_cmd "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/state/opencode/prompt-history.jsonl" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/opencode/package.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/opencode/package-lock.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/opencode/bun.lock" "$state_home"
+            _cli_adapter_link_host_dir_cmd ".config/opencode/node_modules" "$state_home"
+            ;;
+        kilo)
+            _cli_adapter_link_host_file_cmd ".local/share/kilo/auth.json" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/kilo/kilo.db" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/kilo/kilo.db-shm" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/kilo/kilo.db-wal" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/share/kilo/telemetry-id" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".local/state/kilo/model.json" "$state_home"
+            _cli_adapter_unlink_state_symlink_cmd ".local/state/kilo/prompt-history.jsonl" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/kilo/package.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/kilo/package-lock.json" "$state_home"
+            _cli_adapter_seed_host_file_cmd ".config/kilo/bun.lock" "$state_home"
+            _cli_adapter_link_host_dir_cmd ".config/kilo/node_modules" "$state_home"
+            ;;
+        copilot)
+            _cli_adapter_link_host_file_cmd ".copilot/auth.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".config/copilot/auth.json" "$state_home"
+            ;;
+        kimi)
+            _cli_adapter_link_host_file_cmd ".kimi/auth.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".config/kimi/auth.json" "$state_home"
+            ;;
+    esac
+}
+
+_cli_adapter_prepare_cli_state_cmd() {
+    local cli_type="$1"
+    local agent_id="$2"
+    local state_home
+    local cmd
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
+
+    case "$cli_type" in
+        claude|copilot|kimi|antigravity|opencode|kilo)
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    state_home="$(_cli_adapter_cli_state_home "$cli_type" "$agent_id")"
+    cmd="$(printf 'mkdir -p %s %s %s %s %s' \
+        "$(_cli_adapter_shell_quote "$state_home")" \
+        "$(_cli_adapter_shell_quote "$state_home/.config")" \
+        "$(_cli_adapter_shell_quote "$state_home/.local/share")" \
+        "$(_cli_adapter_shell_quote "$state_home/.cache")" \
+        "$(_cli_adapter_shell_quote "$state_home/.local/state")")"
+    cmd="${cmd}$(_cli_adapter_host_auth_links_cmd "$cli_type" "$state_home")"
+    printf '%s\n' "$cmd"
+}
+
+_cli_adapter_cli_state_env_prefix() {
+    local cli_type="$1"
+    local agent_id="$2"
+    local state_home
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
+
+    case "$cli_type" in
+        claude|copilot|kimi|antigravity|opencode|kilo)
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    state_home="$(_cli_adapter_cli_state_home "$cli_type" "$agent_id")"
+    printf 'HOME=%s XDG_CONFIG_HOME=%s XDG_DATA_HOME=%s XDG_CACHE_HOME=%s XDG_STATE_HOME=%s ' \
+        "$(_cli_adapter_shell_quote "$state_home")" \
+        "$(_cli_adapter_shell_quote "$state_home/.config")" \
+        "$(_cli_adapter_shell_quote "$state_home/.local/share")" \
+        "$(_cli_adapter_shell_quote "$state_home/.cache")" \
+        "$(_cli_adapter_shell_quote "$state_home/.local/state")"
+}
+
+_cli_adapter_with_cli_state() {
+    local agent_id="$1"
+    local cli_type="$2"
+    local command_text="$3"
+    local prepare_cmd
+    local state_env
+    local keyring_cmd=""
+
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
+    if [[ "$cli_type" == "antigravity" ]]; then
+        keyring_cmd="$(_cli_adapter_shell_quote "${CLI_ADAPTER_PROJECT_ROOT}/scripts/ensure_antigravity_keyring.sh")"
+    fi
+    prepare_cmd="$(_cli_adapter_prepare_cli_state_cmd "$cli_type" "$agent_id")"
+    state_env="$(_cli_adapter_cli_state_env_prefix "$cli_type" "$agent_id")"
+
+    if [[ -n "$keyring_cmd" && -n "$prepare_cmd" ]]; then
+        printf '%s && %s && %s%s\n' "$keyring_cmd" "$prepare_cmd" "$state_env" "$command_text"
+    elif [[ -n "$keyring_cmd" ]]; then
+        printf '%s && %s\n' "$keyring_cmd" "$command_text"
+    elif [[ -n "$prepare_cmd" ]]; then
+        printf '%s && %s%s\n' "$prepare_cmd" "$state_env" "$command_text"
+    else
+        printf '%s\n' "$command_text"
+    fi
+}
+
+_cli_adapter_resolve_project_path() {
+    local raw_path="${1:-}"
+    case "$raw_path" in
+        "")
+            printf '%s\n' "$CLI_ADAPTER_PROJECT_ROOT"
+            ;;
+        /*)
+            printf '%s\n' "$raw_path"
+            ;;
+        *)
+            printf '%s/%s\n' "$CLI_ADAPTER_PROJECT_ROOT" "$raw_path"
+            ;;
+    esac
+}
+
+_cli_adapter_codex_shared_auth_enabled() {
+    local raw
+    raw="$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.codex.shared_auth" "true")")"
+    case "$raw" in
+        ""|1|true|yes|on)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+_cli_adapter_codex_auth_file_for_agent() {
+    local agent_id="$1"
+    printf '%s/auth.json\n' "$(_cli_adapter_codex_home "$agent_id")"
+}
+
+_cli_adapter_codex_shared_auth_file() {
+    local configured
+    configured="$(_cli_adapter_read_yaml "cli.codex.shared_auth_file" ".shogunate/codex/shared/auth.json")"
+    _cli_adapter_resolve_project_path "$configured"
+}
+
+_cli_adapter_codex_host_auth_file() {
+    _cli_adapter_host_path ".codex/auth.json"
+}
+
+_cli_adapter_prepare_codex_home_cmd() {
+    local agent_id="$1"
+    local codex_home
+    local role_auth_file
+    local shared_auth_file
+    local shared_auth_dir
+    local host_auth_file
+
+    codex_home="$(_cli_adapter_codex_home "$agent_id")"
+    role_auth_file="$(_cli_adapter_codex_auth_file_for_agent "$agent_id")"
+    host_auth_file="$(_cli_adapter_codex_host_auth_file)"
+    if [[ -n "$host_auth_file" ]]; then
+        printf 'mkdir -p %s && if [ -f %s ]; then ln -sfn %s %s; else ' \
+            "$(_cli_adapter_shell_quote "$codex_home")" \
+            "$(_cli_adapter_shell_quote "$host_auth_file")" \
+            "$(_cli_adapter_shell_quote "$host_auth_file")" \
+            "$(_cli_adapter_shell_quote "$role_auth_file")"
+    fi
+
+    if ! _cli_adapter_codex_shared_auth_enabled; then
+        if [[ -n "$host_auth_file" ]]; then
+            printf 'mkdir -p %s; fi\n' "$(_cli_adapter_shell_quote "$codex_home")"
+        else
+            printf 'mkdir -p %s\n' "$(_cli_adapter_shell_quote "$codex_home")"
+        fi
+        return 0
+    fi
+
+    shared_auth_file="$(_cli_adapter_codex_shared_auth_file)"
+    if [[ "$shared_auth_file" == "$role_auth_file" ]]; then
+        if [[ -n "$host_auth_file" ]]; then
+            printf 'mkdir -p %s; fi\n' "$(_cli_adapter_shell_quote "$codex_home")"
+        else
+            printf 'mkdir -p %s\n' "$(_cli_adapter_shell_quote "$codex_home")"
+        fi
+        return 0
+    fi
+    shared_auth_dir="$(dirname "$shared_auth_file")"
+
+    printf 'mkdir -p %s %s && if [ -f %s ] && [ ! -e %s ]; then cp %s %s; fi && if ! ln -sfn %s %s 2>/dev/null; then if [ -f %s ]; then cp %s %s; fi; fi' \
+        "$(_cli_adapter_shell_quote "$codex_home")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_dir")" \
+        "$(_cli_adapter_shell_quote "$role_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$role_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$role_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
+        "$(_cli_adapter_shell_quote "$role_auth_file")"
+    if [[ -n "$host_auth_file" ]]; then
+        printf '; fi\n'
+    else
+        printf '\n'
+    fi
+}
+
+_cli_adapter_is_shogun() {
+    [[ "${1:-}" == "shogun" ]]
+}
+
+_cli_adapter_default_codex_reasoning_effort() {
+    echo ""
+}
+
+_cli_adapter_default_claude_thinking() {
+    local agent_id="$1"
+    if _cli_adapter_is_shogun "$agent_id"; then
+        echo "false"
+    else
+        echo ""
+    fi
+}
+
+_cli_adapter_is_valid_antigravity_model() {
+    local model
+    model="$(_cli_adapter_normalize_lower "${1:-}")"
+    case "$model" in
+        ""|auto|default|gemini*|antigravity*|agy*|mas-*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+_cli_adapter_is_valid_codex_model() {
+    local model
+    model="$(_cli_adapter_normalize_lower "${1:-}")"
+    case "$model" in
+        ""|auto|default) return 0 ;;
+        left|context|working|run|use|model|shortcuts|press) return 1 ;;
+        /*) return 1 ;;
+        [a-z0-9][a-z0-9._/-]*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+get_agent_reasoning_effort() {
+    local agent_id="$1"
+    local effort
+    effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.reasoning_effort" "")")
+    if [[ -z "$effort" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
+        effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.karo.reasoning_effort" "")")
+    fi
+    case "$effort" in
+        auto|none|low|medium|high) echo "$effort" ;;
+        *) _cli_adapter_default_codex_reasoning_effort "$agent_id" ;;
+    esac
+}
+
+get_agent_antigravity_runtime_model() {
+    local agent_id="$1"
+    local configured_model
+    configured_model="$(_cli_adapter_get_configured_model "$agent_id")"
+    if ! _cli_adapter_is_valid_antigravity_model "$configured_model"; then
+        configured_model=""
+    fi
+    if [[ -n "$configured_model" ]]; then
+        echo "$configured_model"
+        return 0
+    fi
+    get_agent_model "$agent_id"
 }
 
 # _cli_adapter_is_valid_cli cli_type
@@ -131,8 +811,12 @@ get_cli_type() {
     fi
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
-import yaml, sys
+    result=$("$CLI_ADAPTER_PYTHON" -c "
+import re, yaml, sys
+allowed = ('claude','codex','copilot','kimi','antigravity','localapi','opencode','kilo')
+def norm(value):
+    value = str(value or '').strip().lower()
+    return 'antigravity' if value == 'gemini' else value
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
         cfg = yaml.safe_load(f) or {}
@@ -141,18 +825,23 @@ try:
         print('claude'); sys.exit(0)
     agents = cli.get('agents', {})
     if not isinstance(agents, dict):
-        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','opencode') else 'claude')
+        default = norm(cli.get('default', 'claude'))
+        print(default if default in allowed else 'claude')
         sys.exit(0)
-    agent_cfg = agents.get('${agent_id}')
+    agent_id = '${agent_id}'
+    agent_cfg = agents.get(agent_id)
+    if agent_cfg is None and re.fullmatch(r'karo[1-9][0-9]*', agent_id):
+        agent_cfg = agents.get('karo')
     if isinstance(agent_cfg, dict):
-        t = agent_cfg.get('type', '')
-        if t in ('claude', 'codex', 'copilot', 'kimi', 'opencode'):
+        t = norm(agent_cfg.get('type', ''))
+        if t in allowed:
             print(t); sys.exit(0)
     elif isinstance(agent_cfg, str):
-        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'opencode'):
-            print(agent_cfg); sys.exit(0)
-    default = cli.get('default', 'claude')
-    if default in ('claude', 'codex', 'copilot', 'kimi', 'opencode'):
+        t = norm(agent_cfg)
+        if t in allowed:
+            print(t); sys.exit(0)
+    default = norm(cli.get('default', 'claude'))
+    if default in allowed:
         print(default)
     else:
         print('claude', file=sys.stderr)
@@ -181,85 +870,267 @@ build_cli_command() {
     local agent_id="$1"
     local cli_type
     cli_type=$(get_cli_type "$agent_id")
+    build_cli_command_with_type "$agent_id" "$cli_type"
+}
+
+# build_cli_command_with_type(agent_id, cli_type)
+# 指定CLI種別でエージェント起動コマンドを返す
+build_cli_command_with_type() {
+    local agent_id="$1"
+    local cli_type="$2"
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
+    local agent_env_prefix=""
     local model
     model=$(get_agent_model "$agent_id")
+    local configured_model
+    configured_model=$(_cli_adapter_get_configured_model "$agent_id")
     local thinking
     thinking=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking" "")
+    if [[ -z "$thinking" ]]; then
+        thinking="$(_cli_adapter_default_claude_thinking "$agent_id")"
+    fi
+    local reasoning_effort
+    reasoning_effort="$(get_agent_reasoning_effort "$agent_id")"
     local permission_flag="${PERMISSION_FLAG:---dangerously-skip-permissions}"
+    if [[ -n "$agent_id" ]]; then
+        agent_env_prefix="AGENT_ID=$(_cli_adapter_shell_quote "$agent_id") "
+    fi
 
     # thinking prefix: Claude CLI でのみ有効
     # thinking: true or 未設定 → そのまま（デフォルトでThinking ON）
     # thinking: false → MAX_THINKING_TOKENS=0 を先頭に付与
     local prefix=""
-    if [[ "$cli_type" == "claude" ]] && [[ "$thinking" == "false" || "$thinking" == "False" ]]; then
+    if [[ "$cli_type" == "claude" && "$thinking" == "false" || "$thinking" == "False" ]]; then
         prefix="MAX_THINKING_TOKENS=0 "
     fi
 
-    local cmd=""
     case "$cli_type" in
         claude)
-            cmd="claude"
-            if [[ -n "$model" ]]; then
+            local cmd
+            cmd="$(_cli_adapter_pick_executable_cmd "claude" "claude")"
+            if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
                 cmd="$cmd --model $model"
             fi
             cmd="$cmd $permission_flag"
+            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${prefix}${agent_env_prefix}${cmd}"
             ;;
         codex)
-            cmd="codex"
-            if [[ -n "$model" ]]; then
+            local codex_home
+            codex_home="$(_cli_adapter_codex_home "$agent_id")"
+            local cmd
+            local codex_bin
+            codex_bin="$(_cli_adapter_pick_executable_cmd "codex" "codex")"
+            cmd="$(_cli_adapter_prepare_codex_home_cmd "$agent_id") && ${agent_env_prefix}CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 ${codex_bin}"
+            if ! _cli_adapter_is_valid_codex_model "$configured_model"; then
+                configured_model="default"
+            fi
+            if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
+                cmd="$cmd --model $configured_model"
+            fi
+            if [[ -n "$reasoning_effort" && "$reasoning_effort" != "auto" ]]; then
+                cmd="$cmd -c model_reasoning_effort='$reasoning_effort'"
+            fi
+            cmd="$cmd --search --sandbox danger-full-access --ask-for-approval never"
+            echo "$cmd"
+            ;;
+        copilot)
+            local copilot_bin
+            copilot_bin="$(_cli_adapter_pick_executable_cmd "copilot" "copilot")"
+            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${copilot_bin} --yolo"
+            ;;
+        kimi)
+            local kimi_bin
+            kimi_bin="$(_cli_adapter_pick_executable_cmd "kimi" "kimi-cli")"
+            local cmd="${kimi_bin} --yolo"
+            if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
                 cmd="$cmd --model $model"
             fi
-            cmd="$cmd --search --dangerously-bypass-approvals-and-sandbox --no-alt-screen"
+            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${cmd}"
+            ;;
+        antigravity)
+            local antigravity_bin
+            antigravity_bin=$(_cli_adapter_pick_executable_cmd "agy" "antigravity")
+            local cmd
+            cmd=$(_cli_adapter_read_yaml "cli.commands.antigravity" "")
+            if [[ -z "$cmd" ]]; then
+                cmd="${antigravity_bin} --dangerously-skip-permissions"
+            fi
+            cmd="$(_cli_adapter_resolve_command_binary "$cmd" "agy" "antigravity")"
+            cmd=$(_cli_adapter_append_flag_if_missing "$cmd" "--dangerously-skip-permissions")
+            local runtime_model
+            runtime_model="$(get_agent_antigravity_runtime_model "$agent_id")"
+            if [[ -n "$runtime_model" && "$runtime_model" != "auto" && "$runtime_model" != "default" ]]; then
+                cmd="$cmd --model $runtime_model"
+            fi
+            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${cmd}"
+            ;;
+        localapi)
+            local localapi_cmd
+            localapi_cmd=$(_cli_adapter_read_yaml "cli.commands.localapi" "python3 scripts/localapi_repl.py")
+            local localapi_endpoint
+            localapi_endpoint=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.endpoint" "")
+            if [[ -z "$localapi_endpoint" ]]; then
+                localapi_endpoint=$(_cli_adapter_read_yaml "cli.localapi_endpoint" "")
+            fi
+            if [[ -n "$localapi_endpoint" ]]; then
+                localapi_cmd="LOCALAI_API_BASE=${localapi_endpoint} ${localapi_cmd}"
+            fi
+            if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
+                localapi_cmd="LOCALAI_MODEL=${model} ${localapi_cmd}"
+            fi
+            echo "${agent_env_prefix}${localapi_cmd}"
             ;;
         opencode)
+            local opencode_cmd
             local normalized_model
+            local runtime_model
             local tui_config_path
             local variant
             local launch_agent_id
-            normalized_model=$(normalize_opencode_model "$model")
-            tui_config_path=$(_cli_adapter_shell_quote "$CLI_ADAPTER_PROJECT_ROOT/config/opencode-tui.json")
+            local quoted_agent_id
+            opencode_cmd=$(_cli_adapter_read_yaml "cli.commands.opencode" "$(_cli_adapter_pick_executable_cmd "opencode" "opencode")")
+            opencode_cmd="$(_cli_adapter_resolve_command_binary "$opencode_cmd" "opencode" "opencode")"
+            opencode_cmd=$(_cli_adapter_prefix_node_path_for_global_bin "$opencode_cmd")
+            runtime_model="$configured_model"
+            normalized_model="$(normalize_opencode_model "$runtime_model")"
+            if [[ -n "$normalized_model" && "$normalized_model" != "auto" && "$normalized_model" != "default" && " $opencode_cmd " != *" --model "* ]]; then
+                opencode_cmd="$opencode_cmd --model $normalized_model"
+            fi
             variant=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.variant" "")
             launch_agent_id="$agent_id"
             if [[ -n "$variant" ]]; then
                 launch_agent_id="${agent_id}-runtime"
             fi
-            local quoted_agent_id
+            if [[ " $opencode_cmd " != *" --agent "* ]]; then
+                opencode_cmd="$opencode_cmd --agent $launch_agent_id"
+            fi
             quoted_agent_id=$(_cli_adapter_shell_quote "$agent_id")
-            cmd="opencode"
-            if [[ -n "$normalized_model" ]]; then
-                cmd="$cmd --model $normalized_model"
-            fi
-            # Use --agent to load the pre-built agent definition from .opencode/agents/<name>.md.
-            # Permissions are also embedded in the agent definition YAML frontmatter at build time.
-            # OpenCode TUI does not accept `--variant`; provider-specific variants
-            # are synchronized into an ignored runtime agent by build_instructions.sh
-            # or switch_cli.sh.
-            cmd="$cmd --agent $launch_agent_id"
-            # Use a project-pinned TUI config so tmux automation sees stable keybinds
-            # even when the user has a different global tui.json.
-            cmd="OPENCODE_AGENT_ID=$quoted_agent_id OPENCODE_TUI_CONFIG=$tui_config_path $cmd"
+            tui_config_path=$(_cli_adapter_shell_quote "$CLI_ADAPTER_PROJECT_ROOT/config/opencode-tui.json")
+            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}OPENCODE_AGENT_ID=$quoted_agent_id OPENCODE_TUI_CONFIG=$tui_config_path ${opencode_cmd}"
             ;;
-        copilot)
-            cmd="copilot --yolo"
-            ;;
-        kimi)
-            cmd="kimi --yolo"
-            if [[ -n "$model" ]]; then
-                cmd="$cmd --model $model"
+        kilo)
+            local kilo_cmd
+            kilo_cmd=$(_cli_adapter_read_yaml "cli.commands.kilo" "$(_cli_adapter_pick_executable_cmd "kilo" "kilo")")
+            kilo_cmd="$(_cli_adapter_resolve_command_binary "$kilo_cmd" "kilo" "kilo")"
+            kilo_cmd=$(_cli_adapter_prefix_node_path_for_global_bin "$kilo_cmd")
+            if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
+                kilo_cmd="$kilo_cmd --model $configured_model"
             fi
+            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${kilo_cmd}"
             ;;
         *)
-            cmd="claude $permission_flag"
+            local claude_bin
+            claude_bin="$(_cli_adapter_pick_executable_cmd "claude" "claude")"
+            echo "${agent_env_prefix}${claude_bin} $permission_flag"
+            ;;
+    esac
+}
+
+# build_cli_command_with_startup_prompt(agent_id, cli_type, prompt)
+# 対話CLIを起動しつつ、対応CLIには初回プロンプトを起動引数で渡す。
+# pure zellij では外側のアクティブペイン注入を避けるため、agent 自身の起動コマンドへ畳み込む。
+build_cli_command_with_startup_prompt() {
+    local agent_id="$1"
+    local cli_type="${2:-$(get_cli_type "$agent_id")}"
+    local prompt="${3:-}"
+    local base_cmd
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
+
+    base_cmd="$(build_cli_command_with_type "$agent_id" "$cli_type")"
+    if [[ -z "$prompt" ]]; then
+        echo "$base_cmd"
+        return 0
+    fi
+
+    case "$cli_type" in
+        kilo)
+            printf '%s --prompt %q\n' "$base_cmd" "$prompt"
+            ;;
+        codex|claude)
+            printf '%s %q\n' "$base_cmd" "$prompt"
+            ;;
+        *)
+            echo "$base_cmd"
+            ;;
+    esac
+}
+
+# get_first_available_cli()
+# 現在の環境で利用可能なCLIを優先順で1つ返す
+get_first_available_cli() {
+    local cli_type
+    for cli_type in codex antigravity opencode kilo localapi claude copilot kimi; do
+        case "$cli_type" in
+            claude)
+                _cli_adapter_find_executable claude >/dev/null 2>&1 && { echo "claude"; return 0; }
+                ;;
+            codex)
+                _cli_adapter_find_executable codex >/dev/null 2>&1 && { echo "codex"; return 0; }
+                ;;
+            copilot)
+                _cli_adapter_find_executable copilot >/dev/null 2>&1 && { echo "copilot"; return 0; }
+                ;;
+            kimi)
+                (_cli_adapter_find_executable kimi >/dev/null 2>&1 || _cli_adapter_find_executable kimi-cli >/dev/null 2>&1) && { echo "kimi"; return 0; }
+                ;;
+            antigravity)
+                (_cli_adapter_find_executable agy >/dev/null 2>&1 || _cli_adapter_find_executable antigravity >/dev/null 2>&1) && { echo "antigravity"; return 0; }
+                ;;
+            localapi)
+                command -v python3 >/dev/null 2>&1 && { echo "localapi"; return 0; }
+                ;;
+            opencode)
+                _cli_adapter_find_executable opencode >/dev/null 2>&1 && { echo "opencode"; return 0; }
+                ;;
+            kilo)
+                _cli_adapter_find_executable kilo >/dev/null 2>&1 && { echo "kilo"; return 0; }
+                ;;
+        esac
+    done
+    return 1
+}
+
+# resolve_cli_type_for_agent(agent_id)
+# 設定上のCLIが未導入なら利用可能なCLIにフォールバックする
+resolve_cli_type_for_agent() {
+    local agent_id="$1"
+    local requested
+    requested=$(get_cli_type "$agent_id")
+
+    if validate_cli_availability "$requested" >/dev/null 2>&1; then
+        echo "$requested"
+        return 0
+    fi
+
+    local fallback
+    fallback=$(get_first_available_cli 2>/dev/null || true)
+    if [[ -n "$fallback" ]]; then
+        echo "[WARN] CLI '$requested' for agent '$agent_id' is unavailable. Falling back to '$fallback'." >&2
+        echo "$fallback"
+        return 0
+    fi
+
+    echo "$requested"
+}
+
+# get_role_instruction_file(agent_id)
+# 役職共通（CLI非依存）の正本指示書パスを返す
+get_role_instruction_file() {
+    local agent_id="$1"
+    local role
+
+    case "$agent_id" in
+        shogun) role="shogun" ;;
+        gunshi) role="gunshi" ;;
+        karo|karo[1-9]*|karo_gashira) role="karo" ;;
+        ashigaru*) role="ashigaru" ;;
+        *)
+            echo "" >&2
+            return 1
             ;;
     esac
 
-    local startup_prompt_arg
-    startup_prompt_arg=$(get_startup_prompt_arg "$agent_id")
-    if [[ -n "$startup_prompt_arg" ]]; then
-        cmd="$cmd $startup_prompt_arg"
-    fi
-
-    echo "${prefix}${cmd}"
+    echo "instructions/${role}.md"
 }
 
 # get_instruction_file(agent_id [,cli_type])
@@ -270,9 +1141,9 @@ get_instruction_file() {
     local role
 
     case "$agent_id" in
-        shogun)    role="shogun" ;;
-        karo)      role="karo" ;;
-        gunshi)    role="gunshi" ;;
+        shogun) role="shogun" ;;
+        karo|karo[1-9]*|karo_gashira) role="karo" ;;
+        gunshi) role="gunshi" ;;
         ashigaru*) role="ashigaru" ;;
         *)
             echo "" >&2
@@ -281,50 +1152,94 @@ get_instruction_file() {
     esac
 
     case "$cli_type" in
-        claude)  echo "instructions/${role}.md" ;;
-        codex)   echo "instructions/codex-${role}.md" ;;
-        copilot) echo ".github/copilot-instructions-${role}.md" ;;
-        kimi)    echo "instructions/generated/kimi-${role}.md" ;;
+        claude) echo "instructions/generated/${role}.md" ;;
+        codex) echo "instructions/generated/codex-${role}.md" ;;
+        copilot) echo "instructions/generated/copilot-${role}.md" ;;
+        kimi) echo "instructions/generated/kimi-${role}.md" ;;
+        antigravity) echo "instructions/generated/antigravity-${role}.md" ;;
+        localapi) echo "instructions/generated/localapi-${role}.md" ;;
         opencode) echo "instructions/generated/opencode-${role}.md" ;;
-        *)       echo "instructions/${role}.md" ;;
+        kilo) echo "instructions/generated/kilo-${role}.md" ;;
+        *) echo "instructions/generated/${role}.md" ;;
     esac
 }
 
 # validate_cli_availability(cli_type)
 # 指定CLIがシステムにインストールされているか確認
 # 0=利用可能, 1=利用不可
+_cli_adapter_warn_antigravity_keyring() {
+    [[ "${SHOGUNATE_SKIP_ANTIGRAVITY_KEYRING_CHECK:-}" == "1" ]] && return 0
+    [[ "$(uname -s 2>/dev/null || true)" == "Linux" ]] || return 0
+
+    if ! command -v secret-tool >/dev/null 2>&1; then
+        echo "[WARN] Antigravity CLI may ask for login every time: Linux Secret Service helper 'secret-tool' is not installed. On Ubuntu/WSL, install gnome-keyring and libsecret-tools." >&2
+        return 0
+    fi
+
+    if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+        echo "[WARN] Antigravity CLI may ask for login every time: DBUS_SESSION_BUS_ADDRESS is not set, so the Secret Service keyring may be unreachable." >&2
+        return 0
+    fi
+
+    if command -v busctl >/dev/null 2>&1; then
+        if ! busctl --user --list 2>/dev/null | grep -q 'org.freedesktop.secrets'; then
+            echo "[WARN] Antigravity CLI may ask for login every time: org.freedesktop.secrets is not available on the user DBus. Start/unlock a Secret Service provider such as gnome-keyring." >&2
+        fi
+    fi
+}
+
 validate_cli_availability() {
     local cli_type="$1"
+    cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
     case "$cli_type" in
         claude)
-            command -v claude &>/dev/null || {
+            _cli_adapter_find_executable claude &>/dev/null || {
                 echo "[ERROR] Claude Code CLI not found. Install from https://claude.ai/download" >&2
                 return 1
             }
             ;;
         codex)
-            command -v codex &>/dev/null || {
+            _cli_adapter_find_executable codex &>/dev/null || {
                 echo "[ERROR] OpenAI Codex CLI not found. Install with: npm install -g @openai/codex" >&2
                 return 1
             }
             ;;
-        opencode)
-            command -v opencode &>/dev/null || {
-                echo "[ERROR] OpenCode CLI not found. Install from https://opencode.ai" >&2
-                return 1
-            }
-            ;;
         copilot)
-            command -v copilot &>/dev/null || {
+            _cli_adapter_find_executable copilot &>/dev/null || {
                 echo "[ERROR] GitHub Copilot CLI not found. Install with: brew install copilot-cli" >&2
                 return 1
             }
             ;;
         kimi)
-            if ! command -v kimi-cli &>/dev/null && ! command -v kimi &>/dev/null; then
+            if ! _cli_adapter_find_executable kimi-cli &>/dev/null && ! _cli_adapter_find_executable kimi &>/dev/null; then
                 echo "[ERROR] Kimi CLI not found. Install from https://platform.moonshot.cn/" >&2
                 return 1
             fi
+            ;;
+        antigravity)
+            if ! _cli_adapter_find_executable agy &>/dev/null && ! _cli_adapter_find_executable antigravity &>/dev/null; then
+                echo "[ERROR] Antigravity CLI not found. Install Antigravity CLI and ensure 'agy' is in PATH." >&2
+                return 1
+            fi
+            _cli_adapter_warn_antigravity_keyring
+            ;;
+        localapi)
+            if ! command -v python3 &>/dev/null; then
+                echo "[ERROR] python3 not found. localapi mode requires python3." >&2
+                return 1
+            fi
+            ;;
+        opencode)
+            _cli_adapter_find_executable opencode &>/dev/null || {
+                echo "[ERROR] OpenCode CLI not found. Install with: npm install -g opencode-ai" >&2
+                return 1
+            }
+            ;;
+        kilo)
+            _cli_adapter_find_executable kilo &>/dev/null || {
+                echo "[ERROR] Kilo CLI not found. Install with: npm install -g @kilocode/cli" >&2
+                return 1
+            }
             ;;
         *)
             echo "[ERROR] Unknown CLI type: '$cli_type'. Allowed: $CLI_ADAPTER_ALLOWED_CLIS" >&2
@@ -342,8 +1257,15 @@ get_agent_model() {
     # まずsettings.yamlのcli.agents.{id}.modelを確認
     local model_from_yaml
     model_from_yaml=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.model" "")
+    if [[ -z "$model_from_yaml" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
+        model_from_yaml=$(_cli_adapter_read_yaml "cli.agents.karo.model" "")
+    fi
 
     if [[ -n "$model_from_yaml" ]]; then
+        if [[ "$(get_cli_type "$agent_id")" == "antigravity" ]] && ! _cli_adapter_is_valid_antigravity_model "$model_from_yaml"; then
+            echo "auto"
+            return 0
+        fi
         echo "$model_from_yaml"
         return 0
     fi
@@ -351,6 +1273,9 @@ get_agent_model() {
     # 既存のmodelsセクションを確認
     local model_from_models
     model_from_models=$(_cli_adapter_read_yaml "models.${agent_id}" "")
+    if [[ -z "$model_from_models" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
+        model_from_models=$(_cli_adapter_read_yaml "models.karo" "")
+    fi
 
     if [[ -n "$model_from_models" ]]; then
         echo "$model_from_models"
@@ -363,22 +1288,19 @@ get_agent_model() {
 
     case "$cli_type" in
         kimi)
-            # Kimi CLI用デフォルトモデル
-            case "$agent_id" in
-                shogun|karo)    echo "k2.5" ;;
-                ashigaru*)      echo "k2.5" ;;
-                *)              echo "k2.5" ;;
-            esac
+            echo "auto"
+            ;;
+        antigravity)
+            echo "auto"
+            ;;
+        localapi)
+            echo "auto"
+            ;;
+        opencode|kilo)
+            echo "auto"
             ;;
         *)
-            # Claude Code/Codex/Copilot用デフォルトモデル
-            case "$agent_id" in
-                shogun)         echo "opus" ;;
-                karo)           echo "sonnet" ;;
-                gunshi)         echo "opus" ;;
-                ashigaru*)      echo "sonnet" ;;
-                *)              echo "sonnet" ;;
-            esac
+            echo "auto"
             ;;
     esac
 }
@@ -396,17 +1318,25 @@ get_model_display_name() {
     local thinking
     thinking=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking" "")
 
-    if [[ "$cli_type" == "opencode" ]]; then
-        if [[ "$model" == */* ]]; then
-            echo "OpenCode (${model#*/})"
-        else
-            echo "OpenCode (${model})"
-        fi
+    # モデル名 → 短縮表示名
+    local short=""
+    if [[ "$cli_type" != "claude" ]]; then
+        case "$cli_type" in
+            codex)   short="Codex" ;;
+            copilot) short="Copilot" ;;
+            kimi)    short="Kimi" ;;
+            antigravity)  short="Antigravity" ;;
+            localapi) short="Local" ;;
+            opencode) short="OpenCode" ;;
+            kilo)    short="Kilo" ;;
+        esac
+    fi
+
+    if [[ -n "$short" ]]; then
+        echo "$short"
         return 0
     fi
 
-    # モデル名 → 短縮表示名
-    local short=""
     case "$model" in
         *spark*)                short="Spark" ;;
         gpt-5.3-codex)          short="Codex5.3" ;;
@@ -415,16 +1345,35 @@ get_model_display_name() {
         *sonnet*)               short="Sonnet" ;;
         *haiku*)                short="Haiku" ;;
         *k2.5*|*kimi*)          short="Kimi" ;;
+        *antigravity*|*agy*)     short="Antigravity" ;;
+        *gemini*)               short="Antigravity" ;;
+        *local*)                short="Local" ;;
+        *qwen*|*ollama*|*lmstudio*) short="Local" ;;
         *)
             # CLI種別から推測
             case "$cli_type" in
                 codex)   short="Codex" ;;
                 copilot) short="Copilot" ;;
                 kimi)    short="Kimi" ;;
+                antigravity)  short="Antigravity" ;;
+                localapi) short="Local" ;;
+                opencode) short="OpenCode" ;;
+                kilo) short="Kilo" ;;
                 *)       short="$model" ;;
             esac
             ;;
     esac
+
+    if [[ "$cli_type" == "claude" ]]; then
+        case "$model" in
+            ""|auto|gpt-*|gemini*|ollama/*|lmstudio/*|openai/*|openai-compatible/*|local*|qwen*|codex*)
+                short="Claude"
+                ;;
+        esac
+        if [[ -z "$short" || "$short" == "$model" ]]; then
+            short="Claude"
+        fi
+    fi
 
     # Thinking表示: Claude系はデフォルトONなので、falseの時だけ非表示
     # Claude: thinking: false → なし, それ以外(true/未設定) → "+T"
@@ -445,7 +1394,6 @@ get_model_display_name() {
 # Codex CLI: [PROMPT]引数として渡す（サジェストUI停止問題の根本対策）
 # Claude Code: 空（CLAUDE.md自動読込でSession Start手順が起動）
 # Copilot/Kimi: 空（今後対応）
-# OpenCode: 空（.opencode/agents/が自動読込）
 get_startup_prompt() {
     local agent_id="$1"
     local cli_type
@@ -454,35 +1402,6 @@ get_startup_prompt() {
     case "$cli_type" in
         codex)
             echo "Session Start — do ALL of this in one turn, do NOT stop early: 1) tmux display-message -t \"\$TMUX_PANE\" -p '#{@agent_id}' to identify yourself. 2) Read queue/tasks/${agent_id}.yaml. 3) Read queue/inbox/${agent_id}.yaml, mark read:true. 4) Read files listed in context_files. 5) Execute the assigned task to completion — edit files, run commands, write reports. Keep working until the task is done."
-            ;;
-        *)
-            echo ""
-            ;;
-    esac
-}
-
-# get_startup_prompt_arg(agent_id)
-# 起動コマンドに埋め込むCLI-specificの初期プロンプト引数を返す
-# Codex: positional prompt
-# その他: 空
-get_startup_prompt_arg() {
-    local agent_id="$1"
-    local cli_type
-    cli_type=$(get_cli_type "$agent_id")
-    local startup_prompt
-    startup_prompt=$(get_startup_prompt "$agent_id")
-
-    if [[ -z "$startup_prompt" ]]; then
-        echo ""
-        return 0
-    fi
-
-    local quoted_prompt
-    quoted_prompt=$(_cli_adapter_shell_quote "$startup_prompt")
-
-    case "$cli_type" in
-        codex)
-            echo "$quoted_prompt"
             ;;
         *)
             echo ""
@@ -508,7 +1427,7 @@ get_capability_tier() {
     fi
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
@@ -548,7 +1467,7 @@ get_cost_group() {
     fi
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
@@ -582,7 +1501,7 @@ get_available_cost_groups() {
     local settings="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${settings}') as f:
@@ -632,7 +1551,7 @@ get_recommended_model() {
 
     # Python: stdout=モデル名, stderr=警告（呼び出し側のstderrにパススルー）
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 
 def parse_bloom_range(key):
@@ -755,7 +1674,7 @@ needs_model_switch() {
 
     # capability_tiersセクション不在チェック（全モデルが6を返す場合）
     local has_tiers
-    has_tiers=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    has_tiers=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
@@ -843,7 +1762,7 @@ get_bloom_routing() {
     local settings="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
     local raw
-    raw=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    raw=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 try:
     with open('${settings}') as f:
@@ -883,7 +1802,7 @@ validate_gunshi_analysis() {
     fi
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 
 try:
@@ -990,7 +1909,7 @@ append_model_performance() {
     local qc_result="$6"
     local qc_score="$7"
 
-    "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    "$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys, os
 from datetime import datetime, timezone
 
@@ -1033,7 +1952,7 @@ get_model_performance_summary() {
     local task_type="$2"
     local bloom_level="$3"
 
-    "$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    "$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys, os
 
 yaml_path = '${yaml_path}'
@@ -1083,7 +2002,7 @@ validate_subscription_coverage() {
     local settings="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 
 try:
@@ -1172,7 +2091,7 @@ find_agent_for_model() {
 
     # settings.yaml の cli.agents から recommended_model を使用する足軽を抽出
     local candidates
-    candidates=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    candidates=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml, sys
 
 try:
@@ -1244,7 +2163,7 @@ except Exception:
     # 殿の方針: 「Codex 5.3が欲しくて Claude Code しか空いていなければ Claude Code で可」
     # kill/restart は絶対しない。アイドルペインを再利用する。
     local all_agents
-    all_agents=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    all_agents=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml
 
 try:
@@ -1296,7 +2215,7 @@ except Exception:
 get_ashigaru_ids() {
     local settings="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
     local result
-    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    result=$("$CLI_ADAPTER_PYTHON" -c "
 import yaml
 try:
     with open('${settings}') as f:

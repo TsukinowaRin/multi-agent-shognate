@@ -93,10 +93,6 @@
 !bin/
 !bin/shogunate.js
 
-# Optional CoDD integration config (runtime outputs under .codd stay ignored unless whitelisted)
-!.codd/
-!.codd/codd.yaml
-
 # Config (sample files only, no secrets)
 !config/
 !config/ntfy_auth.env.sample
@@ -131,13 +127,8 @@
 !scripts/localapi_repl.py
 !scripts/configure_agents.sh
 !scripts/configure_runtime_roles.py
-!scripts/codd_check.sh
-!scripts/agent_codd_gate.sh
 !scripts/goza_no_ma.sh
 !scripts/focus_agent_pane.sh
-!scripts/android_tmux_proxy.py
-!scripts/android_agent_bridge.sh
-!scripts/android_pairing_profile.sh
 !scripts/sync_opencode_config.py
 !scripts/sync_runtime_cli_preferences.py
 !scripts/runtime_cli_pref_daemon.sh

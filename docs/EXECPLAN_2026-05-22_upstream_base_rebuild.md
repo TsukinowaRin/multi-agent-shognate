@@ -41,6 +41,7 @@
 - [x] launcher / role config / shell aliases を移植する。
 - [x] CLI state isolation と AGY / Kilo / LocalAPI を移植する。
 - [x] dynamic topology / multi-Karo / event-driven hardening を移植する。
+- [x] package/release update manager を移植し、CoDD/Android 依存なしの no-op extension point に整理する。
 - [x] Android remote control / pairing profile はユーザー指示により初期再構築スコープ外へ移した。
 - [x] CoDD gate はユーザー指示により初期再構築スコープ外へ移した。
 - [ ] build / unit / integration /実機 runtime 検証を実行する。
@@ -110,6 +111,12 @@
 - `python3 -m unittest tests.unit.test_runtime_blocker_notice` passed: 13 tests.
 - `bats tests/unit/test_file_watch.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_send_wakeup.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_bridge_daemons.bats tests/unit/test_karo_done_to_shogun_bridge.bats tests/unit/test_shogun_to_karo_bridge.bats tests/unit/test_stop_hook.bats tests/unit/test_switch_cli.bats tests/test_inbox_write.bats tests/agent_selfwatch.bats` passed: 269 tests.
 - Android app compatibility sessions are disabled by default via `MAS_ENABLE_ANDROID_COMPAT=0` and were not included in validation.
+
+2026-05-22 update manager:
+
+- `bash -n scripts/upstream_sync.sh scripts/stop_and_apply_update.sh scripts/shogunate_package_bootstrap.sh` passed.
+- `python3 -m py_compile scripts/update_manager.py` passed.
+- `python3 -m unittest tests.unit.test_update_manager tests.unit.test_package_distribution` passed: 16 tests.
 
 ## 復旧
 

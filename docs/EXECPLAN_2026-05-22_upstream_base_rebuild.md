@@ -45,7 +45,7 @@
 - [x] README / package archive を package-first 方針へ合わせ、`install.bat` と APK 配布案内を外す。
 - [x] Android remote control / pairing profile はユーザー指示により初期再構築スコープ外へ移した。
 - [x] CoDD gate はユーザー指示により初期再構築スコープ外へ移した。
-- [ ] build / unit / integration /実機 runtime 検証を実行する。
+- [x] build / unit / integration /実機 runtime 検証を実行する。
 - [ ] PR 分離候補と最終差分をまとめる。
 
 ## 具体手順
@@ -136,6 +136,17 @@
 - `bats tests/unit/test_ntfy_ack.bats tests/unit/test_slim_yaml.bats tests/unit/test_dynamic_model_routing.bats tests/unit/test_idle_flag.bats` passed: 117 tests.
 - `python3 -m unittest tests.unit.test_package_distribution tests.unit.test_update_manager tests.unit.test_runtime_blocker_notice` passed: 30 tests.
 - `npm pack --dry-run` passed.
+
+2026-05-22 isolated runtime smoke:
+
+- Created isolated archive copy: `/mnt/d/git_workspace/multi-agent-shognate/runtime_sandboxes/upstream-main-rebuild-20260522-172503`.
+- Configured `shogun`, `karo`, `gunshi`, `ashigaru1`, `ashigaru2` as `localapi` to avoid external credentials/API usage during smoke.
+- Ran `MAS_SKIP_STARTUP_UPDATE=1 MAS_SKIP_PENDING_UPDATE=1 MAS_ENABLE_ANDROID_COMPAT=0 MAS_CLI_READY_TIMEOUT=3 ./Shogunate-Runtime.sh --clean --no-attach`.
+- Confirmed `goza-no-ma` panes for all five agents and `goza-runtime` daemon windows for watcher/bridge/runtime-pref.
+- Confirmed bootstrap delivery for all agents in `queue/runtime/goza_bootstrap_20260522_172517.log`.
+- Confirmed `queue/runtime/agent_cli.tsv`, `ashigaru_owner.tsv`, `lead_karo`, and `karo_coordination.yaml` were generated.
+- Injected `cmd_smoke_localapi_001` into `queue/shogun_to_karo.yaml`; confirmed `queue/inbox/karo.yaml` received unread `cmd_new` and `logs/shogun_to_karo_bridge.log` recorded `sent`.
+- Cleaned up only test sessions `goza-no-ma` and `goza-runtime`; pre-existing tmux session `0` remained.
 
 ## 復旧
 

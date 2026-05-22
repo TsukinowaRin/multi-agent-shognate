@@ -285,6 +285,7 @@ PYEOF
     [[ "$output" == *"opencode"* ]]
     [[ "$output" == *"kilo"* ]]
     [[ "$output" == *"localapi"* ]]
+    [[ "$output" == *"--variant"* ]]
 }
 
 @test "send_exit: antigravity は Ctrl-C のみ送る" {

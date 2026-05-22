@@ -42,7 +42,7 @@
 #   T-COPILOT-001: send_cli_command — copilot /clear → Ctrl-C + restart
 #   T-COPILOT-002: send_cli_command — copilot /model → skip
 #   T-EXTRA-CLI-001: is_valid_cli_type — opencode / kilo を受理
-#   T-OPENCODE-001: send_cli_command — opencode /clear → Ctrl-C + restart
+#   T-OPENCODE-001: send_cli_command — opencode /clear → /new
 #   T-OPENCODE-002: send_cli_command — opencode /model → skip
 #   T-KILO-001: send_cli_command — kilo /clear → Ctrl-C + restart
 #   T-KILO-002: send_cli_command — kilo /model → skip
@@ -1719,9 +1719,9 @@ PY
     ! grep -q "send-keys.*/clear" "$MOCK_LOG"
 }
 
-# --- T-OPENCODE-001: opencode /clear → Ctrl-C + restart ---
+# --- T-OPENCODE-001: opencode /clear → /new ---
 
-@test "T-OPENCODE-001: send_cli_command sends Ctrl-C + opencode restart for opencode /clear" {
+@test "T-OPENCODE-001: send_cli_command sends /new for opencode /clear" {
     run bash -c '
         source "'"$TEST_HARNESS"'"
         CLI_TYPE="opencode"
@@ -1729,8 +1729,9 @@ PY
     '
     [ "$status" -eq 0 ]
 
-    grep -q "send-keys.*C-c" "$MOCK_LOG"
-    grep -q "send-keys.*opencode" "$MOCK_LOG"
+    grep -q "send-keys.* /new" "$MOCK_LOG"
+    ! grep -q "send-keys.*C-c" "$MOCK_LOG"
+    ! grep -q "send-keys.*opencode" "$MOCK_LOG"
     ! grep -q "send-keys.*/clear" "$MOCK_LOG"
 }
 

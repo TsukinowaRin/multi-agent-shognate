@@ -53,6 +53,14 @@
 !instructions/generated/
 !instructions/generated/*.md
 
+# Multi-CLI: OpenCode agent files
+!.opencode/
+!.opencode/agents/
+!.opencode/agents/*.md
+.opencode/agents/*-runtime.md
+!.opencode/tools/
+!.opencode/tools/mark-as-read.ts
+
 # Multi-CLI: CLI adapter library + ntfy auth
 !lib/
 !lib/agent_status.sh
@@ -92,6 +100,8 @@
 # Config (sample files only, no secrets)
 !config/
 !config/ntfy_auth.env.sample
+!config/opencode-tui.json
+!config/opencode-permissions.yaml
 
 # Templates
 !templates/

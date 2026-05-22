@@ -17,6 +17,7 @@
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - 旧 portable installer / uninstaller 事故対応の履歴。現行配布は package distribution を正とする。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-05-22_upstream_opencode_sync.md` - upstream `v5.0.0` 系 OpenCode first-class support を fork 独自機能と両立させて取り込む計画。
 - `docs/EXECPLAN_2026-05-20_antigravity_cli.md` - Gemini CLI 対応を廃止し、Antigravity CLI (`agy`) を runtime / 設定 UI / docs / tests に追加する計画。
 - `docs/EXECPLAN_2026-05-18_package_distribution.md` - OS 別 installer asset を廃止し、GitHub Release package + cURL bootstrap + npm wrapper へ移行する計画。
 - `docs/EXECPLAN_2026-05-14_shogunate_test_android_setup.md` - Shogunate-test へ最新コードを反映し、Shogun へのデモ制作依頼と Android 接続セットアップ UX 改善を並行して進める計画。

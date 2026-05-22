@@ -29,6 +29,46 @@ fi
 # 許可されたCLI種別
 CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi antigravity localapi opencode kilo"
 
+# normalize_opencode_model(model)
+# OpenCode 向けに provider-qualified なモデル名へ正規化する。
+normalize_opencode_model() {
+    local model="${1:-}"
+
+    if [[ -z "$model" ]]; then
+        echo ""
+        return 0
+    fi
+
+    if [[ "$model" == */* ]]; then
+        echo "$model"
+        return 0
+    fi
+
+    case "$model" in
+        gpt-5.4-mini|gpt-5.4|gpt-5.3-codex|gpt-5.3-codex-spark|gpt-5*)
+            echo "openai/${model}"
+            ;;
+        claude-opus-4-6|opus)
+            echo "anthropic/claude-opus-4-6"
+            ;;
+        claude-sonnet-4-6|sonnet)
+            echo "anthropic/claude-sonnet-4-6"
+            ;;
+        claude-haiku-4-5-20251001|haiku)
+            echo "anthropic/claude-haiku-4-5-20251001"
+            ;;
+        moonshot-k2.5|k2.5)
+            echo "moonshot/kimi-k2.5"
+            ;;
+        kimi-*)
+            echo "moonshot/kimi-${model#kimi-}"
+            ;;
+        *)
+            echo "$model"
+            ;;
+    esac
+}
+
 # --- 内部ヘルパー ---
 
 # _cli_adapter_read_yaml key [fallback]
@@ -942,13 +982,31 @@ build_cli_command_with_type() {
             ;;
         opencode)
             local opencode_cmd
+            local normalized_model
+            local runtime_model
+            local tui_config_path
+            local variant
+            local launch_agent_id
+            local quoted_agent_id
             opencode_cmd=$(_cli_adapter_read_yaml "cli.commands.opencode" "$(_cli_adapter_pick_executable_cmd "opencode" "opencode")")
             opencode_cmd="$(_cli_adapter_resolve_command_binary "$opencode_cmd" "opencode" "opencode")"
             opencode_cmd=$(_cli_adapter_prefix_node_path_for_global_bin "$opencode_cmd")
-            if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
-                opencode_cmd="$opencode_cmd --model $configured_model"
+            runtime_model="$configured_model"
+            normalized_model="$(normalize_opencode_model "$runtime_model")"
+            if [[ -n "$normalized_model" && "$normalized_model" != "auto" && "$normalized_model" != "default" && " $opencode_cmd " != *" --model "* ]]; then
+                opencode_cmd="$opencode_cmd --model $normalized_model"
             fi
-            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${opencode_cmd}"
+            variant=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.variant" "")
+            launch_agent_id="$agent_id"
+            if [[ -n "$variant" ]]; then
+                launch_agent_id="${agent_id}-runtime"
+            fi
+            if [[ " $opencode_cmd " != *" --agent "* ]]; then
+                opencode_cmd="$opencode_cmd --agent $launch_agent_id"
+            fi
+            quoted_agent_id=$(_cli_adapter_shell_quote "$agent_id")
+            tui_config_path=$(_cli_adapter_shell_quote "$CLI_ADAPTER_PROJECT_ROOT/config/opencode-tui.json")
+            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}OPENCODE_AGENT_ID=$quoted_agent_id OPENCODE_TUI_CONFIG=$tui_config_path ${opencode_cmd}"
             ;;
         kilo)
             local kilo_cmd
@@ -985,7 +1043,7 @@ build_cli_command_with_startup_prompt() {
     fi
 
     case "$cli_type" in
-        opencode|kilo)
+        kilo)
             printf '%s --prompt %q\n' "$base_cmd" "$prompt"
             ;;
         codex|claude)

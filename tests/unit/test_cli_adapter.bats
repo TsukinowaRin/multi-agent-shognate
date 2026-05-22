@@ -308,8 +308,20 @@ cli:
     ashigaru1:
       type: opencode
       model: lmstudio/openai/gpt-oss-20b
-  commands:
+    commands:
     opencode: "env XDG_DATA_HOME=/tmp/mas_xdg XDG_CACHE_HOME=/tmp/mas_cache /tmp/test-home/.nvm/versions/node/v22.22.0/lib/node_modules/opencode-ai/bin/opencode"
+YAML
+
+    cat > "${TEST_TMP}/settings_opencode_variant.yaml" << 'YAML'
+cli:
+  default: opencode
+  agents:
+    ashigaru1:
+      type: opencode
+      model: sonnet
+      variant: high
+  commands:
+    opencode: "opencode"
 YAML
 }
 
@@ -922,7 +934,7 @@ SH
     assert_cli_host_state_seed "$result" ".config/opencode/package.json" "opencode" "shogun"
     assert_cli_host_dir_link "$result" ".config/opencode/node_modules" "opencode" "shogun"
     [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/opencode/opencode.db"* ]]
-    [[ "$result" == *"AGENT_ID=shogun "*opencode" --model ollama/qwen3-coder:30b" ]]
+    [[ "$result" == *"AGENT_ID=shogun OPENCODE_AGENT_ID=shogun OPENCODE_TUI_CONFIG="*"/config/opencode-tui.json "*opencode" --model ollama/qwen3-coder:30b --agent shogun" ]]
 }
 
 @test "build_cli_command: opencode bare command は host PATH の実行ファイルへ解決する" {
@@ -930,7 +942,16 @@ SH
     make_fake_cli opencode
     result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "shogun")
     assert_cli_state_isolated "$result" "opencode" "shogun"
-    [[ "$result" == *"AGENT_ID=shogun ${TEST_TMP}/bin/opencode --model ollama/qwen3-coder:30b" ]]
+    [[ "$result" == *"AGENT_ID=shogun OPENCODE_AGENT_ID=shogun OPENCODE_TUI_CONFIG="*"/config/opencode-tui.json ${TEST_TMP}/bin/opencode --model ollama/qwen3-coder:30b --agent shogun" ]]
+}
+
+@test "build_cli_command: opencode variant は runtime agent と provider正規化を使う" {
+    load_adapter_with "${TEST_TMP}/settings_opencode_variant.yaml"
+    make_fake_cli opencode
+    result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "ashigaru1")
+    assert_cli_state_isolated "$result" "opencode" "ashigaru1"
+    [[ "$result" == *"${TEST_TMP}/bin/opencode --model anthropic/claude-sonnet-4-6 --agent ashigaru1-runtime" ]]
+    [[ "$result" == *"OPENCODE_AGENT_ID=ashigaru1"* ]]
 }
 
 @test "build_cli_command: kilo + provider/model → kilo --model ..." {
@@ -957,7 +978,7 @@ SH
     [[ "$result" == *"AGENT_ID=gunshi ${TEST_TMP}/bin/kilo --model lmstudio/codellama-7b.Q4_0.gguf" ]]
 }
 
-@test "build_cli_command: opencode global bin絶対パスには node PATH を自動付与する" {
+@test "build_cli_command: opencode global bin設定でも --agent とTUI configを付与する" {
     load_adapter_with "${TEST_TMP}/settings_opencode_global_bin.yaml"
     mkdir -p "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin"
     cat > "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/node" << 'SH'
@@ -968,7 +989,8 @@ SH
     sed -i "s#/tmp/test-home#${TEST_TMP}/home#g" "${TEST_TMP}/settings_opencode_global_bin.yaml"
     result=$(build_cli_command "ashigaru1")
     assert_cli_state_isolated "$result" "opencode" "ashigaru1"
-    [[ "$result" == *"AGENT_ID=ashigaru1 env PATH=${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin:\$PATH env XDG_DATA_HOME=/tmp/mas_xdg XDG_CACHE_HOME=/tmp/mas_cache ${TEST_TMP}/home/.nvm/versions/node/v22.22.0/lib/node_modules/opencode-ai/bin/opencode --model lmstudio/openai/gpt-oss-20b" ]]
+    [[ "$result" == *"AGENT_ID=ashigaru1 OPENCODE_AGENT_ID=ashigaru1 OPENCODE_TUI_CONFIG="*"/config/opencode-tui.json"* ]]
+    [[ "$result" == *"--model lmstudio/openai/gpt-oss-20b --agent ashigaru1"* ]]
 }
 
 @test "build_cli_command_with_type: 任意の役職に任意CLIを割り当てても役職別stateになる" {
@@ -1018,7 +1040,7 @@ SH
         assert_cli_host_state_seed_json_default "$result" ".local/state/opencode/model.json" "opencode" "$role"
         assert_cli_state_symlink_removed "$result" ".local/state/opencode/prompt-history.jsonl" "opencode" "$role"
         [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.local/share/opencode/opencode.db"* ]]
-        [[ "$result" == *"AGENT_ID=${role} ${TEST_TMP}/bin/opencode"* ]]
+        [[ "$result" == *"AGENT_ID=${role} OPENCODE_AGENT_ID=${role} OPENCODE_TUI_CONFIG="*"/config/opencode-tui.json ${TEST_TMP}/bin/opencode --agent ${role}"* ]]
 
         result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command_with_type "$role" "kilo")
         assert_cli_host_auth_link "$result" ".local/share/kilo/auth.json" "kilo" "$role"
@@ -1087,11 +1109,13 @@ SH
     [[ "$result" != *"ready:ashigaru2"* ]]
 }
 
-@test "build_cli_command_with_startup_prompt: opencode は --prompt を付与する" {
+@test "build_cli_command_with_startup_prompt: opencode は --prompt を付与しない" {
     load_adapter_with "${TEST_TMP}/settings_opencode.yaml"
     result=$(build_cli_command_with_startup_prompt "shogun" "opencode" "ready:shogun")
     assert_cli_state_isolated "$result" "opencode" "shogun"
-    [[ "$result" == *"AGENT_ID=shogun "*opencode" --model ollama/qwen3-coder:30b --prompt ready:shogun" ]]
+    [[ "$result" == *"AGENT_ID=shogun OPENCODE_AGENT_ID=shogun OPENCODE_TUI_CONFIG="*"/config/opencode-tui.json "*opencode" --model ollama/qwen3-coder:30b --agent shogun" ]]
+    [[ "$result" != *"--prompt"* ]]
+    [[ "$result" != *"ready:shogun"* ]]
 }
 
 @test "build_cli_command_with_startup_prompt: kilo は --prompt を付与する" {

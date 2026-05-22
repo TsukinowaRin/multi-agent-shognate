@@ -1,7 +1,27 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-21
+最終更新: 2026-05-22
 出典: 直近ユーザープロンプト
+
+## 追補（2026-05-22: upstream 最新 OpenCode 対応を fork に取り込む）
+### 要求
+1. `upstream/main` の最新コードを取得し、フォーク元が追加した OpenCode first-class support を確認すること。
+2. 全体を無差別 merge せず、既存 fork 独自の Antigravity / Kilo / LocalAPI / package distribution / Android 改善 / role-local auth-state 分離を壊さないこと。
+3. OpenCode については本家準拠の `--agent <agent_id>` 起動、`.opencode/agents/*.md` 生成、`config/opencode-tui.json`、`config/opencode-permissions.yaml`、`/new` reset、provider-qualified model routing、runtime variant agent 同期を取り込むこと。
+4. fork 独自の host 認証共有と role-local settings / model state 分離は維持すること。
+5. `Shogunate-test/` の大量の実機差分は今回の正本同期対象にしないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `git fetch upstream --prune`。
+   - 期待結果: `upstream/main` が最新 commit に進んでいる。tag clobber はコード取得の blocker にしない。
+2. コマンド: `bash -n lib/cli_adapter.sh scripts/build_instructions.sh scripts/switch_cli.sh scripts/inbox_watcher.sh`。
+   - 期待結果: shell syntax error がない。
+3. コマンド: `bash scripts/build_instructions.sh`。
+   - 期待結果: `instructions/generated/*` と `.opencode/agents/*.md` が生成される。
+4. コマンド: `bats tests/unit/test_cli_adapter.bats tests/unit/test_build_system.bats tests/unit/test_switch_cli.bats tests/unit/test_send_wakeup.bats`。
+   - 期待結果: OpenCode 起動、generated agent、reset / restart 周りが通る。
+5. コマンド: `git diff --check`。
+   - 期待結果: whitespace error がない。
 
 ## 追補（2026-05-21: OpenCode pane が bash に戻った後の誤配送を防ぐ）
 ### 要求

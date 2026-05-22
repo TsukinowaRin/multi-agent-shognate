@@ -1350,18 +1350,20 @@ send_cli_command() {
             ;;
         opencode)
             if [[ "$cmd" == "/clear" ]]; then
-                echo "[$(date)] [SEND-KEYS] OpenCode /clear: sending Ctrl-C + restart for $AGENT_ID" >&2
-                mux_send_ctrl_c
-                sleep 1
-                if ! send_text_and_enter "$(restart_command_for_cli opencode)" "OpenCode restart"; then
+                if [ "${NEW_CONTEXT_SENT:-0}" -eq 1 ]; then
+                    echo "[$(date)] [SKIP] OpenCode /new already sent for $AGENT_ID — skipping duplicate clear_command" >&2
+                    return 0
+                fi
+                echo "[$(date)] [SEND-KEYS] OpenCode /clear→/new: starting new conversation for $AGENT_ID" >&2
+                if ! send_text_and_enter "/new" "OpenCode /new"; then
                     return 1
                 fi
-                timeout 2 tmux set-option -p -t "$PANE_TARGET" @cli_launch_epoch "$(date +%s)" >/dev/null 2>&1 || true
-                sleep 2
+                NEW_CONTEXT_SENT=1
+                sleep 3
                 return 0
             fi
             if [[ "$cmd" == /model* ]]; then
-                echo "[$(date)] Skipping $cmd (model switch may be unsupported on opencode CLI)" >&2
+                echo "[$(date)] Skipping $cmd (OpenCode model changes are restart-only)" >&2
                 return 0
             fi
             ;;

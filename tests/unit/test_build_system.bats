@@ -55,6 +55,15 @@ setup() {
     [ "$count" -ge 6 ]
 }
 
+@test "build: OpenCode agent definitions are generated" {
+    [ -f "$PROJECT_ROOT/.opencode/agents/shogun.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/karo.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/karo2.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/ashigaru8.md" ]
+    grep -q "mode: primary" "$PROJECT_ROOT/.opencode/agents/shogun.md"
+    grep -q "Canonical agent_id: \`ashigaru8\`" "$PROJECT_ROOT/.opencode/agents/ashigaru8.md"
+}
+
 # =============================================================================
 # ファイル生成テスト — Claude
 # =============================================================================

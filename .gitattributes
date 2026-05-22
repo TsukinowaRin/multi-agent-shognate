@@ -3,3 +3,4 @@
 
 # Shell scripts must use LF
 *.sh text eol=lf
+*.command text eol=lf

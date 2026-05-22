@@ -38,7 +38,10 @@
 !instructions/cli_specific/codex_tools.md
 !instructions/cli_specific/copilot_tools.md
 !instructions/cli_specific/kimi_tools.md
+!instructions/cli_specific/antigravity_tools.md
+!instructions/cli_specific/localapi_tools.md
 !instructions/cli_specific/opencode_tools.md
+!instructions/cli_specific/kilo_tools.md
 
 # Multi-CLI: Build template parts (roles, common sections)
 !instructions/roles/
@@ -50,32 +53,49 @@
 !instructions/generated/
 !instructions/generated/*.md
 
+# Multi-CLI: OpenCode agent files
+!.opencode/
+!.opencode/agents/
+!.opencode/agents/*.md
+.opencode/agents/*-runtime.md
+!.opencode/tools/
+!.opencode/tools/mark-as-read.ts
+
 # Multi-CLI: CLI adapter library + ntfy auth
 !lib/
-!lib/cli_adapter.sh
-!lib/ntfy_auth.sh
 !lib/agent_status.sh
-!lib/agent_registry.sh
+!lib/cli_adapter.sh
+!lib/file_watch.sh
+!lib/inbox_path.sh
+!lib/ntfy_auth.sh
+!lib/topology_adapter.sh
 
 # Multi-CLI: Codex auto-load file
 !AGENTS.md
-
-# Multi-CLI: OpenCode agent file
-!.opencode/agents/*.md
-.opencode/agents/*-runtime.md
-
-# Multi-CLI: OpenCode custom tools
-!.opencode/tools/
-!.opencode/tools/mark-as-read.ts
 
 # Setup and deployment scripts
 !shutsujin_departure.sh
 !first_setup.sh
 !setup.sh
-!install.bat
+!updater.bat
+!Shogunate-Runtime.bat
+!Shogunate-Runtime.sh
+!Shogunate-Runtime.command
+!Shogunate-Configure-Roles.bat
+!Shogunate-Configure-Roles.sh
+!Shogunate-Configure-Roles.command
+!scripts/stop_and_apply_update.sh
 
 # Development tooling
 !Makefile
+!package.json
+!package-lock.json
+!bin/
+!bin/shogunate.js
+
+# Optional CoDD integration config (runtime outputs under .codd stay ignored unless whitelisted)
+!.codd/
+!.codd/codd.yaml
 
 # Config (sample files only, no secrets)
 !config/
@@ -87,128 +107,145 @@
 !templates/
 !templates/**
 
+# Kimi K2 agent config
+!agents/
+!agents/default/
+!agents/default/system.md
+!agents/default/agent.yaml
+
 # Context README
 !context/
 !context/README.md
-
-# Python venv
-!requirements.txt
 
 # Scripts
 !scripts/
 !scripts/inbox_write.sh
 !scripts/inbox_watcher.sh
+!scripts/session_start_hook.sh
+!scripts/dashboard-viewer.py
 !scripts/watcher_supervisor.sh
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh
 !scripts/build_instructions.sh
+!scripts/ensure_antigravity_keyring.sh
+!scripts/localapi_repl.py
+!scripts/configure_agents.sh
+!scripts/configure_runtime_roles.py
+!scripts/codd_check.sh
+!scripts/agent_codd_gate.sh
+!scripts/goza_no_ma.sh
+!scripts/focus_agent_pane.sh
+!scripts/android_tmux_proxy.py
+!scripts/android_agent_bridge.sh
+!scripts/android_pairing_profile.sh
+!scripts/sync_opencode_config.py
+!scripts/sync_runtime_cli_preferences.py
+!scripts/runtime_cli_pref_daemon.sh
+!scripts/goza_layout_autosave.sh
+!scripts/shogun_to_karo_bridge.py
+!scripts/shogun_to_karo_bridge_daemon.sh
+
+# GitHub metadata
+!.github/
+!.github/FUNDING.yml
+
+# Memory template
+!memory/
+!memory/MEMORY.md.sample
+!scripts/karo_done_to_shogun_bridge.py
+!scripts/karo_done_to_shogun_bridge_daemon.sh
+!scripts/history_book.sh
+!scripts/mux_parity_smoke.sh
+!scripts/seo_qc.sh
+!scripts/seo_qc.py
 !scripts/slim_yaml.sh
 !scripts/slim_yaml.py
-!scripts/seo_qc.py
-!scripts/seo_qc.sh
-!scripts/stop_hook_inbox.sh
-!scripts/session_start_hook.sh
-!scripts/agent_status.sh
-!scripts/ratelimit_check.sh
-!scripts/switch_cli.sh
-!scripts/dashboard-viewer.py
+!scripts/ensure_generated_instructions.sh
+!scripts/prepublish_check.sh
+!scripts/shogunate_package_bootstrap.sh
+!scripts/upstream_sync.sh
+!scripts/update_manager.py
+!scripts/shell_aliases.sh
+!scripts/install_shell_aliases.sh
+
+# Runtime validation sandboxes are disposable local artifacts.
+runtime_sandboxes/**
 
 
 # SayTask (sample template only, not actual data)
 !saytask/
 !saytask/streaks.yaml.sample
 
-# Reports (private — not tracked)
-logs/
-
-# Memory (MEMORY.md is private; only the sample template is OSS)
-!memory/
-!memory/MEMORY.md.sample
-
 # Docs
 !docs/
-!docs/philosophy.md
-!docs/vps_pr118_verification_plan.md
+!docs/*.md
+!docs/**/*.md
 
 # Screenshots (masked — no secrets)
 !images/
-!images/company-creed-all-panes.png
 !images/screenshots/
+!images/screenshots/ntfy_saytask_rename.jpg
+!images/screenshots/ntfy_cmd043_progress.jpg
+!images/screenshots/ntfy_bloom_oc_test.jpg
+!images/screenshots/ntfy_persona_eval_complete.jpg
+!images/screenshots/ntfy_tasklist_v1_before.jpg
+!images/screenshots/ntfy_tasklist_v2_aligned.jpg
+!images/screenshots/ntfy_tasklist_final.jpg
 !images/screenshots/tdd_ndd_rdd.png
-!images/screenshots/masked/
-!images/screenshots/masked/ntfy_saytask_rename.jpg
-!images/screenshots/masked/ntfy_cmd043_progress.jpg
-!images/screenshots/masked/ntfy_bloom_oc_test.jpg
-!images/screenshots/masked/ntfy_persona_eval_complete.jpg
-!images/screenshots/masked/ntfy_tasklist_v1_before.jpg
-!images/screenshots/masked/ntfy_tasklist_v2_aligned.jpg
-!images/screenshots/hero/
-!images/screenshots/hero/latest-translucent-20260210-190453.png
-!images/screenshots/hero/latest-translucent-20260208-084602.png
 
-# Skills (public OSS skills committed to repo)
+# Skills (skill-creator only)
 !skills/
 !skills/skill-creator/
 !skills/skill-creator/SKILL.md
-!skills/shogun-agent-status/
-!skills/shogun-agent-status/SKILL.md
-!skills/shogun-model-list/
-!skills/shogun-model-list/SKILL.md
-!skills/shogun-bloom-config/
-!skills/shogun-bloom-config/SKILL.md
-!skills/shogun-model-switch/
-!skills/shogun-model-switch/SKILL.md
-!skills/shogun-readme-sync/
-!skills/shogun-readme-sync/SKILL.md
-!skills/shogun-screenshot/
-!skills/shogun-screenshot/SKILL.md
-!skills/shogun-screenshot/scripts/
-!skills/shogun-screenshot/scripts/*.sh
-!skills/shogun-screenshot/scripts/*.py
-
-# Python venv (explicit deny — whitelist patterns like LICENSE leak through !*/)
-.venv/
-
-# Test specs
-!tests/specs/
-!tests/specs/*.md
-# Client project specs (not OSS — re-exclude after whitelist)
-tests/specs/osato_lms_*
 
 # Tests
 !tests/
 !tests/*.bats
-!tests/*.sh
-!tests/fixtures/
-!tests/fixtures/*.yaml
+!tests/helpers/
+!tests/helpers/*.bash
 !tests/unit/
 !tests/unit/*.bats
+!tests/unit/*.py
 !tests/integration/
 !tests/integration/*.bats
-!tests/e2e/
-!tests/e2e/*.bats
-!tests/e2e/mock_cli.sh
-!tests/e2e/helpers/
-!tests/e2e/helpers/*.bash
-!tests/e2e/fixtures/
-!tests/e2e/fixtures/*.yaml
-!tests/e2e/mock_behaviors/
-!tests/e2e/mock_behaviors/*.sh
 !tests/test_helper/
 !tests/test_helper/README.md
 
 # CI/CD
 !.github/
-!.github/FUNDING.yml
+!.github/copilot-instructions.md
 !.github/workflows/
 !.github/workflows/*.yml
-
-# Android companion app
 !android/
 !android/**
-
-# reports/ (empty placeholder only — content is intentionally local-only)
-!reports/
-!reports/.gitkeep
-
 .claude/settings.local.json
+android/.android-user-home/
+android/.android-home/
+android/.android-prefs/
+android/.gradle-home/
+android/.gradle-user-home/
+android/.home/
+android/.android-sdk/
+android/.android-sdk-tmp/
+dist/
+
+# queue は実行時データを基本的に追跡しない
+!queue/
+queue/**
+
+# Runtime / local-only artifacts
+Waste/
+_trash/
+.shogunate/
+runtime_sandboxes/
+
+# Upstream参照用のローカルcloneは追跡しない
+_upstream_reference/
+
+# Private/local docs are kept out of OSS publication
+docs/WORKLOG.md
+docs/HANDOVER_*.md
+docs/UPSTREAM_SYNC_*.md
+
+# Local user config is never published
+config/settings.yaml

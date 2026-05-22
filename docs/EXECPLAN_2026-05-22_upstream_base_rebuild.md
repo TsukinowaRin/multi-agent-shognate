@@ -1,0 +1,89 @@
+# ExecPlan: upstream latest base rebuild
+
+作成日: 2026-05-22
+
+## 目的
+
+最新の本家 `upstream/main` を土台にして、Shogunate 独自機能を再実装・整理する。目的は単に fork 差分を戻すことではなく、必要な機能と本家へ分離 PR できる機能を見極めながら、実運用できる Shogunate branch を作ること。
+
+## 現在の base
+
+- upstream: `yohey-w/multi-agent-shogun`
+- base commit: `84c8e82 fix: keep OpenCode runtime variants out of tracked output`
+- base describe: `v5.0.0-6-g84c8e82`
+- 作業ブランチ: `codex/upstream-main-rebuild-shogunate`
+- 参照元 Shogunate branch: `codex/upstream-v4.6.0-sync`
+
+## 移植方針
+
+1. 本家に既にある OpenCode support は upstream 実装を正とする。
+2. Shogunate 独自機能は次の PR 分離候補に分ける。
+   - package distribution / npm wrapper
+   - cross-platform runtime launchers
+   - CLI state isolation / host auth sharing
+   - Antigravity / Kilo / LocalAPI support
+   - dynamic topology / multi-Karo
+   - event-driven runtime hardening
+   - Android remote control and pairing profile
+   - CoDD external coherence gate
+   - docs / handoff / ExecPlan workflow
+3. まず低衝突の package / docs / CoDD / launcher を移植し、その後 runtime core と Android を移植する。
+4. 移植時は current Shogunate branch から必要箇所を参照するが、upstream の最新ファイル構造を優先して統合する。
+
+## 進捗
+
+- [x] Goal を作成した。
+- [x] `upstream/main` を取得し、最新 base commit を確認した。
+- [x] `codex/upstream-main-rebuild-shogunate` を `upstream/main` から作成した。
+- [x] 要求を `docs/REQS.md` に正規化した。
+- [x] この ExecPlan を作成した。
+- [x] Shogunate 独自機能を file / feature map として棚卸しする。
+- [ ] package distribution / npm wrapper を upstream base に移植する。
+- [ ] launcher / role config / shell aliases を移植する。
+- [ ] CLI state isolation と AGY / Kilo / LocalAPI を移植する。
+- [ ] dynamic topology / multi-Karo / event-driven hardening を移植する。
+- [ ] Android remote control / pairing profile を移植する。
+- [ ] CoDD gate を移植する。
+- [ ] build / unit / integration /実機 runtime 検証を実行する。
+- [ ] PR 分離候補と最終差分をまとめる。
+
+## 具体手順
+
+1. `git diff --name-status upstream/main..codex/upstream-v4.6.0-sync` を機能群に分類する。
+2. 低衝突ファイルを移植して最初の checkpoint commit を作る。
+3. runtime core を小さく移植し、shell syntax と Bats を通す。
+4. CLI adapter と watcher を移植し、Codex / OpenCode / Antigravity / Kilo / LocalAPI の代表起動 command をテストする。
+5. Android app を移植し、unit test と可能なら debug build / adb 確認を行う。
+6. 隔離 test folder に作業ブランチを反映し、実 tmux runtime を起動する。
+
+## 棚卸し結果
+
+2026-05-22 時点の大分類:
+
+- `package_distribution`: npm / npx wrapper、release package、bootstrap、release workflow。
+- `launchers_setup`: `Shogunate-Runtime.*`、role configure launcher、shell alias、初期設定。
+- `cli_state_and_extra_cli`: host auth sharing、role-local settings、Antigravity / Kilo / LocalAPI。
+- `runtime_core`: `goza-no-ma`、watcher、bridge daemon、multi-Karo topology、runtime recovery。
+- `android_remote`: Android app、SSH profile import、agent target bridge、host update。
+- `codd_gate`: CoDD wrapper、agent-native gate、CI / Makefile entrypoint。
+- `docs_instructions_agents`: generated instructions、role docs、handoff / ExecPlan docs。
+- `tests`: runtime / CLI / Android / package / CoDD regression tests。
+
+移植順は、低衝突の `package_distribution` / `launchers_setup` / `codd_gate` から始め、その後 `cli_state_and_extra_cli` と `runtime_core` を統合する。
+
+## 検証
+
+- `bash -n ...`
+- `bash scripts/build_instructions.sh`
+- `bats tests/unit/...`
+- `python3 -m unittest ...`
+- `npm pack --dry-run`
+- `cd android && ./gradlew --no-daemon test`
+- 隔離 runtime で `./Shogunate-Runtime.sh`
+- `git diff --check`
+
+## 復旧
+
+- 失敗した機能群は、その機能群 commit だけを revert する。
+- `codex/upstream-v4.6.0-sync` は参照元として維持し、直接変更しない。
+- upstream base branch が破綻した場合は、`git switch codex/upstream-v4.6.0-sync` で現行安定 branch に戻れる。

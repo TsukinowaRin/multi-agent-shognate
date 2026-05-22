@@ -1,4 +1,4 @@
-.PHONY: test build lint check help install-deps clean codd codd-install codd-build codd-verify codd-audit
+.PHONY: test build lint check help install-deps clean codd codd-install codd-build codd-verify codd-audit codd-agent-gate
 
 # Default target
 help:
@@ -12,6 +12,7 @@ help:
 	@echo "  make check         - Run build + diff check (CI equivalent)"
 	@echo "  make codd          - Run integrated CoDD DAG verification"
 	@echo "  make codd-install  - Install/update codd-dev into .shogunate/codd-venv"
+	@echo "  make codd-agent-gate AGENT_ID=... TASK_ID=... - Run agent CoDD gate"
 	@echo "  make install-deps  - Install test dependencies (bats, helpers)"
 	@echo "  make clean         - Clean test artifacts"
 	@echo ""
@@ -106,6 +107,11 @@ codd-verify:
 
 codd-audit:
 	@bash scripts/codd_check.sh audit
+
+codd-agent-gate:
+	@test -n "$(AGENT_ID)" || (echo "AGENT_ID is required" >&2; exit 2)
+	@test -n "$(TASK_ID)" || (echo "TASK_ID is required" >&2; exit 2)
+	@bash scripts/agent_codd_gate.sh "$(AGENT_ID)" "$(TASK_ID)" "$${CODD_COMMAND:-verify}"
 
 # Install test dependencies
 install-deps:

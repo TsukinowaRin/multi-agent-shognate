@@ -78,6 +78,8 @@ EOFYAML
     echo "" >> "$output_path"
     cat "$PARTS_DIR/common/task_flow.md" >> "$output_path"
     echo "" >> "$output_path"
+    cat "$PARTS_DIR/common/codd_gate.md" >> "$output_path"
+    echo "" >> "$output_path"
     cat "$PARTS_DIR/common/forbidden_actions.md" >> "$output_path"
 
     # Append CLI-specific tools section
@@ -109,9 +111,7 @@ EOFYAML
             ;;
     esac
 
-    if [[ "$cli_type" == "opencode" ]]; then
-        normalize_generated_markdown "$output_path"
-    fi
+    normalize_generated_markdown "$output_path"
 
     echo "  ✅ Created: $output_filename"
 }
@@ -444,6 +444,8 @@ EOF
             cat "$PARTS_DIR/common/protocol.md"
             echo ""
             cat "$PARTS_DIR/common/task_flow.md"
+            echo ""
+            cat "$PARTS_DIR/common/codd_gate.md"
             echo ""
             cat "$PARTS_DIR/common/forbidden_actions.md"
             echo ""

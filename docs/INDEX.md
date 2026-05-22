@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-05-21
+最終更新: 2026-05-22
 
 ## Must-read
 - `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
@@ -11,12 +11,13 @@
 - `docs/HANDOFF_2026-03-29_resume.md` - 旧 handoff。`Shogunate-test` 起点の経緯確認用。
 
 ## Specs
-- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-21 時点では Shogunate runtime での Agy keyring 起動、Gemini CLI 廃止と Antigravity CLI (`agy`) 対応、Antigravity keyring / Secret Service preflight、旧 installer asset 廃止と package distribution 移行を含む。
+- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。2026-05-22 時点では upstream OpenCode first-class support 取り込みと CoDD agent-native gate 深掘りを含む。
 - `docs/PUBLISHING.md` - 公開前の個人情報・履歴・退避物の除外ポリシーと確認手順。
 - `docs/philosophy.md` - システム設計思想（原則・背景）。
 - `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - 旧 portable installer / uninstaller 事故対応の履歴。現行配布は package distribution を正とする。
 
 ## Plans (open)
+- `docs/EXECPLAN_2026-05-22_codd_agent_native_gate.md` - CoDD を agent workflow から自然に使える品質 gate へ深く統合する計画。
 - `docs/EXECPLAN_2026-05-22_upstream_opencode_sync.md` - upstream `v5.0.0` 系 OpenCode first-class support を fork 独自機能と両立させて取り込む計画。
 - `docs/EXECPLAN_2026-05-20_antigravity_cli.md` - Gemini CLI 対応を廃止し、Antigravity CLI (`agy`) を runtime / 設定 UI / docs / tests に追加する計画。
 - `docs/EXECPLAN_2026-05-18_package_distribution.md` - OS 別 installer asset を廃止し、GitHub Release package + cURL bootstrap + npm wrapper へ移行する計画。

@@ -230,6 +230,13 @@ setup() {
     grep -q "Do not write \`pass\` unless the exact command really exited 0 in that exact directory" "$OUTPUT_DIR/codex-ashigaru.md"
 }
 
+@test "content: generated instructions include CoDD native gate" {
+    grep -q "CoDD Native Gate" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "scripts/agent_codd_gate.sh" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "queue/runtime/codd" "$OUTPUT_DIR/opencode-gunshi.md"
+    grep -q "CoDD Native Gate" "$PROJECT_ROOT/.opencode/agents/ashigaru1.md"
+}
+
 @test "content: codex-ashigaru.md enforces event-driven standby after report" {
     grep -q "Ashigaru must work only from assigned events" "$OUTPUT_DIR/codex-ashigaru.md"
     grep -q "return to standby immediately" "$OUTPUT_DIR/codex-ashigaru.md"

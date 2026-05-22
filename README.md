@@ -155,6 +155,12 @@ CODD_AUTO_INSTALL=1 scripts/codd_check.sh verify
 
 The project config lives at `.codd/codd.yaml`. Install/update normally pulls the latest PyPI `codd-dev`. If that fails, the wrapper falls back to the development-verified `CODD_FALLBACK_VERSION` default, currently `1.34.0`. If `python3` / `python3-venv` is missing in WSL, Linux, or macOS, the wrapper prints the required install commands and stops. CI runs `codd dag verify` by default. `scripts/codd_check.sh audit` is exposed for environments that have CoDD's optional audit bridge.
 
+Agents use the deeper workflow gate after ordinary task-specific verification. The wrapper writes durable report/log artifacts under `queue/runtime/codd/` so Karo and Gunshi can inspect the result after handoff or resume.
+
+```bash
+bash scripts/agent_codd_gate.sh "$AGENT_ID" "<task_or_cmd_id>" verify
+```
+
 ### Simple runtime role settings
 
 Use this for normal setup. It configures only the broad CLI type per role and the active ashigaru count; model / reasoning / thinking choices are made inside each tmux pane and kept in pane-local CLI state.

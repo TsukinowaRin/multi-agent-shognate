@@ -3,6 +3,24 @@
 最終更新: 2026-05-22
 出典: 直近ユーザープロンプト
 
+## 追補（2026-05-22: CoDD を agent-native gate として深く統合）
+### 要求
+1. CoDD を単なる `make codd` 導線ではなく、Shogunate の agent workflow から自然に使える品質ゲートへ昇格すること。
+2. Ashigaru / Karo / Gunshi が役職指示上で CoDD の使い所を理解し、実装・統合・QC の判断材料として使えること。
+3. agent が CoDD を実行した結果を、会話だけでなく再開可能な runtime artifact として残せること。
+4. CoDD の導入方針は引き続き vendoring ではなく `.shogunate/codd-venv` の外部 package 利用とすること。
+5. package 配布でも `.codd/codd.yaml` と agent-facing wrapper が欠けないこと。
+
+### 受け入れ条件（観測可能）
+1. コマンド: `bash -n scripts/codd_check.sh scripts/agent_codd_gate.sh && bats tests/unit/test_codd_integration.bats tests/unit/test_codd_agent_gate.bats`
+   - 期待結果: agent-facing CoDD gate が report/log を生成し、失敗時も結果 artifact を残す。
+2. コマンド: `bash scripts/build_instructions.sh && bats tests/unit/test_build_system.bats`
+   - 期待結果: generated instructions と OpenCode agent definitions に CoDD gate ルールが含まれる。
+3. コマンド: `npm pack --dry-run`
+   - 期待結果: package asset に `.codd/codd.yaml` と `scripts/agent_codd_gate.sh` が含まれる。
+4. コマンド: `git diff --check`
+   - 期待結果: whitespace error がない。
+
 ## 追補（2026-05-22: upstream 最新 OpenCode 対応を fork に取り込む）
 ### 要求
 1. `upstream/main` の最新コードを取得し、フォーク元が追加した OpenCode first-class support を確認すること。

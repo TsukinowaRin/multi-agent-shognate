@@ -15,6 +15,8 @@ setup_file() {
 @test "CoDD wrapper supports install/build/verify/audit commands" {
     run bash -n "$PROJECT_ROOT/scripts/codd_check.sh"
     [ "$status" -eq 0 ]
+    run bash -n "$PROJECT_ROOT/scripts/agent_codd_gate.sh"
+    [ "$status" -eq 0 ]
 
     run bash "$PROJECT_ROOT/scripts/codd_check.sh" help
     [ "$status" -eq 0 ]
@@ -28,6 +30,7 @@ setup_file() {
     grep -q '^codd:' "$PROJECT_ROOT/Makefile"
     grep -q '^codd-install:' "$PROJECT_ROOT/Makefile"
     grep -q '^codd-verify:' "$PROJECT_ROOT/Makefile"
+    grep -q '^codd-agent-gate:' "$PROJECT_ROOT/Makefile"
 }
 
 @test "GitHub Actions runs integrated CoDD by default" {
@@ -38,4 +41,11 @@ setup_file() {
 @test "Windows updater checks Python before integrated tool update" {
     grep -q "Python3 / python3-venv is not ready" "$PROJECT_ROOT/updater.bat"
     grep -q "Running updater and integrated tool updates" "$PROJECT_ROOT/updater.bat"
+}
+
+@test "CoDD agent-native instructions and package files are present" {
+    [ -f "$PROJECT_ROOT/instructions/common/codd_gate.md" ]
+    grep -q "agent_codd_gate.sh" "$PROJECT_ROOT/instructions/common/codd_gate.md"
+    grep -q "queue/runtime/codd" "$PROJECT_ROOT/instructions/common/codd_gate.md"
+    grep -q '".codd/codd.yaml"' "$PROJECT_ROOT/package.json"
 }

@@ -132,6 +132,7 @@
 !scripts/configure_agents.sh
 !scripts/configure_runtime_roles.py
 !scripts/codd_check.sh
+!scripts/agent_codd_gate.sh
 !scripts/goza_no_ma.sh
 !scripts/focus_agent_pane.sh
 !scripts/android_tmux_proxy.py

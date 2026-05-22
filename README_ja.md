@@ -157,6 +157,12 @@ CODD_AUTO_INSTALL=1 scripts/codd_check.sh verify
 
 project config は `.codd/codd.yaml` です。install は基本的に PyPI の最新 `codd-dev` を取りに行きます。最新導入に失敗した場合は、開発時確認版の `CODD_FALLBACK_VERSION`（既定 `1.34.0`）へフォールバックします。WSL / Linux / macOS 側に `python3` / `python3-venv` が無い場合は、必要な install command を表示して停止します。CI でも `codd dag verify` を実行します。`scripts/codd_check.sh audit` も入口として用意していますが、CoDD 側の optional audit bridge がある環境向けです。
 
+Shogunate agent からは、通常の検証後に agent-native gate として次を使います。結果は `queue/runtime/codd/` に report/log として残るため、家老・軍師が再開後も確認できます。
+
+```bash
+bash scripts/agent_codd_gate.sh "$AGENT_ID" "<task_or_cmd_id>" verify
+```
+
 ### 簡易 runtime 役職設定
 
 通常はこちらを使います。役職ごとの大まかな CLI 種別と active Ashigaru 数だけを設定し、model / reasoning / thinking は tmux pane 内の各 CLI で手動設定して pane-local state に保持します。

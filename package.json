@@ -13,6 +13,7 @@
     "Shogunate-Runtime.command",
     "Shogunate-Configure-Roles.sh",
     "Shogunate-Configure-Roles.command",
+    ".codd/codd.yaml",
     "bin/",
     "config/ntfy_auth.env.sample",
     "context/",

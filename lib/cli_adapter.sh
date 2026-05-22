@@ -500,6 +500,7 @@ _cli_adapter_host_auth_links_cmd() {
             ;;
         antigravity)
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/auth.json" "$state_home"
+            _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/antigravity-oauth-token" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/oauth_creds.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/google_accounts.json" "$state_home"
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/credentials.json" "$state_home"
@@ -961,6 +962,9 @@ build_cli_command_with_type() {
             runtime_model="$(get_agent_antigravity_runtime_model "$agent_id")"
             if [[ -n "$runtime_model" && "$runtime_model" != "auto" && "$runtime_model" != "default" ]]; then
                 cmd="$cmd --model $runtime_model"
+            fi
+            if [[ " $cmd " != *" --add-dir "* ]]; then
+                cmd="$cmd --add-dir $(_cli_adapter_shell_quote "$CLI_ADAPTER_PROJECT_ROOT")"
             fi
             _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${cmd}"
             ;;

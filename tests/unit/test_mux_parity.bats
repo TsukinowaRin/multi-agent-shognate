@@ -190,6 +190,11 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "tmux 起動と watcher は Codex hooks review prompt を自動承認する" {
+    run bats_search 'auto_accept_codex_hooks_prompt_tmux|accept_codex_hooks_prompt_if_present|hooksneedreview|trustallandcontinue|pressttotrustall|nohooksinstalledforthisevent|lifecyclehooksfromconfigandenabledplugins|pressentertoviewhooks' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/inbox_watcher.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "tmux 起動は役職別の初動最適化 directive を bootstrap に含める" {
     run bats_search 'startup_fastpath_directive|初動最適化: 起動直後は自inboxだけ確認|repo 名で即 cmd 起票|report YAML を正本として|cmd close を最優先|bridge/ntfy/streaks/sample は異常時以外読むな|自inbox/task だけ確認' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]

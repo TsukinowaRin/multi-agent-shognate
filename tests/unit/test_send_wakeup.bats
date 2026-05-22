@@ -962,6 +962,55 @@ YAML
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
+@test "T-CODEX-010b1d: watcher は Codex hooks review prompt を trust all で承認する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Hooks need review\n2. Trust all and continue\nPress enter to confirm'"'"'
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 2" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010b1e: watcher は Codex hooks detail 画面を Escape で戻す" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'UserPromptSubmit hooks\nNo hooks installed for this event.\nPress esc to go back'"'"'
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 Escape" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010b1e2: watcher は Codex hooks overview 画面を Escape で閉じる" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Hooks\nLifecycle hooks from config and enabled plugins.\nPress enter to view hooks; esc to close'"'"'
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 Escape" "$MOCK_LOG"
+}
+
+@test "T-CODEX-010b1f: watcher は Codex hooks trust-all shortcut を送る" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'Hooks\nPress t to trust all; enter to review hooks; esc to close'"'"'
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 t" "$MOCK_LOG"
+}
+
 @test "T-CODEX-010b0: send_wakeup は Codex 通常画面では no-prompt を許容して nudge する" {
     run bash -c '
         MOCK_PANE_CLI="codex"

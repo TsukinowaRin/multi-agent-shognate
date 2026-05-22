@@ -148,6 +148,19 @@
 - Injected `cmd_smoke_localapi_001` into `queue/shogun_to_karo.yaml`; confirmed `queue/inbox/karo.yaml` received unread `cmd_new` and `logs/shogun_to_karo_bridge.log` recorded `sent`.
 - Cleaned up only test sessions `goza-no-ma` and `goza-runtime`; pre-existing tmux session `0` remained.
 
+2026-05-22 Codex / OpenCode / AGY mixed runtime smoke:
+
+- Fixed AGY auth sharing for AGY 1.0.1 by linking host `.gemini/antigravity-cli/antigravity-oauth-token` into the role-local AGY home.
+- Fixed Codex 0.133.0 startup interstitial handling by accepting hooks review / trust-all prompts and closing hooks detail / overview screens before bootstrap delivery.
+- AGY launch now adds `--add-dir <project-root>` so the intended Shogunate workspace is explicit even when the CLI infers a broader git root.
+- `bash -n lib/cli_adapter.sh shutsujin_departure.sh scripts/inbox_watcher.sh` passed.
+- `bats tests/unit/test_cli_adapter.bats tests/unit/test_mux_parity.bats tests/unit/test_send_wakeup.bats` passed: 296 tests.
+- Created isolated archive copy under `runtime_sandboxes/codex-opencode-agy-*`, initialized it as a git repo for correct workspace-root detection, and configured `shogun=codex`, `karo=codex`, `gunshi=antigravity`, `ashigaru1=opencode`.
+- Ran `MAS_SKIP_STARTUP_UPDATE=1 MAS_SKIP_PENDING_UPDATE=1 MAS_ENABLE_ANDROID_COMPAT=0 MAS_CLI_READY_TIMEOUT=8 MAS_CODEX_BOOTSTRAP_READY_WAIT=8 MAS_OPENCODE_BOOTSTRAP_READY_WAIT=8 MAS_ANTIGRAVITY_BOOTSTRAP_READY_WAIT=8 ./Shogunate-Runtime.sh --clean --no-attach`.
+- Confirmed `queue/runtime/goza_bootstrap_*.log` recorded `bootstrap-delivered` for all four agents and no `bootstrap_*.pending` files remained.
+- Confirmed AGY and OpenCode host auth files were symlinked into role-local state without reading token contents.
+- Cleaned up only test sessions `goza-no-ma` and `goza-runtime`; pre-existing tmux session `0` remained.
+
 ## 復旧
 
 - 失敗した機能群は、その機能群 commit だけを revert する。

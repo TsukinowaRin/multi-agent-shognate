@@ -433,6 +433,7 @@ assert_antigravity_auth_links() {
     local agent_id="$2"
     [[ "$result" == *"${PROJECT_ROOT}/scripts/ensure_antigravity_keyring.sh && mkdir -p"* ]]
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/auth.json" "antigravity" "$agent_id"
+    assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/antigravity-oauth-token" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/oauth_creds.json" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/google_accounts.json" "antigravity" "$agent_id"
     [[ "$result" != *"ln -sfn ${CLI_ADAPTER_HOST_HOME}/.gemini/antigravity-cli/settings.json"* ]]
@@ -440,6 +441,14 @@ assert_antigravity_auth_links() {
     assert_cli_host_auth_link "$result" ".gemini/google_accounts.json" "antigravity" "$agent_id"
     assert_cli_host_state_seed "$result" ".gemini/antigravity-cli/cache/onboarding.json" "antigravity" "$agent_id"
     assert_antigravity_settings_seed "$result" "$agent_id"
+}
+
+assert_antigravity_launch_base() {
+    local result="$1"
+    local agent_id="$2"
+    [[ "$result" == *"AGENT_ID=${agent_id} "*agy* ]]
+    [[ "$result" == *"--dangerously-skip-permissions"* ]]
+    [[ "$result" == *"--add-dir ${PROJECT_ROOT}"* ]]
 }
 
 make_fake_cli() {
@@ -820,7 +829,7 @@ SH
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
     assert_cli_state_isolated "$result" "antigravity" "ashigaru2"
     assert_antigravity_auth_links "$result" "ashigaru2"
-    [[ "$result" == *"AGENT_ID=ashigaru2 "*agy" --dangerously-skip-permissions" ]]
+    assert_antigravity_launch_base "$result" "ashigaru2"
 }
 
 @test "build_cli_command: antigravity はhost settingsを初期値にしつつrole-localに保持する" {
@@ -838,7 +847,7 @@ SH
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "ashigaru2")
     assert_cli_state_isolated "$result" "antigravity" "ashigaru2"
-    [[ "$result" == *"AGENT_ID=ashigaru2 "*agy" --dangerously-skip-permissions" ]]
+    assert_antigravity_launch_base "$result" "ashigaru2"
 }
 
 @test "build_cli_command: antigravity は旧 gemini command を流用しない" {
@@ -856,7 +865,7 @@ YAML
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
     assert_cli_state_isolated "$result" "antigravity" "shogun"
-    [[ "$result" == *"AGENT_ID=shogun "*agy" --dangerously-skip-permissions" ]]
+    assert_antigravity_launch_base "$result" "shogun"
     [[ "$result" != *"gemini --yolo"* ]]
 }
 
@@ -865,7 +874,8 @@ YAML
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "gunshi")
     assert_cli_state_isolated "$result" "antigravity" "gunshi"
-    [[ "$result" == *"AGENT_ID=gunshi "*agy" --dangerously-skip-permissions --model gemini-3-pro-preview" ]]
+    assert_antigravity_launch_base "$result" "gunshi"
+    [[ "$result" == *"--model gemini-3-pro-preview"* ]]
 }
 
 @test "build_cli_command: shogun antigravity は未設定なら model を付けない" {
@@ -873,7 +883,7 @@ YAML
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
     assert_cli_state_isolated "$result" "antigravity" "shogun"
-    [[ "$result" == *"AGENT_ID=shogun "*agy" --dangerously-skip-permissions" ]]
+    assert_antigravity_launch_base "$result" "shogun"
 }
 
 @test "build_cli_command: antigravity に gpt 系 model が入っていても auto に丸める" {
@@ -889,7 +899,7 @@ YAML
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command "shogun")
     assert_cli_state_isolated "$result" "antigravity" "shogun"
-    [[ "$result" == *"AGENT_ID=shogun "*agy" --dangerously-skip-permissions" ]]
+    assert_antigravity_launch_base "$result" "shogun"
 }
 
 @test "build_cli_command: shogun claude は未設定でも thinking無効を既定適用" {
@@ -910,7 +920,9 @@ SH
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "ashigaru2")
     assert_cli_state_isolated "$result" "antigravity" "ashigaru2"
-    [[ "$result" == *"AGENT_ID=ashigaru2 ${TEST_TMP}/bin/agy --dangerously-skip-permissions" ]]
+    [[ "$result" == *"AGENT_ID=ashigaru2 ${TEST_TMP}/bin/agy"* ]]
+    [[ "$result" == *"--dangerously-skip-permissions"* ]]
+    [[ "$result" == *"--add-dir ${PROJECT_ROOT}"* ]]
 }
 
 @test "build_cli_command: localapi → python3 scripts/localapi_repl.py" {
@@ -1105,7 +1117,7 @@ SH
     mkdir -p "${TEST_TMP}/home-empty"
     result=$(HOME="${TEST_TMP}/home-empty" PATH="/usr/bin:/bin" build_cli_command_with_startup_prompt "ashigaru2" "antigravity" "ready:ashigaru2")
     assert_cli_state_isolated "$result" "antigravity" "ashigaru2"
-    [[ "$result" == *"AGENT_ID=ashigaru2 "*agy" --dangerously-skip-permissions" ]]
+    assert_antigravity_launch_base "$result" "ashigaru2"
     [[ "$result" != *"ready:ashigaru2"* ]]
 }
 

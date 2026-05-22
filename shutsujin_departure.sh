@@ -172,6 +172,30 @@ codex_rate_limit_prompt_detected_tmux() {
     [[ "$compact_text" == *"approachingratelimits"* || "$compact_text" == *"keepcurrentmodel"* || "$compact_text" == *"hidefutureratelimit"* ]]
 }
 
+codex_hooks_no_hooks_screen_detected_tmux() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
+    [[ "$compact_text" == *"nohooksinstalledforthisevent"* ]]
+}
+
+codex_hooks_overview_screen_detected_tmux() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
+    [[ "$compact_text" == *"lifecyclehooksfromconfigandenabledplugins"* || "$compact_text" == *"pressentertoviewhooks"* ]]
+}
+
+codex_hooks_trust_all_shortcut_detected_tmux() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
+    [[ "$compact_text" == *"pressttotrustall"* ]]
+}
+
+codex_hooks_review_prompt_detected_tmux() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text_tmux "${1:-}")"
+    [[ "$compact_text" == *"hooksneedreview"* || "$compact_text" == *"trustallandcontinue"* ]]
+}
+
 codex_ready_prompt_detected_tmux() {
     local screen_content="${1:-}"
     printf '%s' "$screen_content" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left)'
@@ -802,6 +826,52 @@ auto_accept_codex_workspace_trust_prompt_tmux() {
     return 0
 }
 
+auto_accept_codex_hooks_prompt_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local i
+    local pane_text
+    local handled=0
+    local max_wait="${MAS_CODEX_HOOKS_PROMPT_WAIT:-5}"
+
+    [ "$cli_type" = "codex" ] || return 0
+
+    for ((i=1; i<=max_wait; i++)); do
+        pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -120 || true)"
+        if codex_hooks_no_hooks_screen_detected_tmux "$pane_text" || codex_hooks_overview_screen_detected_tmux "$pane_text"; then
+            tmux send-keys -t "$pane_target" Escape >/dev/null 2>&1 || {
+                echo "[WARN] Codex hooks screen: Escape send failed for ${pane_target}" >&2
+                return 1
+            }
+            handled=1
+            log_info "  └─ ${agent_id}: Codex hooks detail 画面を閉じる"
+            sleep 1
+            continue
+        fi
+        if codex_hooks_trust_all_shortcut_detected_tmux "$pane_text"; then
+            tmux send-keys -t "$pane_target" t >/dev/null 2>&1 || {
+                echo "[WARN] Codex hooks prompt: trust-all shortcut failed for ${pane_target}" >&2
+                return 1
+            }
+            handled=1
+            log_info "  └─ ${agent_id}: Codex hooks を trust all で承認"
+            sleep 1
+            continue
+        fi
+        if codex_hooks_review_prompt_detected_tmux "$pane_text"; then
+            tmux_send_text_and_enter "$pane_target" "2" "Codex hooks review prompt" || return 1
+            handled=1
+            log_info "  └─ ${agent_id}: Codex hooks review prompt を trust all で承認"
+            sleep 1
+            continue
+        fi
+        [ "$handled" = "1" ] && return 0
+        sleep 1
+    done
+    return 0
+}
+
 auto_dismiss_codex_rate_limit_prompt_tmux() {
     local pane_target="$1"
     local agent_id="$2"
@@ -1060,6 +1130,9 @@ deliver_bootstrap_tmux() {
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "bootstrap already acknowledged in pane"
         return 0
     fi
+    if [ "$cli_type" = "codex" ]; then
+        auto_accept_codex_hooks_prompt_tmux "$pane_target" "$agent_id" "$cli_type" || true
+    fi
 
     # CLIの準備完了を最大30秒待機（スクリーン内容ベース判定）
     local ready_rc=0
@@ -1107,6 +1180,10 @@ deliver_bootstrap_tmux() {
         : > "$delivered_file"
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "bootstrap acknowledged during startup wait"
         return 0
+    fi
+    if [ "$cli_type" = "codex" ]; then
+        auto_accept_codex_hooks_prompt_tmux "$pane_target" "$agent_id" "$cli_type" || true
+        screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
     fi
 
     local msg
@@ -2470,6 +2547,7 @@ if [ "$SETUP_ONLY" = false ]; then
         local _pane="$1" _agent="$2" _cli="$3"
         auto_skip_codex_update_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_codex_workspace_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
+        auto_accept_codex_hooks_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_dismiss_codex_rate_limit_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_antigravity_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_retry_antigravity_busy_tmux "$_pane" "$_agent" "$_cli"

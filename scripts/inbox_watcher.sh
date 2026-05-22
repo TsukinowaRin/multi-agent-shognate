@@ -450,6 +450,64 @@ codex_rate_limit_prompt_detected() {
     [[ "$compact_text" == *"approachingratelimits"* || "$compact_text" == *"keepcurrentmodel"* || "$compact_text" == *"hidefutureratelimit"* ]]
 }
 
+codex_hooks_no_hooks_screen_detected() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text "${1:-}")"
+    [[ "$compact_text" == *"nohooksinstalledforthisevent"* ]]
+}
+
+codex_hooks_overview_screen_detected() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text "${1:-}")"
+    [[ "$compact_text" == *"lifecyclehooksfromconfigandenabledplugins"* || "$compact_text" == *"pressentertoviewhooks"* ]]
+}
+
+codex_hooks_trust_all_shortcut_detected() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text "${1:-}")"
+    [[ "$compact_text" == *"pressttotrustall"* ]]
+}
+
+codex_hooks_review_prompt_detected() {
+    local compact_text
+    compact_text="$(codex_prompt_compact_text "${1:-}")"
+    [[ "$compact_text" == *"hooksneedreview"* || "$compact_text" == *"trustallandcontinue"* ]]
+}
+
+accept_codex_hooks_prompt_if_present() {
+    local effective_cli="${1:-}"
+    local pane_text
+
+    if [[ -z "$effective_cli" ]]; then
+        effective_cli=$(get_effective_cli_type)
+    fi
+    [[ "$effective_cli" == "codex" ]] || return 1
+
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -80 || true)
+    if codex_hooks_no_hooks_screen_detected "$pane_text" || codex_hooks_overview_screen_detected "$pane_text"; then
+        echo "[$(date)] [SEND-KEYS] Closing Codex hooks detail screen for $AGENT_ID" >&2
+        timeout 5 tmux send-keys -t "$PANE_TARGET" Escape 2>/dev/null || return 2
+        sleep 0.3
+        return 0
+    fi
+    if codex_hooks_trust_all_shortcut_detected "$pane_text"; then
+        echo "[$(date)] [SEND-KEYS] Trusting all Codex hooks for $AGENT_ID" >&2
+        timeout 5 tmux send-keys -t "$PANE_TARGET" t 2>/dev/null || return 2
+        sleep 0.3
+        return 0
+    fi
+    if codex_hooks_review_prompt_detected "$pane_text"; then
+        echo "[$(date)] [SEND-KEYS] Accepting Codex hooks review prompt for $AGENT_ID" >&2
+        if ! send_text_and_enter "2" "Codex hooks review prompt"; then
+            return 2
+        fi
+        sleep 0.3
+        return 0
+    fi
+
+    return 1
+}
+
 note_hard_usage_limit_prompt() {
     local now
     now=$(date +%s)
@@ -518,6 +576,20 @@ maintain_codex_runtime_prompt() {
     if [[ -z "$effective_cli" ]]; then
         effective_cli=$(get_effective_cli_type)
     fi
+
+    accept_codex_hooks_prompt_if_present "$effective_cli" || prompt_rc=$?
+    case "$prompt_rc" in
+        0)
+            return 0
+            ;;
+        2)
+            echo "[$(date)] [WARN] failed to accept Codex hooks prompt for $AGENT_ID" >&2
+            return 0
+            ;;
+        *)
+            prompt_rc=0
+            ;;
+    esac
 
     dismiss_codex_rate_limit_prompt_if_present "$effective_cli" || prompt_rc=$?
     case "$prompt_rc" in
@@ -840,6 +912,10 @@ deliver_pending_bootstrap_if_ready() {
     if [[ "$effective_cli" == "codex" ]] && codex_auth_prompt_detected "$pane_text"; then
         record_runtime_blocker "codex-auth-required" "$pane_text"
         return 0
+    fi
+    if [[ "$effective_cli" == "codex" ]]; then
+        accept_codex_hooks_prompt_if_present "$effective_cli" || true
+        pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
     fi
     if [[ "$effective_cli" == "codex" ]] && ! codex_process_running; then
         return 0

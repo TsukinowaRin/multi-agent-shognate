@@ -37,8 +37,8 @@
 - [x] 要求を `docs/REQS.md` に正規化した。
 - [x] この ExecPlan を作成した。
 - [x] Shogunate 独自機能を file / feature map として棚卸しする。
-- [ ] package distribution / npm wrapper を upstream base に移植する。
-- [ ] launcher / role config / shell aliases を移植する。
+- [x] package distribution / npm wrapper を upstream base に移植する。
+- [x] launcher / role config / shell aliases を移植する。
 - [ ] CLI state isolation と AGY / Kilo / LocalAPI を移植する。
 - [ ] dynamic topology / multi-Karo / event-driven hardening を移植する。
 - [x] Android remote control / pairing profile はユーザー指示により初期再構築スコープ外へ移した。
@@ -78,6 +78,21 @@
 - `npm pack --dry-run`
 - 隔離 runtime で `./Shogunate-Runtime.sh`
 - `git diff --check`
+
+## 検証ログ
+
+2026-05-22 package distribution:
+
+- `bash -n scripts/shogunate_package_bootstrap.sh scripts/prepublish_check.sh` passed.
+- `python3 -m unittest tests.unit.test_package_distribution` passed: 4 tests.
+- `node bin/shogunate.js --help` passed.
+- `npm pack --dry-run` passed and package output included npm wrapper/bootstrap, while excluding Android release and CoDD files.
+
+2026-05-22 launchers / role config:
+
+- `bash -n lib/topology_adapter.sh Shogunate-Runtime.sh Shogunate-Configure-Roles.sh scripts/configure_agents.sh scripts/ensure_generated_instructions.sh scripts/install_shell_aliases.sh scripts/shell_aliases.sh` passed.
+- `python3 -m py_compile scripts/configure_runtime_roles.py` passed.
+- `bats tests/unit/test_configure_runtime_roles.bats tests/unit/test_configure_agents.bats tests/unit/test_configure_role_launchers.bats tests/unit/test_runtime_launchers.bats tests/unit/test_shell_aliases.bats tests/unit/test_interactive_agent_runner.bats` passed: 13 tests.
 
 ## 復旧
 

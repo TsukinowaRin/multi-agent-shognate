@@ -139,7 +139,7 @@
 
 2026-05-22 isolated runtime smoke:
 
-- Created isolated archive copy: `/mnt/d/git_workspace/multi-agent-shognate/runtime_sandboxes/upstream-main-rebuild-20260522-172503`.
+- Created isolated archive copy: `runtime_sandboxes/upstream-main-rebuild-20260522-172503` under the workspace root.
 - Configured `shogun`, `karo`, `gunshi`, `ashigaru1`, `ashigaru2` as `localapi` to avoid external credentials/API usage during smoke.
 - Ran `MAS_SKIP_STARTUP_UPDATE=1 MAS_SKIP_PENDING_UPDATE=1 MAS_ENABLE_ANDROID_COMPAT=0 MAS_CLI_READY_TIMEOUT=3 ./Shogunate-Runtime.sh --clean --no-attach`.
 - Confirmed `goza-no-ma` panes for all five agents and `goza-runtime` daemon windows for watcher/bridge/runtime-pref.

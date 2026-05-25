@@ -24,10 +24,12 @@ After startup, it opens an interactive shell with view aliases loaded:
 
   cgo / CGO  Goza View
   csa / CSA  Ashigaru View
+  csm / CSM  Multiagent View
   cma / CMA  Multiagent View
   css / CSS  Shogun pane
   csg / CSG  Gunshi pane
-  csm / CSM  Karo pane
+  csk / CSK  Karo pane
+  ckr / CKR  Karo pane
 
 Use Shogunate-Runtime.sh when you want one-click auto Goza attach.
 EOF
@@ -64,8 +66,9 @@ bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}"
 echo ""
 echo "  [OK] Shutsujin finished."
 echo "  [INFO] View commands are available in the next shell:"
-echo "        cgo/CGO = Goza View, csa/CSA = Ashigaru View, cma/CMA = Multiagent View"
-echo "        css/CSS = Shogun, csg/CSG = Gunshi, csm/CSM = Karo"
+echo "        cgo/CGO = Goza View, csa/CSA = Ashigaru View"
+echo "        css/CSS = Shogun, csm/CSM = Multiagent, cma/CMA = Multiagent"
+echo "        csg/CSG = Gunshi, csk/CSK or ckr/CKR = Karo"
 echo ""
 
 if [[ "$OPEN_SHELL" -ne 1 ]]; then
@@ -76,5 +79,5 @@ exec bash --rcfile <(
   printf '[[ -f ~/.bashrc ]] && source ~/.bashrc\n'
   printf 'source %q/scripts/shell_aliases.sh\n' "$SCRIPT_DIR"
   printf 'cd %q\n' "$SCRIPT_DIR"
-  printf 'echo "[Shogunate] Type cgo/CGO for Goza View, csa/CSA for Ashigaru View."\n'
+  printf 'echo "[Shogunate] Type cgo/CGO for Goza, csa/CSA for Ashigaru, csm/CSM for Multiagent."\n'
 ) -i

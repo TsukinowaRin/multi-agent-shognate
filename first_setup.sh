@@ -864,6 +864,11 @@ if [ "$ALIAS_ADDED" = true ]; then
     log_info "  ※ ウィンドウを閉じるだけでは WSL が終了しないため反映されません"
 fi
 
+if [ -f "$SCRIPT_DIR/scripts/install_shell_aliases.sh" ]; then
+    bash "$SCRIPT_DIR/scripts/install_shell_aliases.sh" "$BASHRC_FILE"
+    log_success "Shogunate view aliases を同期しました（cgo/csa/csg/csk/ckr/csm/cma）"
+fi
+
 RESULTS+=("alias設定: OK")
 
 # ============================================================

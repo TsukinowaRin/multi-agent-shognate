@@ -291,7 +291,7 @@ cd /mnt/c/tools/multi-agent-shogun
 
 On Windows, use the launchers according to how much automation you want:
 
-- `Shutsujin.bat`: starts `shutsujin_departure.sh`, then leaves you in a WSL shell. Type `cgo` / `CGO` for Goza View or `csa` / `CSA` for Ashigaru View.
+- `Shutsujin.bat`: starts `shutsujin_departure.sh`, then leaves you in a WSL shell. Type `cgo` / `CGO` for Goza View, `csa` / `CSA` for Ashigaru View, or upstream-style `css` / `csm` for Shogun / Multiagent.
 - `Shogunate-Runtime.bat`: one-click runtime launcher that automatically opens Goza View.
 
 ### 📱 Mobile / Remote Access — SSH First
@@ -309,7 +309,7 @@ The Shogunate package does not ship an APK in this rebuild. Use SSH over LAN or 
 
 1. Install an SSH client on the remote device. Termux is a practical Android option.
 2. Connect to the host: `ssh youruser@your-tailscale-ip`.
-3. Run `css` for the Shogun pane or `csm` for Karo/Ashigaru panes after `first_setup.sh` has installed aliases.
+3. Run `css` for the Shogun pane or `csm` for the Karo/Ashigaru Multiagent view after aliases are loaded.
 
 **Using Tailscale (connect from anywhere):**
 
@@ -424,7 +424,7 @@ Then restart your computer if Windows asks, open Ubuntu, and run `first_setup.sh
 | Script | Purpose | When to run |
 |--------|---------|-------------|
 | `first_setup.sh` | Install tmux, Node.js, Claude Code CLI + Memory MCP config | First time only |
-| `Shutsujin.sh` / `Shutsujin.bat` | Start `shutsujin_departure.sh` and leave an alias-ready shell for manual `cgo` / `csa` view selection | Daily manual view workflow |
+| `Shutsujin.sh` / `Shutsujin.bat` | Start `shutsujin_departure.sh` and leave an alias-ready shell for manual view selection (`cgo`, `csa`, `css`, `csm`, etc.) | Daily manual view workflow |
 | `Shogunate-Runtime.sh` / `Shogunate-Runtime.bat` | Start Shogunate and automatically attach to Goza View | Daily one-click Goza workflow |
 | `shutsujin_departure.sh` | Create tmux sessions + launch the configured CLI for each agent + load instructions + start ntfy listener | Daily |
 | `scripts/switch_cli.sh` | Live switch agent CLI/model (settings.yaml → /exit → relaunch) | As needed |
@@ -1606,6 +1606,12 @@ Running `first_setup.sh` automatically adds these aliases to `~/.bashrc`:
 alias csst='cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh'
 alias css='tmux attach-session -t shogun'      # Connect to Shogun
 alias csm='tmux attach-session -t multiagent'  # Connect to Karo + Ashigaru
+alias cgo='bash scripts/goza_no_ma.sh'         # Goza View (Shogunate)
+alias csa='bash scripts/goza_no_ma.sh -t ashigaru' # Ashigaru View
+alias csg='bash scripts/focus_agent_pane.sh gunshi' # Gunshi pane
+alias csk='bash scripts/focus_agent_pane.sh karo'   # Karo pane
+alias ckr='bash scripts/focus_agent_pane.sh karo'   # Karo pane
+alias cma='bash scripts/goza_no_ma.sh -t multiagent' # Multiagent View
 ```
 
 To apply aliases: run `source ~/.bashrc` or restart your terminal (PowerShell: `wsl --shutdown` then reopen).

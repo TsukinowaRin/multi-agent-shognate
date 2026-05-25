@@ -39,6 +39,12 @@ setup() {
 
   run grep -F "csa/CSA = Ashigaru View" "$PROJECT_ROOT/Shutsujin.sh"
   [ "$status" -eq 0 ]
+
+  run grep -F "csm/CSM = Multiagent" "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
+
+  run grep -F "csk/CSK or ckr/CKR = Karo" "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
 }
 
 @test "runtime launchers: Windows wrapper runs shutsujin through Ubuntu WSL and attaches" {
@@ -63,6 +69,12 @@ setup() {
   [ "$status" -eq 0 ]
 
   run grep -F "csa or CSA for Ashigaru View" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F "csm or CSM for Multiagent View" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F "csk/CSK or ckr/CKR for Karo" "$PROJECT_ROOT/Shutsujin.bat"
   [ "$status" -eq 0 ]
 
   run grep -F "Shogunate-Runtime.sh" "$PROJECT_ROOT/Shutsujin.bat"

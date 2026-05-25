@@ -34,10 +34,13 @@ Options:
   -h, --help         このヘルプ
 
 Aliases (shell):
+  csst / CSST → cd repo && ./shutsujin_departure.sh
   cgo / CGO  → bash scripts/goza_no_ma.sh
   css / CSS  → bash scripts/focus_agent_pane.sh shogun
+  csm / CSM  → bash scripts/goza_no_ma.sh -t multiagent
   csg / CSG  → bash scripts/focus_agent_pane.sh gunshi
-  csm / CSM  → bash scripts/focus_agent_pane.sh karo
+  csk / CSK  → bash scripts/focus_agent_pane.sh karo
+  ckr / CKR  → bash scripts/focus_agent_pane.sh karo
   csa / CSA  → bash scripts/goza_no_ma.sh -t ashigaru
   cma / CMA  → bash scripts/goza_no_ma.sh -t multiagent
 USAGE

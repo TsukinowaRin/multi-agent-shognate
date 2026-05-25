@@ -304,7 +304,7 @@ cd /mnt/c/tools/multi-agent-shogun
 
 1. リモート端末に SSH client を入れます。Android なら Termux が実用的です。
 2. `ssh youruser@your-tailscale-ip` でホストへ接続します。
-3. `first_setup.sh` 後に alias が入っていれば、`css` で将軍、`csm` で家老/足軽の tmux session に attach できます。
+3. alias が読み込まれていれば、`css` で将軍、`csm` で家老/足軽の multiagent View に attach できます。
 
 **Tailscaleを使う場合（外出先からも接続可能）：**
 
@@ -1513,7 +1513,7 @@ tmux attach-session -t shogun     # 接続してコマンドを出す
 
 **Windows から起動する場合：**
 
-- `Shutsujin.bat`: `shutsujin_departure.sh` を起動した後、WSL shell に残ります。そこで `cgo` / `CGO` と入力すると Goza View、`csa` / `CSA` と入力すると足軽 View を開けます。
+- `Shutsujin.bat`: `shutsujin_departure.sh` を起動した後、WSL shell に残ります。そこで `cgo` / `CGO` と入力すると Goza View、`csa` / `CSA` と入力すると足軽 View、本家風に `css` / `csm` と入力すると将軍 / multiagent View を開けます。
 - `Shogunate-Runtime.bat`: 一発起動用です。起動後に自動で Goza View を開きます。
 
 **デバッグモード（手動制御）：**
@@ -1546,10 +1546,12 @@ tmux kill-session -t multiagent
 alias csst='cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh'
 alias css='tmux attach-session -t shogun'      # 将軍ウィンドウの起動
 alias csm='tmux attach-session -t multiagent'  # 家老・足軽ウィンドウの起動
-alias cgo='bash scripts/goza_no_ma.sh'         # Goza View
+alias cgo='bash scripts/goza_no_ma.sh'         # Goza View (Shogunate)
 alias csa='bash scripts/goza_no_ma.sh -t ashigaru' # 足軽 View
-alias CGO='bash scripts/goza_no_ma.sh'         # Goza View
-alias CSA='bash scripts/goza_no_ma.sh -t ashigaru' # 足軽 View
+alias csg='bash scripts/focus_agent_pane.sh gunshi' # 軍師 pane
+alias csk='bash scripts/focus_agent_pane.sh karo'   # 家老 pane
+alias ckr='bash scripts/focus_agent_pane.sh karo'   # 家老 pane
+alias cma='bash scripts/goza_no_ma.sh -t multiagent' # multiagent View
 ```
 
 ※ エイリアスを反映するには `source ~/.bashrc` を実行するか、PowerShellで `wsl --shutdown` してからターミナルを開き直してください。

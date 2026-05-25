@@ -49,6 +49,8 @@ echo   [3/3] Starting shutsujin...
 echo        This launcher does not auto-open Goza View.
 echo        After startup, type cgo or CGO for Goza View.
 echo        Type csa or CSA for Ashigaru View.
+echo        Type csm or CSM for Multiagent View.
+echo        Type csk/CSK or ckr/CKR for Karo.
 echo.
 wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && bash ./Shutsujin.sh %*"
 set "SHUTSUJIN_EXIT=%ERRORLEVEL%"

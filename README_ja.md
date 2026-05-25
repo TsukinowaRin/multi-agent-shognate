@@ -1511,6 +1511,11 @@ cp config/ntfy_auth.env.sample config/ntfy_auth.env
 tmux attach-session -t shogun     # 接続してコマンドを出す
 ```
 
+**Windows から起動する場合：**
+
+- `Shutsujin.bat`: `shutsujin_departure.sh` を起動した後、WSL shell に残ります。そこで `cgo` / `CGO` と入力すると Goza View、`csa` / `CSA` と入力すると足軽 View を開けます。
+- `Shogunate-Runtime.bat`: 一発起動用です。起動後に自動で Goza View を開きます。
+
 **デバッグモード（手動制御）：**
 ```bash
 ./shutsujin_departure.sh -s       # セッションのみ作成
@@ -1541,6 +1546,10 @@ tmux kill-session -t multiagent
 alias csst='cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh'
 alias css='tmux attach-session -t shogun'      # 将軍ウィンドウの起動
 alias csm='tmux attach-session -t multiagent'  # 家老・足軽ウィンドウの起動
+alias cgo='bash scripts/goza_no_ma.sh'         # Goza View
+alias csa='bash scripts/goza_no_ma.sh -t ashigaru' # 足軽 View
+alias CGO='bash scripts/goza_no_ma.sh'         # Goza View
+alias CSA='bash scripts/goza_no_ma.sh -t ashigaru' # 足軽 View
 ```
 
 ※ エイリアスを反映するには `source ~/.bashrc` を実行するか、PowerShellで `wsl --shutdown` してからターミナルを開き直してください。

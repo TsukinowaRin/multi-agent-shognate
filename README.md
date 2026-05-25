@@ -289,6 +289,11 @@ cd /mnt/c/tools/multi-agent-shogun
 ./shutsujin_departure.sh
 ```
 
+On Windows, use the launchers according to how much automation you want:
+
+- `Shutsujin.bat`: starts `shutsujin_departure.sh`, then leaves you in a WSL shell. Type `cgo` / `CGO` for Goza View or `csa` / `CSA` for Ashigaru View.
+- `Shogunate-Runtime.bat`: one-click runtime launcher that automatically opens Goza View.
+
 ### 📱 Mobile / Remote Access — SSH First
 
 The Shogunate package does not ship an APK in this rebuild. Use SSH over LAN or Tailscale, then attach to the tmux sessions from any terminal client.
@@ -419,6 +424,8 @@ Then restart your computer if Windows asks, open Ubuntu, and run `first_setup.sh
 | Script | Purpose | When to run |
 |--------|---------|-------------|
 | `first_setup.sh` | Install tmux, Node.js, Claude Code CLI + Memory MCP config | First time only |
+| `Shutsujin.sh` / `Shutsujin.bat` | Start `shutsujin_departure.sh` and leave an alias-ready shell for manual `cgo` / `csa` view selection | Daily manual view workflow |
+| `Shogunate-Runtime.sh` / `Shogunate-Runtime.bat` | Start Shogunate and automatically attach to Goza View | Daily one-click Goza workflow |
 | `shutsujin_departure.sh` | Create tmux sessions + launch the configured CLI for each agent + load instructions + start ntfy listener | Daily |
 | `scripts/switch_cli.sh` | Live switch agent CLI/model (settings.yaml → /exit → relaunch) | As needed |
 | `scripts/update_manager.py` | Version-fixed package update / upstream snapshot import | As needed |

@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-05-22
+最終更新: 2026-05-25
 
 ## Must-read
 
@@ -12,3 +12,4 @@
 
 - この branch は `upstream/main` を土台にして Shogunate 機能を再移植する作業用。
 - 既存 Shogunate 実装の参照元は `codex/upstream-v4.6.0-sync`。
+- `Shutsujin.bat` は手動 view 選択用、`Shogunate-Runtime.bat` は自動 Goza attach 用。

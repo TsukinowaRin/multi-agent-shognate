@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-22
+最終更新: 2026-05-25
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
 
 ## 追補（2026-05-22: upstream latest base rebuild）
@@ -67,3 +67,25 @@
 4. LocalAPI wrapper は mock OpenAI-compatible endpoint で chat completion を取得できる。
 5. Ollama / LM Studio endpoint が起動していない場合は、その事実と必要手順を明記する。
 6. 実機 local model test が通る場合のみ、本家 AGY PR を作成する。local model test が環境不足で止まる場合は、AGY PR を draft として作るか保留理由を明記する。
+
+## 追補（2026-05-25: Shutsujin.bat を本家風の手動 view 起動に戻す）
+
+### 要求
+
+1. `Shutsujin.bat` は `shutsujin_departure.sh` を通常起動し、起動直後から自動で Goza View に attach しない。
+2. Windows / WSL から `Shutsujin.bat` を開いた後、ユーザーが同じ端末で `cgo` / `CGO` を入力すると Goza View、`csa` / `CSA` を入力すると足軽 View に切り替えられる状態にする。
+3. `Shogunate-Runtime.bat` は従来どおり一発起動で Goza View を自動表示する。
+4. 本家由来の `cgo` / `csa` / `cma` / `css` / `csg` / `csm` 系の使い勝手を壊さない。
+
+### 制約
+
+1. 既存 tmux session を不用意に kill しない。
+2. Windows 側 launcher は WSL Ubuntu 前提のまま扱う。
+3. `Runtime.bat` の自動 attach 仕様は変更しない。
+
+### 受け入れ条件（観測可能）
+
+1. `Shutsujin.bat` 実行後、端末は WSL shell に残り、`cgo` / `CGO` / `csa` / `CSA` が入力可能。
+2. `cgo` / `CGO` は `bash scripts/goza_no_ma.sh` 相当として Goza View に attach / switch する。
+3. `csa` / `CSA` は `bash scripts/goza_no_ma.sh -t ashigaru` 相当として足軽 View に attach / switch する。
+4. `cmd.exe /c Shutsujin.bat --no-attach` または shell syntax check 相当で launcher の基本動作が確認できる。

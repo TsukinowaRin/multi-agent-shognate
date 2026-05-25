@@ -5,6 +5,9 @@ setup() {
 }
 
 @test "runtime launchers: Unix wrappers are valid shell and call shutsujin" {
+  run bash -n "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
+
   run bash -n "$PROJECT_ROOT/Shogunate-Runtime.sh"
   [ "$status" -eq 0 ]
 
@@ -24,6 +27,20 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
+@test "runtime launchers: Shutsujin shell starts departure and exposes manual view aliases" {
+  run grep -F "bash shutsujin_departure.sh" "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
+
+  run grep -F "scripts/shell_aliases.sh" "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
+
+  run grep -F "cgo/CGO = Goza View" "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
+
+  run grep -F "csa/CSA = Ashigaru View" "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
+}
+
 @test "runtime launchers: Windows wrapper runs shutsujin through Ubuntu WSL and attaches" {
   run grep -F "wsl.exe -d Ubuntu" "$PROJECT_ROOT/Shogunate-Runtime.bat"
   [ "$status" -eq 0 ]
@@ -33,4 +50,21 @@ setup() {
 
   run grep -F "Shogunate-Runtime.sh" "$PROJECT_ROOT/Shogunate-Runtime.bat"
   [ "$status" -eq 0 ]
+}
+
+@test "runtime launchers: Windows Shutsujin wrapper opens manual alias shell, not Runtime auto attach" {
+  run grep -F "wsl.exe -d Ubuntu" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F "bash ./Shutsujin.sh" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F "cgo or CGO for Goza View" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F "csa or CSA for Ashigaru View" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F "Shogunate-Runtime.sh" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -ne 0 ]
 }

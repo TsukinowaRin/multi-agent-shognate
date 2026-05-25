@@ -34,12 +34,12 @@ Options:
   -h, --help         このヘルプ
 
 Aliases (shell):
-  cgo  → bash scripts/goza_no_ma.sh
-  css  → bash scripts/focus_agent_pane.sh shogun
-  csg  → bash scripts/focus_agent_pane.sh gunshi
-  csm  → bash scripts/focus_agent_pane.sh karo
-  csa  → bash scripts/goza_no_ma.sh -t ashigaru
-  cma  → bash scripts/goza_no_ma.sh -t multiagent
+  cgo / CGO  → bash scripts/goza_no_ma.sh
+  css / CSS  → bash scripts/focus_agent_pane.sh shogun
+  csg / CSG  → bash scripts/focus_agent_pane.sh gunshi
+  csm / CSM  → bash scripts/focus_agent_pane.sh karo
+  csa / CSA  → bash scripts/goza_no_ma.sh -t ashigaru
+  cma / CMA  → bash scripts/goza_no_ma.sh -t multiagent
 USAGE
 }
 

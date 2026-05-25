@@ -21,7 +21,6 @@ if not exist "%SCRIPT_DIR%\shutsujin_departure.sh" (
     exit /b 1
 )
 
-echo   [1/3] Checking Ubuntu on WSL...
 wsl.exe -d Ubuntu -- echo test >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo   [ERROR] Ubuntu on WSL is not ready.
@@ -30,10 +29,7 @@ if %ERRORLEVEL% NEQ 0 (
     pause
     exit /b 1
 )
-echo   [OK] Ubuntu OK
-echo.
 
-echo   [2/3] Resolving WSL path...
 for /f "usebackq delims=" %%I in (`wsl.exe -d Ubuntu -- wslpath -a "%SCRIPT_DIR%"`) do set "REPO_WSL=%%I"
 if not defined REPO_WSL (
     echo   [ERROR] Failed to resolve WSL path from:
@@ -42,10 +38,7 @@ if not defined REPO_WSL (
     pause
     exit /b 1
 )
-echo   [OK] %REPO_WSL%
-echo.
 
-echo   [3/3] Starting shutsujin...
 echo        This launcher does not auto-open Goza View.
 echo        After startup, type cgo or CGO for Goza View.
 echo        Type csa or CSA for Ashigaru View.
@@ -65,5 +58,4 @@ if not "%SHUTSUJIN_EXIT%"=="0" (
 echo.
 echo   [OK] Shutsujin command finished.
 echo.
-pause
 exit /b 0

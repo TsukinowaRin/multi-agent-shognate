@@ -77,6 +77,15 @@ setup() {
   run grep -F "csk/CSK or ckr/CKR for Karo" "$PROJECT_ROOT/Shutsujin.bat"
   [ "$status" -eq 0 ]
 
+  run grep -F "[1/3]" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -ne 0 ]
+
+  run grep -F "[2/3]" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -ne 0 ]
+
+  run grep -F "[3/3]" "$PROJECT_ROOT/Shutsujin.bat"
+  [ "$status" -ne 0 ]
+
   run grep -F "Shogunate-Runtime.sh" "$PROJECT_ROOT/Shutsujin.bat"
   [ "$status" -ne 0 ]
 }

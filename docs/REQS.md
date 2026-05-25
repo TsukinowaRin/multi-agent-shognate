@@ -77,6 +77,7 @@
 3. `Shogunate-Runtime.bat` は従来どおり一発起動で Goza View を自動表示する。
 4. 本家由来の `csst` / `css` / `csm` 系の使い勝手を壊さない。特に `csm` は本家どおり multiagent view として扱う。
 5. Shogunate 独自の御座の間ショートカットとして `cgo` / `csa` / `csg` / `csk` / `ckr` / `cma` を用意する。
+6. `Shutsujin.bat` は数字付きの手順表示や成功時 pause を出さず、選択したら即起動する。
 
 ### 制約
 
@@ -90,4 +91,5 @@
 2. `cgo` / `CGO` は `bash scripts/goza_no_ma.sh` 相当として Goza View に attach / switch する。
 3. `csa` / `CSA` は `bash scripts/goza_no_ma.sh -t ashigaru` 相当として足軽 View に attach / switch する。
 4. `css` / `CSS` は将軍、`csm` / `CSM` は multiagent、`csk` / `CSK` または `ckr` / `CKR` は家老に attach / switch する。
-5. `cmd.exe /c Shutsujin.bat --no-attach` または shell syntax check 相当で launcher の基本動作が確認できる。
+5. `Shutsujin.bat` に `[1/3]` / `[2/3]` / `[3/3]` の進行表示が残っていない。
+6. `cmd.exe /c Shutsujin.bat --no-attach` または shell syntax check 相当で launcher の基本動作が確認できる。

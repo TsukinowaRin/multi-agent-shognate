@@ -92,3 +92,20 @@ setup() {
   run grep -F "Shogunate-Runtime.sh" "$PROJECT_ROOT/Shutsujin.bat"
   [ "$status" -ne 0 ]
 }
+
+@test "runtime launchers: Windows debug wrappers split clean and resume starts" {
+  run test -f "$PROJECT_ROOT/Shutsujin-Clean.bat"
+  [ "$status" -eq 0 ]
+
+  run test -f "$PROJECT_ROOT/Shutsujin-Resume.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F 'call "%SCRIPT_DIR%\Shutsujin.bat" -c %*' "$PROJECT_ROOT/Shutsujin-Clean.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F 'call "%SCRIPT_DIR%\Shutsujin.bat" %*' "$PROJECT_ROOT/Shutsujin-Resume.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F 'Shogunate-Runtime' "$PROJECT_ROOT/Shutsujin-Clean.bat" "$PROJECT_ROOT/Shutsujin-Resume.bat"
+  [ "$status" -ne 0 ]
+}

@@ -79,6 +79,8 @@
 !setup.sh
 !updater.bat
 !Shutsujin.bat
+!Shutsujin-Clean.bat
+!Shutsujin-Resume.bat
 !Shutsujin.sh
 !Shogunate-Runtime.bat
 !Shogunate-Runtime.sh

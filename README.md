@@ -292,6 +292,7 @@ cd /mnt/c/tools/multi-agent-shogun
 On Windows, use the launchers according to how much automation you want:
 
 - `Shutsujin.bat`: starts `shutsujin_departure.sh`, opens Goza first, then launches agent CLIs after tmux attach so Codex can initialize with the visible terminal UI. Pass `--no-attach` only when you want the old manual shell workflow with `cgo` / `csa` / `css` / `csm`.
+- `Shutsujin-Clean.bat` / `Shutsujin-Resume.bat`: Windows debug launchers for explicit clean start or resume. The installed package is expected to use command launchers instead of these debug bat files.
 - `Shogunate-Runtime.bat`: one-click runtime launcher that automatically opens Goza View.
 
 ### 📱 Mobile / Remote Access — SSH First
@@ -425,6 +426,7 @@ Then restart your computer if Windows asks, open Ubuntu, and run `first_setup.sh
 |--------|---------|-------------|
 | `first_setup.sh` | Install tmux, Node.js, Claude Code CLI + Memory MCP config | First time only |
 | `Shutsujin.sh` / `Shutsujin.bat` | Start `shutsujin_departure.sh`, attach to Goza before agent CLI launch, and keep `--no-attach` as the alias-ready manual shell fallback (`cgo`, `csa`, `css`, `csm`, etc.) | Daily Goza-first workflow |
+| `Shutsujin-Clean.bat` / `Shutsujin-Resume.bat` | Windows-only debug wrappers that call `Shutsujin.bat -c` or `Shutsujin.bat` explicitly | Local debugging |
 | `Shogunate-Runtime.sh` / `Shogunate-Runtime.bat` | Start Shogunate and automatically attach to Goza View | Daily one-click Goza workflow |
 | `shutsujin_departure.sh` | Create tmux sessions + launch the configured CLI for each agent + load instructions + start ntfy listener | Daily |
 | `scripts/switch_cli.sh` | Live switch agent CLI/model (settings.yaml → /exit → relaunch) | As needed |

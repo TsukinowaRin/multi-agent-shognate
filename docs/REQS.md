@@ -109,3 +109,17 @@
 2. `Shutsujin.bat` は `Shogunate-Runtime.sh` ではなく `Shutsujin.sh` を呼び続ける。
 3. `Shutsujin.bat` に数字選択メニューが残っていない。
 4. `Shutsujin.sh --no-attach` は起動後に `scripts/shell_aliases.sh` を読む manual fallback を維持する。
+
+## 追補（2026-05-26: Windows debug launcher の clean / resume 分離）
+
+### 要求
+
+1. 通常配布は cURL / package command で起動する前提に寄せる。
+2. Windows ローカルデバッグ用に clean start と resume を明示した bat を分ける。
+3. debug bat は既存の `Shutsujin.bat` を再利用し、通常 launcher の処理を重複させない。
+
+### 受け入れ条件（観測可能）
+
+1. `Shutsujin-Clean.bat` は `Shutsujin.bat -c` を呼ぶ。
+2. `Shutsujin-Resume.bat` は `Shutsujin.bat` をそのまま呼ぶ。
+3. どちらも `Shogunate-Runtime.bat` / `Shogunate-Runtime.sh` を経由しない。

@@ -26,7 +26,7 @@ setup() {
   run grep -F "MAS_GOZA_STARTUP_LOG" "$PROJECT_ROOT/Shogunate-Runtime.sh"
   [ "$status" -eq 0 ]
 
-  run grep -F "tmux attach-session -t goza-no-ma" "$PROJECT_ROOT/Shogunate-Runtime.sh"
+  run grep -F 'tmux attach-session -t "$SHOGUNATE_SESSION_NAME"' "$PROJECT_ROOT/Shogunate-Runtime.sh"
   [ "$status" -eq 0 ]
 }
 
@@ -46,7 +46,7 @@ setup() {
   run grep -F "MAS_GOZA_FINISH_TARGET=command" "$PROJECT_ROOT/Shutsujin.sh"
   [ "$status" -eq 0 ]
 
-  run grep -F "tmux attach-session -t goza-no-ma" "$PROJECT_ROOT/Shutsujin.sh"
+  run grep -F 'tmux attach-session -t "$SHOGUNATE_SESSION_NAME"' "$PROJECT_ROOT/Shutsujin.sh"
   [ "$status" -eq 0 ]
 
   run grep -F "scripts/shell_aliases.sh" "$PROJECT_ROOT/Shutsujin.sh"

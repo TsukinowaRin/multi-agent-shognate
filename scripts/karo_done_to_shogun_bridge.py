@@ -38,9 +38,15 @@ def save_state(path: Path, ids):
 def command_identity(cmd: dict) -> str:
     cmd_id = str(cmd.get("id", "")).strip()
     timestamp = str(cmd.get("timestamp", "")).strip()
+    completed_at = str(cmd.get("completed_at", "")).strip()
     if not cmd_id:
         return ""
-    return f"{cmd_id}\t{timestamp}" if timestamp else cmd_id
+    parts = [cmd_id]
+    if timestamp:
+        parts.append(timestamp)
+    if completed_at:
+        parts.append(completed_at)
+    return "\t".join(parts)
 
 
 def upgrade_legacy_state(state, cmds):
@@ -83,12 +89,17 @@ def state_contains(state, cmd: dict) -> bool:
 def inbox_already_mentions(inbox_path: Path, cmd: dict) -> bool:
     cmd_id = str(cmd.get("id", "")).strip()
     timestamp = str(cmd.get("timestamp", "")).strip()
+    completed_at = str(cmd.get("completed_at", "")).strip()
     data = load_yaml(inbox_path) or {}
     for msg in data.get("messages", []) or []:
         if msg.get("type") != "cmd_done":
             continue
         content = str(msg.get("content", ""))
         if not cmd_id or cmd_id not in content:
+            continue
+        if completed_at:
+            if completed_at in content:
+                return True
             continue
         if not timestamp or timestamp in content:
             return True
@@ -221,10 +232,13 @@ def main() -> int:
 
         purpose = str(cmd.get("purpose", "")).strip()
         timestamp = str(cmd.get("timestamp", "")).strip()
+        completed_at = str(cmd.get("completed_at", "")).strip()
         summary = extract_dashboard_summary(dashboard, cmd_id)
         content = f"[cmd:{cmd_id}] 家老より完了報告。dashboard.md を確認し、殿へ結果を上申せよ。"
         if timestamp:
             content += f" 時刻: {timestamp}"
+        if completed_at:
+            content += f" 完了: {completed_at}"
         if purpose:
             content += f" 目的: {purpose}。"
         if summary:

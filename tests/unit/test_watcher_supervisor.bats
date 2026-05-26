@@ -231,12 +231,12 @@ EOF
   [ "$status" -eq 0 ]
 }
 
-@test "watcher_supervisor: supervisor_tick は goza @agent_id から複数家老と離れた足軽を解決する" {
+@test "watcher_supervisor: supervisor_tick は Shogunate @agent_id から複数家老と離れた足軽を解決する" {
   run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
     tmux() {
       case "$*" in
-        "has-session -t goza-no-ma") return 0 ;;
-        "list-panes -s -t goza-no-ma -F #{pane_id}") printf "%%1\n%%2\n%%3\n%%4\n%%5\n%%6\n"; return 0 ;;
+        "has-session -t shogunate") return 0 ;;
+        "list-panes -s -t shogunate -F #{pane_id}") printf "%%1\n%%2\n%%3\n%%4\n%%5\n%%6\n"; return 0 ;;
         "show-options -p -t %1 -v @agent_id") printf "shogun\n"; return 0 ;;
         "show-options -p -t %2 -v @agent_id") printf "gunshi\n"; return 0 ;;
         "show-options -p -t %3 -v @agent_id") printf "karo1\n"; return 0 ;;

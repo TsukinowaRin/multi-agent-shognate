@@ -36,6 +36,19 @@ build_tmux_runtime_daemon_command() {
     printf '%s\n' "$cmd"
 }
 
+build_runtime_session_env_args() {
+    local shogunate_session="${SHOGUNATE_SESSION_NAME:-${GOZA_SESSION_NAME:-shogunate}}"
+    local goza_session="${GOZA_SESSION_NAME:-$shogunate_session}"
+    local legacy_session="${LEGACY_GOZA_SESSION_NAME:-goza-no-ma}"
+    local goza_window="${GOZA_WINDOW_NAME:-goza}"
+    local env_args=""
+
+    printf -v env_args \
+        'SHOGUNATE_SESSION_NAME=%q GOZA_SESSION_NAME=%q LEGACY_GOZA_SESSION_NAME=%q GOZA_WINDOW_NAME=%q' \
+        "$shogunate_session" "$goza_session" "$legacy_session" "$goza_window"
+    printf '%s\n' "$env_args"
+}
+
 start_tmux_runtime_daemon_window() {
     local session_name="$1"
     local window_name="$2"
@@ -69,15 +82,17 @@ ensure_tmux_runtime_daemon_window() {
 
 restart_tmux_runtime_daemon_session() {
     local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
+    local session_env=""
     local started=0
 
     tmux kill-session -t "$session_name" 2>/dev/null || true
+    session_env="$(build_runtime_session_env_args)"
 
     if command -v inotifywait >/dev/null 2>&1; then
         start_tmux_runtime_daemon_window \
             "$session_name" \
             "watcher" \
-            "while true; do env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION=\"$session_name\" MUX_TYPE=tmux bash \"$SCRIPT_DIR/scripts/watcher_supervisor.sh\" >> \"$SCRIPT_DIR/logs/watcher_supervisor.log\" 2>&1 || true; sleep \"${WATCHER_SUPERVISOR_INTERVAL:-5}\"; done"
+            "while true; do env $session_env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION=\"$session_name\" MUX_TYPE=tmux bash \"$SCRIPT_DIR/scripts/watcher_supervisor.sh\" >> \"$SCRIPT_DIR/logs/watcher_supervisor.log\" 2>&1 || true; sleep \"${WATCHER_SUPERVISOR_INTERVAL:-5}\"; done"
         started=1
     fi
 
@@ -483,6 +498,55 @@ tmux_send_enter_only() {
     return 0
 }
 
+write_agent_launch_script() {
+    local agent_id="$1"
+    local launch_cmd="$2"
+    local safe_agent
+    local script_path
+
+    safe_agent="$(printf '%s' "$agent_id" | tr -c 'A-Za-z0-9_.-' '_')"
+    script_path="$SCRIPT_DIR/queue/runtime/launch_${safe_agent}.sh"
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    {
+        printf '#!/usr/bin/env bash\n'
+        printf 'set -uo pipefail\n'
+        printf 'cd %q\n' "$SCRIPT_DIR"
+        printf '%s\n' "$launch_cmd"
+        printf 'status=$?\n'
+        printf 'if [ -n "${TMUX_PANE:-}" ]; then tmux set-option -p -t "$TMUX_PANE" @agent_cli_running 0 >/dev/null 2>&1 || true; fi\n'
+        printf 'echo "[Shogunate] %s CLI exited with status ${status}"\n' "$agent_id"
+        printf 'exec bash -i\n'
+    } > "$script_path"
+    chmod 700 "$script_path" 2>/dev/null || true
+    printf '%s\n' "$script_path"
+}
+
+launch_agent_cli_pane_or_die() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local launch_cmd="$3"
+    local action_label="$4"
+    local script_path
+    local script_quoted
+
+    script_path="$(write_agent_launch_script "$agent_id" "$launch_cmd")"
+    printf -v script_quoted '%q' "$script_path"
+    tmux set-option -p -t "$pane_target" @agent_cli_running 1 >/dev/null 2>&1 || true
+    tmux respawn-pane -k -t "$pane_target" "bash $script_quoted" >/dev/null 2>&1 || {
+        echo "[ERROR] ${action_label}: respawn-pane failed for ${pane_target}" >&2
+        exit 1
+    }
+}
+
+agent_launch_shell_command() {
+    local agent_id="$1"
+    local launch_cmd="$2"
+    local script_path
+
+    script_path="$(write_agent_launch_script "$agent_id" "$launch_cmd")"
+    printf 'bash %q' "$script_path"
+}
+
 tmux_send_text_and_enter_or_die() {
     local pane_target="$1"
     local text="$2"
@@ -512,7 +576,7 @@ wait_for_goza_client_before_cli_launch() {
         sleep 1
         waited=$((waited + 1))
         if [[ "$timeout" =~ ^[0-9]+$ ]] && [ "$timeout" -gt 0 ] && [ "$waited" -ge "$timeout" ]; then
-            echo "[ERROR] goza-no-ma attach wait timed out after ${timeout}s" >&2
+            echo "[ERROR] Shogunate attach wait timed out after ${timeout}s" >&2
             echo "        Attach manually or disable MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI." >&2
             exit 1
         fi
@@ -953,9 +1017,31 @@ codex_auth_prompt_detected_tmux() {
 codex_process_running_tmux() {
     local pane_target="$1"
     local current_command=""
+    local running_flag=""
 
+    running_flag="$(tmux show-options -p -t "$pane_target" -v @agent_cli_running 2>/dev/null || true)"
+    [ "$running_flag" = "1" ] && return 0
     current_command="$(tmux display-message -p -t "$pane_target" "#{pane_current_command}" 2>/dev/null || true)"
     [ "$current_command" = "node" ]
+}
+
+opencode_project_prompt_detected_tmux() {
+    local pane_target="$1"
+    local pane_text
+
+    pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
+    echo "$pane_text" | grep -qiE "What is .*project\\?|OpenCode.*Go|project\\?\"|╹.*Go"
+}
+
+auto_accept_opencode_project_prompt_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+
+    opencode_project_prompt_detected_tmux "$pane_target" || return 0
+    tmux_send_enter_only "$pane_target" "OpenCode project prompt" || return 1
+    log_info "  └─ ${agent_id}: OpenCode project prompt を既定値で通過"
+    sleep 2
+    return 0
 }
 
 append_bootstrap_status_log() {
@@ -1092,6 +1178,10 @@ wait_for_cli_ready_tmux() {
     # max_wait=0 でも1回は即時チェックする（for ループでは 0<0 が偽でスキップされるため分離）
     local screen_content
     screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+    if [ "$cli_type" = "opencode" ] && opencode_project_prompt_detected_tmux "$pane_target"; then
+        auto_accept_opencode_project_prompt_tmux "$pane_target" "startup" || true
+        screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+    fi
     if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
         return 2
     fi
@@ -1106,6 +1196,10 @@ wait_for_cli_ready_tmux() {
     for ((i=0; i<max_wait; i++)); do
         sleep 1
         screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+        if [ "$cli_type" = "opencode" ] && opencode_project_prompt_detected_tmux "$pane_target"; then
+            auto_accept_opencode_project_prompt_tmux "$pane_target" "startup" || true
+            continue
+        fi
         if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
             return 2
         fi
@@ -1161,6 +1255,9 @@ deliver_bootstrap_tmux() {
     fi
     if [ "$cli_type" = "codex" ]; then
         auto_accept_codex_hooks_prompt_tmux "$pane_target" "$agent_id" "$cli_type" || true
+    fi
+    if [ "$cli_type" = "opencode" ]; then
+        auto_accept_opencode_project_prompt_tmux "$pane_target" "$agent_id" || true
     fi
 
     # CLIの準備完了を最大30秒待機（スクリーン内容ベース判定）
@@ -1318,8 +1415,10 @@ should_embed_startup_prompt_in_cli_command() {
     return 0
 }
 
-GOZA_SESSION_NAME="${GOZA_SESSION_NAME:-goza-no-ma}"
-GOZA_WINDOW_NAME="${GOZA_WINDOW_NAME:-overview}"
+SHOGUNATE_SESSION_NAME="${SHOGUNATE_SESSION_NAME:-shogunate}"
+LEGACY_GOZA_SESSION_NAME="${LEGACY_GOZA_SESSION_NAME:-goza-no-ma}"
+GOZA_SESSION_NAME="${GOZA_SESSION_NAME:-$SHOGUNATE_SESSION_NAME}"
+GOZA_WINDOW_NAME="${GOZA_WINDOW_NAME:-goza}"
 GOZA_STARTUP_WINDOW_NAME="${GOZA_STARTUP_WINDOW_NAME:-startup}"
 GOZA_LAYOUT_FILE="${GOZA_LAYOUT_FILE:-$SCRIPT_DIR/queue/runtime/goza_layout.tsv}"
 GOZA_SIGNATURE_FILE="${GOZA_SIGNATURE_FILE:-$SCRIPT_DIR/queue/runtime/goza_signature.tsv}"
@@ -2079,7 +2178,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════
 log_info "🧹 既存の陣を撤収中..."
 if [ -f "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" ]; then
-    if tmux has-session -t "$GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t shogun 2>/dev/null || tmux has-session -t gunshi 2>/dev/null || tmux has-session -t multiagent 2>/dev/null; then
+    if tmux has-session -t "$GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t "$LEGACY_GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t shogun 2>/dev/null || tmux has-session -t gunshi 2>/dev/null || tmux has-session -t multiagent 2>/dev/null; then
         log_info "💾 前回CLI設定を同期中..."
         _runtime_sync_once_log="$SCRIPT_DIR/queue/runtime/runtime_cli_pref_sync_once.log"
         mkdir -p "$SCRIPT_DIR/queue/runtime"
@@ -2093,7 +2192,10 @@ if [ -f "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" ]; then
 fi
 save_goza_layout "$GOZA_SESSION_NAME"
 pkill -f "$SCRIPT_DIR/scripts/goza_layout_autosave.sh ${GOZA_SESSION_NAME} " >/dev/null 2>&1 || true
-tmux kill-session -t "$GOZA_SESSION_NAME" 2>/dev/null && log_info "  └─ 御座の間、撤収完了" || log_info "  └─ 御座の間は存在せず"
+tmux kill-session -t "$GOZA_SESSION_NAME" 2>/dev/null && log_info "  └─ Shogunate本陣、撤収完了" || log_info "  └─ Shogunate本陣は存在せず"
+if [ "$LEGACY_GOZA_SESSION_NAME" != "$GOZA_SESSION_NAME" ]; then
+    tmux kill-session -t "$LEGACY_GOZA_SESSION_NAME" 2>/dev/null && log_info "  └─ 旧御座の間 session、撤収完了" || true
+fi
 tmux kill-session -t "$RUNTIME_DAEMON_SESSION" 2>/dev/null && log_info "  └─ runtime監視陣、撤収完了" || log_info "  └─ runtime監視陣は存在せず"
 pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh " 2>/dev/null || true
 pkill -f "$SCRIPT_DIR/scripts/watcher_supervisor.sh" 2>/dev/null || true
@@ -2519,12 +2621,12 @@ if [ "$SETUP_ONLY" = false ]; then
     fi
     printf "shogun\t%s\n" "$_shogun_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
     if [ "$SHOGUN_NO_THINKING" = true ] && [ "$_shogun_cli_type" = "claude" ]; then
-        tmux_send_text_and_enter_or_die "$SHOGUN_TARGET" "MAX_THINKING_TOKENS=0 $_shogun_cmd" "shogun CLI launch" "1"
+        launch_agent_cli_pane_or_die "$SHOGUN_TARGET" "shogun" "MAX_THINKING_TOKENS=0 $_shogun_cmd" "shogun CLI launch"
         mark_cli_launch_attempt_tmux "$SHOGUN_TARGET"
         tmux set-option -p -t "$SHOGUN_TARGET" @model_name "$(resolve_model_display_name "shogun")"
         log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type") / thinking無効）、召喚完了"
     else
-        tmux_send_text_and_enter_or_die "$SHOGUN_TARGET" "$_shogun_cmd" "shogun CLI launch" "1"
+        launch_agent_cli_pane_or_die "$SHOGUN_TARGET" "shogun" "$_shogun_cmd" "shogun CLI launch"
         mark_cli_launch_attempt_tmux "$SHOGUN_TARGET"
         tmux set-option -p -t "$SHOGUN_TARGET" @model_name "$(resolve_model_display_name "shogun")"
         log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type")）、召喚完了"
@@ -2546,7 +2648,7 @@ if [ "$SETUP_ONLY" = false ]; then
         fi
     fi
     printf "gunshi\t%s\n" "$_gunshi_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
-    tmux_send_text_and_enter_or_die "$GUNSHI_TARGET" "$_gunshi_cmd" "gunshi CLI launch" "1"
+    launch_agent_cli_pane_or_die "$GUNSHI_TARGET" "gunshi" "$_gunshi_cmd" "gunshi CLI launch"
     mark_cli_launch_attempt_tmux "$GUNSHI_TARGET"
     tmux set-option -p -t "$GUNSHI_TARGET" @model_name "$(resolve_model_display_name "gunshi")"
     log_info "  └─ 軍師（$(resolve_cli_summary "gunshi" "$_gunshi_cli_type")）、召喚完了"
@@ -2602,7 +2704,7 @@ if [ "$SETUP_ONLY" = false ]; then
                 _agent_cmd=$(build_cli_command_with_startup_prompt "$_agent" "$_agent_cli_type" "$_agent_startup_prompt")
             fi
         fi
-        tmux_send_text_and_enter_or_die "$_pane_target" "$_agent_cmd" "${_agent} CLI launch" "1"
+        launch_agent_cli_pane_or_die "$_pane_target" "$_agent" "$_agent_cmd" "${_agent} CLI launch"
         mark_cli_launch_attempt_tmux "$_pane_target"
         printf "%s\t%s\n" "$_agent" "$_agent_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
         MULTIAGENT_CLI["$_agent"]="$_agent_cli_type"
@@ -2844,10 +2946,10 @@ NINJA_EOF
     sleep 1
 
     if command -v inotifywait >/dev/null 2>&1; then
-        env WATCHER_SUPERVISOR_ONCE=1 MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
+        env $(build_runtime_session_env_args) WATCHER_SUPERVISOR_ONCE=1 MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
         restart_tmux_runtime_daemon_session "$RUNTIME_DAEMON_SESSION" || true
-        env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION="$RUNTIME_DAEMON_SESSION" MUX_TYPE=tmux \
+        env $(build_runtime_session_env_args) WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION="$RUNTIME_DAEMON_SESSION" MUX_TYPE=tmux \
             bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
         if [ -x "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" ]; then
@@ -2930,7 +3032,7 @@ echo "  ┌───────────────────────
 echo "  │  📋 布陣図 (Formation)                                   │"
 echo "  └──────────────────────────────────────────────────────────┘"
 echo ""
-echo "     【goza-no-ma セッション】御座の間（本体）"
+echo "     【${GOZA_SESSION_NAME}:${GOZA_WINDOW_NAME}】御座の間 view"
 echo "     ┌────────────────────────────────────────────────────────────┐"
 echo "     │  Pane: shogun          ← 総大将・プロジェクト統括        │"
 for _agent in "${KARO_AGENTS[@]}"; do
@@ -2975,7 +3077,7 @@ if [ "$SETUP_ONLY" = true ]; then
     echo "  │  tmux send-keys -t ${GUNSHI_TARGET:-gunshi:main} \\                         │"
     echo "  │    '$(build_cli_command_with_type "gunshi" "${_gunshi_cli_type:-$(resolve_cli_type_for_agent "gunshi" 2>/dev/null || echo claude)}")' Enter  │"
     echo "  │                                                          │"
-    echo "  │  # 家老・足軽は goza-no-ma pane 側で起動                  │"
+    echo "  │  # 家老・足軽は ${GOZA_SESSION_NAME}:${GOZA_WINDOW_NAME} pane 側で起動      │"
     echo "  │  cat queue/runtime/agent_cli.tsv                         │"
     echo "  └──────────────────────────────────────────────────────────┘"
     echo ""

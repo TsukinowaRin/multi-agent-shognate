@@ -4,8 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-GOZA_SESSION="${GOZA_SESSION_NAME:-goza-no-ma}"
-GOZA_WINDOW="${GOZA_WINDOW_NAME:-overview}"
+GOZA_SESSION="${GOZA_SESSION_NAME:-${SHOGUNATE_SESSION_NAME:-shogunate}}"
+LEGACY_GOZA_SESSION="${LEGACY_GOZA_SESSION_NAME:-goza-no-ma}"
+GOZA_WINDOW="${GOZA_WINDOW_NAME:-goza}"
 SETUP_ONLY=false
 ENSURE_BACKEND=false
 REFRESH=false
@@ -71,6 +72,18 @@ if ! command -v tmux >/dev/null 2>&1; then
   echo "[ERROR] tmux が見つかりません。" >&2
   exit 1
 fi
+
+resolve_goza_session() {
+  if tmux has-session -t "$GOZA_SESSION" 2>/dev/null; then
+    return 0
+  fi
+  if [[ "$LEGACY_GOZA_SESSION" != "$GOZA_SESSION" ]] && tmux has-session -t "$LEGACY_GOZA_SESSION" 2>/dev/null; then
+    GOZA_SESSION="$LEGACY_GOZA_SESSION"
+    GOZA_WINDOW="${GOZA_WINDOW_NAME:-overview}"
+    return 0
+  fi
+  return 1
+}
 
 # ═══════════════════════════════════════════════════════════
 # Helper: attach or switch to a target
@@ -174,9 +187,12 @@ focus_ashigaru_only() {
 
 if [[ "$REFRESH" == true ]]; then
   tmux kill-session -t "$GOZA_SESSION" 2>/dev/null || true
+  if [[ "$LEGACY_GOZA_SESSION" != "$GOZA_SESSION" ]]; then
+    tmux kill-session -t "$LEGACY_GOZA_SESSION" 2>/dev/null || true
+  fi
 fi
 
-if ! tmux has-session -t "$GOZA_SESSION" 2>/dev/null; then
+if ! resolve_goza_session; then
   if [[ "$ENSURE_BACKEND" != true ]]; then
     echo "[ERROR] ${GOZA_SESSION} session が存在しません。" >&2
     echo "        先に: bash shutsujin_departure.sh" >&2
@@ -187,7 +203,8 @@ if ! tmux has-session -t "$GOZA_SESSION" 2>/dev/null; then
   if [[ "$SETUP_ONLY" == true ]]; then
     START_ARGS=("-s" "${START_ARGS[@]}")
   fi
-  bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
+  GOZA_SESSION_NAME="$GOZA_SESSION" bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
+  resolve_goza_session || true
 fi
 
 case "$TEMPLATE" in

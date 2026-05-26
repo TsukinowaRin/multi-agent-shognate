@@ -12,6 +12,8 @@ CLI_RESTART_COOLDOWN="${CLI_RESTART_COOLDOWN:-30}"
 CLI_STARTUP_GRACE_SECONDS="${CLI_STARTUP_GRACE_SECONDS:-20}"
 RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS="${RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS:-90}"
 WATCHER_RUNTIME_SESSION="${WATCHER_RUNTIME_SESSION:-goza-runtime}"
+SHOGUNATE_SESSION_NAME="${SHOGUNATE_SESSION_NAME:-shogunate}"
+LEGACY_GOZA_SESSION_NAME="${LEGACY_GOZA_SESSION_NAME:-goza-no-ma}"
 
 if [ -f "$SCRIPT_DIR/lib/inbox_path.sh" ]; then
     # shellcheck source=/dev/null
@@ -149,8 +151,14 @@ pane_exists() {
 }
 
 list_backend_pane_targets() {
-    if tmux has-session -t "goza-no-ma" 2>/dev/null; then
-        tmux list-panes -s -t "goza-no-ma" -F "#{pane_id}" 2>/dev/null || true
+    local session_name=""
+    if tmux has-session -t "$SHOGUNATE_SESSION_NAME" 2>/dev/null; then
+        session_name="$SHOGUNATE_SESSION_NAME"
+    elif tmux has-session -t "$LEGACY_GOZA_SESSION_NAME" 2>/dev/null; then
+        session_name="$LEGACY_GOZA_SESSION_NAME"
+    fi
+    if [ -n "$session_name" ]; then
+        tmux list-panes -s -t "$session_name" -F "#{pane_id}" 2>/dev/null || true
         return 0
     fi
     if tmux has-session -t "shogun" 2>/dev/null; then
@@ -353,7 +361,7 @@ restart_shell_returned_codex_if_needed() {
     [ "$cli" = "codex" ] || return 0
 
     current_command="$(tmux display-message -p -t "$pane" "#{pane_current_command}" 2>/dev/null | tr -d '\r' | head -n1)"
-    if [ "$current_command" = "node" ]; then
+    if [ "$current_command" = "node" ] || [ "$(tmux show-options -p -t "$pane" -v @agent_cli_running 2>/dev/null | tr -d '\r' | head -n1)" = "1" ]; then
         clear_restart_state "$agent"
         return 0
     fi

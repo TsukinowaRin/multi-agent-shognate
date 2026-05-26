@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Start Shogunate runtime and attach to goza-no-ma.
+# Start Shogunate runtime and attach to the Shogunate tmux session.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+SHOGUNATE_SESSION_NAME="${SHOGUNATE_SESSION_NAME:-shogunate}"
 CLEAN_ARG="-c"
 ATTACH_AFTER=1
 EXTRA_ARGS=()
@@ -30,7 +31,7 @@ Usage: ./Shogunate-Runtime.sh [--clean|--resume] [--no-attach] [shutsujin args..
 
 Defaults:
   --clean      Start with bash shutsujin_departure.sh -c
-  attach       Attach to tmux session goza-no-ma after startup
+  attach       Attach to tmux session shogunate after startup
 
 Examples:
   ./Shogunate-Runtime.sh
@@ -49,7 +50,7 @@ done
 echo ""
 echo "  +============================================================+"
 echo "  |  [SHOGUN] multi-agent-shognate - Runtime Launcher          |"
-echo "  |      Starts Shogunate and opens goza-no-ma                 |"
+echo "  |      Starts Shogunate and opens the runtime session        |"
 echo "  +============================================================+"
 echo ""
 
@@ -76,23 +77,23 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
   : > "$STARTUP_LOG"
 
   echo "  [INFO] Starting runtime in background."
-  echo "  [INFO] CLI panes will launch after goza-no-ma is attached."
+  echo "  [INFO] CLI panes will launch after tmux session '$SHOGUNATE_SESSION_NAME' is attached."
   echo "  [INFO] Startup log: $STARTUP_LOG"
   RUN_ID="runtime-$(date +%s)-$$"
   if [[ -n "$CLEAN_ARG" ]]; then
-    MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+    SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   else
-    MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+    SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   fi
   RUNTIME_PID=$!
 
   for _ in $(seq 1 120); do
-    if [[ "$(tmux show-options -t goza-no-ma -v @mas_launcher_run_id 2>/dev/null || true)" == "$RUN_ID" ]]; then
+    if [[ "$(tmux show-options -t "$SHOGUNATE_SESSION_NAME" -v @mas_launcher_run_id 2>/dev/null || true)" == "$RUN_ID" ]]; then
       break
     fi
     if ! kill -0 "$RUNTIME_PID" 2>/dev/null; then
       echo ""
-      echo "  [ERROR] Runtime exited before goza-no-ma was created."
+      echo "  [ERROR] Runtime exited before '$SHOGUNATE_SESSION_NAME' was created."
       echo "  ----- $STARTUP_LOG -----"
       tail -120 "$STARTUP_LOG" 2>/dev/null || true
       exit 1
@@ -100,19 +101,19 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
     sleep 1
   done
 
-  if [[ "$(tmux show-options -t goza-no-ma -v @mas_launcher_run_id 2>/dev/null || true)" != "$RUN_ID" ]]; then
+  if [[ "$(tmux show-options -t "$SHOGUNATE_SESSION_NAME" -v @mas_launcher_run_id 2>/dev/null || true)" != "$RUN_ID" ]]; then
     echo ""
-    echo "  [ERROR] Timed out waiting for goza-no-ma."
+    echo "  [ERROR] Timed out waiting for '$SHOGUNATE_SESSION_NAME'."
     echo "  ----- $STARTUP_LOG -----"
     tail -120 "$STARTUP_LOG" 2>/dev/null || true
     exit 1
   fi
 
   echo ""
-  echo "  [INFO] Attaching to goza-no-ma. CLI launch continues inside tmux."
+  echo "  [INFO] Attaching to $SHOGUNATE_SESSION_NAME. CLI launch continues inside tmux."
   echo "  [INFO] Detach from tmux with Ctrl+B, then D."
   disown "$RUNTIME_PID" 2>/dev/null || true
-  exec tmux attach-session -t goza-no-ma
+  exec tmux attach-session -t "$SHOGUNATE_SESSION_NAME"
 fi
 
 if [[ -n "$CLEAN_ARG" ]]; then
@@ -122,4 +123,4 @@ else
 fi
 
 echo ""
-echo "  [OK] Runtime started. Attach with: tmux attach-session -t goza-no-ma"
+echo "  [OK] Runtime started. Attach with: tmux attach-session -t $SHOGUNATE_SESSION_NAME"

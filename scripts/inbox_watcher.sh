@@ -613,6 +613,9 @@ codex_auth_prompt_detected() {
 
 codex_process_running() {
     local current_command=""
+    local running_flag=""
+    running_flag=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @agent_cli_running 2>/dev/null || true)
+    [ "$running_flag" = "1" ] && return 0
     current_command=$(timeout 2 tmux display-message -p -t "$PANE_TARGET" "#{pane_current_command}" 2>/dev/null || true)
     [ "$current_command" = "node" ]
 }
@@ -721,6 +724,10 @@ recover_shell_returned_cli_if_needed() {
     esac
 
     current_command=$(timeout 2 tmux display-message -p -t "$PANE_TARGET" "#{pane_current_command}" 2>/dev/null || true)
+    if [ "$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @agent_cli_running 2>/dev/null || true)" = "1" ]; then
+        LAST_CLI_RESTART_TS=0
+        return 0
+    fi
     case "$effective_cli:$current_command" in
         codex:node|antigravity:agy|antigravity:antigravity|opencode:opencode|kilo:kilo|localapi:python3|copilot:copilot)
             LAST_CLI_RESTART_TS=0

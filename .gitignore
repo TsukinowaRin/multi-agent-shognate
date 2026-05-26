@@ -165,6 +165,9 @@
 
 # Runtime validation sandboxes are disposable local artifacts.
 runtime_sandboxes/**
+.codd/
+.shogunate/codd-venv/
+queue/runtime/codd/
 
 
 # SayTask (sample template only, not actual data)

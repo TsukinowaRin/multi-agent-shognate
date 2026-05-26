@@ -42,8 +42,8 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "御座の間は本体 session として構築する" {
-    run bats_search 'GOZA_SESSION_NAME|new-session -d -x .* -s "\$GOZA_SESSION_NAME"|pane-border-format|build_ashigaru_grid|restore_goza_layout_if_available|start_goza_layout_autosave' "$PROJECT_ROOT/shutsujin_departure.sh"
+@test "Shogunate session に御座の間 view を構築する" {
+    run bats_search 'SHOGUNATE_SESSION_NAME|GOZA_WINDOW_NAME|new-session -d -x .* -s "\$GOZA_SESSION_NAME" -n "\$GOZA_WINDOW_NAME"|pane-border-format|build_ashigaru_grid|restore_goza_layout_if_available|start_goza_layout_autosave' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -69,18 +69,18 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "goza helper は goza-no-ma へ直接 attach/switch する" {
-    run bats_search 'GOZA_SESSION|switch-client -t "\$GOZA_SESSION"|attach-session -t "\$GOZA_SESSION"|shutsujin_departure\.sh' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
+@test "goza helper は Shogunate session へ attach/switch し legacy へ fallback する" {
+    run bats_search 'SHOGUNATE_SESSION_NAME|LEGACY_GOZA_SESSION|resolve_goza_session|switch-client -t "\$GOZA_SESSION"|attach-session -t "\$GOZA_SESSION"|shutsujin_departure\.sh' "$PROJECT_ROOT/scripts/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "focus helper は goza 本体 pane へ移動する" {
-    run bats_search 'GOZA_SESSION|show-options -p -t .*@agent_id|list-panes -t "\$\{GOZA_SESSION\}:\$\{GOZA_WINDOW\}"|select-window -t|select-pane -t' "$PROJECT_ROOT/scripts/focus_agent_pane.sh"
+@test "focus helper は Shogunate session の role pane へ移動する" {
+    run bats_search 'SHOGUNATE_SESSION_NAME|LEGACY_GOZA_SESSION|show-options -p -t .*@agent_id|list-panes -t "\$\{GOZA_SESSION\}:\$\{GOZA_WINDOW\}"|select-window -t|select-pane -t' "$PROJECT_ROOT/scripts/focus_agent_pane.sh"
     [ "$status" -eq 0 ]
 }
 
-@test "watcher supervisor は goza 本体を正本に pane 解決する" {
-    run bats_search 'has-session -t "goza-no-ma"|list-panes -s -t "goza-no-ma"|show-options -p -t .*@agent_id|ASW_PROCESS_TIMEOUT=1' "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
+@test "watcher supervisor は Shogunate session を正本に pane 解決する" {
+    run bats_search 'SHOGUNATE_SESSION_NAME|LEGACY_GOZA_SESSION_NAME|has-session -t "\$SHOGUNATE_SESSION_NAME"|list-panes -s -t "\$session_name"|show-options -p -t .*@agent_id|ASW_PROCESS_TIMEOUT=1' "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -89,8 +89,8 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "runtime 同期は goza 本体を優先する" {
-    run bats_search 'has-session", "-t", "goza-no-ma"|list-panes", "-s", "-t", "goza-no-ma"' "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
+@test "runtime 同期は Shogunate session を優先する" {
+    run bats_search 'SHOGUNATE_SESSION_NAME|LEGACY_GOZA_SESSION_NAME|tmux_ok\("has-session", "-t", SHOGUNATE_SESSION_NAME\)|tmux_output\("list-panes", "-s", "-t", session_name' "$PROJECT_ROOT/scripts/sync_runtime_cli_preferences.py"
     [ "$status" -eq 0 ]
 }
 
@@ -136,6 +136,11 @@ setup_file() {
 
 @test "tmux 起動は pane shell prep と CLI launch でも text+Enter を厳密確認する" {
     run bats_search 'tmux_send_text_and_enter_or_die|pane shell prep|shogun CLI launch|gunshi CLI launch|CLI launch' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は長い CLI コマンドを launch script 経由で投入する" {
+    run bats_search 'write_agent_launch_script|launch_agent_cli_pane_or_die|queue/runtime/launch_.*\.sh|respawn-pane -k|@agent_cli_running|CLI exited with status' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -302,12 +307,12 @@ setup_file() {
 }
 
 @test "tmux 起動は daemon session 起動後にも watcher one-shot seed を再実行する" {
-    run bats_search 'restart_tmux_runtime_daemon_session|WATCHER_RUNTIME_SESSION="\$RUNTIME_DAEMON_SESSION"|WATCHER_SUPERVISOR_ONCE=1' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search 'restart_tmux_runtime_daemon_session|build_runtime_session_env_args|WATCHER_RUNTIME_SESSION="\$RUNTIME_DAEMON_SESSION"|WATCHER_SUPERVISOR_ONCE=1' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "tmux watcher daemon window は one-shot tick を5秒ごとに回す" {
-    run bats_search 'while true; do env WATCHER_SUPERVISOR_ONCE=1|WATCHER_SUPERVISOR_INTERVAL' "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search 'while true; do env \$session_env WATCHER_SUPERVISOR_ONCE=1|WATCHER_SUPERVISOR_INTERVAL' "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 

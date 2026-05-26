@@ -221,6 +221,48 @@ PY
   [ "$status" -eq 0 ]
 }
 
+@test "karo_done_to_shogun_bridge: 差戻し後に同じ cmd_id/timestamp が再完了したら completed_at で再通知する" {
+  python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py" >/dev/null
+  printf 'cmd_300\t2026-03-13T22:33:00+09:00\t2026-03-13T22:50:00+09:00\n' > "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  python3 - <<'PY' "$MAS_SHOGUN_TO_KARO_ARCHIVE_FILE" "$MAS_SHOGUN_INBOX_FILE"
+import sys, yaml
+archivep, inboxp = sys.argv[1:]
+with open(archivep, encoding='utf-8') as fh:
+    data = yaml.safe_load(fh) or {}
+cmds = data.get('commands', []) or []
+cmds.append({
+    'id': 'cmd_300',
+    'timestamp': '2026-03-13T22:33:00+09:00',
+    'completed_at': '2026-03-13T23:10:00+09:00',
+    'status': 'done',
+    'purpose': '差戻し後の再完了',
+})
+data['commands'] = cmds
+with open(archivep, 'w', encoding='utf-8') as fh:
+    yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
+
+with open(inboxp, encoding='utf-8') as fh:
+    inbox = yaml.safe_load(fh) or {}
+msgs = inbox.get('messages', []) or []
+msgs.append({
+    'id': 'msg_old',
+    'from': 'karo',
+    'type': 'cmd_done',
+    'content': '[cmd:cmd_300] 家老より完了報告。 時刻: 2026-03-13T22:33:00+09:00 完了: 2026-03-13T22:50:00+09:00',
+    'read': True,
+})
+inbox['messages'] = msgs
+with open(inboxp, 'w', encoding='utf-8') as fh:
+    yaml.safe_dump(inbox, fh, allow_unicode=True, sort_keys=False)
+PY
+
+  run python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "sent" ]]
+  run bats_search $'cmd_300\t2026-03-13T22:33:00\\+09:00\t2026-03-13T23:10:00\\+09:00|完了: 2026-03-13T23:10:00\\+09:00|差戻し後の再完了' "$MAS_SHOGUN_INBOX_FILE" "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  [ "$status" -eq 0 ]
+}
+
 @test "karo_done_to_shogun_bridge: legacy state が cmd_id 単独でも timestamp 付き state へ昇格して再送しない" {
   printf 'cmd_250\ncmd_300\n' > "$MAS_KARO_DONE_TO_SHOGUN_STATE"
 

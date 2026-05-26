@@ -11,6 +11,8 @@ SETTINGS_PATH = Path(os.environ.get("MAS_SETTINGS_PATH", ROOT / "config/settings
 SUMMARY_PATH = Path(os.environ.get("MAS_RUNTIME_PREFS_SUMMARY_PATH", ROOT / "queue/runtime/runtime_cli_prefs.tsv"))
 TMUX_BIN = os.environ.get("TMUX_BIN", "tmux")
 VERBOSE_NOOP = os.environ.get("MAS_RUNTIME_PREF_VERBOSE_NOOP", "0") == "1"
+SHOGUNATE_SESSION_NAME = os.environ.get("SHOGUNATE_SESSION_NAME", "shogunate")
+LEGACY_GOZA_SESSION_NAME = os.environ.get("LEGACY_GOZA_SESSION_NAME", "goza-no-ma")
 
 CODEX_STATUS_RE = re.compile(
     r"^\s*([A-Za-z0-9][A-Za-z0-9._/-]*)"
@@ -113,8 +115,14 @@ def list_backend_targets() -> list[tuple[str, str, str]]:
 
 
 def gather_targets() -> list[tuple[str, str, str]]:
-    if tmux_ok("has-session", "-t", "goza-no-ma"):
-        out = tmux_output("list-panes", "-s", "-t", "goza-no-ma", "-F", "#{pane_id}")
+    session_name = ""
+    if tmux_ok("has-session", "-t", SHOGUNATE_SESSION_NAME):
+        session_name = SHOGUNATE_SESSION_NAME
+    elif tmux_ok("has-session", "-t", LEGACY_GOZA_SESSION_NAME):
+        session_name = LEGACY_GOZA_SESSION_NAME
+
+    if session_name:
+        out = tmux_output("list-panes", "-s", "-t", session_name, "-F", "#{pane_id}")
         targets: list[tuple[str, str, str]] = []
         for pane_id in out.splitlines():
             pane_id = pane_id.strip()

@@ -6,6 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+SHOGUNATE_SESSION_NAME="${SHOGUNATE_SESSION_NAME:-shogunate}"
 ATTACH_AFTER=1
 OPEN_SHELL=1
 SHUTSUJIN_ARGS=()
@@ -77,20 +78,20 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
   : > "$STARTUP_LOG"
 
   echo "  [INFO] Starting Shutsujin in background."
-  echo "  [INFO] CLI panes will launch after goza-no-ma is attached."
+  echo "  [INFO] CLI panes will launch after tmux session '$SHOGUNATE_SESSION_NAME' is attached."
   echo "  [INFO] After startup, type cgo/CMA/csa/css/csk in the command shell."
   echo "  [INFO] Startup log: $STARTUP_LOG"
   RUN_ID="shutsujin-$(date +%s)-$$"
-  MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_GOZA_FINISH_TARGET=command MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+  SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_GOZA_FINISH_TARGET=command MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   RUNTIME_PID=$!
 
   for _ in $(seq 1 120); do
-    if [[ "$(tmux show-options -t goza-no-ma -v @mas_launcher_run_id 2>/dev/null || true)" == "$RUN_ID" ]]; then
+    if [[ "$(tmux show-options -t "$SHOGUNATE_SESSION_NAME" -v @mas_launcher_run_id 2>/dev/null || true)" == "$RUN_ID" ]]; then
       break
     fi
     if ! kill -0 "$RUNTIME_PID" 2>/dev/null; then
       echo ""
-      echo "  [ERROR] Shutsujin exited before goza-no-ma was created."
+      echo "  [ERROR] Shutsujin exited before '$SHOGUNATE_SESSION_NAME' was created."
       echo "  ----- $STARTUP_LOG -----"
       tail -120 "$STARTUP_LOG" 2>/dev/null || true
       exit 1
@@ -98,19 +99,19 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
     sleep 1
   done
 
-  if [[ "$(tmux show-options -t goza-no-ma -v @mas_launcher_run_id 2>/dev/null || true)" != "$RUN_ID" ]]; then
+  if [[ "$(tmux show-options -t "$SHOGUNATE_SESSION_NAME" -v @mas_launcher_run_id 2>/dev/null || true)" != "$RUN_ID" ]]; then
     echo ""
-    echo "  [ERROR] Timed out waiting for goza-no-ma."
+    echo "  [ERROR] Timed out waiting for '$SHOGUNATE_SESSION_NAME'."
     echo "  ----- $STARTUP_LOG -----"
     tail -120 "$STARTUP_LOG" 2>/dev/null || true
     exit 1
   fi
 
   echo ""
-  echo "  [INFO] Attaching to goza-no-ma. CLI launch continues inside tmux."
+  echo "  [INFO] Attaching to $SHOGUNATE_SESSION_NAME. CLI launch continues inside tmux."
   echo "  [INFO] Detach from tmux with Ctrl+B, then D."
   disown "$RUNTIME_PID" 2>/dev/null || true
-  exec tmux attach-session -t goza-no-ma
+  exec tmux attach-session -t "$SHOGUNATE_SESSION_NAME"
 fi
 
 echo "  [INFO] Starting without auto attach: bash shutsujin_departure.sh ${SHUTSUJIN_ARGS[*]}"

@@ -105,7 +105,7 @@
 
 ### 受け入れ条件（観測可能）
 
-1. `Shutsujin.sh` は `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` と `MAS_LAUNCHER_RUN_ID` を使い、`goza-no-ma` 作成後に `tmux attach-session -t goza-no-ma` する。
+1. `Shutsujin.sh` は `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` と `MAS_LAUNCHER_RUN_ID` を使い、`shogunate` session 作成後に `tmux attach-session -t shogunate` する。御座の間は `shogunate:goza` view として扱う。
 2. `Shutsujin.bat` は `Shogunate-Runtime.sh` ではなく `Shutsujin.sh` を呼び続ける。
 3. `Shutsujin.bat` に数字選択メニューが残っていない。
 4. `Shutsujin.sh --no-attach` は起動後に `scripts/shell_aliases.sh` を読む manual fallback を維持する。
@@ -140,3 +140,21 @@
 3. ready 待機は `MAS_BOOTSTRAP_READY_TIMEOUT` でタイムアウトし、詰まった場合も起動を継続する。
 4. `Shutsujin.bat` 経由では、起動完了後に `overview` ではなく `cgo` / `CMA` / `csa` 等を入力できる command shell へ移動する。
 5. `Shogunate-Runtime.bat` 経由では、従来どおり起動完了後に Goza overview へ移動する。
+
+## 追補（2026-05-26: 実LLMデモ検証と再完了通知）
+
+### 要求
+
+1. `Shogunate-test` の構成を使い、隔離フォルダで Codex / OpenCode / Antigravity の実CLIを起動して、デモプロジェクトが完成するところまで検証する。
+2. 検証用に `SHOGUNATE_SESSION_NAME` / `GOZA_SESSION_NAME` を変更しても、watcher / bridge / runtime-pref が同じ session を正しく参照する。
+3. 家老が完了後に人間または将軍から差戻しを受け、同じ `cmd_id` / `timestamp` を再度 close した場合でも、将軍へ修正版の `cmd_done` を再通知する。
+4. CoDD は Shogunate runtime に統合せず、必要になった場合のみ外部 gate / plugin として分離運用する。
+
+### 受け入れ条件（観測可能）
+
+1. 隔離 runtime で `shogun=codex`, `karo=codex`, `gunshi=codex`, `ashigaru1=opencode`, `ashigaru2=opencode`, `ashigaru3=codex`, `ashigaru4=antigravity` が起動する。
+2. `watcher_supervisor` が現行 session の pane に inbox nudge を送る。旧 `goza-no-ma` の pane ID へ送らない。
+3. demo `Task Lantern` は `index.html`, `styles.css`, `app.js`, `README.md` を生成し、`node --check demo-llm-validation/app.js` と静的整合チェックが通る。
+4. 家老は CSS/JS 統合ズレなどの差戻しを受けた場合に active queue へ戻し、修正 task を再割当できる。
+5. `scripts/karo_done_to_shogun_bridge.py` は `completed_at` を完了 identity に含め、同じ command の再完了を将軍へ再通知できる。
+6. `git diff --check` と関連 Bats / shell syntax check が PASS する。

@@ -17,7 +17,7 @@ if /I "%~2"=="--no-attach" set "ATTACH_AFTER=0"
 echo.
 echo   +============================================================+
 echo   ^|  [SHOGUN] multi-agent-shognate - Runtime Launcher         ^|
-echo   ^|      Starts Shogunate in Ubuntu/WSL and opens goza-no-ma   ^|
+echo   ^|      Starts Shogunate in Ubuntu/WSL and opens shogunate    ^|
 echo   +============================================================+
 echo.
 

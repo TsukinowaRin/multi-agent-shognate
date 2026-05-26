@@ -140,7 +140,7 @@ setup_file() {
 }
 
 @test "tmux 起動は必要時に attach 後まで CLI launch を待機できる" {
-    run bats_search 'wait_for_goza_client_before_cli_launch|wait_for_bootstrap_ready_tmux|MAS_WAIT_FOR_BOOTSTRAP_READY_BEFORE_GOZA|MAS_BOOTSTRAP_READY_TIMEOUT|MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI|MAS_GOZA_STARTUP_WINDOW|MAS_GOZA_STARTUP_LOG|MAS_GOZA_FINISH_TARGET|MAS_LAUNCHER_RUN_ID|@mas_launcher_run_id|create_goza_startup_window|create_goza_command_window|finish_goza_startup_window|tail -n \+1 -F|tmux list-clients -t "\$GOZA_SESSION_NAME"|御座の間 attach 検出|初動命令処理完了' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/Shogunate-Runtime.sh" "$PROJECT_ROOT/Shutsujin.sh"
+    run bats_search 'wait_for_goza_client_before_cli_launch|wait_for_bootstrap_ready_tmux|MAS_WAIT_FOR_BOOTSTRAP_READY_BEFORE_GOZA|MAS_BOOTSTRAP_READY_TIMEOUT|MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI|MAS_GOZA_STARTUP_WINDOW|MAS_GOZA_STARTUP_LOG|MAS_GOZA_FINISH_TARGET|MAS_LAUNCHER_RUN_ID|@mas_launcher_run_id|create_goza_startup_window|create_goza_command_window|finish_goza_startup_window|tail -n \+1 -F|sed -u -E|tmux list-clients -t "\$GOZA_SESSION_NAME"|御座の間 attach 検出|初動命令処理完了' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/Shogunate-Runtime.sh" "$PROJECT_ROOT/Shutsujin.sh"
     [ "$status" -eq 0 ]
 
     run grep -F "エージェントCLIを裏の overview" "$PROJECT_ROOT/shutsujin_departure.sh"
@@ -152,6 +152,8 @@ setup_file() {
         grep -q "_karo_launch_lines" "$1" &&
         grep -q "_ashigaru_launch_lines" "$1" &&
         grep -q "Karo.*BASH_REMATCH" "$1" &&
+        grep -q "家老CLI起動明細" "$1" &&
+        grep -q "足軽CLI起動明細" "$1" &&
         grep -q "家老（.*_karo_launched.*名）、召喚完了" "$1" &&
         grep -q "足軽（設定どおり: .*_ashigaru_launched.*名）、配置完了" "$1"
     ' _ "$PROJECT_ROOT/shutsujin_departure.sh"

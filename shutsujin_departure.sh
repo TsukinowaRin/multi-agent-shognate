@@ -529,7 +529,7 @@ create_goza_startup_window() {
     local startup_log="${MAS_GOZA_STARTUP_LOG:-queue/runtime/shogunate_runtime_launcher.log}"
 
     goza_startup_window_enabled || return 0
-    printf -v shell_cmd 'cd %q && touch %q; tail -n +1 -F %q' "$SCRIPT_DIR" "$startup_log" "$startup_log"
+    printf -v shell_cmd 'cd %q && touch %q; tail -n +1 -F %q | sed -u -E "s/\x1B\[[0-9;?]*[ -/]*[@-~]//g"' "$SCRIPT_DIR" "$startup_log" "$startup_log"
     tmux new-window -d -t "$GOZA_SESSION_NAME" -n "$GOZA_STARTUP_WINDOW_NAME" "$shell_cmd" >/dev/null 2>&1 || return 0
     tmux select-window -t "$GOZA_SESSION_NAME:$GOZA_STARTUP_WINDOW_NAME" >/dev/null 2>&1 || true
 }
@@ -2613,17 +2613,19 @@ if [ "$SETUP_ONLY" = false ]; then
         elif [[ "$_agent" == "karo" ]]; then
             _agent_display="Karo"
         fi
-        _launch_line="  └─ ${_agent_display}（$(resolve_cli_summary "$_agent" "$_agent_cli_type")）、CLI起動完了"
+        _launch_line="    - ${_agent_display}（$(resolve_cli_summary "$_agent" "$_agent_cli_type")）、CLI起動完了"
         if [ "$_is_karo_agent" = true ]; then
             _karo_launch_lines+=("$_launch_line")
         else
             _ashigaru_launch_lines+=("$_launch_line")
         fi
     done
+    log_info "  └─ 家老CLI起動明細:"
     for _launch_line in "${_karo_launch_lines[@]}"; do
         log_info "$_launch_line"
     done
     log_info "  └─ 家老（${_karo_launched}名）、召喚完了"
+    log_info "  └─ 足軽CLI起動明細:"
     for _launch_line in "${_ashigaru_launch_lines[@]}"; do
         log_info "$_launch_line"
     done

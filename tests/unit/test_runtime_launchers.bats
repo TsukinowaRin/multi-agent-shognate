@@ -43,6 +43,9 @@ setup() {
   run grep -F "MAS_GOZA_STARTUP_LOG" "$PROJECT_ROOT/Shutsujin.sh"
   [ "$status" -eq 0 ]
 
+  run grep -F "MAS_GOZA_FINISH_TARGET=command" "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
+
   run grep -F "tmux attach-session -t goza-no-ma" "$PROJECT_ROOT/Shutsujin.sh"
   [ "$status" -eq 0 ]
 
@@ -80,10 +83,10 @@ setup() {
   run grep -F "bash ./Shutsujin.sh" "$PROJECT_ROOT/Shutsujin.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "opens Goza before agent CLIs launch" "$PROJECT_ROOT/Shutsujin.bat"
+  run grep -F "opens a command shell after startup" "$PROJECT_ROOT/Shutsujin.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "Use --no-attach for the old manual shell workflow" "$PROJECT_ROOT/Shutsujin.bat"
+  run grep -F "Type cgo, CMA, csa, css, csk" "$PROJECT_ROOT/Shutsujin.bat"
   [ "$status" -eq 0 ]
 
   run grep -F "[1/3]" "$PROJECT_ROOT/Shutsujin.bat"

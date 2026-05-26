@@ -9,7 +9,7 @@ if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 echo.
 echo   +============================================================+
 echo   ^|  [SHOGUN] multi-agent-shognate - Shutsujin Launcher       ^|
-echo   ^|      Opens Goza first; agent CLIs launch after attach      ^|
+echo   ^|      Starts agents, then opens cgo/CMA command shell       ^|
 echo   +============================================================+
 echo.
 
@@ -39,7 +39,8 @@ if not defined REPO_WSL (
     exit /b 1
 )
 
-echo        This launcher opens Goza before agent CLIs launch.
+echo        This launcher opens a command shell after startup.
+echo        Type cgo, CMA, csa, css, csk, etc. to choose a view.
 echo        Use --no-attach for the old manual shell workflow.
 echo.
 wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && bash ./Shutsujin.sh %*"

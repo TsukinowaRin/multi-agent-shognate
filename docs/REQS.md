@@ -124,3 +124,19 @@
 2. `Shutsujin-Resume.bat` は `Shutsujin.bat` をそのまま呼ぶ。
 3. どちらも `Shogunate-Runtime.bat` / `Shogunate-Runtime.sh` を経由しない。
 4. 起動中の `startup` window は、呼び出し元 launcher が書いている最新ログを表示する。
+
+## 追補（2026-05-26: 初動完了後に Shutsujin command shell へ戻る）
+
+### 要求
+
+1. Codex TUI の表示安定化のため、CLI 起動自体は tmux attach 後に行う。
+2. `Shutsujin.bat` は `Runtime.bat` と違い、起動完了後に `cgo` / `CMA` / `csa` などを入力して view を選べる状態にする。
+3. 起動直後に agent pane の初動命令処理画面へ移動しない。
+
+### 受け入れ条件（観測可能）
+
+1. 初動命令は、指示適用後に `ready:<agent>` を出す内容にする。
+2. `shutsujin_departure.sh` は `ready:<agent>` を待ってから `finish_goza_startup_window` を実行する。
+3. ready 待機は `MAS_BOOTSTRAP_READY_TIMEOUT` でタイムアウトし、詰まった場合も起動を継続する。
+4. `Shutsujin.bat` 経由では、起動完了後に `overview` ではなく `cgo` / `CMA` / `csa` 等を入力できる command shell へ移動する。
+5. `Shogunate-Runtime.bat` 経由では、従来どおり起動完了後に Goza overview へ移動する。

@@ -241,8 +241,8 @@ codex_bootstrap_delivery_prompt_tmux() {
     local agent_id="$1"
     local bootstrap_file="$2"
 
-    printf "【初動命令】あなたは%s。まず 'ready:%s' を1行で即時送信し、次に %s を読み、その内容を Codex 用の正本指示として即適用せよ。比較・diff・読み比べは不要。以後はイベント駆動規則に従え。" \
-        "$agent_id" "$agent_id" "$bootstrap_file"
+    printf "【初動命令】あなたは%s。%s を読み、その内容を Codex 用の正本指示として即適用せよ。比較・diff・読み比べは不要。適用完了後に 'ready:%s' を1行で送信し、以後はイベント駆動規則に従え。" \
+        "$agent_id" "$bootstrap_file" "$agent_id"
 }
 
 codex_bootstrap_activity_visible_tmux() {
@@ -534,13 +534,41 @@ create_goza_startup_window() {
     tmux select-window -t "$GOZA_SESSION_NAME:$GOZA_STARTUP_WINDOW_NAME" >/dev/null 2>&1 || true
 }
 
+create_goza_command_window() {
+    local window_name="${MAS_GOZA_COMMAND_WINDOW_NAME:-departure}"
+    local rcfile="$SCRIPT_DIR/queue/runtime/goza_command_shell.bashrc"
+    local shell_cmd=""
+
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    {
+        printf '[[ -f ~/.bashrc ]] && source ~/.bashrc\n'
+        printf 'source %q/scripts/shell_aliases.sh\n' "$SCRIPT_DIR"
+        printf 'cd %q\n' "$SCRIPT_DIR"
+        printf 'echo "[Shogunate] Ready. Type cgo/CGO for Goza, CMA/cma for Multiagent, csa/CSA for Ashigaru."\n'
+    } > "$rcfile"
+
+    printf -v shell_cmd 'exec bash --rcfile %q -i' "$rcfile"
+    if tmux list-windows -t "$GOZA_SESSION_NAME" -F '#{window_name}' 2>/dev/null | grep -Fxq "$window_name"; then
+        tmux respawn-window -k -t "$GOZA_SESSION_NAME:$window_name" "$shell_cmd" >/dev/null 2>&1 || true
+    else
+        tmux new-window -d -t "$GOZA_SESSION_NAME" -n "$window_name" "$shell_cmd" >/dev/null 2>&1 || true
+    fi
+    printf '%s:%s' "$GOZA_SESSION_NAME" "$window_name"
+}
+
 finish_goza_startup_window() {
     local client=""
+    local target="$GOZA_SESSION_NAME:$GOZA_WINDOW_NAME"
 
     goza_startup_window_enabled || return 0
+    case "$(printf '%s' "${MAS_GOZA_FINISH_TARGET:-overview}" | tr '[:upper:]' '[:lower:]')" in
+        command|shell|aliases|alias)
+            target="$(create_goza_command_window)"
+            ;;
+    esac
     while IFS= read -r client; do
         [ -n "$client" ] || continue
-        tmux switch-client -c "$client" -t "$GOZA_SESSION_NAME:$GOZA_WINDOW_NAME" >/dev/null 2>&1 || true
+        tmux switch-client -c "$client" -t "$target" >/dev/null 2>&1 || true
     done < <(tmux list-clients -t "$GOZA_SESSION_NAME" -F '#{client_name}' 2>/dev/null || true)
     tmux kill-window -t "$GOZA_SESSION_NAME:$GOZA_STARTUP_WINDOW_NAME" >/dev/null 2>&1 || true
 }
@@ -987,9 +1015,9 @@ generate_bootstrap_file() {
 
     local startup_msg
     if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
-        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md を読み、続けて ${optimized_instruction_file} を読み、その内容を ${cli_type} 用の正本指示として即適用せよ。${role_instruction_file} との比較・diff・読み比べは不要。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。AGENTS.md を読み、続けて ${optimized_instruction_file} を読み、その内容を ${cli_type} 用の正本指示として即適用せよ。${role_instruction_file} との比較・diff・読み比べは不要。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、未読inbox監視へ戻れ。"
     else
-        startup_msg="【初動命令】あなたは${agent_id}。まず 'ready:${agent_id}' を1行で即時送信し、次に AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、未読inbox監視へ戻れ。"
     fi
 
     mkdir -p "$bootstrap_dir"
@@ -1206,6 +1234,69 @@ deliver_bootstrap_tmux() {
     : > "$delivered_file"
     clear_runtime_blocker_tmux "$agent_id" "codex-auth-required" "Codex auth prompt cleared before bootstrap delivery."
     append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-delivered" "send-keys literal + enter"
+}
+
+wait_for_bootstrap_ready_tmux() {
+    local timeout="${MAS_BOOTSTRAP_READY_TIMEOUT:-180}"
+    local waited=0
+    local total=0
+    local ready=0
+    local agent=""
+    local pane_target=""
+    local pending_file=""
+    local delivered_file=""
+
+    [ "${MAS_WAIT_FOR_BOOTSTRAP_READY_BEFORE_GOZA:-1}" = "1" ] || return 0
+    [ "$SETUP_ONLY" = false ] || return 0
+
+    local -a wait_agents=(shogun gunshi "${MULTIAGENT_IDS[@]}")
+    for agent in "${wait_agents[@]}"; do
+        case "$agent" in
+            shogun) pane_target="${SHOGUN_TARGET:-}" ;;
+            gunshi) pane_target="${GUNSHI_TARGET:-}" ;;
+            *) pane_target="${AGENT_PANES[$agent]:-}" ;;
+        esac
+        [ -n "$pane_target" ] || continue
+        delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.delivered"
+        pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.pending"
+        # 未配信のものは auth / readiness 待ちとして watcher に任せ、この待機対象から外す。
+        [ -f "$delivered_file" ] || [ ! -f "$pending_file" ] || continue
+        total=$((total + 1))
+    done
+
+    [ "$total" -gt 0 ] || return 0
+
+    log_info "⏳ 初動命令の処理完了を待機中（ready:agent ${total}件）..."
+    while true; do
+        ready=0
+        for agent in "${wait_agents[@]}"; do
+            case "$agent" in
+                shogun) pane_target="${SHOGUN_TARGET:-}" ;;
+                gunshi) pane_target="${GUNSHI_TARGET:-}" ;;
+                *) pane_target="${AGENT_PANES[$agent]:-}" ;;
+            esac
+            [ -n "$pane_target" ] || continue
+            delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.delivered"
+            pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.pending"
+            [ -f "$delivered_file" ] || [ ! -f "$pending_file" ] || continue
+            if bootstrap_acknowledged_tmux "$pane_target" "$agent"; then
+                ready=$((ready + 1))
+            fi
+        done
+
+        if [ "$ready" -ge "$total" ]; then
+            log_success "  └─ 初動命令処理完了（${ready}/${total} ready）"
+            return 0
+        fi
+
+        if [[ "$timeout" =~ ^[0-9]+$ ]] && [ "$timeout" -gt 0 ] && [ "$waited" -ge "$timeout" ]; then
+            log_info "⚠️  初動命令 ready 待機はタイムアウト（${ready}/${total} ready）。御座の間へ移動します"
+            return 0
+        fi
+
+        sleep 1
+        waited=$((waited + 1))
+    done
 }
 
 should_embed_startup_prompt_in_cli_command() {
@@ -2727,6 +2818,7 @@ NINJA_EOF
         log_info "⚠️  一部エージェントは bootstrap 未配信のまま継続（詳細: queue/runtime/goza_bootstrap_*.log）"
     fi
     log_info "📜 初動命令の配信完了"
+    wait_for_bootstrap_ready_tmux
 
     # ═══════════════════════════════════════════════════════════════════
     # STEP 6.6: inbox_watcher / bridge 起動（全エージェント）

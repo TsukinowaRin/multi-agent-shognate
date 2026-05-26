@@ -142,6 +142,9 @@ setup_file() {
 @test "tmux 起動は必要時に attach 後まで CLI launch を待機できる" {
     run bats_search 'wait_for_goza_client_before_cli_launch|MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI|MAS_GOZA_STARTUP_WINDOW|MAS_GOZA_STARTUP_LOG|MAS_LAUNCHER_RUN_ID|@mas_launcher_run_id|create_goza_startup_window|finish_goza_startup_window|tail -n \+1 -F|tmux list-clients -t "\$GOZA_SESSION_NAME"|御座の間 attach 検出' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/Shogunate-Runtime.sh"
     [ "$status" -eq 0 ]
+
+    run grep -F "エージェントCLIを裏の overview" "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -ne 0 ]
 }
 
 @test "tmux 起動ログは家老集計を家老明細の直後に出し、足軽配置を最後に出す" {

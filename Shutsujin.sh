@@ -1,26 +1,36 @@
 #!/usr/bin/env bash
-# Start Shogunate with shutsujin_departure.sh, then leave an alias-ready shell.
+# Start Shogunate with shutsujin_departure.sh and attach before CLI launch.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+ATTACH_AFTER=1
 OPEN_SHELL=1
 SHUTSUJIN_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --no-shell|--no-attach)
+    --no-attach)
+      ATTACH_AFTER=0
+      shift
+      ;;
+    --no-shell)
+      ATTACH_AFTER=0
       OPEN_SHELL=0
       shift
       ;;
     -h|--help)
       cat <<'EOF'
-Usage: ./Shutsujin.sh [--no-shell|--no-attach] [shutsujin_departure.sh args...]
+Usage: ./Shutsujin.sh [--no-attach] [--no-shell] [shutsujin_departure.sh args...]
 
-Starts Shogunate with shutsujin_departure.sh without auto-attaching to Goza.
-After startup, it opens an interactive shell with view aliases loaded:
+Starts Shogunate with shutsujin_departure.sh and attaches to Goza before
+agent CLIs launch. This lets terminal UIs such as Codex initialize after the
+real tmux client is visible.
+
+Use --no-attach when you want the old manual shell workflow. After startup,
+that shell has view aliases loaded. Add --no-shell to skip that shell:
 
   cgo / CGO  Goza View
   csa / CSA  Ashigaru View
@@ -31,7 +41,6 @@ After startup, it opens an interactive shell with view aliases loaded:
   csk / CSK  Karo pane
   ckr / CKR  Karo pane
 
-Use Shogunate-Runtime.sh when you want one-click auto Goza attach.
 EOF
       exit 0
       ;;
@@ -45,7 +54,7 @@ done
 echo ""
 echo "  +============================================================+"
 echo "  |  [SHOGUN] multi-agent-shognate - Shutsujin Launcher        |"
-echo "  |      Starts shutsujin; choose views manually with cgo/csa   |"
+echo "  |      Opens Goza first; agent CLIs launch after attach       |"
 echo "  +============================================================+"
 echo ""
 
@@ -60,7 +69,48 @@ if ! command -v tmux >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "  [INFO] Starting: bash shutsujin_departure.sh ${SHUTSUJIN_ARGS[*]}"
+if [[ "$ATTACH_AFTER" -eq 1 ]]; then
+  mkdir -p queue/runtime
+  STARTUP_LOG="queue/runtime/shogunate_shutsujin_launcher.log"
+  : > "$STARTUP_LOG"
+
+  echo "  [INFO] Starting Shutsujin in background."
+  echo "  [INFO] CLI panes will launch after goza-no-ma is attached."
+  echo "  [INFO] Startup log: $STARTUP_LOG"
+  RUN_ID="shutsujin-$(date +%s)-$$"
+  MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+  RUNTIME_PID=$!
+
+  for _ in $(seq 1 120); do
+    if [[ "$(tmux show-options -t goza-no-ma -v @mas_launcher_run_id 2>/dev/null || true)" == "$RUN_ID" ]]; then
+      break
+    fi
+    if ! kill -0 "$RUNTIME_PID" 2>/dev/null; then
+      echo ""
+      echo "  [ERROR] Shutsujin exited before goza-no-ma was created."
+      echo "  ----- $STARTUP_LOG -----"
+      tail -120 "$STARTUP_LOG" 2>/dev/null || true
+      exit 1
+    fi
+    sleep 1
+  done
+
+  if [[ "$(tmux show-options -t goza-no-ma -v @mas_launcher_run_id 2>/dev/null || true)" != "$RUN_ID" ]]; then
+    echo ""
+    echo "  [ERROR] Timed out waiting for goza-no-ma."
+    echo "  ----- $STARTUP_LOG -----"
+    tail -120 "$STARTUP_LOG" 2>/dev/null || true
+    exit 1
+  fi
+
+  echo ""
+  echo "  [INFO] Attaching to goza-no-ma. CLI launch continues inside tmux."
+  echo "  [INFO] Detach from tmux with Ctrl+B, then D."
+  disown "$RUNTIME_PID" 2>/dev/null || true
+  exec tmux attach-session -t goza-no-ma
+fi
+
+echo "  [INFO] Starting without auto attach: bash shutsujin_departure.sh ${SHUTSUJIN_ARGS[*]}"
 bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}"
 
 echo ""

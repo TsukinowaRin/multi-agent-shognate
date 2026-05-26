@@ -93,3 +93,19 @@
 4. `css` / `CSS` は将軍、`csm` / `CSM` は multiagent、`csk` / `CSK` または `ckr` / `CKR` は家老に attach / switch する。
 5. `Shutsujin.bat` に `[1/3]` / `[2/3]` / `[3/3]` の進行表示が残っていない。
 6. `cmd.exe /c Shutsujin.bat --no-attach` または shell syntax check 相当で launcher の基本動作が確認できる。
+
+## 追補（2026-05-26: Shutsujin.bat の Codex TUI 表示安定化）
+
+### 要求
+
+1. `Shutsujin.bat` で起動した Codex の入力欄が黒くなる問題を避ける。
+2. `Shutsujin.bat` は Goza に attach してから agent CLI を起動する。
+3. 数字メニューは復活させない。
+4. 旧来の alias shell workflow は `--no-attach` で残す。
+
+### 受け入れ条件（観測可能）
+
+1. `Shutsujin.sh` は `MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1` と `MAS_LAUNCHER_RUN_ID` を使い、`goza-no-ma` 作成後に `tmux attach-session -t goza-no-ma` する。
+2. `Shutsujin.bat` は `Shogunate-Runtime.sh` ではなく `Shutsujin.sh` を呼び続ける。
+3. `Shutsujin.bat` に数字選択メニューが残っていない。
+4. `Shutsujin.sh --no-attach` は起動後に `scripts/shell_aliases.sh` を読む manual fallback を維持する。

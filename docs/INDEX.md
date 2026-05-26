@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-05-25
+最終更新: 2026-05-26
 
 ## Must-read
 
@@ -12,4 +12,4 @@
 
 - この branch は `upstream/main` を土台にして Shogunate 機能を再移植する作業用。
 - 既存 Shogunate 実装の参照元は `codex/upstream-v4.6.0-sync`。
-- `Shutsujin.bat` は手動 view 選択用、`Shogunate-Runtime.bat` は自動 Goza attach 用。alias は本家系 `csst` / `css` / `csm` と Shogunate 系 `cgo` / `csa` / `csg` / `csk` / `ckr` / `cma` を併用する。
+- `Shutsujin.bat` は Codex TUI の表示安定化のため Goza attach 後に CLI を起動する。旧手動 shell workflow は `Shutsujin.bat --no-attach` で使う。alias は本家系 `csst` / `css` / `csm` と Shogunate 系 `cgo` / `csa` / `csg` / `csk` / `ckr` / `cma` を併用する。

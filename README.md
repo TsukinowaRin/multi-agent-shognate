@@ -426,7 +426,7 @@ Then restart your computer if Windows asks, open Ubuntu, and run `first_setup.sh
 |--------|---------|-------------|
 | `first_setup.sh` | Install tmux, Node.js, Claude Code CLI + Memory MCP config | First time only |
 | `Shutsujin.sh` / `Shutsujin.bat` | Start `shutsujin_departure.sh`, attach to Goza before agent CLI launch, and keep `--no-attach` as the alias-ready manual shell fallback (`cgo`, `csa`, `css`, `csm`, etc.) | Daily Goza-first workflow |
-| `Shutsujin-Clean.bat` / `Shutsujin-Resume.bat` | Windows-only debug wrappers that call `Shutsujin.bat -c` or `Shutsujin.bat` explicitly | Local debugging |
+| `Shutsujin-Clean.bat` / `Shutsujin-Resume.bat` | Windows-only debug wrappers that call `Shutsujin.bat --clean` or `Shutsujin.bat` explicitly | Local debugging |
 | `Shogunate-Runtime.sh` / `Shogunate-Runtime.bat` | Start Shogunate and automatically attach to Goza View | Daily one-click Goza workflow |
 | `shutsujin_departure.sh` | Create tmux sessions + launch the configured CLI for each agent + load instructions + start ntfy listener | Daily |
 | `scripts/switch_cli.sh` | Live switch agent CLI/model (settings.yaml → /exit → relaunch) | As needed |

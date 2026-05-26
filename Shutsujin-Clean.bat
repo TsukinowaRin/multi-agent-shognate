@@ -8,6 +8,7 @@ if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
 echo.
 echo   [SHOGUN] Shutsujin clean start debug launcher
+echo            mode: clean start (--clean)
 echo.
-call "%SCRIPT_DIR%\Shutsujin.bat" -c %*
+call "%SCRIPT_DIR%\Shutsujin.bat" --clean %*
 exit /b %ERRORLEVEL%

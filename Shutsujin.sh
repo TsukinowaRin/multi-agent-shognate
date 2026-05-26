@@ -23,11 +23,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       cat <<'EOF'
-Usage: ./Shutsujin.sh [--no-attach] [--no-shell] [shutsujin_departure.sh args...]
+Usage: ./Shutsujin.sh [--clean|--resume] [--no-attach] [--no-shell] [shutsujin_departure.sh args...]
 
 Starts Shogunate with shutsujin_departure.sh and attaches to Goza before
 agent CLIs launch. This lets terminal UIs such as Codex initialize after the
 real tmux client is visible.
+
+Pass --clean to recreate tmux sessions and reset runtime queues. Without
+--clean, Shutsujin resumes or recreates according to shutsujin_departure.sh.
 
 Use --no-attach when you want the old manual shell workflow. After startup,
 that shell has view aliases loaded. Add --no-shell to skip that shell:
@@ -78,7 +81,7 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
   echo "  [INFO] CLI panes will launch after goza-no-ma is attached."
   echo "  [INFO] Startup log: $STARTUP_LOG"
   RUN_ID="shutsujin-$(date +%s)-$$"
-  MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+  MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   RUNTIME_PID=$!
 
   for _ in $(seq 1 120); do

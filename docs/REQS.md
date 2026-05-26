@@ -120,6 +120,7 @@
 
 ### 受け入れ条件（観測可能）
 
-1. `Shutsujin-Clean.bat` は `Shutsujin.bat -c` を呼ぶ。
+1. `Shutsujin-Clean.bat` は `Shutsujin.bat --clean` を呼ぶ。
 2. `Shutsujin-Resume.bat` は `Shutsujin.bat` をそのまま呼ぶ。
 3. どちらも `Shogunate-Runtime.bat` / `Shogunate-Runtime.sh` を経由しない。
+4. 起動中の `startup` window は、呼び出し元 launcher が書いている最新ログを表示する。

@@ -8,6 +8,7 @@ if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
 echo.
 echo   [SHOGUN] Shutsujin resume debug launcher
+echo            mode: resume existing state
 echo.
 call "%SCRIPT_DIR%\Shutsujin.bat" %*
 exit /b %ERRORLEVEL%

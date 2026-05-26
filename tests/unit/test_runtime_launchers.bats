@@ -23,6 +23,9 @@ setup() {
   run grep -F "MAS_LAUNCHER_RUN_ID" "$PROJECT_ROOT/Shogunate-Runtime.sh"
   [ "$status" -eq 0 ]
 
+  run grep -F "MAS_GOZA_STARTUP_LOG" "$PROJECT_ROOT/Shogunate-Runtime.sh"
+  [ "$status" -eq 0 ]
+
   run grep -F "tmux attach-session -t goza-no-ma" "$PROJECT_ROOT/Shogunate-Runtime.sh"
   [ "$status" -eq 0 ]
 }
@@ -35,6 +38,9 @@ setup() {
   [ "$status" -eq 0 ]
 
   run grep -F "MAS_LAUNCHER_RUN_ID" "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
+
+  run grep -F "MAS_GOZA_STARTUP_LOG" "$PROJECT_ROOT/Shutsujin.sh"
   [ "$status" -eq 0 ]
 
   run grep -F "tmux attach-session -t goza-no-ma" "$PROJECT_ROOT/Shutsujin.sh"
@@ -100,7 +106,7 @@ setup() {
   run test -f "$PROJECT_ROOT/Shutsujin-Resume.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F 'call "%SCRIPT_DIR%\Shutsujin.bat" -c %*' "$PROJECT_ROOT/Shutsujin-Clean.bat"
+  run grep -F 'call "%SCRIPT_DIR%\Shutsujin.bat" --clean %*' "$PROJECT_ROOT/Shutsujin-Clean.bat"
   [ "$status" -eq 0 ]
 
   run grep -F 'call "%SCRIPT_DIR%\Shutsujin.bat" %*' "$PROJECT_ROOT/Shutsujin-Resume.bat"

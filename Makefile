@@ -1,4 +1,4 @@
-.PHONY: test build lint check help install-deps clean
+.PHONY: test build lint check help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
 
 # Default target
 help:
@@ -10,6 +10,8 @@ help:
 	@echo "  make build         - Run build_instructions.sh"
 	@echo "  make lint          - Run shellcheck on lib/ and scripts/"
 	@echo "  make check         - Run build + diff check (CI equivalent)"
+	@echo "  make codd          - Run CoDD validate"
+	@echo "  make codd-gunkan   - Run Gunkan CoDD audit wrapper"
 	@echo "  make install-deps  - Install test dependencies (bats, helpers)"
 	@echo "  make clean         - Clean test artifacts"
 	@echo ""
@@ -89,6 +91,21 @@ check: build
 		echo "WARNING: build_instructions.sh, instructions/generated, or .opencode/agents not found"; \
 		echo "Skipping diff check (Phase 2 feature)"; \
 	fi
+
+codd:
+	bash scripts/codd_check.sh validate
+
+codd-install:
+	bash scripts/codd_check.sh install
+
+codd-scan:
+	bash scripts/codd_check.sh scan
+
+codd-validate:
+	bash scripts/codd_check.sh validate
+
+codd-gunkan:
+	bash scripts/codd_check.sh gunkan
 
 # Install test dependencies
 install-deps:

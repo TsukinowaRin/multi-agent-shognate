@@ -1011,7 +1011,7 @@ SH
         make_fake_cli "$cli"
     done
 
-    local roles=(shogun gunshi karo karo2 ashigaru1 ashigaru9)
+    local roles=(shogun gunkan gunshi karo karo2 ashigaru1 ashigaru9)
     local clis=(claude codex copilot kimi antigravity opencode kilo localapi)
     local role
     local cli
@@ -1041,7 +1041,7 @@ SH
     make_fake_cli opencode
     make_fake_cli kilo
 
-    local roles=(shogun gunshi karo karo2 ashigaru1 ashigaru9)
+    local roles=(shogun gunkan gunshi karo karo2 ashigaru1 ashigaru9)
     local role
     local result
 
@@ -1221,6 +1221,12 @@ SH
     [ "$result" = "instructions/generated/kilo-gunshi.md" ]
 }
 
+@test "get_instruction_file: gunkan + codex → instructions/generated/codex-gunkan.md" {
+    load_adapter_with "${TEST_TMP}/settings_none.yaml"
+    result=$(get_instruction_file "gunkan" "codex")
+    [ "$result" = "instructions/generated/codex-gunkan.md" ]
+}
+
 @test "get_instruction_file: cli_type引数で明示指定 (codex)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_instruction_file "shogun" "codex")
@@ -1237,34 +1243,42 @@ SH
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     # claude
     [ "$(get_instruction_file shogun claude)" = "instructions/generated/shogun.md" ]
+    [ "$(get_instruction_file gunkan claude)" = "instructions/generated/gunkan.md" ]
     [ "$(get_instruction_file karo claude)" = "instructions/generated/karo.md" ]
     [ "$(get_instruction_file ashigaru1 claude)" = "instructions/generated/ashigaru.md" ]
     # codex
     [ "$(get_instruction_file shogun codex)" = "instructions/generated/codex-shogun.md" ]
+    [ "$(get_instruction_file gunkan codex)" = "instructions/generated/codex-gunkan.md" ]
     [ "$(get_instruction_file karo codex)" = "instructions/generated/codex-karo.md" ]
     [ "$(get_instruction_file ashigaru3 codex)" = "instructions/generated/codex-ashigaru.md" ]
     # copilot
     [ "$(get_instruction_file shogun copilot)" = "instructions/generated/copilot-shogun.md" ]
+    [ "$(get_instruction_file gunkan copilot)" = "instructions/generated/copilot-gunkan.md" ]
     [ "$(get_instruction_file karo copilot)" = "instructions/generated/copilot-karo.md" ]
     [ "$(get_instruction_file ashigaru5 copilot)" = "instructions/generated/copilot-ashigaru.md" ]
     # kimi
     [ "$(get_instruction_file shogun kimi)" = "instructions/generated/kimi-shogun.md" ]
+    [ "$(get_instruction_file gunkan kimi)" = "instructions/generated/kimi-gunkan.md" ]
     [ "$(get_instruction_file karo kimi)" = "instructions/generated/kimi-karo.md" ]
     [ "$(get_instruction_file ashigaru7 kimi)" = "instructions/generated/kimi-ashigaru.md" ]
     # antigravity
     [ "$(get_instruction_file shogun antigravity)" = "instructions/generated/antigravity-shogun.md" ]
+    [ "$(get_instruction_file gunkan antigravity)" = "instructions/generated/antigravity-gunkan.md" ]
     [ "$(get_instruction_file karo antigravity)" = "instructions/generated/antigravity-karo.md" ]
     [ "$(get_instruction_file ashigaru2 antigravity)" = "instructions/generated/antigravity-ashigaru.md" ]
     # localapi
     [ "$(get_instruction_file shogun localapi)" = "instructions/generated/localapi-shogun.md" ]
+    [ "$(get_instruction_file gunkan localapi)" = "instructions/generated/localapi-gunkan.md" ]
     [ "$(get_instruction_file karo localapi)" = "instructions/generated/localapi-karo.md" ]
     [ "$(get_instruction_file ashigaru6 localapi)" = "instructions/generated/localapi-ashigaru.md" ]
     # opencode
     [ "$(get_instruction_file shogun opencode)" = "instructions/generated/opencode-shogun.md" ]
+    [ "$(get_instruction_file gunkan opencode)" = "instructions/generated/opencode-gunkan.md" ]
     [ "$(get_instruction_file karo opencode)" = "instructions/generated/opencode-karo.md" ]
     [ "$(get_instruction_file ashigaru1 opencode)" = "instructions/generated/opencode-ashigaru.md" ]
     # kilo
     [ "$(get_instruction_file shogun kilo)" = "instructions/generated/kilo-shogun.md" ]
+    [ "$(get_instruction_file gunkan kilo)" = "instructions/generated/kilo-gunkan.md" ]
     [ "$(get_instruction_file gunshi kilo)" = "instructions/generated/kilo-gunshi.md" ]
     [ "$(get_instruction_file ashigaru1 kilo)" = "instructions/generated/kilo-ashigaru.md" ]
 }

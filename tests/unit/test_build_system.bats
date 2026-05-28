@@ -57,10 +57,12 @@ setup() {
 
 @test "build: OpenCode agent definitions are generated" {
     [ -f "$PROJECT_ROOT/.opencode/agents/shogun.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/gunkan.md" ]
     [ -f "$PROJECT_ROOT/.opencode/agents/karo.md" ]
     [ -f "$PROJECT_ROOT/.opencode/agents/karo2.md" ]
     [ -f "$PROJECT_ROOT/.opencode/agents/ashigaru8.md" ]
     grep -q "mode: primary" "$PROJECT_ROOT/.opencode/agents/shogun.md"
+    grep -q "Canonical agent_id: \`gunkan\`" "$PROJECT_ROOT/.opencode/agents/gunkan.md"
     grep -q "Canonical agent_id: \`ashigaru8\`" "$PROJECT_ROOT/.opencode/agents/ashigaru8.md"
 }
 
@@ -80,6 +82,10 @@ setup() {
     [ -f "$OUTPUT_DIR/ashigaru.md" ]
 }
 
+@test "claude: gunkan.md generated" {
+    [ -f "$OUTPUT_DIR/gunkan.md" ]
+}
+
 # =============================================================================
 # ファイル生成テスト — Codex
 # =============================================================================
@@ -94,6 +100,10 @@ setup() {
 
 @test "codex: codex-ashigaru.md generated" {
     [ -f "$OUTPUT_DIR/codex-ashigaru.md" ]
+}
+
+@test "codex: codex-gunkan.md generated" {
+    [ -f "$OUTPUT_DIR/codex-gunkan.md" ]
 }
 
 # =============================================================================
@@ -205,6 +215,14 @@ setup() {
 
 @test "content: codex-ashigaru.md contains ashigaru role reference" {
     grep -qi "ashigaru\|足軽" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-gunkan.md defines independent event-driven audit role" {
+    grep -q "Gunkan (軍監) Role Definition" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "将軍直属の独立監査役" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "queue/reports/gunkan_report.yaml" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "常時ポーリングや周期監視でトークンを使う" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "Event-Driven Activation" "$OUTPUT_DIR/codex-gunkan.md"
 }
 
 @test "content: codex-ashigaru.md handles task_assigned by reading queue/tasks first" {

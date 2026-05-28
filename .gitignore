@@ -31,6 +31,7 @@
 !instructions/karo.md
 !instructions/ashigaru.md
 !instructions/gunshi.md
+!instructions/gunkan.md
 
 # Multi-CLI: CLI-specific tool descriptions
 !instructions/cli_specific/
@@ -149,6 +150,11 @@
 !memory/MEMORY.md.sample
 !scripts/karo_done_to_shogun_bridge.py
 !scripts/karo_done_to_shogun_bridge_daemon.sh
+!scripts/gunkan_event_log.py
+!scripts/gunkan_codd_audit.py
+!scripts/gunkan_light_watch.py
+!scripts/gunkan_emergency_stop.sh
+!scripts/codd_check.sh
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh
 !scripts/seo_qc.sh
@@ -166,6 +172,8 @@
 # Runtime validation sandboxes are disposable local artifacts.
 runtime_sandboxes/**
 .codd/
+!.codd/
+!.codd/codd.yaml
 .shogunate/codd-venv/
 queue/runtime/codd/
 

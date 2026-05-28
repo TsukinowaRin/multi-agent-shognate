@@ -119,48 +119,56 @@ build_instruction_file "claude" "shogun" "shogun.md"
 build_instruction_file "claude" "karo" "karo.md"
 build_instruction_file "claude" "ashigaru" "ashigaru.md"
 build_instruction_file "claude" "gunshi" "gunshi.md"
+build_instruction_file "claude" "gunkan" "gunkan.md"
 
 # Build Codex instruction files
 build_instruction_file "codex" "shogun" "codex-shogun.md"
 build_instruction_file "codex" "karo" "codex-karo.md"
 build_instruction_file "codex" "ashigaru" "codex-ashigaru.md"
 build_instruction_file "codex" "gunshi" "codex-gunshi.md"
+build_instruction_file "codex" "gunkan" "codex-gunkan.md"
 
 # Build Copilot instruction files
 build_instruction_file "copilot" "shogun" "copilot-shogun.md"
 build_instruction_file "copilot" "karo" "copilot-karo.md"
 build_instruction_file "copilot" "ashigaru" "copilot-ashigaru.md"
 build_instruction_file "copilot" "gunshi" "copilot-gunshi.md"
+build_instruction_file "copilot" "gunkan" "copilot-gunkan.md"
 
 # Build Kimi K2 instruction files
 build_instruction_file "kimi" "shogun" "kimi-shogun.md"
 build_instruction_file "kimi" "karo" "kimi-karo.md"
 build_instruction_file "kimi" "ashigaru" "kimi-ashigaru.md"
 build_instruction_file "kimi" "gunshi" "kimi-gunshi.md"
+build_instruction_file "kimi" "gunkan" "kimi-gunkan.md"
 
 # Build Antigravity instruction files
 build_instruction_file "antigravity" "shogun" "antigravity-shogun.md"
 build_instruction_file "antigravity" "karo" "antigravity-karo.md"
 build_instruction_file "antigravity" "ashigaru" "antigravity-ashigaru.md"
 build_instruction_file "antigravity" "gunshi" "antigravity-gunshi.md"
+build_instruction_file "antigravity" "gunkan" "antigravity-gunkan.md"
 
 # Build Local API instruction files
 build_instruction_file "localapi" "shogun" "localapi-shogun.md"
 build_instruction_file "localapi" "karo" "localapi-karo.md"
 build_instruction_file "localapi" "ashigaru" "localapi-ashigaru.md"
 build_instruction_file "localapi" "gunshi" "localapi-gunshi.md"
+build_instruction_file "localapi" "gunkan" "localapi-gunkan.md"
 
 # Build OpenCode instruction files
 build_instruction_file "opencode" "shogun" "opencode-shogun.md"
 build_instruction_file "opencode" "karo" "opencode-karo.md"
 build_instruction_file "opencode" "ashigaru" "opencode-ashigaru.md"
 build_instruction_file "opencode" "gunshi" "opencode-gunshi.md"
+build_instruction_file "opencode" "gunkan" "opencode-gunkan.md"
 
 # Build Kilo instruction files
 build_instruction_file "kilo" "shogun" "kilo-shogun.md"
 build_instruction_file "kilo" "karo" "kilo-karo.md"
 build_instruction_file "kilo" "ashigaru" "kilo-ashigaru.md"
 build_instruction_file "kilo" "gunshi" "kilo-gunshi.md"
+build_instruction_file "kilo" "gunkan" "kilo-gunkan.md"
 
 # ============================================================
 # AGENTS.md generation (Codex auto-load file)
@@ -186,6 +194,7 @@ generate_agents_md() {
         -e 's|instructions/karo\.md|instructions/generated/codex-karo.md|g' \
         -e 's|instructions/ashigaru\.md|instructions/generated/codex-ashigaru.md|g' \
         -e 's|instructions/gunshi\.md|instructions/generated/codex-gunshi.md|g' \
+        -e 's|instructions/gunkan\.md|instructions/generated/codex-gunkan.md|g' \
         -e 's|~/.claude/|~/.codex/|g' \
         -e 's|\.claude\.json|.codex/config.toml|g' \
         -e 's|\.mcp\.json|config.toml (mcp_servers section)|g' \
@@ -232,6 +241,7 @@ generate_copilot_instructions() {
         -e 's|instructions/karo\.md|instructions/generated/copilot-karo.md|g' \
         -e 's|instructions/ashigaru\.md|instructions/generated/copilot-ashigaru.md|g' \
         -e 's|instructions/gunshi\.md|instructions/generated/copilot-gunshi.md|g' \
+        -e 's|instructions/gunkan\.md|instructions/generated/copilot-gunkan.md|g' \
         -e 's|~/.claude/|~/.copilot/|g' \
         -e 's|\.claude\.json|.copilot/config.json|g' \
         -e 's|\.mcp\.json|.copilot/mcp-config.json|g' \
@@ -270,6 +280,7 @@ generate_kimi_instructions() {
         -e 's|instructions/karo\.md|instructions/generated/kimi-karo.md|g' \
         -e 's|instructions/ashigaru\.md|instructions/generated/kimi-ashigaru.md|g' \
         -e 's|instructions/gunshi\.md|instructions/generated/kimi-gunshi.md|g' \
+        -e 's|instructions/gunkan\.md|instructions/generated/kimi-gunkan.md|g' \
         -e 's|~/.claude/|~/.kimi/|g' \
         -e 's|\.claude\.json|.kimi/config.json|g' \
         -e 's|\.mcp\.json|.kimi/mcp.json|g' \
@@ -318,7 +329,7 @@ generate_opencode_agents() {
     # Deterministic tracked output.  Include fork-only multi-karo and ashigaru8
     # surfaces so any role can be switched to OpenCode without a missing --agent.
     local agent_ids
-    agent_ids="shogun karo karo1 karo2 karo3 gunshi ashigaru1 ashigaru2 ashigaru3 ashigaru4 ashigaru5 ashigaru6 ashigaru7 ashigaru8"
+    agent_ids="shogun gunkan karo karo1 karo2 karo3 gunshi ashigaru1 ashigaru2 ashigaru3 ashigaru4 ashigaru5 ashigaru6 ashigaru7 ashigaru8"
 
     for agent_id in $agent_ids; do
         local role=""
@@ -332,6 +343,9 @@ generate_opencode_agents() {
         case "$agent_id" in
             shogun)
                 role_title="Shogun — strategic oversight and command issuance"
+                ;;
+            gunkan)
+                role_title="Gunkan — independent audit and coherence review"
                 ;;
             karo)
                 role_title="Karo — task decomposition, assignment, and coordination"
@@ -359,7 +373,7 @@ def role_for_agent(value: str) -> str:
         return "ashigaru"
     if value.startswith("karo"):
         return "karo"
-    if value in {"shogun", "gunshi"}:
+    if value in {"shogun", "gunshi", "gunkan"}:
         return value
     return ""
 

@@ -158,3 +158,65 @@
 4. 家老は CSS/JS 統合ズレなどの差戻しを受けた場合に active queue へ戻し、修正 task を再割当できる。
 5. `scripts/karo_done_to_shogun_bridge.py` は `completed_at` を完了 identity に含め、同じ command の再完了を将軍へ再通知できる。
 6. `git diff --check` と関連 Bats / shell syntax check が PASS する。
+
+## 追補（2026-05-28: Shogunate 独自役職「軍監」追加）
+
+### 要求
+
+1. Shogunate 独自要素として `gunkan`（軍監）ロールを追加する。
+2. 軍監は将軍直属の独立監査ラインで、家老の配下ではない。ただし実務上は家老と並列に置き、通常の作業指揮は家老に残す。
+3. 軍師は家老配下の参謀・高度QC役とし、軍監とは分離する。
+4. 軍監は作業ログ、queue、reports、dashboard、runtime 状態を横断監査し、`queue/reports/gunkan_report.yaml` と必要な inbox 通知で将軍/家老へ報告する。
+5. 軍監は通常の中間報告取得を担当しない。中間報告は従来どおり `将軍 -> 家老` で取り寄せる。
+6. 軍監LLMは常時ポーリングでトークンを消費しない。通常メッセージは非LLMの軽量イベントログへ記録し、軍監LLMは `audit_requested` / `audit_failed` / `runtime_blocked` / `emergency_stop_requested` などの監査イベントでのみ起動する event-driven 監査役とする。
+7. ただし、不正・破壊操作・報告矛盾のリアルタイム検知のため、非LLMの軽量軍監 watcher を常駐させる。軽量 watcher は queue / reports / dashboard / git diff / CoDD 設定を低コストに検査し、異常時だけ軍監 inbox へ `audit_requested` を送る。
+8. 軍監は CoDD をオンデマンド監査ツールとして使う。`codd` CLI がない環境では組み込み整合性チェックへフォールバックし、runtime 常駐や周期実行はしない。
+8. CLI 種別は既存の簡単設定 CUI/CLI で選択でき、デフォルトは他ロール同様 `codex` とする。
+9. Codex / Claude / OpenCode / Antigravity / Kilo / Kimi / Copilot / LocalAPI の生成済み instruction と OpenCode agent 定義に軍監を追加する。
+10. 御座の間、focus shortcut、watcher、bootstrap、runtime `agent_cli.tsv` で軍監を一級 role として扱う。
+
+### 制約
+
+1. CoDD は軍監の監査時だけ呼ぶ。常駐 daemon、周期 scan、通常タスク完了ごとの自動LLM監査は入れない。
+2. 軍監は足軽へ通常タスクを直接割り振らない。
+3. 軍監は将軍の最終判断を代替しない。
+4. 既存の本家互換 aliases と `Shutsujin.bat` / `Shogunate-Runtime` の動作を壊さない。
+
+### 受け入れ条件（観測可能）
+
+1. `instructions/roles/gunkan_role.md` と `instructions/gunkan.md` が存在する。
+2. `scripts/build_instructions.sh` が全CLI向け `*-gunkan.md` と `.opencode/agents/gunkan.md` を生成する。
+3. `scripts/configure_runtime_roles.py --gunkan <cli>` で `config/settings.yaml` の `cli.agents.gunkan.type` を更新できる。
+4. `shutsujin_departure.sh -s` 相当の setup path で `queue/inbox/gunkan.yaml`, `queue/tasks/gunkan.yaml`, `queue/reports/gunkan_report.yaml` を初期化し、軍監 pane を `@agent_id=gunkan` として作る。
+5. `scripts/focus_agent_pane.sh gunkan` または alias `cgn` / `CGN` で軍監 pane にフォーカスできる。
+5a. 軍監 LLM pane はユーザーまたは将軍からの直接指示を常に受け付け、監査・検証・停止判断・功績整理・リスク確認であれば inbox event を待たず即応する。
+6. watcher supervisor が軍監 inbox watcher を起動対象に含める。
+7. `scripts/inbox_write.sh` が通常メッセージを `queue/runtime/gunkan_events.yaml` へ非ブロッキング記録する。
+8. `scripts/gunkan_light_watch.py` が `queue/runtime/gunkan_watch.yaml` に軽量監視結果を書き、重大/警告 finding を cooldown 付きで `queue/inbox/gunkan.yaml` へ `audit_requested` として通知できる。
+9. runtime daemon session に `gunkan-watch` window が作られ、軍監LLMを常時動かさずに非LLM監視を継続できる。
+10. `scripts/gunkan_codd_audit.py` が `codd` CLI 利用可能時は `codd scan` / `codd impact` / `codd validate` を実行し、未導入時はフォールバック監査結果を書ける。
+11. `scripts/gunkan_codd_audit.py` は `PATH` と repo-local `.shogunate/codd-venv/` の `codd` を検出できる。
+12. `.codd/codd.yaml` と CoDD 用 frontmatter docs が存在し、CoDD scan が軍監/監視/監査の関係 graph を作れる。
+13. 軍監 audit nudge は同一未読イベントで連続投入されず、監査後は発火元 inbox message を `read: true` にする。
+14. 軍監 lightweight watcher は同一 signature かつ同一 evidence の finding を cooldown 後も再通知しない。finding の evidence が変化した場合のみ再通知する。
+15. 将軍 instruction は legacy `multiagent` tmux session / hard-coded pane に依存せず、`queue/` と `dashboard.md` を軽量確認して家老へ委譲する。
+16. 関連 Bats / shell syntax / Python compile / `git diff --check` が PASS する。
+
+## 追補（2026-05-28: upstream/main v5.1.0 反映）
+
+### 要求
+
+1. 最新の本家 `upstream/main` を取得し、Shogunate 作業ブランチへ反映する。
+2. 本家 `v5.1.0` の traffic-control roles などの変更を取り込む。
+3. Shogunate 独自機能（tmux runtime、Windows/WSL launcher、AGY/OpenCode/LocalAPI/Kilo/Kimi/Copilot対応、軍監、CoDDオンデマンド監査、設定CUI、Test folder 同期前提）は削除しない。
+4. 本家側で消えているファイルでも、Shogunate の実運用に必要なファイルは保持する。
+5. 取り込み後、関連する生成 instruction を再生成し、最小限の unit / syntax / build check を通す。
+
+### 受け入れ条件（観測可能）
+
+1. `git merge-base HEAD upstream/main` が更新され、履歴上 `upstream/main` の最新コミットが取り込まれている。
+2. `README.md` / `README_ja.md` / `CHANGELOG.md` など本家ドキュメント更新のうち Shogunate と矛盾しないものが反映されている。
+3. `instructions/roles/*`, `instructions/common/*`, `instructions/cli_specific/*` は本家変更と Shogunate 独自 role/CLI を両立している。
+4. `shutsujin_departure.sh`, `scripts/goza_no_ma.sh`, `scripts/watcher_supervisor.sh`, `scripts/configure_runtime_roles.py`, `scripts/gunkan_*` など Shogunate runtime の入口が残っている。
+5. `bash scripts/build_instructions.sh` が成功する。
+6. 変更範囲に対して `bash -n`, `python3 -m py_compile`, 関連 Bats, `git diff --check` を実行し、結果を記録する。

@@ -40,6 +40,7 @@ Use --no-attach when you want the old pre-attach manual shell workflow. Add
   csm / CSM  Multiagent View
   cma / CMA  Multiagent View
   css / CSS  Shogun pane
+  cgn / CGN  Gunkan pane
   csg / CSG  Gunshi pane
   csk / CSK  Karo pane
   ckr / CKR  Karo pane
@@ -79,7 +80,7 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
 
   echo "  [INFO] Starting Shutsujin in background."
   echo "  [INFO] CLI panes will launch after tmux session '$SHOGUNATE_SESSION_NAME' is attached."
-  echo "  [INFO] After startup, type cgo/CMA/csa/css/csk in the command shell."
+  echo "  [INFO] After startup, type cgo/CMA/csa/css/cgn/csk in the command shell."
   echo "  [INFO] Startup log: $STARTUP_LOG"
   RUN_ID="shutsujin-$(date +%s)-$$"
   SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_GOZA_FINISH_TARGET=command MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
@@ -122,7 +123,7 @@ echo "  [OK] Shutsujin finished."
 echo "  [INFO] View commands are available in the next shell:"
 echo "        cgo/CGO = Goza View, csa/CSA = Ashigaru View"
 echo "        css/CSS = Shogun, csm/CSM = Multiagent, cma/CMA = Multiagent"
-echo "        csg/CSG = Gunshi, csk/CSK or ckr/CKR = Karo"
+echo "        cgn/CGN = Gunkan, csg/CSG = Gunshi, csk/CSK or ckr/CKR = Karo"
 echo ""
 
 if [[ "$OPEN_SHELL" -ne 1 ]]; then

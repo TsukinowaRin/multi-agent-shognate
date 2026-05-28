@@ -160,6 +160,15 @@ PY
         if [ -x "$SCRIPT_DIR/scripts/history_book.sh" ]; then
             bash "$SCRIPT_DIR/scripts/history_book.sh" >/dev/null 2>&1 || true
         fi
+        if [ -f "$SCRIPT_DIR/scripts/gunkan_event_log.py" ] && command -v python3 >/dev/null 2>&1; then
+            python3 "$SCRIPT_DIR/scripts/gunkan_event_log.py" \
+                --target "$TARGET" \
+                --from-agent "$FROM" \
+                --type "$TYPE" \
+                --content "$CONTENT" \
+                --message-id "$MSG_ID" \
+                --timestamp "$TIMESTAMP" >/dev/null 2>&1 || true
+        fi
         exit 0
     else
         # Lock timeout or error

@@ -23,6 +23,7 @@ roles:
       - queue/inbox/*
       - queue/tasks/ashigaru*.yaml
       - queue/tasks/gunshi.yaml
+      - queue/tasks/gunkan.yaml
       - queue/tasks/pending.yaml
       - queue/shogun_to_karo_archive.yaml
     read_allow:
@@ -37,6 +38,7 @@ roles:
     edit_deny:
       - queue/tasks/ashigaru*.yaml
       - queue/tasks/gunshi.yaml
+      - queue/tasks/gunkan.yaml
       - queue/tasks/pending.yaml
       - queue/reports/*
       - queue/shogun_to_karo_archive.yaml
@@ -60,9 +62,11 @@ roles:
       - queue/shogun_to_karo_archive.yaml
       - queue/tasks/ashigaru*.yaml
       - queue/tasks/gunshi.yaml
+      - queue/tasks/gunkan.yaml
       - queue/tasks/pending.yaml
       - queue/reports/ashigaru*_report.yaml
       - queue/reports/gunshi_report.yaml
+      - queue/reports/gunkan_report.yaml
       - dashboard.md
       - saytask/streaks.yaml
       - context/*
@@ -75,6 +79,7 @@ roles:
       - queue/shogun_to_karo_archive.yaml
       - queue/tasks/ashigaru*.yaml
       - queue/tasks/gunshi.yaml
+      - queue/tasks/gunkan.yaml
       - queue/tasks/pending.yaml
       - dashboard.md
       - saytask/streaks.yaml
@@ -136,3 +141,34 @@ roles:
       - queue/tasks/gunshi.yaml
       - queue/reports/gunshi_report.yaml
       - dashboard.md
+
+  gunkan:
+    question: deny
+    read_deny:
+      - queue/inbox/*
+      - queue/tasks/ashigaru*.yaml
+      - queue/tasks/pending.yaml
+      - queue/ntfy_inbox.yaml
+      - saytask/*
+    read_allow:
+      - queue/inbox/gunkan.yaml
+      - queue/tasks/gunkan.yaml
+      - queue/shogun_to_karo.yaml
+      - queue/shogun_to_karo_archive.yaml
+      - queue/runtime/*
+      - queue/reports/*
+      - dashboard.md
+      - context/*
+    edit_deny:
+      - queue/tasks/ashigaru*.yaml
+      - queue/tasks/gunshi.yaml
+      - queue/tasks/pending.yaml
+      - queue/shogun_to_karo.yaml
+      - queue/shogun_to_karo_archive.yaml
+      - queue/ntfy_inbox.yaml
+      - queue/reports/ashigaru*_report.yaml
+      - queue/reports/gunshi_report.yaml
+      - saytask/*
+    edit_allow:
+      - queue/tasks/gunkan.yaml
+      - queue/reports/gunkan_report.yaml

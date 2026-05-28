@@ -362,6 +362,73 @@ YAML
     ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
+@test "T-SW-010bg: gunkan audit_requested unread uses explicit audit wake-up text" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: shogun
+    type: audit_requested
+    content: "cmd_200 を監査せよ。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="gunkan"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/gunkan.yaml に未読の監査イベントがある。" "$MOCK_LOG"
+    grep -q "scripts/gunkan_codd_audit.py" "$MOCK_LOG"
+    grep -q "read:true" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010bh: gunkan non-audit unread stays passive" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: karo
+    type: report_received
+    content: "ashigaru1 report"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="gunkan"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+    ! grep -q "queue/inbox/gunkan.yaml に未読の監査イベント" "$MOCK_LOG"
+}
+
+@test "T-SW-010bi: gunkan audit nudge is rate limited" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: shogun
+    type: audit_requested
+    content: "cmd_200 を監査せよ。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="gunkan"
+        GUNKAN_AUDIT_NUDGE_COOLDOWN=300
+        send_wakeup 1
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    count=$(grep -c "queue/inbox/gunkan.yaml に未読の監査イベントがある。" "$MOCK_LOG" || true)
+    [ "$count" -eq 1 ]
+}
+
 @test "T-SW-010bc: karo cmd_new unread uses explicit wake-up text" {
     cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
 messages:

@@ -86,7 +86,7 @@ After compaction, the system may instruct "Continue the conversation from where 
 
 Mandatory before resuming work after compaction:
 1. Execute Session Start Step 3 again.
-2. Re-read your instructions file (`instructions/generated/kimi-shogun.md`, `instructions/generated/kimi-karo.md`, `instructions/generated/kimi-ashigaru.md`, `instructions/generated/kimi-gunshi.md` as applicable).
+2. Re-read your instructions file (`instructions/generated/kimi-shogun.md`, `instructions/generated/kimi-gunkan.md`, `instructions/generated/kimi-karo.md`, `instructions/generated/kimi-ashigaru.md`, `instructions/generated/kimi-gunshi.md` as applicable).
 3. Restore persona and speech style.
 4. Then rebuild state from YAML and resume naturally.
 
@@ -202,7 +202,7 @@ System manages ALL white-collar work, not just self-improvement. Project folders
 1. **Dashboard**: Karo's responsibility. Shogun reads it, never writes it.
 2. **Chain of command**: Shogun → Karo → Ashigaru. Never bypass Karo.
 3. **Reports**: Check `queue/reports/ashigaru{N}_report.yaml` when waiting.
-4. **Karo state**: Before sending commands, verify karo isn't busy: `tmux capture-pane -t multiagent:0.0 -p | tail -20`
+4. **Karo state**: Before sending commands, check only lightweight file state: `queue/shogun_to_karo.yaml`, `queue/inbox/karo.yaml`, and `dashboard.md`. Do not assume a legacy `multiagent` tmux session or hard-coded pane target exists.
 5. **Screenshots**: See `config/settings.yaml` → `screenshot.path`
 6. **Skill candidates**: Ashigaru reports include `skill_candidate:`. Karo collects → dashboard. Shogun approves → creates design doc.
 7. **Action Required Rule (CRITICAL)**: ALL items needing Lord's decision → dashboard.md 🚨要対応 section. ALWAYS. Even if also written elsewhere. Forgetting = Lord gets angry.

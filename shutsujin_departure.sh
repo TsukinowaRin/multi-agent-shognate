@@ -80,6 +80,17 @@ ensure_tmux_runtime_daemon_window() {
     fi
 }
 
+ensure_gunkan_light_watch_daemon_started() {
+    local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
+
+    [ -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" ] || return 0
+    mkdir -p "$SCRIPT_DIR/logs" "$SCRIPT_DIR/queue/runtime"
+    ensure_tmux_runtime_daemon_window \
+        "$session_name" \
+        "gunkan-watch" \
+        "env MAS_GUNKAN_WATCH_INTERVAL=\"${MAS_GUNKAN_WATCH_INTERVAL:-20}\" MAS_GUNKAN_WATCH_COOLDOWN=\"${MAS_GUNKAN_WATCH_COOLDOWN:-300}\" python3 \"$SCRIPT_DIR/scripts/gunkan_light_watch.py\" --daemon >> \"$SCRIPT_DIR/logs/gunkan_light_watch.log\" 2>&1"
+}
+
 restart_tmux_runtime_daemon_session() {
     local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
     local session_env=""
@@ -117,6 +128,11 @@ restart_tmux_runtime_daemon_session() {
             "$session_name" \
             "runtime-pref" \
             "env MAS_RUNTIME_PREF_SYNC_INTERVAL=\"${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}\" MAS_RUNTIME_PREF_SYNC_LOG=\"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" bash \"$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh\" >> \"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" 2>&1"
+        started=1
+    fi
+
+    if [ -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" ]; then
+        ensure_gunkan_light_watch_daemon_started "$session_name"
         started=1
     fi
 
@@ -1346,10 +1362,11 @@ wait_for_bootstrap_ready_tmux() {
     [ "${MAS_WAIT_FOR_BOOTSTRAP_READY_BEFORE_GOZA:-1}" = "1" ] || return 0
     [ "$SETUP_ONLY" = false ] || return 0
 
-    local -a wait_agents=(shogun gunshi "${MULTIAGENT_IDS[@]}")
+    local -a wait_agents=(shogun gunkan gunshi "${MULTIAGENT_IDS[@]}")
     for agent in "${wait_agents[@]}"; do
         case "$agent" in
             shogun) pane_target="${SHOGUN_TARGET:-}" ;;
+            gunkan) pane_target="${GUNKAN_TARGET:-}" ;;
             gunshi) pane_target="${GUNSHI_TARGET:-}" ;;
             *) pane_target="${AGENT_PANES[$agent]:-}" ;;
         esac
@@ -1369,6 +1386,7 @@ wait_for_bootstrap_ready_tmux() {
         for agent in "${wait_agents[@]}"; do
             case "$agent" in
                 shogun) pane_target="${SHOGUN_TARGET:-}" ;;
+                gunkan) pane_target="${GUNKAN_TARGET:-}" ;;
                 gunshi) pane_target="${GUNSHI_TARGET:-}" ;;
                 *) pane_target="${AGENT_PANES[$agent]:-}" ;;
             esac
@@ -1631,6 +1649,9 @@ list_backend_pane_targets() {
     if tmux has-session -t "shogun" 2>/dev/null; then
         tmux list-panes -t "shogun:main" -F "#{pane_id}" 2>/dev/null || true
     fi
+    if tmux has-session -t "gunkan" 2>/dev/null; then
+        tmux list-panes -t "gunkan:main" -F "#{pane_id}" 2>/dev/null || true
+    fi
     if tmux has-session -t "gunshi" 2>/dev/null; then
         tmux list-panes -t "gunshi:main" -F "#{pane_id}" 2>/dev/null || true
     fi
@@ -1678,6 +1699,7 @@ create_android_compat_sessions() {
     fi
 
     tmux kill-session -t shogun 2>/dev/null || true
+    tmux kill-session -t gunkan 2>/dev/null || true
     tmux kill-session -t gunshi 2>/dev/null || true
     tmux kill-session -t multiagent 2>/dev/null || true
 
@@ -1687,6 +1709,13 @@ create_android_compat_sessions() {
     tmux set-option -p -t shogun:main @current_task ""
     tmux set-option -p -t shogun:main @agent_cli "$(resolve_cli_type_for_agent "shogun" 2>/dev/null || echo codex)"
     tmux select-pane -t shogun:main -T shogun >/dev/null 2>&1 || true
+
+    tmux new-session -d -s gunkan -n main "$(android_proxy_command gunkan)"
+    tmux set-option -p -t gunkan:main @agent_id "gunkan"
+    tmux set-option -p -t gunkan:main @model_name "$(resolve_model_display_name "gunkan")"
+    tmux set-option -p -t gunkan:main @current_task ""
+    tmux set-option -p -t gunkan:main @agent_cli "$(resolve_cli_type_for_agent "gunkan" 2>/dev/null || echo codex)"
+    tmux select-pane -t gunkan:main -T gunkan >/dev/null 2>&1 || true
 
     tmux new-session -d -s gunshi -n main "$(android_proxy_command gunshi)"
     tmux set-option -p -t gunshi:main @agent_id "gunshi"
@@ -1732,10 +1761,13 @@ role_linkage_directive() {
     local agent_id="$1"
     case "$agent_id" in
         shogun)
-            echo "連携順序: 殿の指示を受けたら、必ず『将軍→筆頭家老→担当家老→足軽』で委譲せよ。家老が複数いる時は queue/runtime/lead_karo（通常 karo1）を筆頭として扱う。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
+            echo "連携順序: 殿の指示を受けたら、必ず『将軍→筆頭家老→担当家老→足軽』で委譲せよ。軍監は将軍直属の独立監査役として扱い、重要な完了・不整合・リリース判断では audit_requested を送れる。家老が複数いる時は queue/runtime/lead_karo（通常 karo1）を筆頭として扱う。家老への委譲は queue/shogun_to_karo.yaml 更新 + inbox通知を使い、足軽へ直接命令してはならない。"
+            ;;
+        gunkan)
+            echo "連携順序: 軍監は将軍直属・家老並列の独立監査役。家老・軍師・足軽の成果と記録を監査し、通常タスク割当は行わない。是正は家老へ、重要監査結果は将軍へ報告せよ。"
             ;;
         karo|karo[1-9]*|karo_gashira)
-            echo "連携順序: 家老は queue/runtime/ashigaru_owner.tsv の担当足軽のみを管理せよ。筆頭家老は queue/runtime/lead_karo（通常 karo1）で、将軍への完了報告と全体統合を担う。家老間の自由な直接会話は禁止。依存・衝突・handoff・merge・進捗同期は queue/runtime/karo_coordination.yaml に構造化して記録し、必要な時だけ type: coordination_notice で相手家老を起こせ。"
+            echo "連携順序: 家老は queue/runtime/ashigaru_owner.tsv の担当足軽のみを管理せよ。軍師は家老配下の参謀として使い、軍監は家老配下ではなく独立監査役として扱う。筆頭家老は queue/runtime/lead_karo（通常 karo1）で、将軍への完了報告と全体統合を担う。家老間の自由な直接会話は禁止。依存・衝突・handoff・merge・進捗同期は queue/runtime/karo_coordination.yaml に構造化して記録し、必要な時だけ type: coordination_notice で相手家老を起こせ。"
             ;;
         ashigaru*)
             echo "連携順序: 足軽は自分の task YAML のみ処理し、完了後は queue/runtime/ashigaru_owner.tsv で定義された担当家老へ報告せよ。非担当家老への報告は禁止。"
@@ -1760,6 +1792,9 @@ event_driven_directive() {
         shogun)
             echo 'イベント駆動規則: 家老へ委譲したら即ターンを閉じ、`cmd_done` / 殿の次入力 / ntfy受信の時だけ起きよ。待機中の再走査やポーリングは禁止。'
             ;;
+        gunkan)
+            echo 'イベント駆動規則: ポーリング禁止。通常の中間報告取得は家老の仕事である。通常の `cmd_done` / `report_received` は queue/runtime/gunkan_events.yaml の軽量記録に任せよ。軍監は `audit_requested` / `audit_failed` / `runtime_blocked` / `emergency_stop_requested` などの監査inboxイベント、または殿・将軍から軍監paneへの直接指示でのみ処理し、監査報告後は即待機へ戻れ。直接指示はinboxを待たず即応せよ。'
+            ;;
         karo|karo[1-9]*|karo_gashira)
             echo 'イベント駆動規則: ポーリング禁止。`cmd_new` / `report_received` などの inboxイベント起点でのみ処理し、未読処理と close 後は即待機へ戻れ。'
             ;;
@@ -1781,6 +1816,9 @@ reporting_chain_directive() {
         shogun)
             echo "報告規則: 家老の報告を受けて殿へ要約報告せよ。家老の問題を検知したら即改善指示を返せ。"
             ;;
+        gunkan)
+            echo "報告規則: 監査結果は queue/reports/gunkan_report.yaml に書き、重要結果は将軍へ、是正要求は筆頭家老へ inbox 通知せよ。通常の進行管理や足軽への直接命令は禁止。"
+            ;;
         karo|karo[1-9]*|karo_gashira)
             echo "報告規則: 筆頭家老（queue/runtime/lead_karo）は将軍へ要約を返す。筆頭以外の家老は queue/runtime/karo_coordination.yaml で筆頭に状況を同期し、人間や将軍へ直接最終報告しない。"
             ;;
@@ -1795,7 +1833,7 @@ reporting_chain_directive() {
 
 fallback_model_display_name() {
     local agent_id="$1"
-    if [[ "$agent_id" == shogun || "$agent_id" == gunshi || "$agent_id" == karo* ]]; then
+    if [[ "$agent_id" == shogun || "$agent_id" == gunkan || "$agent_id" == gunshi || "$agent_id" == karo* ]]; then
         echo "Opus"
     elif [ "$KESSEN_MODE" = true ]; then
         echo "Opus"
@@ -2120,7 +2158,7 @@ show_battle_cry() {
     echo -e "\033[1;33m  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\033[0m"
     echo -e "\033[1;33m  ┃\033[0m  \033[1;37m🏯 multi-agent-shogun\033[0m  〜 \033[1;36m戦国マルチエージェント統率システム\033[0m 〜           \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┃\033[0m                                                                           \033[1;33m┃\033[0m"
-    echo -e "\033[1;33m  ┃\033[0m    \033[1;35m将軍\033[0m: プロジェクト統括    \033[1;31m家老\033[0m: タスク管理    \033[1;34m足軽\033[0m: 実働部隊×${ACTIVE_ASHIGARU_COUNT}      \033[1;33m┃\033[0m"
+    echo -e "\033[1;33m  ┃\033[0m    \033[1;35m将軍\033[0m: 統括  \033[1;33m軍監\033[0m: 監査  \033[1;31m家老\033[0m: 管理  \033[1;36m軍師\033[0m: 参謀  \033[1;34m足軽\033[0m: 実働×${ACTIVE_ASHIGARU_COUNT}     \033[1;33m┃\033[0m"
     echo -e "\033[1;33m  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\033[0m"
     echo ""
 }
@@ -2178,7 +2216,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════════
 log_info "🧹 既存の陣を撤収中..."
 if [ -f "$SCRIPT_DIR/scripts/sync_runtime_cli_preferences.py" ]; then
-    if tmux has-session -t "$GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t "$LEGACY_GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t shogun 2>/dev/null || tmux has-session -t gunshi 2>/dev/null || tmux has-session -t multiagent 2>/dev/null; then
+    if tmux has-session -t "$GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t "$LEGACY_GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t shogun 2>/dev/null || tmux has-session -t gunkan 2>/dev/null || tmux has-session -t gunshi 2>/dev/null || tmux has-session -t multiagent 2>/dev/null; then
         log_info "💾 前回CLI設定を同期中..."
         _runtime_sync_once_log="$SCRIPT_DIR/queue/runtime/runtime_cli_pref_sync_once.log"
         mkdir -p "$SCRIPT_DIR/queue/runtime"
@@ -2205,6 +2243,7 @@ pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
 pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
 tmux kill-session -t multiagent 2>/dev/null && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
 tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
+tmux kill-session -t gunkan 2>/dev/null && log_info "  └─ gunkan監査陣、撤収完了" || log_info "  └─ gunkan監査陣は存在せず"
 tmux kill-session -t gunshi 2>/dev/null && log_info "  └─ gunshi陣、撤収完了" || log_info "  └─ gunshi陣は存在せず"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2299,11 +2338,39 @@ status: idle
 result: null
 EOF
 
+    # 軍監タスク・レポートファイルリセット
+    cat > "./queue/tasks/gunkan.yaml" << EOF
+# 軍監専用監査ファイル
+task:
+  audit_id: null
+  parent_cmd: null
+  description: null
+  target_path: null
+  status: idle
+  timestamp: ""
+EOF
+    cat > "./queue/reports/gunkan_report.yaml" << EOF
+worker_id: gunkan
+audit_id: null
+parent_cmd: null
+timestamp: ""
+status: idle
+result: null
+EOF
+    cat > "./queue/runtime/gunkan_events.yaml" << EOF
+events: []
+summary:
+  updated_at: ""
+  total_events: 0
+  by_agent: {}
+  by_type: {}
+EOF
+
     # ntfy inbox リセット
     echo "inbox:" > ./queue/ntfy_inbox.yaml
 
     # agent inbox リセット
-    for agent in shogun gunshi "${KARO_AGENTS[@]}" "${KNOWN_ASHIGARU[@]}"; do
+    for agent in shogun gunkan gunshi "${KARO_AGENTS[@]}" "${KNOWN_ASHIGARU[@]}"; do
         echo "messages: []" > "./queue/inbox/${agent}.yaml"
     done
 
@@ -2452,7 +2519,7 @@ fi
 MULTIAGENT_IDS=("${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}")
 MULTIAGENT_COUNT=${#MULTIAGENT_IDS[@]}
 
-log_war "🏯 御座の間を構築中（将軍・家老・軍師・足軽 ${ACTIVE_ASHIGARU_COUNT}名）..."
+log_war "🏯 御座の間を構築中（将軍・軍監・家老・軍師・足軽 ${ACTIVE_ASHIGARU_COUNT}名）..."
 
 if ! tmux new-session -d -x "$GOZA_VIEW_WIDTH" -y "$GOZA_VIEW_HEIGHT" -s "$GOZA_SESSION_NAME" -n "$GOZA_WINDOW_NAME" 2>/dev/null; then
     echo "[ERROR] tmux session '$GOZA_SESSION_NAME' の作成に失敗しました" >&2
@@ -2476,6 +2543,8 @@ declare -A AGENT_PROMPT_COLORS=()
 
 AGENT_PROMPT_LABELS["shogun"]="将軍"
 AGENT_PROMPT_COLORS["shogun"]="magenta"
+AGENT_PROMPT_LABELS["gunkan"]="軍監"
+AGENT_PROMPT_COLORS["gunkan"]="yellow"
 AGENT_PROMPT_LABELS["gunshi"]="軍師"
 AGENT_PROMPT_COLORS["gunshi"]="cyan"
 
@@ -2489,29 +2558,52 @@ for _agent in "${MULTIAGENT_IDS[@]}"; do
     fi
 done
 
-SHOGUN_WIDTH=$(( GOZA_VIEW_WIDTH * 44 / 100 ))
-(( SHOGUN_WIDTH < 70 )) && SHOGUN_WIDTH=70
-RIGHT_WIDTH=$(( GOZA_VIEW_WIDTH - SHOGUN_WIDTH ))
-(( RIGHT_WIDTH < 100 )) && RIGHT_WIDTH=100
+LEFT_MIN_WIDTH=36
+RIGHT_MIN_WIDTH=60
+if (( GOZA_VIEW_WIDTH < LEFT_MIN_WIDTH + RIGHT_MIN_WIDTH )); then
+    LEFT_MIN_WIDTH=$(( GOZA_VIEW_WIDTH * 38 / 100 ))
+    (( LEFT_MIN_WIDTH < 24 )) && LEFT_MIN_WIDTH=24
+    RIGHT_MIN_WIDTH=$(( GOZA_VIEW_WIDTH - LEFT_MIN_WIDTH ))
+fi
 
-KARO_WIDTH=$(( GOZA_VIEW_WIDTH * 24 / 100 ))
-(( KARO_WIDTH < 36 )) && KARO_WIDTH=36
-(( KARO_WIDTH > RIGHT_WIDTH - 48 )) && KARO_WIDTH=$(( RIGHT_WIDTH - 48 ))
+SHOGUN_WIDTH=$(( GOZA_VIEW_WIDTH * 38 / 100 ))
+(( SHOGUN_WIDTH < LEFT_MIN_WIDTH )) && SHOGUN_WIDTH=$LEFT_MIN_WIDTH
+RIGHT_WIDTH=$(( GOZA_VIEW_WIDTH - SHOGUN_WIDTH ))
+if (( RIGHT_WIDTH < RIGHT_MIN_WIDTH && GOZA_VIEW_WIDTH >= LEFT_MIN_WIDTH + RIGHT_MIN_WIDTH )); then
+    RIGHT_WIDTH=$RIGHT_MIN_WIDTH
+    SHOGUN_WIDTH=$(( GOZA_VIEW_WIDTH - RIGHT_WIDTH ))
+fi
+MAX_RIGHT_WIDTH=$(( GOZA_VIEW_WIDTH - LEFT_MIN_WIDTH ))
+(( RIGHT_WIDTH > MAX_RIGHT_WIDTH )) && RIGHT_WIDTH=$MAX_RIGHT_WIDTH
+(( RIGHT_WIDTH < 20 )) && RIGHT_WIDTH=20
+
+KARO_WIDTH=$(( RIGHT_WIDTH * 38 / 100 ))
+(( KARO_WIDTH < 24 )) && KARO_WIDTH=24
+MAX_KARO_WIDTH=$(( RIGHT_WIDTH - 32 ))
+if (( MAX_KARO_WIDTH < 24 )); then
+    MAX_KARO_WIDTH=$(( RIGHT_WIDTH / 2 ))
+fi
+(( KARO_WIDTH > MAX_KARO_WIDTH )) && KARO_WIDTH=$MAX_KARO_WIDTH
+(( KARO_WIDTH < 12 )) && KARO_WIDTH=12
 
 RIGHT_COLUMN_WIDTH=$(( RIGHT_WIDTH - KARO_WIDTH ))
-(( RIGHT_COLUMN_WIDTH < 44 )) && RIGHT_COLUMN_WIDTH=44
+(( RIGHT_COLUMN_WIDTH < 20 )) && RIGHT_COLUMN_WIDTH=20
 
 ASH_HEIGHT=$(( GOZA_VIEW_HEIGHT * 58 / 100 ))
 (( ASH_HEIGHT < 12 )) && ASH_HEIGHT=12
+GUNKAN_HEIGHT=$(( GOZA_VIEW_HEIGHT * 24 / 100 ))
+(( GUNKAN_HEIGHT < 8 )) && GUNKAN_HEIGHT=8
 
 ROOT_WINDOW="${GOZA_SESSION_NAME}:${GOZA_WINDOW_NAME}"
 SHOGUN_PANE="$(tmux display-message -p -t "$ROOT_WINDOW" "#{pane_id}")"
 RIGHT_COLUMN_PANE="$(tmux split-window -h -l "$RIGHT_WIDTH" -t "$SHOGUN_PANE" -P -F '#{pane_id}')"
+GUNKAN_PANE="$(tmux split-window -v -l "$GUNKAN_HEIGHT" -t "$SHOGUN_PANE" -P -F '#{pane_id}')"
 KARO_PANE="$RIGHT_COLUMN_PANE"
 GUNSHI_PANE="$(tmux split-window -h -l "$RIGHT_COLUMN_WIDTH" -t "$KARO_PANE" -P -F '#{pane_id}')"
 ASH_ROOT_PANE="$(tmux split-window -v -l "$ASH_HEIGHT" -t "$GUNSHI_PANE" -P -F '#{pane_id}')"
 
 AGENT_PANES["shogun"]="$SHOGUN_PANE"
+AGENT_PANES["gunkan"]="$GUNKAN_PANE"
 AGENT_PANES["gunshi"]="$GUNSHI_PANE"
 
 KARO_PANES=()
@@ -2527,6 +2619,7 @@ for _idx in "${!ACTIVE_ASHIGARU[@]}"; do
 done
 
 BACKEND_AGENT_IDS=("shogun")
+BACKEND_AGENT_IDS+=("gunkan")
 BACKEND_AGENT_IDS+=("${KARO_AGENTS[@]}")
 BACKEND_AGENT_IDS+=("gunshi")
 BACKEND_AGENT_IDS+=("${ACTIVE_ASHIGARU[@]}")
@@ -2555,6 +2648,7 @@ restore_goza_layout_if_available "$GOZA_SESSION_NAME" "$GOZA_SIGNATURE"
 start_goza_layout_autosave "$GOZA_SESSION_NAME"
 
 SHOGUN_TARGET="${AGENT_PANES[shogun]}"
+GUNKAN_TARGET="${AGENT_PANES[gunkan]}"
 GUNSHI_TARGET="${AGENT_PANES[gunshi]}"
 KARO_TARGET="${AGENT_PANES[${LEAD_KARO}]}"
 
@@ -2575,6 +2669,11 @@ for _agent in "${BACKEND_AGENT_IDS[@]}"; do
     _emit_runtime_cli_entry "$_agent"
 done
 create_android_compat_sessions
+
+if [ "$SETUP_ONLY" = false ]; then
+    ensure_gunkan_light_watch_daemon_started "$RUNTIME_DAEMON_SESSION" || true
+    log_success "  └─ 軍監軽量監査 watcher 先行起動完了（tmux daemon session: ${RUNTIME_DAEMON_SESSION}）"
+fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STEP 6: CLI 起動（-s / --setup-only のときはスキップ）
@@ -2631,6 +2730,27 @@ if [ "$SETUP_ONLY" = false ]; then
         tmux set-option -p -t "$SHOGUN_TARGET" @model_name "$(resolve_model_display_name "shogun")"
         log_info "  └─ 将軍（$(resolve_cli_summary "shogun" "$_shogun_cli_type")）、召喚完了"
     fi
+
+    # 軍監: CLI Adapter経由でコマンド構築
+    _gunkan_cli_type="claude"
+    _gunkan_cmd="claude --model opus --effort max $PERMISSION_FLAG"
+    if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        _gunkan_cli_type=$(resolve_cli_type_for_agent "gunkan")
+        _gunkan_cmd=$(build_cli_command_with_type "gunkan" "$_gunkan_cli_type")
+    fi
+    tmux set-option -p -t "$GUNKAN_TARGET" @agent_cli "$_gunkan_cli_type"
+    generate_bootstrap_file "gunkan" "$_gunkan_cli_type"
+    if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        _gunkan_startup_prompt="$(bootstrap_message_text "gunkan" || true)"
+        if [ -n "$_gunkan_startup_prompt" ] && should_embed_startup_prompt_in_cli_command "$_gunkan_cli_type"; then
+            _gunkan_cmd=$(build_cli_command_with_startup_prompt "gunkan" "$_gunkan_cli_type" "$_gunkan_startup_prompt")
+        fi
+    fi
+    printf "gunkan\t%s\n" "$_gunkan_cli_type" >> "$SCRIPT_DIR/queue/runtime/agent_cli.tsv"
+    launch_agent_cli_pane_or_die "$GUNKAN_TARGET" "gunkan" "$_gunkan_cmd" "gunkan CLI launch"
+    mark_cli_launch_attempt_tmux "$GUNKAN_TARGET"
+    tmux set-option -p -t "$GUNKAN_TARGET" @model_name "$(resolve_model_display_name "gunkan")"
+    log_info "  └─ 軍監（$(resolve_cli_summary "gunkan" "$_gunkan_cli_type")）、召喚完了"
 
     # 軍師: CLI Adapter経由でコマンド構築
     _gunshi_cli_type="claude"
@@ -2750,6 +2870,8 @@ if [ "$SETUP_ONLY" = false ]; then
     }
     { _cli_gate_handler "$SHOGUN_TARGET" "shogun" "$_shogun_cli_type"; } 9>&- &
     _cli_gate_pids+=($!)
+    { _cli_gate_handler "$GUNKAN_TARGET" "gunkan" "$_gunkan_cli_type"; } 9>&- &
+    _cli_gate_pids+=($!)
     { _cli_gate_handler "$GUNSHI_TARGET" "gunshi" "$_gunshi_cli_type"; } 9>&- &
     _cli_gate_pids+=($!)
     for _idx in "${!MULTIAGENT_IDS[@]}"; do
@@ -2864,6 +2986,12 @@ NINJA_EOF
             _ready_count=$((_ready_count + 1))
         fi
 
+        _gunkan_cli=$(tmux show-options -p -t "$GUNKAN_TARGET" -v @agent_cli 2>/dev/null || echo "claude")
+        _total_count=$((_total_count + 1))
+        if wait_for_cli_ready_tmux "$GUNKAN_TARGET" "$_gunkan_cli" 0 2>/dev/null; then
+            _ready_count=$((_ready_count + 1))
+        fi
+
         _gunshi_cli=$(tmux show-options -p -t "$GUNSHI_TARGET" -v @agent_cli 2>/dev/null || echo "claude")
         _total_count=$((_total_count + 1))
         if wait_for_cli_ready_tmux "$GUNSHI_TARGET" "$_gunshi_cli" 0 2>/dev/null; then
@@ -2914,6 +3042,9 @@ NINJA_EOF
     if ! deliver_bootstrap_tmux "$GUNSHI_TARGET" "gunshi" "$_gunshi_cli_type"; then
         _bootstrap_failed=1
     fi
+    if ! deliver_bootstrap_tmux "$GUNKAN_TARGET" "gunkan" "$_gunkan_cli_type"; then
+        _bootstrap_failed=1
+    fi
     if ! deliver_bootstrap_tmux "$SHOGUN_TARGET" "shogun" "$_shogun_cli_type"; then
         _bootstrap_failed=1
     fi
@@ -2931,7 +3062,7 @@ NINJA_EOF
 
     # inbox ディレクトリ初期化（シンボリックリンク先のLinux FSに作成）
     mkdir -p "$SCRIPT_DIR/logs"
-    for agent in shogun gunshi "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}"; do
+    for agent in shogun gunkan gunshi "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}"; do
         [ -f "$SCRIPT_DIR/queue/inbox/${agent}.yaml" ] || echo "messages: []" > "$SCRIPT_DIR/queue/inbox/${agent}.yaml"
     done
 
@@ -2941,6 +3072,7 @@ NINJA_EOF
     pkill -f "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" 2>/dev/null || true
     tmux kill-session -t "$RUNTIME_DAEMON_SESSION" 2>/dev/null || true
     pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
     sleep 1
@@ -2958,6 +3090,12 @@ NINJA_EOF
                 "$RUNTIME_DAEMON_SESSION" \
                 "runtime-pref" \
                 "env MAS_RUNTIME_PREF_SYNC_INTERVAL=\"${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}\" MAS_RUNTIME_PREF_SYNC_LOG=\"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" bash \"$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh\" >> \"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" 2>&1"
+        fi
+        if [ -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" ]; then
+            ensure_tmux_runtime_daemon_window \
+                "$RUNTIME_DAEMON_SESSION" \
+                "gunkan-watch" \
+                "env MAS_GUNKAN_WATCH_INTERVAL=\"${MAS_GUNKAN_WATCH_INTERVAL:-20}\" MAS_GUNKAN_WATCH_COOLDOWN=\"${MAS_GUNKAN_WATCH_COOLDOWN:-300}\" python3 \"$SCRIPT_DIR/scripts/gunkan_light_watch.py\" --daemon >> \"$SCRIPT_DIR/logs/gunkan_light_watch.log\" 2>&1"
         fi
         _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
@@ -2997,7 +3135,7 @@ fi
 
 CURRENT_BOOTSTRAP_PENDING_COUNT=0
 if [ "$SETUP_ONLY" = false ]; then
-    for _agent in shogun gunshi "${MULTIAGENT_IDS[@]}"; do
+    for _agent in shogun gunkan gunshi "${MULTIAGENT_IDS[@]}"; do
         [ -f "$SCRIPT_DIR/queue/runtime/bootstrap_${_agent}.pending" ] || continue
         CURRENT_BOOTSTRAP_PENDING_COUNT=$((CURRENT_BOOTSTRAP_PENDING_COUNT + 1))
     done
@@ -3035,6 +3173,7 @@ echo ""
 echo "     【${GOZA_SESSION_NAME}:${GOZA_WINDOW_NAME}】御座の間 view"
 echo "     ┌────────────────────────────────────────────────────────────┐"
 echo "     │  Pane: shogun          ← 総大将・プロジェクト統括        │"
+echo "     │  Pane: gunkan          ← 独立監査・戦況記録              │"
 for _agent in "${KARO_AGENTS[@]}"; do
     if [ "$_agent" = "$LEAD_KARO" ]; then
         echo "     │  Pane: ${_agent}  ← 筆頭家老・統合/将軍報告             │"
@@ -3052,6 +3191,7 @@ if is_android_compat_enabled; then
     echo "     【Android 互換 session】補助レイヤ"
     echo "     ┌────────────────────────────────────────────────────────────┐"
     echo "     │  shogun:main   ← 将軍 proxy                               │"
+    echo "     │  gunkan:main   ← 軍監 proxy                               │"
     echo "     │  gunshi:main   ← 軍師 proxy                               │"
     echo "     │  multiagent:0  ← 家老・足軽 proxy                         │"
     echo "     └────────────────────────────────────────────────────────────┘"
@@ -3077,6 +3217,10 @@ if [ "$SETUP_ONLY" = true ]; then
     echo "  │  tmux send-keys -t ${GUNSHI_TARGET:-gunshi:main} \\                         │"
     echo "  │    '$(build_cli_command_with_type "gunshi" "${_gunshi_cli_type:-$(resolve_cli_type_for_agent "gunshi" 2>/dev/null || echo claude)}")' Enter  │"
     echo "  │                                                          │"
+    echo "  │  # 軍監を召喚                                            │"
+    echo "  │  tmux send-keys -t ${GUNKAN_TARGET:-gunkan:main} \\                         │"
+    echo "  │    '$(build_cli_command_with_type "gunkan" "${_gunkan_cli_type:-$(resolve_cli_type_for_agent "gunkan" 2>/dev/null || echo claude)}")' Enter  │"
+    echo "  │                                                          │"
     echo "  │  # 家老・足軽は ${GOZA_SESSION_NAME}:${GOZA_WINDOW_NAME} pane 側で起動      │"
     echo "  │  cat queue/runtime/agent_cli.tsv                         │"
     echo "  └──────────────────────────────────────────────────────────┘"
@@ -3094,6 +3238,9 @@ echo "  │                                                          │"
 echo "  │  軍師 pane へ移動:                                        │"
 echo "  │     bash scripts/focus_agent_pane.sh gunshi   (または: csg) │"
 echo "  │                                                          │"
+echo "  │  軍監 pane へ移動:                                        │"
+echo "  │     bash scripts/focus_agent_pane.sh gunkan   (または: cgn) │"
+echo "  │                                                          │"
 echo "  │  家老 pane へ移動:                                        │"
 echo "  │     bash scripts/focus_agent_pane.sh karo   (または: csm) │"
 echo "  │                                                          │"
@@ -3106,7 +3253,7 @@ echo "  │     永続化: bash scripts/install_shell_aliases.sh         │"
 echo "  │                                                          │"
     if is_android_compat_enabled; then
         echo "  │  Android アプリ互換の補助 session:                        │"
-        echo "  │     shogun:main / gunshi:main / multiagent:0            │"
+        echo "  │     shogun:main / gunkan:main / gunshi:main / multiagent:0│"
         echo "  │                                                          │"
     fi
 if [ "$SETUP_ONLY" = false ] && [ "${CURRENT_BOOTSTRAP_PENDING_COUNT:-0}" -gt 0 ]; then
@@ -3132,7 +3279,7 @@ if [ "$OPEN_TERMINAL" = true ]; then
 
     # Windows Terminal が利用可能か確認
     if command -v wt.exe &> /dev/null; then
-        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t ${GOZA_SESSION_NAME}" \; new-tab wsl.exe -e bash -c "bash scripts/focus_agent_pane.sh shogun" \; new-tab wsl.exe -e bash -c "bash scripts/focus_agent_pane.sh gunshi"
+        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t ${GOZA_SESSION_NAME}" \; new-tab wsl.exe -e bash -c "bash scripts/focus_agent_pane.sh shogun" \; new-tab wsl.exe -e bash -c "bash scripts/focus_agent_pane.sh gunkan" \; new-tab wsl.exe -e bash -c "bash scripts/focus_agent_pane.sh gunshi"
         log_success "  └─ ターミナルタブ展開完了"
     else
         log_info "  └─ wt.exe が見つかりません。手動でアタッチしてください。"

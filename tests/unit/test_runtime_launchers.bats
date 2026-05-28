@@ -63,6 +63,9 @@ setup() {
 
   run grep -F "csk/CSK or ckr/CKR = Karo" "$PROJECT_ROOT/Shutsujin.sh"
   [ "$status" -eq 0 ]
+
+  run grep -F "cgn/CGN = Gunkan" "$PROJECT_ROOT/Shutsujin.sh"
+  [ "$status" -eq 0 ]
 }
 
 @test "runtime launchers: Windows wrapper runs shutsujin through Ubuntu WSL and attaches" {
@@ -86,7 +89,7 @@ setup() {
   run grep -F "opens a command shell after startup" "$PROJECT_ROOT/Shutsujin.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "Type cgo, CMA, csa, css, csk" "$PROJECT_ROOT/Shutsujin.bat"
+  run grep -F "Type cgo, CMA, csa, css, cgn, csk" "$PROJECT_ROOT/Shutsujin.bat"
   [ "$status" -eq 0 ]
 
   run grep -F "[1/3]" "$PROJECT_ROOT/Shutsujin.bat"

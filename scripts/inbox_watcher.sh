@@ -102,6 +102,8 @@ HARD_USAGE_LIMIT_LOG_COOLDOWN=${HARD_USAGE_LIMIT_LOG_COOLDOWN:-600}
 LAST_MISSING_REPORT_RECOVERY_TASK_ID=${LAST_MISSING_REPORT_RECOVERY_TASK_ID:-}
 LAST_MISSING_REPORT_RECOVERY_TS=${LAST_MISSING_REPORT_RECOVERY_TS:-0}
 MISSING_REPORT_RECOVERY_COOLDOWN=${MISSING_REPORT_RECOVERY_COOLDOWN:-120}
+GUNKAN_AUDIT_NUDGE_COOLDOWN=${GUNKAN_AUDIT_NUDGE_COOLDOWN:-180}
+LAST_GUNKAN_AUDIT_NUDGE_TS=${LAST_GUNKAN_AUDIT_NUDGE_TS:-0}
 
 # ─── Phase feature flags (cmd_107 Phase 1/2/3) ───
 # ASW_PHASE:
@@ -232,6 +234,22 @@ send_literal_text_and_enter() {
     fi
 
     return 0
+}
+
+gunkan_audit_nudge_rate_limited() {
+    local nudge="${1:-}"
+    local now
+
+    [[ "${AGENT_ID:-}" == "gunkan" ]] || return 1
+    [[ "$nudge" == *"queue/inbox/gunkan.yaml に未読の監査イベント"* ]] || return 1
+
+    now=$(date +%s)
+    if [ "${LAST_GUNKAN_AUDIT_NUDGE_TS:-0}" -gt 0 ] && [ $((now - LAST_GUNKAN_AUDIT_NUDGE_TS)) -lt "${GUNKAN_AUDIT_NUDGE_COOLDOWN:-180}" ]; then
+        echo "[$(date)] [SKIP] Gunkan audit nudge cooldown active for $AGENT_ID" >&2
+        return 0
+    fi
+    LAST_GUNKAN_AUDIT_NUDGE_TS=$now
+    return 1
 }
 
 run_runtime_blocker_notice() {
@@ -1247,16 +1265,28 @@ get_wakeup_text() {
     local default_nudge="inbox${unread_count}"
 
     local decision
-    decision=$(INBOX_PATH="$INBOX" python3 - << 'PY'
+    decision=$(INBOX_PATH="$INBOX" AGENT_ID_ENV="${AGENT_ID:-}" python3 - << 'PY'
 import os
 import yaml
 
 inbox = os.environ.get("INBOX_PATH", "")
+agent_id = os.environ.get("AGENT_ID_ENV", "")
 try:
     with open(inbox, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     messages = data.get("messages", []) or []
     unread = [m for m in messages if not m.get("read", False)]
+    audit_types = {
+        "audit_requested",
+        "audit_warn",
+        "audit_failed",
+        "runtime_blocked",
+        "emergency_stop_requested",
+    }
+    if agent_id == "gunkan":
+        has_audit_event = any((m.get("type") or "") in audit_types for m in unread)
+        print("gunkan_audit_event" if has_audit_event else "gunkan_passive")
+        raise SystemExit(0)
     has_cmd_done = any((m.get("type") or "") == "cmd_done" for m in unread)
     has_runtime_blocked = any((m.get("type") or "") == "runtime_blocked" for m in unread)
     has_cmd_new = any((m.get("type") or "") == "cmd_new" for m in unread)
@@ -1285,6 +1315,15 @@ except Exception:
     print("default")
 PY
 )
+
+    if [[ "${AGENT_ID:-}" == "gunkan" ]]; then
+        if [[ "$decision" == "gunkan_audit_event" ]]; then
+            echo "queue/inbox/gunkan.yaml に未読の監査イベントがある。queue/runtime/gunkan_events.yaml と関連 queue/report を読み、必要なら python3 scripts/gunkan_codd_audit.py を実行し、queue/reports/gunkan_report.yaml に監査結果を書け。処理後は発火元 message を read:true にせよ。通常の中間報告取得や進行管理は行うな。"
+            return 0
+        fi
+        echo "__gunkan_passive__"
+        return 0
+    fi
 
     if [[ "$decision" == "cmd_done" ]]; then
         echo "queue/inbox/shogun.yaml に未読の cmd_done がある。dashboard.md を確認し、殿へ完了報告せよ。"
@@ -1611,6 +1650,14 @@ send_wakeup() {
     nudge=$(get_wakeup_text "$unread_count")
     effective_cli=$(get_effective_cli_type)
 
+    if [[ "$nudge" == "__gunkan_passive__" ]]; then
+        echo "[$(date)] [SKIP] Gunkan inbox has no audit event; passive event log only" >&2
+        return 0
+    fi
+    if gunkan_audit_nudge_rate_limited "$nudge"; then
+        return 0
+    fi
+
     if [ "${FINAL_ESCALATION_ONLY:-0}" = "1" ]; then
         echo "[$(date)] [SKIP] FINAL_ESCALATION_ONLY=1, suppressing normal nudge for $AGENT_ID" >&2
         return 0
@@ -1671,6 +1718,14 @@ send_wakeup_with_escape() {
     local effective_cli
     effective_cli=$(get_effective_cli_type)
     local c_ctrl_state="skipped"
+
+    if [[ "$nudge" == "__gunkan_passive__" ]]; then
+        echo "[$(date)] [SKIP] Gunkan inbox has no audit event; passive event log only" >&2
+        return 0
+    fi
+    if gunkan_audit_nudge_rate_limited "$nudge"; then
+        return 0
+    fi
 
     if [ "${FINAL_ESCALATION_ONLY:-0}" = "1" ]; then
         echo "[$(date)] [SKIP] FINAL_ESCALATION_ONLY=1, suppressing phase2 nudge for $AGENT_ID" >&2

@@ -40,7 +40,7 @@ if not defined REPO_WSL (
 )
 
 echo        This launcher opens a command shell after startup.
-echo        Type cgo, CMA, csa, css, csk, etc. to choose a view.
+echo        Type cgo, CMA, csa, css, cgn, csk, etc. to choose a view.
 echo        Use --no-attach for the old manual shell workflow.
 echo.
 wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && bash ./Shutsujin.sh %*"

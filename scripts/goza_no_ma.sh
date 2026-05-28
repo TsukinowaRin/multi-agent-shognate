@@ -11,7 +11,7 @@ SETUP_ONLY=false
 ENSURE_BACKEND=false
 REFRESH=false
 NO_ATTACH=false
-TEMPLATE="${GOZA_TEMPLATE:-goza}"  # goza | shogun | gunshi | karo | multiagent | ashigaru
+TEMPLATE="${GOZA_TEMPLATE:-goza}"  # goza | shogun | gunkan | gunshi | karo | multiagent | ashigaru
 PASS_THROUGH=()
 
 usage() {
@@ -28,6 +28,7 @@ Options:
   -t, --template     レイアウトテンプレートを指定
                      goza       = 御座の間（全エージェント）
                      shogun     = 将軍のみ
+                     gunkan     = 軍監のみ
                      gunshi     = 軍師のみ
                      karo       = 家老のみ
                      multiagent = 家老＋足軽
@@ -39,6 +40,7 @@ Aliases (shell):
   cgo / CGO  → bash scripts/goza_no_ma.sh
   css / CSS  → bash scripts/focus_agent_pane.sh shogun
   csm / CSM  → bash scripts/goza_no_ma.sh -t multiagent
+  cgn / CGN  → bash scripts/focus_agent_pane.sh gunkan
   csg / CSG  → bash scripts/focus_agent_pane.sh gunshi
   csk / CSK  → bash scripts/focus_agent_pane.sh karo
   ckr / CKR  → bash scripts/focus_agent_pane.sh karo
@@ -213,6 +215,13 @@ case "$TEMPLATE" in
       attach_target "shogun"
     else
       focus_agent_in_window "$GOZA_SESSION" "$GOZA_WINDOW" "shogun"
+    fi
+    ;;
+  gunkan)
+    if tmux has-session -t "gunkan" 2>/dev/null; then
+      attach_target "gunkan"
+    else
+      focus_agent_in_window "$GOZA_SESSION" "$GOZA_WINDOW" "gunkan"
     fi
     ;;
   gunshi)

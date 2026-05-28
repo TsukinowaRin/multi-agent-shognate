@@ -11,9 +11,10 @@ teardown() {
   rm -rf "$TEST_TMP"
 }
 
-@test "watcher_supervisor: cleanup_stale_watchers は gunshi watcher を stale 扱いしない" {
+@test "watcher_supervisor: cleanup_stale_watchers は gunkan/gunshi watcher を stale 扱いしない" {
   cat > "$TEST_TMP/pgrep_output.txt" <<EOF
 1001 $PROJECT_ROOT/scripts/inbox_watcher.sh gunshi %9 claude tmux
+1003 $PROJECT_ROOT/scripts/inbox_watcher.sh gunkan %8 claude tmux
 1002 $PROJECT_ROOT/scripts/inbox_watcher.sh ashigaru9 %10 claude tmux
 EOF
 
@@ -236,13 +237,14 @@ EOF
     tmux() {
       case "$*" in
         "has-session -t shogunate") return 0 ;;
-        "list-panes -s -t shogunate -F #{pane_id}") printf "%%1\n%%2\n%%3\n%%4\n%%5\n%%6\n"; return 0 ;;
+        "list-panes -s -t shogunate -F #{pane_id}") printf "%%1\n%%2\n%%3\n%%4\n%%5\n%%6\n%%7\n"; return 0 ;;
         "show-options -p -t %1 -v @agent_id") printf "shogun\n"; return 0 ;;
-        "show-options -p -t %2 -v @agent_id") printf "gunshi\n"; return 0 ;;
-        "show-options -p -t %3 -v @agent_id") printf "karo1\n"; return 0 ;;
-        "show-options -p -t %4 -v @agent_id") printf "karo2\n"; return 0 ;;
-        "show-options -p -t %5 -v @agent_id") printf "ashigaru3\n"; return 0 ;;
-        "show-options -p -t %6 -v @agent_id") printf "ashigaru8\n"; return 0 ;;
+        "show-options -p -t %2 -v @agent_id") printf "gunkan\n"; return 0 ;;
+        "show-options -p -t %3 -v @agent_id") printf "gunshi\n"; return 0 ;;
+        "show-options -p -t %4 -v @agent_id") printf "karo1\n"; return 0 ;;
+        "show-options -p -t %5 -v @agent_id") printf "karo2\n"; return 0 ;;
+        "show-options -p -t %6 -v @agent_id") printf "ashigaru3\n"; return 0 ;;
+        "show-options -p -t %7 -v @agent_id") printf "ashigaru8\n"; return 0 ;;
       esac
       return 0
     }
@@ -257,11 +259,12 @@ EOF
   '
   [ "$status" -eq 0 ]
   [[ "$output" == *"shogun=%1"* ]]
-  [[ "$output" == *"gunshi=%2"* ]]
-  [[ "$output" == *"karo1=%3"* ]]
-  [[ "$output" == *"karo2=%4"* ]]
-  [[ "$output" == *"ashigaru3=%5"* ]]
-  [[ "$output" == *"ashigaru8=%6"* ]]
+  [[ "$output" == *"gunkan=%2"* ]]
+  [[ "$output" == *"gunshi=%3"* ]]
+  [[ "$output" == *"karo1=%4"* ]]
+  [[ "$output" == *"karo2=%5"* ]]
+  [[ "$output" == *"ashigaru3=%6"* ]]
+  [[ "$output" == *"ashigaru8=%7"* ]]
   [[ "$output" != *"ashigaru1"* ]]
   [[ "$output" != *"multiagent:agents"* ]]
 }

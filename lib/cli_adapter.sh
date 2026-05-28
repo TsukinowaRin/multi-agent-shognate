@@ -1125,6 +1125,7 @@ get_role_instruction_file() {
 
     case "$agent_id" in
         shogun) role="shogun" ;;
+        gunkan) role="gunkan" ;;
         gunshi) role="gunshi" ;;
         karo|karo[1-9]*|karo_gashira) role="karo" ;;
         ashigaru*) role="ashigaru" ;;
@@ -1146,6 +1147,7 @@ get_instruction_file() {
 
     case "$agent_id" in
         shogun) role="shogun" ;;
+        gunkan) role="gunkan" ;;
         karo|karo[1-9]*|karo_gashira) role="karo" ;;
         gunshi) role="gunshi" ;;
         ashigaru*) role="ashigaru" ;;
@@ -2084,6 +2086,16 @@ except Exception:
 #     "")    echo "エラー" ;;
 #     *)     echo "足軽: $agent に振る（karo.mdがCLI切り替えを判断）" ;;
 #   esac
+_cli_adapter_agent_pane_target_by_id() {
+    local agent="$1"
+    local session_name="${SHOGUNATE_SESSION_NAME:-${GOZA_SESSION_NAME:-shogunate}}"
+
+    [ -n "$session_name" ] || return 0
+    tmux has-session -t "$session_name" 2>/dev/null || return 0
+    tmux list-panes -s -t "$session_name" -F '#{pane_id} #{@agent_id}' 2>/dev/null \
+        | awk -v agent="$agent" '$2 == agent {print $1; exit}'
+}
+
 find_agent_for_model() {
     local recommended_model="$1"
 
@@ -2137,8 +2149,7 @@ except Exception:
     for candidate in $candidates; do
         # tmux pane ターゲットを @agent_id で逆引き
         local pane_target
-        pane_target=$(tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} #{@agent_id}' 2>/dev/null \
-            | awk -v agent="$candidate" '$2 == agent {print $1}' | head -1)
+        pane_target=$(_cli_adapter_agent_pane_target_by_id "$candidate")
 
         if [[ -z "$pane_target" ]]; then
             # tmuxセッションが存在しない（ユニットテスト環境等）→ 候補をそのまま返す
@@ -2189,8 +2200,7 @@ except Exception:
         fi
 
         local fb_pane
-        fb_pane=$(tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} #{@agent_id}' 2>/dev/null \
-            | awk -v agent="$fallback" '$2 == agent {print $1}' | head -1)
+        fb_pane=$(_cli_adapter_agent_pane_target_by_id "$fallback")
 
         if [[ -z "$fb_pane" ]]; then
             # tmuxセッションなし（テスト環境）→ フォールバック候補を返す

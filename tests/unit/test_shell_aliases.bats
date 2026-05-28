@@ -6,10 +6,11 @@ setup_file() {
 }
 
 @test "shell_aliases は source で repo-local alias を定義する" {
-    run bash -lc "source '$PROJECT_ROOT/scripts/shell_aliases.sh'; alias cgo; alias css; alias csg; alias csk; alias ckr; alias csm; alias csst; alias csa; alias cma; alias CGO; alias CSS; alias CSG; alias CSK; alias CKR; alias CSM; alias CSST; alias CSA; alias CMA"
+    run bash -lc "source '$PROJECT_ROOT/scripts/shell_aliases.sh'; alias cgo; alias css; alias cgn; alias csg; alias csk; alias ckr; alias csm; alias csst; alias csa; alias cma; alias CGO; alias CSS; alias CGN; alias CSG; alias CSK; alias CKR; alias CSM; alias CSST; alias CSA; alias CMA"
     [ "$status" -eq 0 ]
     [[ "$output" == *"alias cgo='bash $PROJECT_ROOT/scripts/goza_no_ma.sh'"* ]]
     [[ "$output" == *"alias css='bash $PROJECT_ROOT/scripts/focus_agent_pane.sh shogun'"* ]]
+    [[ "$output" == *"alias cgn='bash $PROJECT_ROOT/scripts/focus_agent_pane.sh gunkan'"* ]]
     [[ "$output" == *"alias csg='bash $PROJECT_ROOT/scripts/focus_agent_pane.sh gunshi'"* ]]
     [[ "$output" == *"alias csk='bash $PROJECT_ROOT/scripts/focus_agent_pane.sh karo'"* ]]
     [[ "$output" == *"alias ckr='bash $PROJECT_ROOT/scripts/focus_agent_pane.sh karo'"* ]]
@@ -18,6 +19,7 @@ setup_file() {
     [[ "$output" == *"alias csa='bash $PROJECT_ROOT/scripts/goza_no_ma.sh -t ashigaru'"* ]]
     [[ "$output" == *"alias cma='bash $PROJECT_ROOT/scripts/goza_no_ma.sh -t multiagent'"* ]]
     [[ "$output" == *"alias CGO='bash $PROJECT_ROOT/scripts/goza_no_ma.sh'"* ]]
+    [[ "$output" == *"alias CGN='bash $PROJECT_ROOT/scripts/focus_agent_pane.sh gunkan'"* ]]
     [[ "$output" == *"alias CSA='bash $PROJECT_ROOT/scripts/goza_no_ma.sh -t ashigaru'"* ]]
     [[ "$output" == *"alias CSM='bash $PROJECT_ROOT/scripts/goza_no_ma.sh -t multiagent'"* ]]
     [[ "$output" == *"alias CSK='bash $PROJECT_ROOT/scripts/focus_agent_pane.sh karo'"* ]]

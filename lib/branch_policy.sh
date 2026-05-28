@@ -5,6 +5,15 @@ BRANCH_POLICY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BRANCH_POLICY_SETTINGS="${BRANCH_POLICY_SETTINGS:-$BRANCH_POLICY_ROOT/config/settings.yaml}"
 
 branch_policy_python() {
+    local candidate
+    for candidate in "$BRANCH_POLICY_ROOT/.venv/bin/python3" "$(command -v python3 2>/dev/null || true)"; do
+        [[ -n "$candidate" && -x "$candidate" ]] || continue
+        if "$candidate" -c 'import yaml' >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
     if [[ -x "$BRANCH_POLICY_ROOT/.venv/bin/python3" ]]; then
         printf '%s\n' "$BRANCH_POLICY_ROOT/.venv/bin/python3"
     else

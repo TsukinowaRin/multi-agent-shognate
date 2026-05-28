@@ -38,6 +38,11 @@ else
     file_watch_backend() { printf 'polling\n'; }
 fi
 
+if [ -f "$SCRIPT_DIR/lib/agent_registry.sh" ]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/lib/agent_registry.sh"
+fi
+
 TOPOLOGY_ADAPTER_LOADED=false
 if [ -f "$SCRIPT_DIR/lib/topology_adapter.sh" ]; then
     # shellcheck source=/dev/null
@@ -51,6 +56,30 @@ ensure_inbox_file() {
         printf 'messages: []\n' > "queue/inbox/${agent}.yaml"
     fi
 }
+
+print_watcher_plan() {
+    local pane_base="${SHOGUN_PANE_BASE:-0}"
+    local agent pane
+
+    if ! declare -F agent_registry_agents >/dev/null 2>&1 || ! declare -F agent_registry_pane_for_agent >/dev/null 2>&1; then
+        echo "[ERROR] agent_registry helpers are unavailable" >&2
+        return 1
+    fi
+
+    while IFS= read -r agent; do
+        [ -n "$agent" ] || continue
+        pane="$(agent_registry_pane_for_agent "$agent" "$pane_base" 2>/dev/null || true)"
+        [ -n "$pane" ] || continue
+        printf '%s\t%s\tlogs/inbox_watcher_%s.log\n' "$agent" "$pane" "$agent"
+    done < <(agent_registry_agents)
+}
+
+case "${1:-}" in
+    --print-watchers)
+        print_watcher_plan
+        exit $?
+        ;;
+esac
 
 refresh_active_ashigaru() {
     mapfile -t ACTIVE_ASHIGARU < <(python3 - << 'PY' 2>/dev/null || true
@@ -138,7 +167,7 @@ agent_in_karo_list() {
 agent_is_supervised() {
     local target="$1"
     case "$target" in
-        shogun|gunshi) return 0 ;;
+        shogun|gunkan|gunshi) return 0 ;;
     esac
     agent_in_active_list "$target" && return 0
     agent_in_karo_list "$target" && return 0
@@ -163,6 +192,9 @@ list_backend_pane_targets() {
     fi
     if tmux has-session -t "shogun" 2>/dev/null; then
         tmux list-panes -t "shogun:main" -F "#{pane_id}" 2>/dev/null || true
+    fi
+    if tmux has-session -t "gunkan" 2>/dev/null; then
+        tmux list-panes -t "gunkan:main" -F "#{pane_id}" 2>/dev/null || true
     fi
     if tmux has-session -t "gunshi" 2>/dev/null; then
         tmux list-panes -t "gunshi:main" -F "#{pane_id}" 2>/dev/null || true
@@ -473,6 +505,9 @@ supervisor_tick() {
     pane="$(resolve_agent_pane_target "shogun" || true)"
     [ -n "$pane" ] && restart_shell_returned_codex_if_needed "shogun" "$pane"
     [ -n "$pane" ] && start_watcher_if_missing "shogun" "$pane" "logs/inbox_watcher_shogun.log"
+    pane="$(resolve_agent_pane_target "gunkan" || true)"
+    [ -n "$pane" ] && restart_shell_returned_codex_if_needed "gunkan" "$pane"
+    [ -n "$pane" ] && start_watcher_if_missing "gunkan" "$pane" "logs/inbox_watcher_gunkan.log"
     pane="$(resolve_agent_pane_target "gunshi" || true)"
     [ -n "$pane" ] && restart_shell_returned_codex_if_needed "gunshi" "$pane"
     [ -n "$pane" ] && start_watcher_if_missing "gunshi" "$pane" "logs/inbox_watcher_gunshi.log"

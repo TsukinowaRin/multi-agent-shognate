@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SETTINGS = ROOT / "config/settings.yaml"
 ALLOWED_CLIS = ("codex", "antigravity", "claude", "opencode", "kilo", "localapi", "kimi", "copilot")
 LEGACY_CLI_ALIASES = {"gemini": "antigravity"}
-CORE_ROLES = ("shogun", "karo", "gunshi")
+CORE_ROLES = ("shogun", "gunkan", "karo", "gunshi")
 MODEL_PREF_KEYS = ("model", "reasoning_effort")
 ASHIGARU_RE = re.compile(r"^ashigaru([1-9][0-9]*)$")
 

@@ -47,6 +47,16 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
+@test "御座の間レイアウトは端末幅で右カラムを上限調整し左paneを潰さない" {
+    run bash -c '
+        grep -q "LEFT_MIN_WIDTH" "$1" &&
+        grep -q "MAX_RIGHT_WIDTH" "$1" &&
+        grep -q "RIGHT_WIDTH > MAX_RIGHT_WIDTH" "$1" &&
+        ! grep -q "RIGHT_WIDTH < 100" "$1"
+    ' _ "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "御座の間は小さすぎる保存レイアウトを復元・保存しない" {
     run bash -c '
         grep -q "GOZA_MIN_RESTORE_PANE_WIDTH" "$1" &&
@@ -350,6 +360,21 @@ setup_file() {
 
 @test "tmux 起動は runtime-pref window 欠落時に ensure で再補充する" {
     run bats_search 'ensure_tmux_runtime_daemon_window|runtime-pref|MAS_RUNTIME_PREF_SYNC_INTERVAL|sleep 1' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は軍監軽量watcherをruntime daemon windowで常駐化する" {
+    run bats_search 'ensure_gunkan_light_watch_daemon_started|gunkan-watch|gunkan_light_watch\.py|MAS_GUNKAN_WATCH_INTERVAL|MAS_GUNKAN_WATCH_COOLDOWN' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動はCLI ready待ちの前に軍監軽量watcherを先行起動する" {
+    run bats_search '軍監軽量監査 watcher 先行起動完了|ensure_gunkan_light_watch_daemon_started "\$RUNTIME_DAEMON_SESSION"|全エージェントCLIを起動中' "$PROJECT_ROOT/shutsujin_departure.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "軍監はevent-drivenだがpaneへの直接指示には即応する" {
+    run bats_search '直接指示はinboxを待たず即応せよ|Direct User Instruction|軍監 pane は御座の間に常駐する対話可能な LLM pane' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/instructions/roles/gunkan_role.md"
     [ "$status" -eq 0 ]
 }
 

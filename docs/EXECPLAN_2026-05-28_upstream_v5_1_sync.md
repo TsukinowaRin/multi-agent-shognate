@@ -24,9 +24,24 @@
 
 - [x] `upstream/main` を fetch。最新は `bb19915 release: v5.1.0 traffic-control roles`。
 - [x] `HEAD..upstream/main` の name-status / stat を確認。本家側では Shogunate launcher/runtime/package 系の削除が多い。
-- [ ] checkpoint commit を作成。
-- [ ] merge conflict を解消。
-- [ ] 検証を実行。
+- [x] checkpoint commit `d073788` を作成。
+- [x] `upstream/main` を merge。conflict は `instructions/roles/karo_role.md`, `instructions/roles/gunshi_role.md`, generated instruction, OpenCode agent 定義。
+- [x] Shogunate 側の role を土台に、本家 v5.1.0 の traffic-control / QC routing を統合。
+- [x] `bash scripts/build_instructions.sh` で生成物を再生成。
+- [x] 検証を実行。
+
+## Verification
+
+- `bash scripts/build_instructions.sh` -> PASS
+- `bash -n shutsujin_departure.sh Shutsujin.sh Shogunate-Runtime.sh scripts/goza_no_ma.sh scripts/focus_agent_pane.sh scripts/watcher_supervisor.sh scripts/inbox_watcher.sh scripts/inbox_write.sh scripts/shell_aliases.sh scripts/install_shell_aliases.sh scripts/codd_check.sh` -> PASS
+- `python3 -m py_compile scripts/configure_runtime_roles.py scripts/gunkan_light_watch.py scripts/gunkan_codd_audit.py scripts/gunkan_event_log.py scripts/sync_runtime_cli_preferences.py scripts/shogun_to_karo_bridge.py scripts/karo_done_to_shogun_bridge.py scripts/runtime_blocker_notice.py` -> PASS
+- `bats tests/unit/test_build_system.bats tests/unit/test_mux_parity.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_gunkan_audit.bats` -> PASS (`148` tests)
+- `bats tests/unit/test_cli_adapter.bats tests/unit/test_dynamic_model_routing.bats tests/unit/test_send_wakeup.bats` -> PASS (`331` tests)
+- `git diff --check` -> PASS
+
+## Result
+
+`upstream/main` (`bb19915`, `v5.1.0`) を取り込み済み。Shogunate runtime/launcher/軍監/CoDDオンデマンド監査/追加CLI対応は保持した。
 
 ## Recovery
 

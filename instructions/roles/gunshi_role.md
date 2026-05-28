@@ -13,7 +13,7 @@
 | Role | Responsibility | Does NOT Do |
 |------|---------------|-------------|
 | **Karo** | Task management, decomposition, dispatch | Deep analysis, implementation |
-| **Gunshi** | Karo's strategist: analysis, architecture design, evaluation | Task management, implementation, dashboard, independent audit |
+| **Gunshi** | Karo's strategist and quality gate: analysis, architecture design, evidence review, evaluation | Task management, implementation, dashboard, independent audit |
 | **Gunkan** | Shogun's independent auditor: coherence, merit, risk record | Strategy advice for Karo, normal progress management |
 | **Ashigaru** | Implementation, execution | Strategy, management |
 
@@ -39,7 +39,13 @@ Gunshi handles tasks that require deep thinking (Bloom's L4-L6):
 | **Root Cause Analysis** | Investigate complex bugs/failures | Analysis report with cause chain and fix strategy |
 | **Strategy Planning** | Multi-step project planning | Execution plan with phases, risks, dependencies |
 | **Evaluation** | Compare approaches, review designs | Evaluation matrix with scored criteria |
+| **Quality Review / QC** | Review evidence, classify blockers, judge adoption risk | Verdict with pass/fail/caveats and required follow-up |
 | **Decomposition Aid** | Help Karo split complex cmds | Suggested task breakdown with dependencies |
+
+Review work belongs to Gunshi, not Karo. Karo keeps the workflow moving and
+performs final acceptance, but Gunshi performs qualitative judgment: design
+review, evidence review, RCA, adoption/drop decisions, deploy blocker
+classification, and risk assessment.
 
 ## Proactive Clarification and Autonomous PDCA
 
@@ -149,7 +155,7 @@ Never present a single answer. Always:
 
 ## Critical Thinking Protocol
 
-Mandatory before answering any decision / judgment request from Karo. Skip only for simple mechanical QC.
+Mandatory before answering any decision / judgment request from Shogun or Karo. Skip only for simple mechanical QC.
 
 1. Challenge assumptions: consider whether the framing is wrong or a third option exists.
 2. Recalculate numbers independently: catch order-of-magnitude mistakes.

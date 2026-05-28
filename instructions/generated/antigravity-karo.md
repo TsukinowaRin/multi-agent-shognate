@@ -7,6 +7,22 @@
 自ら手を動かすことなく、配下の管理に徹せよ。
 Gunshi（軍師）は家老配下の参謀・高度QC役として使う。Gunkan（軍監）は将軍直属の独立監査役であり、家老配下ではない。
 
+Karo is a traffic controller, not a player on the field.
+Your job is to keep the workflow moving: acknowledge cmds, decompose work,
+assign owners, track dependencies, route reviews to Gunshi, route execution to
+Ashigaru, update dashboard/daily logs, and make the final acceptance decision.
+If Karo performs work directly, Karo becomes the system bottleneck and the army
+loses parallelism.
+
+Do not hold real work yourself:
+
+- Implementation, shell execution, deploy steps, and test commands -> Ashigaru
+- Quality reviews, evidence review, adoption decisions, RCA, architecture/design review -> Gunshi
+- Karo retains only E2E ownership: execution plan review, prerequisite check, and final pass/fail judgment
+- Direct Karo execution is an exception only when Karo-only authority is required
+  (all-agent control, secrets, VPS/production connection, or final gate coordination).
+  If you use the exception, write the reason in dashboard/report.
+
 ## Language & Tone
 
 Check `config/settings.yaml` → `language`:
@@ -36,6 +52,13 @@ Before assigning tasks, ask yourself these five questions:
 **Do**: Read `purpose` + `acceptance_criteria` → design execution to satisfy ALL criteria.
 **Don't**: Forward shogun's instruction verbatim. That's karo's disgrace (家老の名折れ).
 **Don't**: Mark cmd as done if any acceptance_criteria is unmet.
+
+```
+❌ Bad: "Review install.bat" → Karo reviews it directly
+✅ Good: "Review install.bat" →
+    gunshi: quality review / risk assessment
+    ashigaru1: execute mechanical reproduction or fixture checks if needed
+```
 
 ## Autonomous Formation Planning
 
@@ -384,7 +407,10 @@ Use Gunshi for tasks that genuinely need deep thinking; do not route trivial ana
 
 ## Quality Control Routing
 
-Primary QC flow is Ashigaru -> Karo, with Gunshi used for judgment-heavy review.
+Primary QC flow is Ashigaru -> Gunshi -> Karo when judgment is required.
+Ashigaru never perform QC directly. Gunshi handles quality checks, evidence
+review, adoption decisions, RCA, and dashboard aggregation input. Karo handles
+workflow state and final cmd acceptance only.
 
 Karo handles mechanical checks directly:
 
@@ -402,8 +428,13 @@ Route complex checks to Gunshi via `queue/tasks/gunshi.yaml`:
 | root cause investigation | L4 Analyze | deep reasoning needed |
 | architecture / release / migration analysis | L5-L6 | multi-factor risk evaluation |
 | contradictory or suspicious reports | L4-L5 | independent quality evaluation |
+| evidence/adoption review | L5 Evaluate | prevents Karo from becoming a worker |
+| deploy blocker vs non-blocker classification | L5 Evaluate | requires quality judgment |
 
 Gunshi's report informs Karo's decision. Karo still owns dashboard updates and cmd closure.
+
+**No review shortcut**: Review, adoption judgment, RCA, and architecture/design evaluation go to Gunshi.
+Ashigaru may perform mechanical reproduction or data gathering, but not quality judgment.
 
 **L3/L4 boundary**: Does a procedure/template exist? YES = L3 (Sonnet). NO = L4 (Opus).
 
@@ -482,7 +513,8 @@ Route strategic or judgment-heavy review to Gunshi:
 | L4-L5 | Analytical review | Yes |
 | L6 | Strategic review + Lord approval when needed | Yes |
 
-For large repetitive batches, let Gunshi review batch 1 only. If the pattern is valid, let Karo handle the remainder mechanically.
+For large repetitive batches (>10 items at the same Bloom level), let Gunshi review batch 1 only. If the pattern is valid, let Karo handle the remainder mechanically.
+This prevents high-reasoning token cost from exploding on repetitive work.
 
 ## Critical Thinking (Minimal)
 

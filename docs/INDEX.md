@@ -8,6 +8,7 @@
 - `docs/EXECPLAN_2026-05-22_upstream_base_rebuild.md` - 最新 upstream base で Shogunate を再実装する計画。
 - `docs/EXECPLAN_2026-05-22_upstream_agy_pr_local_models.md` - 本家 AGY-only PR と LocalAPI / Ollama / LM Studio 検証計画。
 - `docs/EXECPLAN_2026-05-28_gunkan_role.md` - Shogunate 独自の軍監 role 追加計画。
+- `docs/EXECPLAN_2026-05-28_upstream_v5_1_sync.md` - 本家 `upstream/main` v5.1.0 反映計画と検証記録。
 
 ## Notes
 

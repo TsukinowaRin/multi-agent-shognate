@@ -41,6 +41,7 @@ import java.io.File
 fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+    val connectionTest by settingsViewModel.connectionTest.collectAsState()
 
     var host by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST) }
     var port by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR) ?: Defaults.SSH_PORT_STR) }
@@ -54,6 +55,19 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     var saved by remember { mutableStateOf(false) }
     var tapCount by remember { mutableIntStateOf(0) }
     var showDebugLog by remember { mutableStateOf(false) }
+    fun saveSettings() {
+        prefs.edit()
+            .putString(PrefsKeys.SSH_HOST, host.trim())
+            .putString(PrefsKeys.SSH_PORT, port.trim())
+            .putString(PrefsKeys.SSH_USER, user.trim())
+            .putString(PrefsKeys.SSH_KEY_PATH, keyPath.trim())
+            .putString(PrefsKeys.SSH_PASSWORD, password)
+            .putString(PrefsKeys.PROJECT_PATH, projectPath.trim())
+            .putString(PrefsKeys.SHOGUN_SESSION, shogunSession.trim())
+            .putString(PrefsKeys.AGENTS_SESSION, agentsSession.trim())
+            .apply()
+        saved = true
+    }
     val pickSshKeyLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -95,6 +109,73 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 }
             }
         )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Sumi),
+            shape = RoundedCornerShape(6.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("かんたん接続セットアップ", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+                Text(
+                    "PC側で Shogunate を起動してから、SSH情報を入れて接続診断を実行してください。tmux target は shogunate:goza のように直接指定できます。",
+                    color = TextMuted,
+                    fontSize = 13.sp
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            port = Defaults.SSH_PORT_STR
+                            shogunSession = Defaults.SHOGUN_SESSION
+                            agentsSession = Defaults.AGENTS_SESSION
+                            saved = false
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text("標準値を入力")
+                    }
+                    Button(
+                        onClick = {
+                            saveSettings()
+                            settingsViewModel.testConnection(
+                                host = host,
+                                portText = port,
+                                user = user,
+                                keyPath = keyPath,
+                                password = password,
+                                projectPath = projectPath,
+                                shogunTargetInput = shogunSession,
+                                agentsTargetInput = agentsSession
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !connectionTest.running,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Shuaka,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(if (connectionTest.running) "確認中..." else "接続診断")
+                    }
+                }
+                if (connectionTest.message.isNotBlank()) {
+                    Text(
+                        text = connectionTest.message,
+                        color = if (connectionTest.success) Color(0xFF9CCC65) else Color(0xFFFFB74D),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
 
         OutlinedTextField(
             value = host,
@@ -163,7 +244,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             value = projectPath,
             onValueChange = { projectPath = it },
             label = { Text("プロジェクトパス（サーバー側）") },
-            placeholder = { Text("/path/to/multi-agent-shogun") },
+            placeholder = { Text("/mnt/d/git_workspace/multi-agent-shognate/multi-agent-shognate") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -175,7 +256,8 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         OutlinedTextField(
             value = shogunSession,
             onValueChange = { shogunSession = it },
-            label = { Text("将軍セッション名") },
+            label = { Text("将軍 tmux target") },
+            supportingText = { Text("例: shogunate:goza。session名だけなら shogun:main として扱います。") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -183,7 +265,8 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         OutlinedTextField(
             value = agentsSession,
             onValueChange = { agentsSession = it },
-            label = { Text("エージェントセッション名") },
+            label = { Text("エージェント tmux target") },
+            supportingText = { Text("例: shogunate:goza。session名だけなら multiagent:0 として扱います。") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -196,17 +279,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
 
         Button(
             onClick = {
-                prefs.edit()
-                    .putString(PrefsKeys.SSH_HOST, host)
-                    .putString(PrefsKeys.SSH_PORT, port)
-                    .putString(PrefsKeys.SSH_USER, user)
-                    .putString(PrefsKeys.SSH_KEY_PATH, keyPath)
-                    .putString(PrefsKeys.SSH_PASSWORD, password)
-                    .putString(PrefsKeys.PROJECT_PATH, projectPath)
-                    .putString(PrefsKeys.SHOGUN_SESSION, shogunSession)
-                    .putString(PrefsKeys.AGENTS_SESSION, agentsSession)
-                    .apply()
-                saved = true
+                saveSettings()
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(

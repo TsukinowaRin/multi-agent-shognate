@@ -58,14 +58,16 @@ Or build from source:
 ## Setup
 
 1. Launch the app → **Settings** tab
-2. Enter SSH connection info:
+2. Tap **標準値を入力** to fill `shogunate:goza` as the tmux target.
+3. Enter SSH connection info:
    - **Host**: Your server's IP (e.g., Tailscale IP)
    - **Port**: 22
    - **User**: Your SSH username
    - **Key Path** or **Password**: Authentication method
    - **Project Path**: Server-side path to multi-agent-shogun (e.g., `/mnt/c/tools/multi-agent-shogun`)
-   - **Session Names**: tmux session names for Shogun and Agents
-3. Tap **Save** → switch to **Shogun** tab → auto-connects
+   - **tmux targets**: Shogunate normally uses `shogunate:goza`. Legacy session-name-only values like `shogun` / `multiagent` remain compatible.
+4. Tap **接続診断** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
+5. Once the check passes, switch to the **Shogun** tab → auto-connects.
 
 ### Prerequisites
 

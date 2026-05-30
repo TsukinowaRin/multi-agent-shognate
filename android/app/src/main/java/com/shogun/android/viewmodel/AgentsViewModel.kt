@@ -47,7 +47,7 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun agentsTarget(): String {
         val session = prefs.getString(PrefsKeys.AGENTS_SESSION, Defaults.AGENTS_SESSION) ?: Defaults.AGENTS_SESSION
-        return "$session:0"
+        return Defaults.resolveAgentsTarget(session)
     }
 
     fun pauseRefresh() { paused = true }

@@ -25,8 +25,20 @@ object Defaults {
     const val SSH_HOST = "192.168.1.1"
     const val SSH_PORT = 22
     const val SSH_PORT_STR = "22"
-    const val SHOGUN_SESSION = "shogun"
-    const val AGENTS_SESSION = "multiagent"
+    const val SHOGUN_SESSION = "shogunate:goza"
+    const val AGENTS_SESSION = "shogunate:goza"
     const val NTFY_TOPIC = "sho-y0uhey"
     const val TMUX = "/usr/bin/tmux"
+
+    fun resolveShogunTarget(value: String): String {
+        val trimmed = value.trim()
+        if (trimmed.isBlank()) return SHOGUN_SESSION
+        return if (trimmed.contains(":") || trimmed.contains(".")) trimmed else "$trimmed:main"
+    }
+
+    fun resolveAgentsTarget(value: String): String {
+        val trimmed = value.trim()
+        if (trimmed.isBlank()) return AGENTS_SESSION
+        return if (trimmed.contains(":") || trimmed.contains(".")) trimmed else "$trimmed:0"
+    }
 }

@@ -3,14 +3,24 @@ package com.shogun.android.viewmodel
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.shogun.android.ssh.SshManager
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+data class ConnectionTestState(
+    val running: Boolean = false,
+    val success: Boolean = false,
+    val message: String = ""
+)
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+    private val sshManager = SshManager.getInstance()
 
     private val _notificationEnabled = MutableStateFlow(prefs.getBoolean(PrefsKeys.NOTIFICATION_ENABLED, true))
     val notificationEnabled: StateFlow<Boolean> = _notificationEnabled
@@ -35,6 +45,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _notifyAgentResponse = MutableStateFlow(prefs.getBoolean(PrefsKeys.NOTIFY_AGENT_RESPONSE, false))
     val notifyAgentResponse: StateFlow<Boolean> = _notifyAgentResponse
+
+    private val _connectionTest = MutableStateFlow(ConnectionTestState())
+    val connectionTest: StateFlow<ConnectionTestState> = _connectionTest
 
     fun setNotificationEnabled(value: Boolean) {
         _notificationEnabled.value = value
@@ -75,4 +88,79 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _notifyAgentResponse.value = value
         prefs.edit().putBoolean(PrefsKeys.NOTIFY_AGENT_RESPONSE, value).apply()
     }
+
+    fun testConnection(
+        host: String,
+        portText: String,
+        user: String,
+        keyPath: String,
+        password: String,
+        projectPath: String,
+        shogunTargetInput: String,
+        agentsTargetInput: String
+    ) {
+        val trimmedHost = host.trim()
+        val trimmedUser = user.trim()
+        val port = portText.trim().toIntOrNull()
+        if (trimmedHost.isBlank() || trimmedUser.isBlank() || port == null) {
+            _connectionTest.value = ConnectionTestState(
+                running = false,
+                success = false,
+                message = "SSHホスト、ポート、ユーザーを確認してください。"
+            )
+            return
+        }
+
+        viewModelScope.launch {
+            _connectionTest.value = ConnectionTestState(running = true, message = "SSH接続を確認中...")
+            val lines = mutableListOf<String>()
+            val sshResult = sshManager.connect(trimmedHost, port, trimmedUser, keyPath.trim(), password)
+            if (sshResult.isFailure) {
+                _connectionTest.value = ConnectionTestState(
+                    running = false,
+                    success = false,
+                    message = "SSH: 失敗\n${sshResult.exceptionOrNull()?.message ?: "不明なエラー"}"
+                )
+                return@launch
+            }
+            lines += "SSH: OK"
+
+            val tmuxOk = remoteOk("command -v tmux >/dev/null 2>&1")
+            lines += "tmux: " + if (tmuxOk) "OK" else "見つかりません"
+
+            val trimmedProject = projectPath.trim().trimEnd('/')
+            val projectOk = trimmedProject.isNotBlank() && remoteOk("[ -d ${shellQuote(trimmedProject)} ]")
+            lines += "Project: " + when {
+                trimmedProject.isBlank() -> "未設定"
+                projectOk -> "OK ($trimmedProject)"
+                else -> "見つかりません ($trimmedProject)"
+            }
+
+            val shogunTarget = Defaults.resolveShogunTarget(shogunTargetInput)
+            val agentsTarget = Defaults.resolveAgentsTarget(agentsTargetInput)
+            val shogunOk = remoteOk("${Defaults.TMUX} list-panes -t ${shellQuote(shogunTarget)} >/dev/null 2>&1")
+            val agentsOk = remoteOk("${Defaults.TMUX} list-panes -t ${shellQuote(agentsTarget)} >/dev/null 2>&1")
+            lines += "将軍 target: " + if (shogunOk) "OK ($shogunTarget)" else "見つかりません ($shogunTarget)"
+            lines += "エージェント target: " + if (agentsOk) "OK ($agentsTarget)" else "見つかりません ($agentsTarget)"
+
+            if (trimmedProject.isNotBlank()) {
+                val dashboardOk = remoteOk("[ -f ${shellQuote("$trimmedProject/dashboard.md")} ]")
+                lines += "dashboard.md: " + if (dashboardOk) "OK" else "未検出"
+            }
+
+            val success = tmuxOk && shogunOk && agentsOk && (trimmedProject.isBlank() || projectOk)
+            _connectionTest.value = ConnectionTestState(
+                running = false,
+                success = success,
+                message = lines.joinToString("\n")
+            )
+        }
+    }
+
+    private suspend fun remoteOk(testCommand: String): Boolean {
+        val result = sshManager.execCommand("if $testCommand; then echo __ok__; else echo __ng__; fi")
+        return result.getOrDefault("").contains("__ok__")
+    }
+
+    private fun shellQuote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
 }

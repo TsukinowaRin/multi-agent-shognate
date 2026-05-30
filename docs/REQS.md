@@ -231,3 +231,19 @@
 4. `shutsujin_departure.sh`, `scripts/goza_no_ma.sh`, `scripts/watcher_supervisor.sh`, `scripts/configure_runtime_roles.py`, `scripts/gunkan_*` など Shogunate runtime の入口が残っている。
 5. `bash scripts/build_instructions.sh` が成功する。
 6. 変更範囲に対して `bash -n`, `python3 -m py_compile`, 関連 Bats, `git diff --check` を実行し、結果を記録する。
+
+## 追補（2026-05-30: Android app 接続セットアップ改善）
+
+### 要求
+
+1. Android app は現行 Shogunate runtime の tmux target に合わせやすくする。
+2. 設定画面は SSH 接続に必要な値、Shogunate 推奨値、接続確認の結果をユーザーが迷わず確認できるようにする。
+3. 旧 `session:window` を前提にした入力だけでなく、`shogunate:goza` のような tmux target を直接指定できる。
+4. 接続テストは SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` の状態を確認し、結果をアプリ内に表示する。
+
+### 受け入れ条件
+
+1. 設定画面から Shogunate 標準 target を一発入力できる。
+2. 設定画面で保存後すぐに接続診断を実行できる。
+3. 既存の `shogun` / `multiagent` のような session 名だけの入力は、従来互換 target に解決される。
+4. `./gradlew testDebugUnitTest` または同等の Android unit/build check が PASS する。

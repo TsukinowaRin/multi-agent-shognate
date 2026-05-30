@@ -58,14 +58,16 @@
 ## セットアップ
 
 1. アプリを起動 → **設定** タブ
-2. SSH接続情報を入力:
+2. **標準値を入力** を押すと、tmux target に `shogunate:goza` が入ります。
+3. SSH接続情報を入力:
    - **ホスト**: サーバーのIP（例: Tailscale IP）
    - **ポート**: 22
    - **ユーザー**: SSHユーザー名
    - **鍵パス** または **パスワード**: 認証方式
    - **プロジェクトパス**: サーバー側のmulti-agent-shogunパス（例: `/mnt/c/tools/multi-agent-shogun`）
-   - **セッション名**: 将軍・エージェント用のtmuxセッション名
-3. **保存** → **将軍** タブに切替 → 自動接続
+   - **tmux target**: Shogunate は通常 `shogunate:goza`。旧形式の `shogun` / `multiagent` のようなセッション名だけの入力も互換対応します。
+4. **接続診断** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
+5. 診断が通ったら **将軍** タブに切替 → 自動接続
 
 ### 前提条件
 

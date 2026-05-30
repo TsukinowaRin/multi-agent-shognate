@@ -19,7 +19,7 @@ Shogunate 独自の `gunkan`（軍監）を、将軍直属・家老並列の独�
 - リアルタイム検知は非LLMの軽量 watcher で行う。軽量 watcher は queue / reports / dashboard / git diff / CoDD 設定を低コストに検査し、異常時だけ軍監LLMへ `audit_requested` を送る。
 - `inbox_write` は非LLMの軽量イベントログを残す。軍監LLMへの nudge は `audit_requested` / `audit_failed` / `runtime_blocked` / `emergency_stop_requested` 等の監査イベント時のみ。
 - ただし、御座の間の軍監 pane は常時対話可能な LLM pane として扱う。ユーザーまたは将軍が軍監 pane へ直接指示した場合は、inbox event を待たず監査・検証・停止判断・功績整理・リスク確認に即応する。
-- CoDD は常駐 runtime ではなく `scripts/gunkan_codd_audit.py` 経由で呼び出す。`codd` CLI が入っていない環境では組み込みの整合性チェックへフォールバックする。
+- CoDD は常駐 runtime ではなく `scripts/gunkan_codd_audit.py` 経由で呼び出す。`codd` CLI が入っていない環境では repo-local `.shogunate/codd-venv/` へ `codd-dev` を bootstrap し、導入できない場合だけ組み込みの整合性チェックへフォールバックする。
 - 軍監は `queue/reports/gunkan_report.yaml` を canonical report とし、必要に応じて `queue/inbox/shogun.yaml` / `queue/inbox/<karo>.yaml` へ通知する。
 - 軍監は通常タスク割当をしない。是正要求は家老宛に出し、最終判断は将軍が行う。
 - `scripts/gunkan_codd_audit.py` は `PATH` 上の `codd` に加え、repo-local `.shogunate/codd-venv/bin/codd` / `.shogunate/codd-venv/Scripts/codd.exe` も検出する。
@@ -89,6 +89,27 @@ Shogunate 独自の `gunkan`（軍監）を、将軍直属・家老並列の独�
   - `/mnt/d/.../Shogunate-test/.shogunate/codd-venv/bin/codd scan --path .` → 4 frontmatter docs, 24 graph nodes, 16 edges。
   - `/mnt/d/.../Shogunate-test/.shogunate/codd-venv/bin/codd validate` → PASS。
   - `PATH=<codd-venv> python3 scripts/gunkan_codd_audit.py --scope manual --parent-cmd smoke_gunkan_watch` → `status: passed`, `scan/impact/validate` all returncode 0。
+
+## 再完了経路 + CoDD bootstrap 改善（2026-05-29）
+
+- `scripts/karo_done_to_shogun_bridge.py` は `completed_at` が無い同一 `cmd_id` / `timestamp` の再完了でも、command 内容と `dashboard.md` の該当行から `digest:*` 完了IDを作り、古い `cmd_done` inbox が残っていても新規完了として将軍へ再通知できる。
+- legacy state の `cmd_id` 単独行は現行 identity へ昇格する。`cmd_id + timestamp` だけの古い state は、同 timestamp の古い inbox が無い場合だけ既通知扱いにして、差戻し後の再完了を潰さない。
+- `scripts/gunkan_codd_audit.py` は `codd` 未検出時、`.codd/codd.yaml` がある project では repo-local `.shogunate/codd-venv/` へ `codd-dev` を自動 bootstrap する。結果は `queue/runtime/codd/gunkan_audit.yaml` の `codd_bootstrap` に残す。
+- 実 repo で `bash scripts/codd_check.sh install` → `codd-dev 2.19.0` 導入、`bash scripts/codd_check.sh gunkan` → `scan` / `impact` / `validate` all returncode 0、`status: passed` を確認。
+
+## 軽量 watcher 精度改善（2026-05-30）
+
+- 方針: 軍監LLMを定期巡回させず、非LLM watcher の構造化検出を増やす。検出対象は YAML / dashboard / git から低コストかつ根拠付きで判定できるものに限定する。
+- 追加検出:
+  - done command と failed/blocked/error report の矛盾。
+  - done command と未完了 task の矛盾。
+  - dashboard の完了表示と同一 command の失敗 report の矛盾。
+  - done report が明示した成果物 path の欠落。
+  - `queue/reports/<agent>_report.yaml` と `worker_id` の不一致。
+  - untracked file 本文内の secret / destructive pattern。
+- 誤検知対策:
+  - path 存在確認は `target_path` / `artifact` / `output` / `files` 系の明示キーに限定し、URL、絶対 path、自然文、glob は除外する。
+  - 既存 finding は first run baseline と cooldown / fingerprint で抑制し、evidence 変化時だけ再通知する。
 
 ## 復旧
 

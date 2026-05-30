@@ -8,6 +8,7 @@ CODD_PACKAGE="${CODD_PACKAGE:-codd-dev}"
 CODD_VERSION_SPEC="${CODD_VERSION_SPEC:-}"
 CODD_FALLBACK_VERSION="${CODD_FALLBACK_VERSION:-1.34.0}"
 CODD_VENV="${CODD_VENV:-${PROJECT_ROOT}/.shogunate/codd-venv}"
+CODD_AUTO_INSTALL_WAS_SET="${CODD_AUTO_INSTALL+x}"
 CODD_AUTO_INSTALL="${CODD_AUTO_INSTALL:-0}"
 
 usage() {
@@ -141,7 +142,12 @@ case "${command_name}" in
         (cd "${PROJECT_ROOT}" && run_codd validate)
         ;;
     gunkan)
-        python3 "${PROJECT_ROOT}/scripts/gunkan_codd_audit.py" --project-root "${PROJECT_ROOT}" --scope manual
+        if [ -n "$CODD_AUTO_INSTALL_WAS_SET" ]; then
+            MAS_GUNKAN_CODD_AUTO_INSTALL="${MAS_GUNKAN_CODD_AUTO_INSTALL:-${CODD_AUTO_INSTALL}}" \
+                python3 "${PROJECT_ROOT}/scripts/gunkan_codd_audit.py" --project-root "${PROJECT_ROOT}" --scope manual
+        else
+            python3 "${PROJECT_ROOT}/scripts/gunkan_codd_audit.py" --project-root "${PROJECT_ROOT}" --scope manual
+        fi
         ;;
     *)
         usage >&2

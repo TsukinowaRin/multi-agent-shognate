@@ -156,7 +156,7 @@
 2. `watcher_supervisor` が現行 session の pane に inbox nudge を送る。旧 `goza-no-ma` の pane ID へ送らない。
 3. demo `Task Lantern` は `index.html`, `styles.css`, `app.js`, `README.md` を生成し、`node --check demo-llm-validation/app.js` と静的整合チェックが通る。
 4. 家老は CSS/JS 統合ズレなどの差戻しを受けた場合に active queue へ戻し、修正 task を再割当できる。
-5. `scripts/karo_done_to_shogun_bridge.py` は `completed_at` を完了 identity に含め、同じ command の再完了を将軍へ再通知できる。
+5. `scripts/karo_done_to_shogun_bridge.py` は `completed_at` または command/dashboard の完了指紋を完了 identity に含め、同じ command の再完了を将軍へ再通知できる。
 6. `git diff --check` と関連 Bats / shell syntax check が PASS する。
 
 ## 追補（2026-05-28: Shogunate 独自役職「軍監」追加）
@@ -194,13 +194,24 @@
 7. `scripts/inbox_write.sh` が通常メッセージを `queue/runtime/gunkan_events.yaml` へ非ブロッキング記録する。
 8. `scripts/gunkan_light_watch.py` が `queue/runtime/gunkan_watch.yaml` に軽量監視結果を書き、重大/警告 finding を cooldown 付きで `queue/inbox/gunkan.yaml` へ `audit_requested` として通知できる。
 9. runtime daemon session に `gunkan-watch` window が作られ、軍監LLMを常時動かさずに非LLM監視を継続できる。
-10. `scripts/gunkan_codd_audit.py` が `codd` CLI 利用可能時は `codd scan` / `codd impact` / `codd validate` を実行し、未導入時はフォールバック監査結果を書ける。
-11. `scripts/gunkan_codd_audit.py` は `PATH` と repo-local `.shogunate/codd-venv/` の `codd` を検出できる。
+10. `scripts/gunkan_codd_audit.py` が `codd` CLI 利用可能時は `codd scan` / `codd impact` / `codd validate` を実行し、未導入時は repo-local `.shogunate/codd-venv/` へ `codd-dev` を bootstrap し、導入失敗時はフォールバック監査結果を書ける。
+11. `scripts/gunkan_codd_audit.py` は `PATH` と repo-local `.shogunate/codd-venv/` の `codd` を検出でき、`codd_bootstrap` に導入試行の結果を記録できる。
 12. `.codd/codd.yaml` と CoDD 用 frontmatter docs が存在し、CoDD scan が軍監/監視/監査の関係 graph を作れる。
 13. 軍監 audit nudge は同一未読イベントで連続投入されず、監査後は発火元 inbox message を `read: true` にする。
 14. 軍監 lightweight watcher は同一 signature かつ同一 evidence の finding を cooldown 後も再通知しない。finding の evidence が変化した場合のみ再通知する。
 15. 将軍 instruction は legacy `multiagent` tmux session / hard-coded pane に依存せず、`queue/` と `dashboard.md` を軽量確認して家老へ委譲する。
 16. 関連 Bats / shell syntax / Python compile / `git diff --check` が PASS する。
+
+### 追補要求（2026-05-30: 軽量軍監 watcher 精度改善）
+
+1. 軽量 watcher は LLM を呼ばず、queue / reports / tasks / dashboard / git の構造化情報だけで検出できる失敗を広げる。
+2. 親 command が `done` なのに、同じ `parent_cmd` の report が `failed` / `blocked` / `error` の場合は監査対象として検出する。
+3. 親 command が `done` なのに、同じ `parent_cmd` の task が未完了状態で残っている場合は監査対象として検出する。
+4. 完了 report が成果物 path / artifact / output を明示している場合、その相対 path が存在しなければ検出する。
+5. report の `worker_id` と `queue/reports/<agent>_report.yaml` の agent 名が食い違う場合は検出する。
+6. dashboard が command 完了を示す一方、同じ command の report が失敗している場合は検出する。
+7. untracked file の中身に秘密情報や破壊的操作パターンがある場合も検出する。
+8. 誤検知を避けるため、成果物 path の存在確認は明示的な path/artifact/output 系キーに限定し、URL や自然文は path として扱わない。
 
 ## 追補（2026-05-28: upstream/main v5.1.0 反映）
 

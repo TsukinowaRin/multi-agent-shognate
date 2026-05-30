@@ -87,6 +87,57 @@ assert data["commands"][0]["stdout"].startswith("mock codd")
 PY
 }
 
+@test "gunkan_codd_audit: can bootstrap repo-local codd venv when enabled" {
+  mkdir -p "$TEST_TMP/fakebin" "$TEST_TMP/.codd"
+  printf 'version: "0.1.0"\n' > "$TEST_TMP/.codd/codd.yaml"
+  cat > "$TEST_TMP/fakebin/python3" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${1:-}" = "-m" ] && [ "${2:-}" = "venv" ]; then
+  venv="$3"
+  mkdir -p "$venv/bin"
+  cat > "$venv/bin/python" <<'PYSH'
+#!/usr/bin/env bash
+set -euo pipefail
+bin_dir="$(cd "$(dirname "$0")" && pwd)"
+if [ "${1:-}" = "-m" ] && [ "${2:-}" = "pip" ]; then
+  if printf '%s\n' "$*" | grep -q 'codd-dev'; then
+    cat > "$bin_dir/codd" <<'CODDSH'
+#!/usr/bin/env bash
+echo "bootstrapped codd $*"
+exit 0
+CODDSH
+    chmod +x "$bin_dir/codd"
+  fi
+  exit 0
+fi
+exit 2
+PYSH
+  chmod +x "$venv/bin/python"
+  exit 0
+fi
+exit 2
+SH
+  chmod +x "$TEST_TMP/fakebin/python3"
+  export PATH="$TEST_TMP/fakebin:/usr/bin:/bin"
+
+  run env MAS_GUNKAN_CODD_AUTO_INSTALL=1 "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_codd_audit.py" --project-root "$TEST_TMP" --scope runtime --parent-cmd cmd_boot
+  [ "$status" -eq 0 ]
+
+  "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/codd/gunkan_audit.yaml" <<'PY'
+import sys
+import yaml
+
+with open(sys.argv[1], encoding="utf-8") as f:
+    data = yaml.safe_load(f)
+assert data["codd_available"] is True
+assert data["codd_bootstrap"]["attempted"] is True
+assert data["codd_bootstrap"]["status"] == "installed"
+assert data["status"] == "passed"
+assert data["commands"][0]["stdout"].startswith("bootstrapped codd")
+PY
+}
+
 @test "gunkan_light_watch: done report without verification wakes gunkan once" {
   cat > "$TEST_TMP/queue/reports/ashigaru1_report.yaml" <<'YAML'
 worker_id: ashigaru1
@@ -208,6 +259,122 @@ inbox = yaml.safe_load(open(sys.argv[2], encoding="utf-8"))
 assert any(f["kind"] == "sensitive_path_changed" for f in watch["findings"])
 assert watch["alert_sent"] is True
 assert inbox["messages"][0]["type"] == "audit_requested"
+PY
+}
+
+@test "gunkan_light_watch: detects done command contradictions without LLM" {
+  mkdir -p "$TEST_TMP/queue/tasks"
+  cat > "$TEST_TMP/queue/shogun_to_karo.yaml" <<'YAML'
+queue:
+  - id: cmd_watch_done
+    status: done
+    purpose: demo を完成させる
+YAML
+  cat > "$TEST_TMP/queue/reports/ashigaru1_report.yaml" <<'YAML'
+worker_id: ashigaru2
+status: failed
+parent_cmd: cmd_watch_done
+verification: pytest failed
+target_path: demo/missing.html
+YAML
+  cat > "$TEST_TMP/queue/tasks/ashigaru1.yaml" <<'YAML'
+task_id: task_open
+parent_cmd: cmd_watch_done
+status: in_progress
+YAML
+  cat > "$TEST_TMP/dashboard.md" <<'MD'
+# dashboard
+- `cmd_watch_done` 完了。デモは完成。
+MD
+
+  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  [ "$status" -eq 0 ]
+
+  "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'
+import sys
+import yaml
+
+watch = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+kinds = {f["kind"] for f in watch["findings"]}
+assert "report_worker_mismatch" in kinds
+assert "agent_failure_report" in kinds
+assert "done_command_with_failed_report" in kinds
+assert "done_command_with_open_task" in kinds
+assert "dashboard_done_but_report_failed" in kinds
+assert watch["status"] == "error"
+assert watch["alert_sent"] is True
+PY
+}
+
+@test "gunkan_light_watch: artifact path check ignores URLs and natural text" {
+  mkdir -p "$TEST_TMP/dist"
+  printf '<!doctype html>\n' > "$TEST_TMP/dist/app.html"
+  cat > "$TEST_TMP/queue/reports/ashigaru1_report.yaml" <<'YAML'
+worker_id: ashigaru1
+status: done
+parent_cmd: cmd_path_ok
+verification: node --check app.js passed
+target_path: dist/app.html
+result:
+  output_url: https://example.invalid/demo
+  summary: "自然文に missing/file.js と書いても path key ではないので成果物扱いしない"
+YAML
+
+  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  [ "$status" -eq 0 ]
+
+  "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'
+import sys
+import yaml
+
+watch = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+kinds = {f["kind"] for f in watch["findings"]}
+assert "done_report_missing_artifact" not in kinds
+assert "report_worker_mismatch" not in kinds
+PY
+}
+
+@test "gunkan_light_watch: done report with missing explicit artifact path is detected" {
+  cat > "$TEST_TMP/queue/reports/ashigaru1_report.yaml" <<'YAML'
+worker_id: ashigaru1
+status: done
+parent_cmd: cmd_artifact_missing
+verification: node --check app.js passed
+artifacts:
+  - dist/missing.html
+YAML
+
+  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  [ "$status" -eq 0 ]
+
+  "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'
+import sys
+import yaml
+
+watch = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+kinds = {f["kind"] for f in watch["findings"]}
+assert "done_report_missing_artifact" in kinds
+PY
+}
+
+@test "gunkan_light_watch: untracked sensitive content is detected outside sensitive path" {
+  git -C "$TEST_TMP" init -q
+  git -C "$TEST_TMP" config user.email smoke@example.invalid
+  git -C "$TEST_TMP" config user.name "Smoke Test"
+  git -C "$TEST_TMP" add .
+  git -C "$TEST_TMP" commit -q -m baseline
+  printf 'API_KEY=sk_test_1234567890abcdef1234567890abcdef\n' > "$TEST_TMP/notes.txt"
+
+  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  [ "$status" -eq 0 ]
+
+  "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'
+import sys
+import yaml
+
+watch = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+assert any(f["kind"] == "sensitive_content_changed" for f in watch["findings"])
+assert watch["alert_sent"] is True
 PY
 }
 

@@ -263,6 +263,38 @@ PY
   [ "$status" -eq 0 ]
 }
 
+@test "karo_done_to_shogun_bridge: completed_at が無い再完了も dashboard 指紋で再通知する" {
+  python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py" >/dev/null
+  printf 'cmd_300\t2026-03-13T22:33:00+09:00\n' > "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  cat > "$MAS_DASHBOARD_FILE" <<'MD'
+# dashboard
+- 2026-03-13 23:20 `cmd_300` 再完了。監査差戻し後に修正と検証を完了した。
+MD
+  python3 - <<'PY' "$MAS_SHOGUN_INBOX_FILE"
+import sys, yaml
+inboxp = sys.argv[1]
+with open(inboxp, encoding='utf-8') as fh:
+    inbox = yaml.safe_load(fh) or {}
+msgs = inbox.get('messages', []) or []
+msgs.append({
+    'id': 'msg_old',
+    'from': 'karo',
+    'type': 'cmd_done',
+    'content': '[cmd:cmd_300] 家老より完了報告。 時刻: 2026-03-13T22:33:00+09:00 要約: 旧完了',
+    'read': True,
+})
+inbox['messages'] = msgs
+with open(inboxp, 'w', encoding='utf-8') as fh:
+    yaml.safe_dump(inbox, fh, allow_unicode=True, sort_keys=False)
+PY
+
+  run python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "sent" ]]
+  run bats_search "完了ID: digest:|再完了。監査差戻し後に修正と検証を完了した|cmd_300.*digest:" "$MAS_SHOGUN_INBOX_FILE" "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  [ "$status" -eq 0 ]
+}
+
 @test "karo_done_to_shogun_bridge: legacy state が cmd_id 単独でも timestamp 付き state へ昇格して再送しない" {
   printf 'cmd_250\ncmd_300\n' > "$MAS_KARO_DONE_TO_SHOGUN_STATE"
 
@@ -300,10 +332,8 @@ PY
 
   run python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py"
   [ "$status" -eq 0 ]
-  [[ "$output" =~ "already_sent=cmd_250@2026-03-12T21:00:00+09:00,cmd_300,cmd_250@2026-03-13T23:45:00+09:00" || \
-     "$output" =~ "already_sent=cmd_250@2026-03-12T21:00:00+09:00,cmd_250@2026-03-13T23:45:00+09:00,cmd_300" || \
-     "$output" =~ "already_sent=cmd_300,cmd_250@2026-03-12T21:00:00+09:00,cmd_250@2026-03-13T23:45:00+09:00" || \
-     "$output" =~ "already_sent=cmd_300,cmd_250@2026-03-13T23:45:00+09:00,cmd_250@2026-03-12T21:00:00+09:00" || \
-     "$output" =~ "already_sent=cmd_250@2026-03-13T23:45:00+09:00,cmd_300,cmd_250@2026-03-12T21:00:00+09:00" || \
-     "$output" =~ "already_sent=cmd_250@2026-03-13T23:45:00+09:00,cmd_250@2026-03-12T21:00:00+09:00,cmd_300" ]]
+  [[ "$output" == *"already_sent="* ]]
+  [[ "$output" == *"cmd_250@2026-03-12T21:00:00+09:00"* ]]
+  [[ "$output" == *"cmd_250@2026-03-13T23:45:00+09:00"* ]]
+  [[ "$output" == *"cmd_300"* ]]
 }

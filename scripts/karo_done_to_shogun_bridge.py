@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import os
+import hashlib
 import subprocess
 from pathlib import Path
 
 import yaml
 
 DONE_STATUSES = {"done", "completed", "closed"}
+COMPLETION_TIME_FIELDS = ("completed_at", "done_at", "closed_at", "verified_at", "updated_at")
+COMPLETION_HASH_PREFIX = "digest:"
 
 
 def load_yaml(path: Path):
@@ -35,29 +38,54 @@ def save_state(path: Path, ids):
             fh.write(f"{cmd_id}\n")
 
 
-def command_identity(cmd: dict) -> str:
+def compact(text: str, limit: int = 360) -> str:
+    normalized = " ".join(str(text).split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 3] + "..."
+
+
+def command_completion_marker(cmd: dict, dashboard_summary: str = "") -> str:
+    for field in COMPLETION_TIME_FIELDS:
+        value = str(cmd.get(field, "")).strip()
+        if value:
+            return value
+
+    payload = {
+        "command": {
+            key: cmd.get(key)
+            for key in sorted(cmd)
+            if key not in {"read", "claimed_by", "claimed_at"}
+        },
+        "dashboard": dashboard_summary,
+    }
+    dumped = yaml.safe_dump(payload, allow_unicode=True, sort_keys=True)
+    return COMPLETION_HASH_PREFIX + hashlib.sha256(dumped.encode("utf-8")).hexdigest()[:16]
+
+
+def command_identity(cmd: dict, dashboard_summary: str = "") -> str:
     cmd_id = str(cmd.get("id", "")).strip()
     timestamp = str(cmd.get("timestamp", "")).strip()
-    completed_at = str(cmd.get("completed_at", "")).strip()
     if not cmd_id:
         return ""
     parts = [cmd_id]
     if timestamp:
         parts.append(timestamp)
-    if completed_at:
-        parts.append(completed_at)
+    marker = command_completion_marker(cmd, dashboard_summary)
+    if marker:
+        parts.append(marker)
     return "\t".join(parts)
 
 
-def upgrade_legacy_state(state, cmds):
+def upgrade_legacy_state(state, cmds, dashboard_path: Path):
     unique_identity_by_id = {}
     duplicates = set()
 
     for cmd in cmds:
-        identity = command_identity(cmd)
+        cmd_id = str(cmd.get("id", "")).strip()
+        identity = command_identity(cmd, extract_dashboard_summary(dashboard_path, cmd_id))
         if not identity:
             continue
-        cmd_id = str(cmd.get("id", "")).strip()
         if cmd_id in unique_identity_by_id:
             duplicates.add(cmd_id)
             continue
@@ -75,21 +103,39 @@ def upgrade_legacy_state(state, cmds):
     return upgraded
 
 
-def state_contains(state, cmd: dict) -> bool:
-    identity = command_identity(cmd)
+def state_contains(state, cmd: dict, dashboard_summary: str = "", allow_legacy_base: bool = False) -> bool:
+    identity = command_identity(cmd, dashboard_summary)
     if not identity:
         return False
     if identity in state:
         return True
     cmd_id = str(cmd.get("id", "")).strip()
-    # Backward compatibility for older state files that stored only cmd_id.
-    return bool(cmd_id and "\t" not in identity and cmd_id in state)
+    if cmd_id and cmd_id in state:
+        return True
+    if allow_legacy_base:
+        parts = identity.split("\t")
+        if len(parts) >= 2 and "\t".join(parts[:2]) in state:
+            return True
+    return False
 
 
-def inbox_already_mentions(inbox_path: Path, cmd: dict) -> bool:
+def inbox_mentions_cmd_timestamp(inbox_path: Path, cmd: dict) -> bool:
     cmd_id = str(cmd.get("id", "")).strip()
     timestamp = str(cmd.get("timestamp", "")).strip()
-    completed_at = str(cmd.get("completed_at", "")).strip()
+    data = load_yaml(inbox_path) or {}
+    for msg in data.get("messages", []) or []:
+        if msg.get("type") != "cmd_done":
+            continue
+        content = str(msg.get("content", ""))
+        if cmd_id and cmd_id in content and (not timestamp or timestamp in content):
+            return True
+    return False
+
+
+def inbox_already_mentions(inbox_path: Path, cmd: dict, dashboard_summary: str = "") -> bool:
+    cmd_id = str(cmd.get("id", "")).strip()
+    timestamp = str(cmd.get("timestamp", "")).strip()
+    marker = command_completion_marker(cmd, dashboard_summary)
     data = load_yaml(inbox_path) or {}
     for msg in data.get("messages", []) or []:
         if msg.get("type") != "cmd_done":
@@ -97,11 +143,11 @@ def inbox_already_mentions(inbox_path: Path, cmd: dict) -> bool:
         content = str(msg.get("content", ""))
         if not cmd_id or cmd_id not in content:
             continue
-        if completed_at:
-            if completed_at in content:
-                return True
-            continue
-        if not timestamp or timestamp in content:
+        if marker and marker in content:
+            return True
+        if marker.startswith(COMPLETION_HASH_PREFIX) and not dashboard_summary and (not timestamp or timestamp in content):
+            return True
+        if not marker.startswith(COMPLETION_HASH_PREFIX) and (not timestamp or timestamp in content):
             return True
     return False
 
@@ -109,11 +155,12 @@ def inbox_already_mentions(inbox_path: Path, cmd: dict) -> bool:
 def extract_dashboard_summary(dashboard_path: Path, cmd_id: str) -> str:
     if not dashboard_path.exists():
         return ""
+    matches = []
     for raw in dashboard_path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if cmd_id in line and line:
-            return line[:240]
-    return ""
+            matches.append(line)
+    return compact(" / ".join(matches[-4:]), 320)
 
 
 def normalize_commands(data):
@@ -128,12 +175,13 @@ def normalize_commands(data):
     return []
 
 
-def collect_commands(*paths: Path):
+def collect_commands(dashboard_path: Path, *paths: Path):
     commands = []
     seen = set()
     for path in paths:
         for cmd in normalize_commands(load_yaml(path) or []):
-            identity = command_identity(cmd)
+            cmd_id = str(cmd.get("id", "")).strip()
+            identity = command_identity(cmd, extract_dashboard_summary(dashboard_path, cmd_id))
             if not identity or identity in seen:
                 continue
             seen.add(identity)
@@ -189,17 +237,19 @@ def main() -> int:
     target_agent = os.environ.get("MAS_SHOGUN_TARGET_AGENT", "shogun")
     source_agent = os.environ.get("MAS_KARO_DONE_FROM_AGENT") or read_lead_karo(runtime_dir) or "karo"
 
-    cmds = collect_commands(cmd_file, archive_file)
+    cmds = collect_commands(dashboard, cmd_file, archive_file)
     shogun_inbox.parent.mkdir(parents=True, exist_ok=True)
     if not shogun_inbox.exists():
         shogun_inbox.write_text("messages: []\n", encoding="utf-8")
 
     if not state_file.exists():
-        existing_done = {
-            command_identity(cmd)
-            for cmd in cmds
-            if str(cmd.get("status", "")).strip().lower() in DONE_STATUSES and command_identity(cmd)
-        }
+        existing_done = set()
+        for cmd in cmds:
+            cmd_id = str(cmd.get("id", "")).strip()
+            summary = extract_dashboard_summary(dashboard, cmd_id)
+            identity = command_identity(cmd, summary)
+            if str(cmd.get("status", "")).strip().lower() in DONE_STATUSES and identity:
+                existing_done.add(identity)
         save_state(state_file, existing_done)
         if existing_done:
             print("primed\t" + ",".join(sorted(existing_done)))
@@ -207,7 +257,7 @@ def main() -> int:
             print("noop\tempty")
         return 0
 
-    state = upgrade_legacy_state(load_state(state_file), cmds)
+    state = upgrade_legacy_state(load_state(state_file), cmds, dashboard)
     newly_sent = []
     already_sent = []
     already_notified = []
@@ -215,17 +265,20 @@ def main() -> int:
 
     for cmd in cmds:
         cmd_id = str(cmd.get("id", "")).strip()
-        identity = command_identity(cmd)
+        summary = extract_dashboard_summary(dashboard, cmd_id)
+        identity = command_identity(cmd, summary)
+        marker = command_completion_marker(cmd, summary)
         if not cmd_id:
             continue
         status = str(cmd.get("status", "")).strip().lower()
         if status not in DONE_STATUSES:
             skipped_not_done.append(cmd_id)
             continue
-        if state_contains(state, cmd):
+        allow_legacy_base = not inbox_mentions_cmd_timestamp(shogun_inbox, cmd)
+        if state_contains(state, cmd, summary, allow_legacy_base=allow_legacy_base):
             already_sent.append(cmd)
             continue
-        if inbox_already_mentions(shogun_inbox, cmd):
+        if inbox_already_mentions(shogun_inbox, cmd, summary):
             state.add(identity)
             already_notified.append(cmd)
             continue
@@ -233,12 +286,15 @@ def main() -> int:
         purpose = str(cmd.get("purpose", "")).strip()
         timestamp = str(cmd.get("timestamp", "")).strip()
         completed_at = str(cmd.get("completed_at", "")).strip()
-        summary = extract_dashboard_summary(dashboard, cmd_id)
         content = f"[cmd:{cmd_id}] 家老より完了報告。dashboard.md を確認し、殿へ結果を上申せよ。"
         if timestamp:
             content += f" 時刻: {timestamp}"
         if completed_at:
             content += f" 完了: {completed_at}"
+        elif marker.startswith(COMPLETION_HASH_PREFIX):
+            content += f" 完了ID: {marker}"
+        elif marker:
+            content += f" 完了: {marker}"
         if purpose:
             content += f" 目的: {purpose}。"
         if summary:

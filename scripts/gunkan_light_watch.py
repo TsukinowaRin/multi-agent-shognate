@@ -23,6 +23,7 @@ import yaml
 
 STATUS_DONE = {"done", "completed", "complete", "success", "passed", "完了"}
 STATUS_BAD = {"failed", "error", "blocked", "timeout", "失敗", "異常", "停止"}
+STATUS_OPEN = {"pending", "assigned", "in_progress", "running", "working", "todo", "queued", "対応中", "未完了"}
 SENSITIVE_PATH_RE = re.compile(
     r"(^|/)(\.env|id_rsa|id_ed25519|.*\.(pem|key|p12|pfx)|auth\.json|credentials?\.json|token.*|secret.*)$",
     re.IGNORECASE,
@@ -31,6 +32,11 @@ DANGEROUS_DIFF_RE = re.compile(
     r"(git\s+reset\s+--hard|git\s+clean\s+-f|rm\s+-rf\s+/(?:\s|$)|PRIVATE KEY|BEGIN OPENSSH PRIVATE KEY)",
     re.IGNORECASE,
 )
+SECRET_VALUE_RE = re.compile(
+    r"(BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY|(?:api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_./+=-]{16,})",
+    re.IGNORECASE,
+)
+PATH_FIELD_RE = re.compile(r"(^|_)(target_)?(path|paths|file|files|artifact|artifacts|output|outputs)(_|$)", re.IGNORECASE)
 REPORT_VERIFY_KEYS = ("verification", "tests", "checks", "evidence", "validated", "acceptance_criteria")
 STATE_VERSION = 1
 
@@ -144,6 +150,161 @@ def parse_git_status_paths(output: str) -> list[str]:
     return sorted(set(paths))
 
 
+def status_from_mapping(data: dict[str, Any]) -> str:
+    status = str(data.get("status") or data.get("result") or data.get("state") or "").strip().lower()
+    result = data.get("result")
+    if isinstance(result, dict):
+        nested = str(result.get("status") or result.get("verdict") or "").strip().lower()
+        if nested:
+            return nested
+    return status
+
+
+def is_done_status(status: str) -> bool:
+    return status.strip().lower() in STATUS_DONE
+
+
+def is_bad_status(status: str) -> bool:
+    return status.strip().lower() in STATUS_BAD
+
+
+def is_open_status(status: str) -> bool:
+    normalized = status.strip().lower()
+    return normalized in STATUS_OPEN or normalized.startswith("in-progress")
+
+
+def normalize_items(data: Any) -> list[dict[str, Any]]:
+    if isinstance(data, list):
+        return [x for x in data if isinstance(x, dict)]
+    if isinstance(data, dict):
+        for key in ("queue", "commands", "tasks", "items"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return [x for x in value if isinstance(x, dict)]
+        return [data]
+    return []
+
+
+def command_id(data: dict[str, Any]) -> str:
+    return str(data.get("id") or data.get("cmd_id") or data.get("command_id") or "").strip()
+
+
+def parent_cmd(data: dict[str, Any]) -> str:
+    return str(data.get("parent_cmd") or data.get("cmd_id") or data.get("command_id") or "").strip()
+
+
+def collect_command_records(root: Path) -> dict[str, dict[str, Any]]:
+    records: dict[str, dict[str, Any]] = {}
+    for rel in ("queue/shogun_to_karo.yaml", "queue/shogun_to_karo_archive.yaml"):
+        path = root / rel
+        if not path.exists():
+            continue
+        data, err = load_yaml_safe(path)
+        if err:
+            continue
+        for item in normalize_items(data):
+            cmd_id = command_id(item)
+            if not cmd_id:
+                continue
+            # Active queue is read first and should win over older archive copies.
+            records.setdefault(
+                cmd_id,
+                {
+                    "id": cmd_id,
+                    "status": status_from_mapping(item),
+                    "data": item,
+                    "rel": rel,
+                },
+            )
+    return records
+
+
+def report_agent_from_filename(path: Path) -> str:
+    suffix = "_report.yaml"
+    if path.name.endswith(suffix):
+        return path.name[: -len(suffix)]
+    return path.stem
+
+
+def collect_report_records(root: Path) -> list[dict[str, Any]]:
+    reports_dir = root / "queue" / "reports"
+    if not reports_dir.exists():
+        return []
+    records: list[dict[str, Any]] = []
+    for path in sorted(reports_dir.glob("*_report.yaml")):
+        if path.name == "gunkan_report.yaml":
+            continue
+        data, err = load_yaml_safe(path)
+        if err or not isinstance(data, dict):
+            continue
+        records.append(
+            {
+                "rel": path.relative_to(root).as_posix(),
+                "path": path,
+                "agent_from_file": report_agent_from_filename(path),
+                "worker_id": str(data.get("worker_id") or data.get("agent_id") or "").strip(),
+                "parent_cmd": parent_cmd(data),
+                "status": status_from_mapping(data),
+                "data": data,
+            }
+        )
+    return records
+
+
+def collect_task_records(root: Path) -> list[dict[str, Any]]:
+    tasks_dir = root / "queue" / "tasks"
+    if not tasks_dir.exists():
+        return []
+    records: list[dict[str, Any]] = []
+    for path in sorted(tasks_dir.glob("*.yaml")):
+        data, err = load_yaml_safe(path)
+        if err:
+            continue
+        for item in normalize_items(data):
+            records.append(
+                {
+                    "rel": path.relative_to(root).as_posix(),
+                    "path": path,
+                    "task_id": str(item.get("task_id") or item.get("id") or "").strip(),
+                    "parent_cmd": parent_cmd(item),
+                    "status": status_from_mapping(item),
+                    "data": item,
+                }
+            )
+    return records
+
+
+def is_project_relative_path(value: str) -> bool:
+    text = value.strip().strip("'\"")
+    if not text or len(text) > 180:
+        return False
+    if re.match(r"^[a-z][a-z0-9+.-]*://", text, re.IGNORECASE):
+        return False
+    if text.startswith(("/", "~", "-")) or re.match(r"^[A-Za-z]:[\\/]", text):
+        return False
+    if any(ch in text for ch in "\n\r*?<>|"):
+        return False
+    if " " in text:
+        return False
+    return "/" in text or "." in Path(text).name
+
+
+def collect_declared_paths(value: Any, key_hint: str = "") -> list[str]:
+    paths: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            next_hint = str(key)
+            paths.extend(collect_declared_paths(child, next_hint))
+        return paths
+    if isinstance(value, list):
+        for child in value:
+            paths.extend(collect_declared_paths(child, key_hint))
+        return paths
+    if isinstance(value, str) and PATH_FIELD_RE.search(key_hint) and is_project_relative_path(value):
+        paths.append(value.strip().strip("'\""))
+    return paths
+
+
 def yaml_parse_findings(root: Path) -> list[Finding]:
     findings: list[Finding] = []
     paths: list[Path] = []
@@ -181,27 +342,33 @@ def yaml_parse_findings(root: Path) -> list[Finding]:
     return findings
 
 
-def report_findings(root: Path) -> list[Finding]:
+def report_findings(root: Path, report_records: list[dict[str, Any]] | None = None) -> list[Finding]:
     findings: list[Finding] = []
-    reports_dir = root / "queue" / "reports"
-    if not reports_dir.exists():
-        return findings
+    records = report_records if report_records is not None else collect_report_records(root)
 
-    for path in sorted(reports_dir.glob("*_report.yaml")):
-        rel = path.relative_to(root).as_posix()
-        if path.name == "gunkan_report.yaml":
-            continue
-        data, err = load_yaml_safe(path)
-        if err or not isinstance(data, dict):
-            continue
-        status = str(data.get("status") or data.get("result") or "").strip().lower()
+    for record in records:
+        rel = str(record["rel"])
+        data = record["data"]
+        status = str(record["status"]).strip().lower()
         result = data.get("result")
         result_status = ""
         if isinstance(result, dict):
             result_status = str(result.get("status") or result.get("verdict") or "").strip().lower()
-        text = compact(data, 2000).lower()
-        done_like = status in STATUS_DONE or "完了" in text or "done" in text
+        done_like = is_done_status(status)
         bad_like = status in STATUS_BAD or result_status in STATUS_BAD or bool(data.get("error"))
+        worker_id = str(record.get("worker_id") or "")
+        agent_from_file = str(record.get("agent_from_file") or "")
+        if worker_id and agent_from_file and worker_id != agent_from_file:
+            findings.append(
+                Finding(
+                    "warn",
+                    "report_worker_mismatch",
+                    f"report_worker_mismatch:{rel}:{worker_id}",
+                    f"{rel} の worker_id がファイル名と一致しない",
+                    f"worker_id={worker_id} file_agent={agent_from_file}",
+                    str(record.get("parent_cmd") or ""),
+                )
+            )
         if bad_like:
             findings.append(
                 Finding(
@@ -225,8 +392,10 @@ def report_findings(root: Path) -> list[Finding]:
                 verification = result.get(key)
                 break
         verification_text = compact(verification or "")
+        verification_lower = verification_text.lower()
         missing = verification in (None, "", [], {}) or any(
-            marker in verification_text for marker in ("未実行", "未確認", "なし", "not run", "missing")
+            marker in verification_lower
+            for marker in ("未実行", "未確認", "未検証", "なし", "not run", "missing", "skipped", "todo", "n/a")
         )
         if missing:
             findings.append(
@@ -237,6 +406,23 @@ def report_findings(root: Path) -> list[Finding]:
                     f"{rel} は完了扱いだが検証証跡が弱い",
                     f"status={status or 'unknown'} verification={verification_text or 'missing'}",
                     str(data.get("parent_cmd") or data.get("cmd_id") or ""),
+                )
+            )
+        declared_paths = sorted(set(collect_declared_paths(data)))
+        missing_paths = [
+            rel_path
+            for rel_path in declared_paths
+            if not (root / rel_path.lstrip("./")).exists()
+        ]
+        if missing_paths:
+            findings.append(
+                Finding(
+                    "warn",
+                    "done_report_missing_artifact",
+                    f"done_report_missing_artifact:{rel}:{','.join(missing_paths[:4])}",
+                    f"{rel} は完了扱いだが明示された成果物 path が見つからない",
+                    ", ".join(missing_paths[:8]),
+                    str(record.get("parent_cmd") or ""),
                 )
             )
     return findings
@@ -264,6 +450,93 @@ def dashboard_findings(root: Path) -> list[Finding]:
             )
         ]
     return []
+
+
+def dashboard_consistency_findings(root: Path, report_records: list[dict[str, Any]]) -> list[Finding]:
+    path = root / "dashboard.md"
+    if not path.exists():
+        return []
+    try:
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception:
+        return []
+
+    bad_reports_by_cmd: dict[str, list[dict[str, Any]]] = {}
+    for record in report_records:
+        cmd_id = str(record.get("parent_cmd") or "")
+        status = str(record.get("status") or "")
+        if cmd_id and is_bad_status(status):
+            bad_reports_by_cmd.setdefault(cmd_id, []).append(record)
+
+    findings: list[Finding] = []
+    for cmd_id, records in bad_reports_by_cmd.items():
+        for raw in lines:
+            line = raw.strip()
+            lower = line.lower()
+            if cmd_id not in line:
+                continue
+            if ("完了" in line or "done" in lower or "completed" in lower) and not any(
+                marker in line for marker in ("未完了", "未確認", "失敗", "blocked", "failed")
+            ):
+                findings.append(
+                    Finding(
+                        "warn",
+                        "dashboard_done_but_report_failed",
+                        f"dashboard_done_but_report_failed:{cmd_id}",
+                        "dashboard は完了扱いだが同じ command の report が失敗/停止している",
+                        f"{compact(line)} / reports={','.join(str(r['rel']) for r in records[:4])}",
+                        cmd_id,
+                    )
+                )
+                break
+    return findings
+
+
+def queue_consistency_findings(
+    command_records: dict[str, dict[str, Any]],
+    report_records: list[dict[str, Any]],
+    task_records: list[dict[str, Any]],
+) -> list[Finding]:
+    findings: list[Finding] = []
+    for report in report_records:
+        cmd_id = str(report.get("parent_cmd") or "")
+        if not cmd_id:
+            continue
+        command = command_records.get(cmd_id)
+        if not command:
+            continue
+        if is_done_status(str(command.get("status") or "")) and is_bad_status(str(report.get("status") or "")):
+            findings.append(
+                Finding(
+                    "error",
+                    "done_command_with_failed_report",
+                    f"done_command_with_failed_report:{cmd_id}:{report['rel']}:{report['status']}",
+                    "親 command は完了扱いだが子 report が失敗/停止している",
+                    f"command={command['rel']} status={command['status']} report={report['rel']} status={report['status']}",
+                    cmd_id,
+                )
+            )
+
+    for task in task_records:
+        cmd_id = str(task.get("parent_cmd") or "")
+        if not cmd_id:
+            continue
+        command = command_records.get(cmd_id)
+        if not command:
+            continue
+        if is_done_status(str(command.get("status") or "")) and is_open_status(str(task.get("status") or "")):
+            task_label = str(task.get("task_id") or task["rel"])
+            findings.append(
+                Finding(
+                    "warn",
+                    "done_command_with_open_task",
+                    f"done_command_with_open_task:{cmd_id}:{task['rel']}:{task_label}:{task['status']}",
+                    "親 command は完了扱いだが未完了 task が残っている",
+                    f"command={command['rel']} status={command['status']} task={task['rel']} task_id={task_label} status={task['status']}",
+                    cmd_id,
+                )
+            )
+    return findings
 
 
 def codd_setup_findings(root: Path) -> list[Finding]:
@@ -337,6 +610,38 @@ def git_findings(root: Path, state: dict[str, Any], alert_on_first_run: bool) ->
                     compact(DANGEROUS_DIFF_RE.search(diff).group(0) if DANGEROUS_DIFF_RE.search(diff) else "matched"),
                 )
             )
+        for rel in new_dirty[:30]:
+            path = root / rel
+            if not path.is_file():
+                continue
+            try:
+                if path.stat().st_size > 200_000:
+                    continue
+                text = path.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            secret_match = SECRET_VALUE_RE.search(text)
+            dangerous_match = DANGEROUS_DIFF_RE.search(text)
+            if secret_match:
+                findings.append(
+                    Finding(
+                        "error",
+                        "sensitive_content_changed",
+                        f"sensitive_content_changed:{rel}",
+                        "新規/変更ファイル本文に秘密情報らしき値を検出",
+                        compact(secret_match.group(0)),
+                    )
+                )
+            if dangerous_match:
+                findings.append(
+                    Finding(
+                        "error",
+                        "dangerous_content_pattern",
+                        f"dangerous_content_pattern:{rel}",
+                        "新規/変更ファイル本文に破壊的操作パターンを検出",
+                        compact(dangerous_match.group(0)),
+                    )
+                )
 
     state["git_dirty_baseline"] = dirty
     return findings
@@ -422,11 +727,16 @@ def run_once(args: argparse.Namespace) -> int:
     output = root / "queue" / "runtime" / "gunkan_watch.yaml"
     first_run = not state_path.exists()
     state = load_state(state_path)
+    command_records = collect_command_records(root)
+    report_records = collect_report_records(root)
+    task_records = collect_task_records(root)
 
     findings: list[Finding] = []
     findings.extend(yaml_parse_findings(root))
-    findings.extend(report_findings(root))
+    findings.extend(report_findings(root, report_records))
+    findings.extend(queue_consistency_findings(command_records, report_records, task_records))
     findings.extend(dashboard_findings(root))
+    findings.extend(dashboard_consistency_findings(root, report_records))
     findings.extend(codd_setup_findings(root))
     findings.extend(git_findings(root, state, args.alert_on_first_run))
 

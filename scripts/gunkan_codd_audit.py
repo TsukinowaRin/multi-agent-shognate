@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,11 @@ import yaml
 
 
 COMMAND_TIMEOUT = 90
+INSTALL_TIMEOUT = 300
 OUTPUT_LIMIT = 12000
+CODD_PACKAGE = os.environ.get("CODD_PACKAGE", "codd-dev")
+CODD_VERSION_SPEC = os.environ.get("CODD_VERSION_SPEC", "")
+CODD_FALLBACK_VERSION = os.environ.get("CODD_FALLBACK_VERSION", "1.34.0")
 
 
 def now_iso() -> str:
@@ -44,7 +49,7 @@ def trim(text: str) -> str:
     return text[:OUTPUT_LIMIT] + "\n...[truncated]"
 
 
-def run_cmd(cmd: list[str], root: Path) -> dict[str, Any]:
+def run_cmd(cmd: list[str], root: Path, timeout: int = COMMAND_TIMEOUT) -> dict[str, Any]:
     try:
         proc = subprocess.run(
             cmd,
@@ -52,7 +57,7 @@ def run_cmd(cmd: list[str], root: Path) -> dict[str, Any]:
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=COMMAND_TIMEOUT,
+            timeout=timeout,
             check=False,
         )
         return {
@@ -66,7 +71,7 @@ def run_cmd(cmd: list[str], root: Path) -> dict[str, Any]:
             "command": cmd,
             "returncode": 124,
             "stdout": trim(exc.stdout or ""),
-            "stderr": f"timeout after {COMMAND_TIMEOUT}s",
+            "stderr": f"timeout after {timeout}s",
         }
 
 
@@ -97,6 +102,76 @@ def find_codd(root: Path) -> str | None:
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate)
     return None
+
+
+def default_auto_install(root: Path) -> bool:
+    value = os.environ.get("MAS_GUNKAN_CODD_AUTO_INSTALL")
+    if value is not None:
+        return value.strip().lower() not in {"0", "false", "no", "off"}
+    return (root / ".codd" / "codd.yaml").exists()
+
+
+def venv_python(venv: Path) -> Path:
+    win_python = venv / "Scripts" / "python.exe"
+    if win_python.exists():
+        return win_python
+    return venv / "bin" / "python"
+
+
+def install_repo_codd(root: Path) -> dict[str, Any]:
+    venv = Path(os.environ.get("CODD_VENV", root / ".shogunate" / "codd-venv"))
+    package_spec = f"{CODD_PACKAGE}{CODD_VERSION_SPEC}"
+    python = shutil.which("python3") or sys.executable
+    bootstrap: dict[str, Any] = {
+        "attempted": True,
+        "venv": str(venv),
+        "package": package_spec,
+        "fallback_package": f"{CODD_PACKAGE}=={CODD_FALLBACK_VERSION}",
+        "status": "failed",
+        "commands": [],
+    }
+    if not python:
+        bootstrap["summary"] = "python3 not found; cannot install codd-dev"
+        return bootstrap
+
+    venv_python_path = venv_python(venv)
+    if not venv_python_path.exists():
+        venv.parent.mkdir(parents=True, exist_ok=True)
+        result = run_cmd([python, "-m", "venv", str(venv)], root, timeout=INSTALL_TIMEOUT)
+        bootstrap["commands"].append(result)
+        if int(result.get("returncode") or 0) != 0:
+            bootstrap["summary"] = "python3 -m venv failed; falling back to built-in audit"
+            return bootstrap
+
+    pip_upgrade = run_cmd([str(venv_python_path), "-m", "pip", "install", "--upgrade", "pip"], root, timeout=INSTALL_TIMEOUT)
+    bootstrap["commands"].append(pip_upgrade)
+    if int(pip_upgrade.get("returncode") or 0) != 0:
+        bootstrap["summary"] = "pip upgrade failed; falling back to built-in audit"
+        return bootstrap
+
+    install_latest = run_cmd(
+        [str(venv_python_path), "-m", "pip", "install", "--upgrade", package_spec],
+        root,
+        timeout=INSTALL_TIMEOUT,
+    )
+    bootstrap["commands"].append(install_latest)
+    if int(install_latest.get("returncode") or 0) != 0:
+        install_fallback = run_cmd(
+            [str(venv_python_path), "-m", "pip", "install", "--upgrade", f"{CODD_PACKAGE}=={CODD_FALLBACK_VERSION}"],
+            root,
+            timeout=INSTALL_TIMEOUT,
+        )
+        bootstrap["commands"].append(install_fallback)
+        if int(install_fallback.get("returncode") or 0) != 0:
+            bootstrap["summary"] = "codd-dev install failed; falling back to built-in audit"
+            return bootstrap
+
+    if find_codd(root):
+        bootstrap["status"] = "installed"
+        bootstrap["summary"] = "repo-local codd-dev is ready"
+    else:
+        bootstrap["summary"] = "codd-dev install completed but codd executable was not found"
+    return bootstrap
 
 
 def load_yaml(path: Path) -> Any:
@@ -159,6 +234,16 @@ def main() -> int:
     root = Path(args.project_root).resolve()
     output = Path(args.output) if args.output else root / "queue" / "runtime" / "codd" / "gunkan_audit.yaml"
     codd_bin = find_codd(root)
+    bootstrap = {
+        "enabled": default_auto_install(root),
+        "attempted": False,
+        "status": "skipped",
+        "summary": "codd CLI already available" if codd_bin else "auto-install disabled",
+    }
+    if not codd_bin and bootstrap["enabled"]:
+        bootstrap = install_repo_codd(root)
+        bootstrap["enabled"] = True
+        codd_bin = find_codd(root)
 
     report: dict[str, Any] = {
         "worker_id": "gunkan",
@@ -166,6 +251,7 @@ def main() -> int:
         "scope": args.scope,
         "parent_cmd": args.parent_cmd,
         "codd_available": bool(codd_bin),
+        "codd_bootstrap": bootstrap,
         "status": "blocked",
         "commands": [],
         "fallback_checks": [],
@@ -186,7 +272,13 @@ def main() -> int:
         status, checks = fallback_checks(root)
         report["status"] = status
         report["fallback_checks"] = checks
-        report["summary"] = "codd CLI not found; used built-in Gunkan coherence fallback."
+        if bootstrap.get("attempted"):
+            report["summary"] = (
+                "codd CLI not ready after bootstrap; used built-in Gunkan coherence fallback. "
+                + str(bootstrap.get("summary", "")).strip()
+            ).strip()
+        else:
+            report["summary"] = "codd CLI not found; used built-in Gunkan coherence fallback."
 
     atomic_write_yaml(output, report)
     print(output)

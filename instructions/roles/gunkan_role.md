@@ -92,7 +92,8 @@ sleep loop、定期再分析、pane polling、ファイル全体の周期スキ�
 4. Run CoDD audit when the audit concerns requirements, docs, code, tests, or release coherence:
    - `python3 scripts/gunkan_codd_audit.py --scope <scope> --parent-cmd <cmd_id>`
    - If `codd` CLI is installed, this wrapper runs CoDD scan / impact / validate and writes `queue/runtime/codd/gunkan_audit.yaml`.
-   - If `codd` CLI is not installed, the wrapper writes a fallback coherence audit. Do not install packages unless the user explicitly asks.
+   - If `codd` CLI is not installed, the wrapper may bootstrap `codd-dev` into repo-local `.shogunate/codd-venv/` and records the result in `codd_bootstrap`.
+   - If bootstrap fails, the wrapper writes a fallback coherence audit. Do not install global packages or touch host credentials.
 5. Classify the result:
    - `passed`: no material issue
    - `warn`: risk remains but work may continue

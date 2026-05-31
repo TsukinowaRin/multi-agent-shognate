@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MODE="auto"
 ADB_BIN="${ADB:-adb}"
-HOST_SSH_PORT="${HOST_SSH_PORT:-22}"
+HOST_SSH_PORT="${HOST_SSH_PORT:-}"
 ANDROID_USB_PORT="${ANDROID_USB_PORT:-2222}"
 SSH_USER="${SSH_USER:-${USER:-}}"
 PROJECT_PATH="${PROJECT_PATH:-$ROOT_DIR}"
@@ -47,6 +47,7 @@ has_adb_device() {
 }
 
 check_host_ssh_port() {
+  [ -n "${HOST_SSH_PORT:-}" ] || return 1
   if command -v nc >/dev/null 2>&1; then
     nc -z -w 2 127.0.0.1 "$HOST_SSH_PORT" >/dev/null 2>&1
     return $?
@@ -56,6 +57,51 @@ check_host_ssh_port() {
     return $?
   fi
   bash -c "</dev/tcp/127.0.0.1/${HOST_SSH_PORT}" >/dev/null 2>&1
+}
+
+port_is_open() {
+  local port="$1"
+  if command -v nc >/dev/null 2>&1; then
+    nc -z -w 1 127.0.0.1 "$port" >/dev/null 2>&1
+    return $?
+  fi
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 1 bash -c "</dev/tcp/127.0.0.1/${port}" >/dev/null 2>&1
+    return $?
+  fi
+  bash -c "</dev/tcp/127.0.0.1/${port}" >/dev/null 2>&1
+}
+
+port_is_ssh() {
+  local port="$1"
+  local output
+  output="$(ssh -p "$port" -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=no 127.0.0.1 true 2>&1 || true)"
+  case "$output" in
+    *"Permission denied"*|*"Too many authentication failures"*|*"Host key verification failed"*|*"REMOTE HOST IDENTIFICATION HAS CHANGED"*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+detect_host_ssh_port() {
+  if [ -n "${HOST_SSH_PORT:-}" ]; then
+    return 0
+  fi
+  for port in 22 2222 2223; do
+    if port_is_ssh "$port"; then
+      HOST_SSH_PORT="$port"
+      return 0
+    fi
+  done
+  if command -v ss >/dev/null 2>&1; then
+    HOST_SSH_PORT="$(ss -ltn 2>/dev/null | awk 'match($4, /:([0-9]+)$/, m) && m[1] ~ /^(22|2222|2223)$/ {print m[1]; exit}')"
+  elif command -v netstat >/dev/null 2>&1; then
+    HOST_SSH_PORT="$(netstat -ltn 2>/dev/null | awk 'match($4, /:([0-9]+)$/, m) && m[1] ~ /^(22|2222|2223)$/ {print m[1]; exit}')"
+  elif command -v lsof >/dev/null 2>&1; then
+    HOST_SSH_PORT="$(lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | awk '/sshd/ {sub(/^.*:/, "", $9); print $9; exit}')"
+  fi
+  HOST_SSH_PORT="${HOST_SSH_PORT:-22}"
 }
 
 print_app_values() {
@@ -117,6 +163,7 @@ push_android_settings() {
 }
 
 setup_usb() {
+  detect_host_ssh_port
   if ! command -v "$ADB_BIN" >/dev/null 2>&1; then
     echo "[ERROR] adb が見つかりません。Android platform-tools を PATH に追加してください。" >&2
     exit 1
@@ -139,6 +186,7 @@ setup_usb() {
 }
 
 print_wireless_candidates() {
+  detect_host_ssh_port
   echo "[Wireless SSH candidates]"
   if command -v tailscale >/dev/null 2>&1; then
     tailscale ip -4 2>/dev/null | sed 's/^/  Tailscale: /' || true

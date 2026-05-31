@@ -247,3 +247,22 @@
 2. 設定画面で保存後すぐに接続診断を実行できる。
 3. 既存の `shogun` / `multiagent` のような session 名だけの入力は、従来互換 target に解決される。
 4. `./gradlew testDebugUnitTest` または同等の Android unit/build check が PASS する。
+
+## 追補（2026-05-31: Android app USB/無線セットアップと将軍単体表示）
+
+### 要求
+
+1. Android app はホストPCへ USB または無線で SSH 接続しやすい導線を持つ。
+2. USB 接続は `adb reverse` を使い、Android から `127.0.0.1:2222` へ接続すればホストの SSH に届く構成を標準にする。
+3. 無線接続は Tailscale / LAN IP を使う前提で、アプリ上のプリセットとホスト側セットアップ手順を用意する。
+4. Android app の将軍タブは、既定では御座の間全体ではなく将軍 pane のみを表示する。
+5. Android 互換 session が無効でも、`@agent_id=shogun` から実 pane を解決できる。
+6. USB セットアップ時は、可能なら `shogunate://setup` intent で Android app に設定を自動投入する。
+
+### 受け入れ条件
+
+1. 設定画面に USB / 無線の接続プリセットがある。
+2. ホスト側に `android/tools/setup_android_ssh.sh` と Windows/WSL 用 `android/tools/setup_android_ssh.bat` がある。
+3. 標準の将軍 target は `agent:shogun` で、`tmux list-panes -a` から `@agent_id=shogun` を解決する。
+4. 既存の明示 target (`shogunate:goza`, `shogun:main`) と旧 session 名入力は維持される。
+5. Android app は `shogunate://setup?...` を受け取り、SSH host/port/user/project/tmux target を保存できる。

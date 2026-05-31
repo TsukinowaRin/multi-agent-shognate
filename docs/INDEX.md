@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-05-28
+最終更新: 2026-05-31
 
 ## Must-read
 
@@ -10,6 +10,7 @@
 - `docs/EXECPLAN_2026-05-28_gunkan_role.md` - Shogunate 独自の軍監 role 追加計画。
 - `docs/EXECPLAN_2026-05-28_upstream_v5_1_sync.md` - 本家 `upstream/main` v5.1.0 反映計画と検証記録。
 - `docs/EXECPLAN_2026-05-30_android_setup.md` - Android app の SSH / tmux target 設定改善計画。
+- `docs/EXECPLAN_2026-05-31_android_host_setup.md` - Android app の USB/無線 SSH セットアップと将軍単体表示計画。
 
 ## Notes
 
@@ -22,3 +23,4 @@
 - CoDD は現行 Shogunate runtime の常駐LLM処理には統合しない。軍監が監査時に `scripts/gunkan_codd_audit.py` 経由でオンデマンド実行し、`codd` CLI がない環境では repo-local `.shogunate/codd-venv/` へ `codd-dev` を bootstrap する。導入失敗時だけ組み込み整合性チェックへフォールバックする。`codd` は `PATH` または repo-local venv から検出する。CoDD graph 用の tracked config は `.codd/codd.yaml`、frontmatter docs は `docs/codd/`。
 - 軍監（`gunkan`）は Shogunate 独自の将軍直属・家老並列の独立監査 role。通常の中間報告取得は `将軍 -> 家老` の仕事で、軍監LLMは常時トークン消費する監視AIではない。通常メッセージは非LLMの `queue/runtime/gunkan_events.yaml` に記録し、非LLMの `scripts/gunkan_light_watch.py` が異常だけを `audit_requested` として軍監へ送る。軽量 watcher は YAML parse、失敗 report、done command と failed report/open task/dashboard の矛盾、完了 report の成果物 path 欠落、worker_id 不一致、secret/destructive diff を検出する。軍監LLMは `queue/inbox/gunkan.yaml` の `audit_requested` / `audit_failed` / `runtime_blocked` / `emergency_stop_requested` 等で起きる event-driven 監査役として扱う。canonical report は `queue/reports/gunkan_report.yaml`。軍師は家老配下の参謀・高度QC役のまま。
 - Shogunate 系 alias は `cgo` / `csa` / `cgn` / `csg` / `csk` / `ckr` / `cma`。`cgn` は軍監 pane へフォーカスする。
+- Android app の将軍タブ既定 target は `agent:shogun`。これは実 tmux target ではなく、`@agent_id=shogun` の pane を自動検出する仮想 target。USB 接続は `android/tools/setup_android_ssh.sh --usb` で `adb reverse tcp:2222 tcp:22` を張り、Android 側は `127.0.0.1:2222` を使う。APK インストール済みなら同 script が `shogunate://setup` intent で設定を自動保存する。無線は Tailscale / LAN IP を使う。

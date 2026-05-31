@@ -138,8 +138,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
             val shogunTarget = Defaults.resolveShogunTarget(shogunTargetInput)
             val agentsTarget = Defaults.resolveAgentsTarget(agentsTargetInput)
-            val shogunOk = remoteOk("${Defaults.TMUX} list-panes -t ${shellQuote(shogunTarget)} >/dev/null 2>&1")
-            val agentsOk = remoteOk("${Defaults.TMUX} list-panes -t ${shellQuote(agentsTarget)} >/dev/null 2>&1")
+            val shogunOk = remoteOk(Defaults.shogunTargetExistsCommand(shogunTargetInput))
+            val agentsOk = remoteOk(Defaults.agentsTargetExistsCommand(agentsTargetInput))
             lines += "将軍 target: " + if (shogunOk) "OK ($shogunTarget)" else "見つかりません ($shogunTarget)"
             lines += "エージェント target: " + if (agentsOk) "OK ($agentsTarget)" else "見つかりません ($agentsTarget)"
 
@@ -162,5 +162,5 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         return result.getOrDefault("").contains("__ok__")
     }
 
-    private fun shellQuote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
+    private fun shellQuote(value: String): String = Defaults.shellQuote(value)
 }

@@ -34,17 +34,20 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
     private var reconnectJob: Job? = null
     @Volatile private var paused = false
 
-    private fun tmuxTarget(): String {
+    private fun targetAssignment(): String {
         val session = prefs.getString(PrefsKeys.SHOGUN_SESSION, Defaults.SHOGUN_SESSION) ?: Defaults.SHOGUN_SESSION
-        return Defaults.resolveShogunTarget(session)
+        return Defaults.shogunTargetAssignment(session)
     }
+
+    private fun captureCommand(): String =
+        "${targetAssignment()}; [ -n \"\$target\" ] && ${Defaults.TMUX} capture-pane -t \"\$target\" -p -e -S -500"
 
     fun pauseRefresh() { paused = true }
     fun resumeRefresh() {
         paused = false
         viewModelScope.launch {
             if (sshManager.isConnected()) {
-                val result = sshManager.execCommand("${Defaults.TMUX} capture-pane -t ${tmuxTarget()} -p -e -S -500")
+                val result = sshManager.execCommand(captureCommand())
                 if (result.isSuccess) {
                     _paneContent.value = result.getOrDefault("")
                     _errorMessage.value = null
@@ -54,6 +57,11 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun connect(host: String, port: Int, user: String, keyPath: String, password: String = "") {
+        if (host.isBlank() || user.isBlank()) {
+            _isConnected.value = false
+            _errorMessage.value = "設定画面でSSHホスト、ポート、ユーザーを設定してください"
+            return
+        }
         viewModelScope.launch {
             val result = sshManager.connect(
                 host, port, user, keyPath, password,
@@ -78,7 +86,7 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
         refreshJob = viewModelScope.launch {
             while (isActive) {
                 if (!paused && sshManager.isConnected()) {
-                    val result = sshManager.execCommand("${Defaults.TMUX} capture-pane -t ${tmuxTarget()} -p -e -S -500")
+                    val result = sshManager.execCommand(captureCommand())
                     if (result.isSuccess) {
                         _paneContent.value = result.getOrDefault("")
                         _errorMessage.value = null
@@ -93,15 +101,15 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
 
     fun sendCommand(text: String) {
         viewModelScope.launch {
-            val target = tmuxTarget()
-            val escaped = text.replace("'", "'\\''")
+            val setup = targetAssignment()
+            val quotedText = Defaults.shellQuote(text)
             // Send text and Enter SEPARATELY with 0.3s gap (Claude Code requirement)
-            sshManager.execCommand("${Defaults.TMUX} send-keys -t $target '$escaped'")
+            sshManager.execCommand("$setup; [ -n \"\$target\" ] && ${Defaults.TMUX} send-keys -t \"\$target\" $quotedText")
             delay(300)
-            sshManager.execCommand("${Defaults.TMUX} send-keys -t $target Enter")
+            sshManager.execCommand("$setup; [ -n \"\$target\" ] && ${Defaults.TMUX} send-keys -t \"\$target\" Enter")
             delay(1500)
             if (sshManager.isConnected()) {
-                val result = sshManager.execCommand("${Defaults.TMUX} capture-pane -t $target -p -e -S -500")
+                val result = sshManager.execCommand(captureCommand())
                 if (result.isSuccess) {
                     _paneContent.value = result.getOrDefault("")
                 }

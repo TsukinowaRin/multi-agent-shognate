@@ -121,7 +121,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             ) {
                 Text("かんたん接続セットアップ", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
                 Text(
-                    "PC側で Shogunate を起動してから、SSH情報を入れて接続診断を実行してください。tmux target は shogunate:goza のように直接指定できます。",
+                    "PC側で Shogunate を起動してから、接続方式を選び、SSH情報を入れて接続診断を実行してください。将軍表示は agent:shogun が標準です。",
                     color = TextMuted,
                     fontSize = 13.sp
                 )
@@ -131,7 +131,6 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 ) {
                     OutlinedButton(
                         onClick = {
-                            port = Defaults.SSH_PORT_STR
                             shogunSession = Defaults.SHOGUN_SESSION
                             agentsSession = Defaults.AGENTS_SESSION
                             saved = false
@@ -164,6 +163,35 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(if (connectionTest.running) "確認中..." else "接続診断")
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            host = Defaults.USB_SSH_HOST
+                            port = Defaults.USB_SSH_PORT_STR
+                            saved = false
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text("USB接続")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            if (host == Defaults.USB_SSH_HOST) {
+                                host = ""
+                            }
+                            port = Defaults.WIRELESS_SSH_PORT_STR
+                            saved = false
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text("無線接続")
                     }
                 }
                 if (connectionTest.message.isNotBlank()) {
@@ -257,7 +285,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             value = shogunSession,
             onValueChange = { shogunSession = it },
             label = { Text("将軍 tmux target") },
-            supportingText = { Text("例: shogunate:goza。session名だけなら shogun:main として扱います。") },
+            supportingText = { Text("標準: agent:shogun。@agent_id=shogun の pane を自動検出します。session名だけなら shogun:main として扱います。") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -266,7 +294,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             value = agentsSession,
             onValueChange = { agentsSession = it },
             label = { Text("エージェント tmux target") },
-            supportingText = { Text("例: shogunate:goza。session名だけなら multiagent:0 として扱います。") },
+            supportingText = { Text("標準: shogunate:goza。session名だけなら multiagent:0 として扱います。") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )

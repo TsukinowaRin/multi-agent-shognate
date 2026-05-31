@@ -58,22 +58,28 @@
 ## セットアップ
 
 1. アプリを起動 → **設定** タブ
-2. **標準値を入力** を押すと、tmux target に `shogunate:goza` が入ります。
-3. SSH接続情報を入力:
-   - **ホスト**: サーバーのIP（例: Tailscale IP）
-   - **ポート**: 22
+2. ホスト側で以下のどれかを実行:
+   - USB: `bash android/tools/setup_android_ssh.sh --usb`
+   - 無線: `bash android/tools/setup_android_ssh.sh --wireless`
+   - Windows/WSL: `android/tools/setup_android_ssh.bat` をダブルクリック、または WSL から `.sh` を実行
+3. USB セットアップは、APK がインストール済みなら `shogunate://setup` intent でアプリへ設定を自動送信します。手動設定する場合は **USB接続** または **無線接続** を押し、続けて **標準値を入力** を押します。
+4. SSH接続情報を入力:
+   - **ホスト**: USB は `127.0.0.1`、無線は Tailscale / LAN IP
+   - **ポート**: USB は `2222`、無線は通常 `22`
    - **ユーザー**: SSHユーザー名
    - **鍵パス** または **パスワード**: 認証方式
    - **プロジェクトパス**: サーバー側のmulti-agent-shogunパス（例: `/mnt/c/tools/multi-agent-shogun`）
-   - **tmux target**: Shogunate は通常 `shogunate:goza`。旧形式の `shogun` / `multiagent` のようなセッション名だけの入力も互換対応します。
-4. **接続診断** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
-5. 診断が通ったら **将軍** タブに切替 → 自動接続
+   - **将軍 target**: 標準は `agent:shogun`。`@agent_id=shogun` の pane を自動検出します。
+   - **エージェント target**: 標準は `shogunate:goza`
+5. **接続診断** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
+6. 診断が通ったら **将軍** タブに切替 → 将軍 pane のみに自動接続
 
 ### 前提条件
 
 - ホストマシンでSSHサーバーが稼働中
 - `shutsujin_departure.sh` でtmuxセッション起動済み
-- スマホとサーバー間のネットワーク接続（LAN、Tailscale等）
+- スマホとサーバー間の接続（USBデバッグ + `adb reverse`、LAN、Tailscale等）
+- USB 接続を使う場合は `adb`
 
 ## アーキテクチャ
 

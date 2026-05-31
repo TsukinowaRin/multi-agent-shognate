@@ -45,6 +45,7 @@ import com.shogun.android.ui.DashboardScreen
 import com.shogun.android.ui.SettingsScreen
 import com.shogun.android.ui.ShogunScreen
 import com.shogun.android.ui.theme.ShogunTheme
+import com.shogun.android.util.Defaults
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Shogun : Screen("shogun", "将軍", Icons.Default.Star)
@@ -70,6 +71,7 @@ class MainActivity : ComponentActivity() {
                 ShogunApp()
             }
         }
+        handleSetupIntent(intent)
         handleShareIntent(intent)
         // Only start NtfyService if notification permission is granted (Android 13+)
         val hasNotifPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -88,7 +90,25 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        handleSetupIntent(intent)
         handleShareIntent(intent)
+    }
+
+    private fun handleSetupIntent(intent: Intent) {
+        val uri = intent.data ?: return
+        if (intent.action != Intent.ACTION_VIEW || uri.scheme != "shogunate" || uri.host != "setup") return
+
+        getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE).edit().apply {
+            uri.getQueryParameter("host")?.let { putString(PrefsKeys.SSH_HOST, it) }
+            uri.getQueryParameter("port")?.let { putString(PrefsKeys.SSH_PORT, it) }
+            uri.getQueryParameter("user")?.let { putString(PrefsKeys.SSH_USER, it) }
+            uri.getQueryParameter("key")?.let { putString(PrefsKeys.SSH_KEY_PATH, it) }
+            uri.getQueryParameter("project")?.let { putString(PrefsKeys.PROJECT_PATH, it) }
+            putString(PrefsKeys.SHOGUN_SESSION, uri.getQueryParameter("shogun") ?: Defaults.SHOGUN_SESSION)
+            putString(PrefsKeys.AGENTS_SESSION, uri.getQueryParameter("agents") ?: Defaults.AGENTS_SESSION)
+            apply()
+        }
+        Toast.makeText(this, "Shogunate接続設定を取り込みました", Toast.LENGTH_LONG).show()
     }
 
     private fun handleShareIntent(intent: Intent) {

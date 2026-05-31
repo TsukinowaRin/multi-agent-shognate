@@ -58,22 +58,28 @@ Or build from source:
 ## Setup
 
 1. Launch the app → **Settings** tab
-2. Tap **標準値を入力** to fill `shogunate:goza` as the tmux target.
-3. Enter SSH connection info:
-   - **Host**: Your server's IP (e.g., Tailscale IP)
-   - **Port**: 22
+2. On the host, run one of:
+   - USB: `bash android/tools/setup_android_ssh.sh --usb`
+   - Wireless: `bash android/tools/setup_android_ssh.sh --wireless`
+   - Windows/WSL: double-click `android/tools/setup_android_ssh.bat`, or run the `.sh` from WSL
+3. USB setup automatically sends a `shogunate://setup` intent to the app when the APK is installed. If you configure manually, tap **USB接続** or **無線接続**, then tap **標準値を入力**.
+4. Enter SSH connection info:
+   - **Host**: USB uses `127.0.0.1`; wireless uses your Tailscale/LAN IP
+   - **Port**: USB uses `2222`; wireless usually uses `22`
    - **User**: Your SSH username
    - **Key Path** or **Password**: Authentication method
    - **Project Path**: Server-side path to multi-agent-shogun (e.g., `/mnt/c/tools/multi-agent-shogun`)
-   - **tmux targets**: Shogunate normally uses `shogunate:goza`. Legacy session-name-only values like `shogun` / `multiagent` remain compatible.
-4. Tap **接続診断** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
-5. Once the check passes, switch to the **Shogun** tab → auto-connects.
+   - **Shogun target**: default is `agent:shogun`, which auto-detects the pane with `@agent_id=shogun`
+   - **Agents target**: default is `shogunate:goza`
+5. Tap **接続診断** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
+6. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only.
 
 ### Prerequisites
 
 - SSH server running on the host machine
 - tmux sessions already launched via `shutsujin_departure.sh`
-- Network connectivity between phone and server (LAN, Tailscale, etc.)
+- Network connectivity between phone and server: USB debugging + `adb reverse`, LAN, or Tailscale
+- `adb` for USB setup
 
 ## Architecture
 

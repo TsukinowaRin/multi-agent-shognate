@@ -92,6 +92,7 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
             val tmux = Defaults.TMUX
             // Single SSH call: detect pane count + batch-fetch all panes
             val batchCmd = buildString {
+                append("if ! $tmux list-panes -t $target >/dev/null 2>&1; then echo \"===ERROR=target_not_found===\"; exit 0; fi; ")
                 append("N=\$($tmux list-panes -t $target 2>/dev/null | wc -l); ")
                 append("echo \"===PANE_COUNT=\$N===\"; ")
                 append("for i in \$(seq 0 \$((N-1))); do ")
@@ -106,11 +107,20 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
             val result = sshManager.execCommand(batchCmd)
             if (result.isSuccess) {
                 val output = result.getOrDefault("")
-                val newPanes = parseBatchOutput(output)
-                if (newPanes.isNotEmpty()) {
+                if (output.contains("===ERROR=target_not_found===")) {
+                    _panes.value = emptyList()
+                    _errorMessage.value = "エージェント view が見つかりません。設定のエージェント target と Shogunate runtime を確認してください。"
+                } else {
+                    val newPanes = parseBatchOutput(output)
                     _panes.value = newPanes
-                    _errorMessage.value = null
+                    _errorMessage.value = if (newPanes.isEmpty()) {
+                        "エージェント pane がありません。Shogunate runtime を起動してから再読込してください。"
+                    } else {
+                        null
+                    }
                 }
+            } else {
+                _errorMessage.value = "エージェント一覧の取得に失敗しました: ${result.exceptionOrNull()?.message ?: "不明なエラー"}"
             }
         } finally {
             isRefreshing = false
@@ -178,7 +188,8 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
                 _rateLimitResult.value = "設定画面でプロジェクトパスを設定してください"
                 return@launch
             }
-            val cmd = "bash $projectPath/scripts/ratelimit_check.sh 2>&1"
+            val safeProjectPath = projectPath.replace("'", "'\\''")
+            val cmd = "if [ ! -f '$safeProjectPath/scripts/ratelimit_check.sh' ]; then echo '使用量チェック script が見つかりません。Shogunate runtime のプロジェクトパスを確認してください。'; exit 0; fi; timeout 12s bash '$safeProjectPath/scripts/ratelimit_check.sh' 2>&1"
             val result = sshManager.execCommand(cmd)
             _rateLimitLoading.value = false
             _rateLimitResult.value = result.getOrElse { "SSH取得失敗: ${it.message}\ncmd: $cmd" }

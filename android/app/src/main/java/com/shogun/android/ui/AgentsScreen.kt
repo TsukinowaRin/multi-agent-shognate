@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Speed
 import androidx.core.content.ContextCompat
@@ -221,7 +222,7 @@ fun AgentsScreen(
                 modifier = Modifier.fillMaxSize()
             )
             Column(modifier = Modifier.fillMaxSize()) {
-                if (errorMessage != null) {
+                if (errorMessage != null && panes.isNotEmpty()) {
                     SelectionContainer {
                         Text(
                             text = "エラー: $errorMessage",
@@ -244,6 +245,23 @@ fun AgentsScreen(
                             onClick = { selectedPaneIndex = pane.index }
                         )
                     }
+                }
+                if (panes.isEmpty() && errorMessage == null) {
+                    AgentsEmptyState(
+                        message = "エージェント pane を確認中…",
+                        onRefresh = { viewModel.refreshAllPanes() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 24.dp)
+                    )
+                } else if (panes.isEmpty() && errorMessage != null) {
+                    AgentsEmptyState(
+                        message = errorMessage ?: "",
+                        onRefresh = { viewModel.refreshAllPanes() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 24.dp)
+                    )
                 }
             }
 
@@ -330,6 +348,37 @@ fun AgentsScreen(
                 titleContentColor = Kinpaku,
                 textContentColor = Zouge
             )
+        }
+    }
+}
+
+@Composable
+private fun AgentsEmptyState(
+    message: String,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Color(0xCC2D2D2D)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderStandard)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("エージェント未表示", color = Kinpaku, style = MaterialTheme.typography.titleMedium)
+            SelectionContainer {
+                Text(message, color = Zouge, fontSize = 13.sp)
+            }
+            OutlinedButton(
+                onClick = onRefresh,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("再読込")
+            }
         }
     }
 }
@@ -580,7 +629,7 @@ private fun RateLimitContent(rawText: String) {
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             if (!hasAnyData && rawText.isNotBlank()) {
-                Text("パース失敗 — Raw出力:", color = Color(0xFFCC4444), fontSize = 11.sp)
+                Text("使用量データを取得できませんでした", color = Color(0xFFCC4444), fontSize = 11.sp)
                 Text(rawText, color = Zouge, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
             }
 
@@ -709,7 +758,7 @@ private fun RateLimitContent(rawText: String) {
         // ── Codex context per agent ──
         if (codexEntries.isNotEmpty()) {
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Codex5.3 コンテキスト", color = Kinpaku, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+            Text("Codex コンテキスト", color = Kinpaku, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF555555)))
 
             codexEntries.forEach { entry ->

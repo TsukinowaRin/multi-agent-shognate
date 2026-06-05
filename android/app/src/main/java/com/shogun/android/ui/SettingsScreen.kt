@@ -171,7 +171,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             ) {
                 Text("ワンタッチ接続", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
                 Text(
-                    "PC側でセットアップスクリプトを実行し、USBペアリングまたはsetup URI取込を使います。リモート接続は接続先だけ入力します。",
+                    "PC側でセットアップスクリプトを実行し、USBペアリングまたは接続設定リンクを使います。リモート接続は接続先だけ入力します。",
                     color = TextMuted,
                     fontSize = 13.sp
                 )
@@ -196,7 +196,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(4.dp)
                     ) {
-                        Text("標準target")
+                        Text("標準に戻す")
                     }
                     Button(
                         onClick = {
@@ -269,7 +269,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 OutlinedTextField(
                     value = setupUriText,
                     onValueChange = { setupUriText = it },
-                    label = { Text("setup URI") },
+                    label = { Text("接続設定リンク") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -297,7 +297,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(4.dp)
                     ) {
-                        Text("URI取込")
+                        Text("設定取込")
                     }
                 }
                 if (connectionTest.message.isNotBlank()) {

@@ -40,7 +40,17 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun captureCommand(): String =
-        "${targetAssignment()}; [ -n \"\$target\" ] && ${Defaults.TMUX} capture-pane -t \"\$target\" -p -e -S -500"
+        "${targetAssignment()}; if [ -n \"\$target\" ]; then ${Defaults.TMUX} capture-pane -t \"\$target\" -p -e -S -500; else echo __SHOGUNATE_TARGET_MISSING__; fi"
+
+    private fun applyCaptureResult(output: String) {
+        if (output.contains("__SHOGUNATE_TARGET_MISSING__")) {
+            _paneContent.value = ""
+            _errorMessage.value = "将軍 pane が見つかりません。設定の将軍 target と Shogunate runtime を確認してください。"
+        } else {
+            _paneContent.value = output
+            _errorMessage.value = null
+        }
+    }
 
     fun pauseRefresh() { paused = true }
     fun resumeRefresh() {
@@ -49,8 +59,7 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
             if (sshManager.isConnected()) {
                 val result = sshManager.execCommand(captureCommand())
                 if (result.isSuccess) {
-                    _paneContent.value = result.getOrDefault("")
-                    _errorMessage.value = null
+                    applyCaptureResult(result.getOrDefault(""))
                 }
             }
         }
@@ -88,8 +97,7 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
                 if (!paused && sshManager.isConnected()) {
                     val result = sshManager.execCommand(captureCommand())
                     if (result.isSuccess) {
-                        _paneContent.value = result.getOrDefault("")
-                        _errorMessage.value = null
+                        applyCaptureResult(result.getOrDefault(""))
                     } else {
                         _errorMessage.value = result.exceptionOrNull()?.message
                     }
@@ -111,7 +119,7 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
             if (sshManager.isConnected()) {
                 val result = sshManager.execCommand(captureCommand())
                 if (result.isSuccess) {
-                    _paneContent.value = result.getOrDefault("")
+                    applyCaptureResult(result.getOrDefault(""))
                 }
             }
         }

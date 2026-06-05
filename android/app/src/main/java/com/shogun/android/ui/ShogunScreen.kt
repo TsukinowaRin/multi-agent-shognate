@@ -64,6 +64,7 @@ fun ShogunScreen(
     val paneContent by viewModel.paneContent.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val targetMissing = errorMessage?.contains("pane が見つかりません") == true
 
     var inputTextValue by remember { mutableStateOf(TextFieldValue("")) }
     var isListening by remember { mutableStateOf(false) }
@@ -159,13 +160,23 @@ fun ShogunScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(if (isConnected) Matsuba else Kurenai)
+                .background(
+                    when {
+                        isConnected && targetMissing -> Kinpaku
+                        isConnected -> Matsuba
+                        else -> Kurenai
+                    }
+                )
                 .padding(4.dp),
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = if (isConnected) "接続中 — 将軍セッション" else "未接続",
-                color = Zouge,
+                text = when {
+                    isConnected && targetMissing -> "SSH接続中 — pane未検出"
+                    isConnected -> "接続中 — 将軍セッション"
+                    else -> "未接続"
+                },
+                color = if (targetMissing) Shikkoku else Zouge,
                 fontSize = 12.sp
             )
         }
@@ -175,7 +186,6 @@ fun ShogunScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
         ) {
             if (errorMessage != null) {
                 Text(
@@ -183,24 +193,32 @@ fun ShogunScreen(
                     color = Kurenai,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 13.sp,
-                    modifier = Modifier.padding(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
                 )
             } else {
-                LazyColumn(
-                    state = listState,
+                Box(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .fillMaxSize()
+                        .horizontalScroll(rememberScrollState())
                 ) {
-                    items(lines) { line ->
-                        SelectionContainer {
-                            Text(
-                                text = parseAnsiColors(line),
-                                color = Zouge,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
-                                softWrap = false
-                            )
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        items(lines) { line ->
+                            SelectionContainer {
+                                Text(
+                                    text = parseAnsiColors(line),
+                                    color = Zouge,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }

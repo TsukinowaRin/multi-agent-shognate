@@ -126,7 +126,8 @@ body {
     -webkit-touch-callout: default;
     font-family: -apple-system, sans-serif;
     user-select: text !important;
-    font-size: 14px;
+    font-size: 13px;
+    line-height: 1.35;
     padding: 16px;
     margin: 0;
     -webkit-text-size-adjust: 100%;
@@ -139,8 +140,24 @@ h1, h2, h3, h4 { color: #C9A94E; margin-top: 16px; margin-bottom: 8px; }
 h1 { font-size: 20px; }
 h2 { font-size: 17px; }
 h3 { font-size: 15px; }
-table { border-collapse: collapse; width: 100%; margin: 8px 0; }
-th, td { border: 1px solid #555; padding: 6px 8px; text-align: left; }
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8px 0;
+    table-layout: fixed;
+}
+th, td {
+    border: 1px solid #555;
+    padding: 4px 5px;
+    text-align: left;
+    vertical-align: top;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+th:nth-child(1), td:nth-child(1) { width: 14%; }
+th:nth-child(2), td:nth-child(2) { width: 22%; }
+th:nth-child(3), td:nth-child(3) { width: 22%; }
+th:nth-child(4), td:nth-child(4) { width: 36%; }
 th { background-color: rgba(60,60,60,0.8); color: #C9A94E; }
 tr:nth-child(even) { background-color: rgba(45,45,45,0.5); }
 a { color: #D4B96A; }

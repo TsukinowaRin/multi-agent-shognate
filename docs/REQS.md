@@ -338,3 +338,24 @@
 3. `shogunate://setup?host=<URL>&port=<fallback>` を取り込むと、URL内 host/port が優先される。
 4. `bash android/tools/setup_android_ssh.sh --pair-wireless --host 'https://192.168.1.5:2223/path' --yes` が Android app へ `192.168.1.5:2223` を送る。
 5. 実機で URL setup URI 取り込み後、Android app が `接続中 — 将軍セッション` になる。
+
+## 追補（2026-06-05: Android app 実機総合QAとUI整理）
+
+### 要求
+
+1. USB接続済みの実機 Android 端末を使い、主要タブとセットアップ導線を実際に操作する。
+2. スクリーンショットと UI dump を確認し、表示崩れ、分かりにくい文言、接続設定の迷いやすさを洗い出す。
+3. 将軍、エージェント、戦況、設定、BGM/音声/送信ボタン、接続設定リンク取込、接続先入力、マニュアルモード、通知設定を可能な範囲で確認する。
+4. 実機で見つかったUI/UX上の問題は、過剰な再設計ではなく小さく修正する。
+5. 修正後に実機で再確認し、Android unit/build と shell syntax check を通す。
+
+### 受け入れ条件（観測可能）
+
+1. `adb install -r android/app/build/outputs/apk/debug/app-debug.apk` が成功する。
+2. Shogunate runtime が未起動でも、将軍タブとエージェントタブが空白ではなく target 未検出の状態を表示する。
+3. 接続設定画面は通常導線でSSH詳細を隠し、必要時だけマニュアルモードで編集できる。
+4. 戦況タブの表はスマホ幅で主要列が読める。
+5. 使用量チェックはスクリプト未配置または取得失敗時に、待機表示のまま固まらず結果または失敗理由を表示する。
+6. 実機スクリーンショットまたは UI dump で、4タブの主要要素が確認できる。
+7. 設定画面のワンタッチ接続、接続先入力、マニュアルモード、通知設定が破綻なく表示される。
+8. `bash -n android/tools/setup_android_ssh.sh`、`git diff --check`、`cd android && ./gradlew testDebugUnitTest assembleDebug` が PASS する。

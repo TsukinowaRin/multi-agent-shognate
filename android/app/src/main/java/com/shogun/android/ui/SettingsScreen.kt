@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import com.shogun.android.ui.theme.*
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
+import com.shogun.android.util.ShogunateSetupConfig
+import com.shogun.android.util.parseShogunateSetupUri
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
@@ -51,6 +53,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     var projectPath by remember { mutableStateOf(prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: "") }
     var shogunSession by remember { mutableStateOf(prefs.getString(PrefsKeys.SHOGUN_SESSION, Defaults.SHOGUN_SESSION) ?: Defaults.SHOGUN_SESSION) }
     var agentsSession by remember { mutableStateOf(prefs.getString(PrefsKeys.AGENTS_SESSION, Defaults.AGENTS_SESSION) ?: Defaults.AGENTS_SESSION) }
+    var setupUriText by remember { mutableStateOf("") }
 
     var saved by remember { mutableStateOf(false) }
     var tapCount by remember { mutableIntStateOf(0) }
@@ -68,6 +71,28 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             .apply()
         saved = true
     }
+    fun applySetupConfig(config: ShogunateSetupConfig) {
+        config.host?.let { host = it }
+        config.port?.let { port = it }
+        config.user?.let { user = it }
+        config.keyPath?.let { keyPath = it }
+        config.projectPath?.let { projectPath = it }
+        config.shogunTarget?.let { shogunSession = it }
+        config.agentsTarget?.let { agentsSession = it }
+        saved = false
+    }
+
+    fun importSetupUri(raw: String) {
+        runCatching { parseShogunateSetupUri(raw) }
+            .onSuccess {
+                applySetupConfig(it)
+                Toast.makeText(context, "接続設定を取り込みました", Toast.LENGTH_SHORT).show()
+            }
+            .onFailure {
+                Toast.makeText(context, "setup URIを確認してください", Toast.LENGTH_LONG).show()
+            }
+    }
+
     val pickSshKeyLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -194,6 +219,40 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text("無線接続")
+                    }
+                }
+                OutlinedTextField(
+                    value = setupUriText,
+                    onValueChange = { setupUriText = it },
+                    label = { Text("setup URI") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            setupUriText = clipboard.primaryClip
+                                ?.takeIf { it.itemCount > 0 }
+                                ?.getItemAt(0)
+                                ?.coerceToText(context)
+                                ?.toString()
+                                ?: ""
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text("貼付")
+                    }
+                    OutlinedButton(
+                        onClick = { importSetupUri(setupUriText) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text("URI取込")
                     }
                 }
                 if (connectionTest.message.isNotBlank()) {

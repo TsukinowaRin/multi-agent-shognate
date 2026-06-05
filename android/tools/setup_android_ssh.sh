@@ -26,6 +26,7 @@ Environment:
   ANDROID_USB_PORT=2222
   SSH_USER=<host ssh user>
   PROJECT_PATH=<remote Shogunate path>
+  SHOGUNATE_QR=0  Disable terminal QR output.
 USAGE
 }
 
@@ -133,6 +134,10 @@ print_app_values() {
 VALUES
 }
 
+unique_lines() {
+  awk 'NF && !seen[$0]++'
+}
+
 urlencode() {
   local value="${1:-}"
   if command -v python3 >/dev/null 2>&1; then
@@ -152,6 +157,24 @@ setup_uri() {
     "$(urlencode "$PROJECT_PATH")" \
     "$(urlencode "agent:shogun")" \
     "$(urlencode "shogunate:goza")"
+}
+
+print_setup_uri_block() {
+  local host="$1"
+  local port="$2"
+  local uri
+  uri="$(setup_uri "$host" "$port")"
+  echo "  ${host}: ${uri}"
+}
+
+print_setup_qr() {
+  local uri="$1"
+  if [ "${SHOGUNATE_QR:-1}" = "0" ] || ! command -v qrencode >/dev/null 2>&1; then
+    return 0
+  fi
+  echo
+  echo "[Setup QR]"
+  printf '%s' "$uri" | qrencode -t ANSIUTF8
 }
 
 remote_shell_quote() {
@@ -199,10 +222,41 @@ setup_usb() {
 
 print_wireless_candidates() {
   detect_host_ssh_port
+  local candidates first_host first_uri
   echo "[Wireless SSH candidates]"
   if command -v tailscale >/dev/null 2>&1; then
     tailscale ip -4 2>/dev/null | sed 's/^/  Tailscale: /' || true
   fi
+
+  candidates="$(
+    {
+      if command -v tailscale >/dev/null 2>&1; then
+        tailscale ip -4 2>/dev/null || true
+      fi
+
+      if command -v powershell.exe >/dev/null 2>&1; then
+        powershell.exe -NoProfile -Command "if (Get-Command tailscale -ErrorAction SilentlyContinue) { tailscale ip -4 }" 2>/dev/null \
+          | tr -d '\r' || true
+      fi
+
+      if [[ "$OS_NAME" == "Darwin" ]]; then
+        for iface in en0 en1 en2 bridge100; do
+          ipconfig getifaddr "$iface" 2>/dev/null || true
+        done
+        if command -v ifconfig >/dev/null 2>&1; then
+          ifconfig 2>/dev/null \
+            | awk '/^[a-zA-Z0-9]/ {iface=$1; sub(":", "", iface)} /inet / && $2 != "127.0.0.1" {print $2}' \
+            || true
+        fi
+      elif command -v hostname >/dev/null 2>&1; then
+        hostname -I 2>/dev/null | tr ' ' '\n' || true
+      fi
+
+      if command -v ip >/dev/null 2>&1; then
+        ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($i=="src") print $(i+1)}' || true
+      fi
+    } | awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && $0 != "127.0.0.1"' | unique_lines
+  )"
 
   if [[ "$OS_NAME" == "Darwin" ]]; then
     for iface in en0 en1 en2 bridge100; do
@@ -222,8 +276,23 @@ print_wireless_candidates() {
   fi
   print_app_values "<上のIPのいずれか>" "$HOST_SSH_PORT"
   echo
-  echo "無線では上のIP候補から1つ選び、必要なら次の URI の host を差し替えてアプリへ取り込めます。"
-  echo "  $(setup_uri "<上のIPのいずれか>" "$HOST_SSH_PORT")"
+  echo "[Setup URI candidates]"
+  if [ -n "$candidates" ]; then
+    while IFS= read -r candidate; do
+      [ -n "$candidate" ] || continue
+      if [ -z "${first_host:-}" ]; then
+        first_host="$candidate"
+      fi
+      print_setup_uri_block "$candidate" "$HOST_SSH_PORT"
+    done <<CANDIDATES
+$candidates
+CANDIDATES
+    first_uri="$(setup_uri "$first_host" "$HOST_SSH_PORT")"
+    print_setup_qr "$first_uri"
+  else
+    echo "  IP候補を自動検出できませんでした。Android app の設定画面で host を手入力してください。"
+    echo "  $(setup_uri "<host>" "$HOST_SSH_PORT")"
+  fi
 }
 
 case "$MODE" in

@@ -29,7 +29,8 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 2. `bash android/tools/setup_android_ssh.sh --wireless` を実行する。
 3. 表示された Tailscale / LAN IP のいずれかを Android app の SSH ホストに入れる。
 4. Android app の SSH ポートには、スクリプトが表示した host SSH port を入れる。通常は `22` だが、WSL 側で競合回避用に `2223` などへ変更している場合はその値を使う。
-5. スクリプトは `shogunate://setup` URI も表示する。将来 QR 化する場合はこの URI をそのまま使える。
+5. スクリプトは候補 IP ごとの完成済み `shogunate://setup` URI を表示する。Android app では URI を貼り付けるだけで host/port/user/project/tmux target を取り込める。
+6. `qrencode` が利用可能な環境では、最初の候補 URI をターミナル QR として表示する。無い場合は URI テキスト表示にフォールバックする。
 
 ## tmux target
 
@@ -55,6 +56,8 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 - `bash android/tools/setup_android_ssh.sh --usb`: PASS。host SSH port を自動検出して `adb reverse tcp:2222 tcp:<detected>` を設定し、`shogunate://setup` intent で app prefs に `127.0.0.1:2222`, `agent:shogun`, `shogunate:goza` を保存。
 - 実機設定画面: USB/無線ボタン、保存済み host/port/user、接続診断表示を確認。
 - 2026-06-05 時点の WSL 実機では、`/etc/ssh/sshd_config.d/99-shogun-android.conf` により SSH server が `2223` で待受中。USB は Android 側 `127.0.0.1:2222` から host `127.0.0.1:2223` へ reverse するため、Android app 側の USB ポートは `2222` のままでよい。接続診断には SSH 認証設定が別途必要。
+- 2026-06-05 追補: Android app 設定画面に setup URI 貼り付け取り込みを追加し、`--wireless` は候補 IP ごとの完成済み setup URI と optional QR を表示する。
+- `SHOGUNATE_QR=0 bash android/tools/setup_android_ssh.sh --wireless`: PASS。`100.71.16.5` と `192.168.1.5` の完成済み setup URI を表示。
 
 ## 復旧
 

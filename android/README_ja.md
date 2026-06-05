@@ -62,8 +62,9 @@
    - USB: `bash android/tools/setup_android_ssh.sh --usb`
    - 無線: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: `android/tools/setup_android_ssh.bat` をダブルクリック、または WSL から `.sh` を実行
-3. USB セットアップは、APK がインストール済みなら `shogunate://setup` intent でアプリへ設定を自動送信します。手動設定する場合は **USB接続** または **無線接続** を押し、続けて **標準値を入力** を押します。
-4. SSH接続情報を入力:
+3. USB セットアップは、APK がインストール済みなら `shogunate://setup` intent でアプリへ設定を自動送信します。無線セットアップは候補 IP ごとの setup URI を表示し、`qrencode` があればターミナル QR も表示します。
+4. 手動設定する場合は **USB接続** または **無線接続** を押し、続けて **標準値を入力** を押します。setup URI がある場合は設定画面の **貼付** → **URI取込** で host/port/user/project/tmux target を取り込めます。
+5. SSH接続情報を入力:
    - **ホスト**: USB は `127.0.0.1`、無線は Tailscale / LAN IP
    - **ポート**: USB は `2222`、無線は `setup_android_ssh.sh --wireless` が表示した SSH ポート（通常は `22`、WSL で変更している場合は `2223` など）
    - **ユーザー**: SSHユーザー名
@@ -71,8 +72,8 @@
    - **プロジェクトパス**: サーバー側のmulti-agent-shogunパス（例: `/mnt/c/tools/multi-agent-shogun`）
    - **将軍 target**: 標準は `agent:shogun`。`@agent_id=shogun` の pane を自動検出します。
    - **エージェント target**: 標準は `shogunate:goza`
-5. **接続診断** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
-6. 診断が通ったら **将軍** タブに切替 → 将軍 pane のみに自動接続
+6. **接続診断** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
+7. 診断が通ったら **将軍** タブに切替 → 将軍 pane のみに自動接続
 
 ### 前提条件
 

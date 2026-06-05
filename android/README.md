@@ -62,8 +62,9 @@ Or build from source:
    - USB: `bash android/tools/setup_android_ssh.sh --usb`
    - Wireless: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: double-click `android/tools/setup_android_ssh.bat`, or run the `.sh` from WSL
-3. USB setup automatically sends a `shogunate://setup` intent to the app when the APK is installed. If you configure manually, tap **USB接続** or **無線接続**, then tap **標準値を入力**.
-4. Enter SSH connection info:
+3. USB setup automatically sends a `shogunate://setup` intent to the app when the APK is installed. Wireless setup prints a complete setup URI for each candidate IP and a terminal QR when `qrencode` is available.
+4. For manual setup, tap **USB接続** or **無線接続**, then tap **標準値を入力**. When you have a setup URI, use **貼付** → **URI取込** in Settings to import host/port/user/project/tmux target.
+5. Enter SSH connection info:
    - **Host**: USB uses `127.0.0.1`; wireless uses your Tailscale/LAN IP
    - **Port**: USB uses `2222`; wireless uses the SSH port printed by `setup_android_ssh.sh --wireless` (`22` by default, or another port such as `2223` when WSL is configured that way)
    - **User**: Your SSH username
@@ -71,8 +72,8 @@ Or build from source:
    - **Project Path**: Server-side path to multi-agent-shogun (e.g., `/mnt/c/tools/multi-agent-shogun`)
    - **Shogun target**: default is `agent:shogun`, which auto-detects the pane with `@agent_id=shogun`
    - **Agents target**: default is `shogunate:goza`
-5. Tap **接続診断** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
-6. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only.
+6. Tap **接続診断** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
+7. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only.
 
 ### Prerequisites
 

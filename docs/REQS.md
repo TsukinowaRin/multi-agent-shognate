@@ -266,3 +266,19 @@
 3. 標準の将軍 target は `agent:shogun` で、`tmux list-panes -a` から `@agent_id=shogun` を解決する。
 4. 既存の明示 target (`shogunate:goza`, `shogun:main`) と旧 session 名入力は維持される。
 5. Android app は `shogunate://setup?...` を受け取り、SSH host/port/user/project/tmux target を保存できる。
+
+## 追補（2026-06-05: Android app setup URI 取り込み改善）
+
+### 要求
+
+1. 無線 / Tailscale 接続でも、ユーザーが IP / port / project path / tmux target を個別に写さなくて済むようにする。
+2. ホスト側セットアップスクリプトは、候補 IP ごとの完成済み `shogunate://setup?...` URI を表示する。
+3. `qrencode` が利用可能な環境では、スマホで読み取りやすいように setup URI のターミナル QR を表示する。
+4. Android app 設定画面は setup URI を貼り付けて接続設定を取り込める。
+
+### 受け入れ条件
+
+1. `bash android/tools/setup_android_ssh.sh --wireless` が host SSH port を自動検出し、候補 host ごとの setup URI を表示する。
+2. `qrencode` が無い環境でも script は失敗せず、URI のテキスト表示にフォールバックする。
+3. Android app の設定画面で `shogunate://setup?...` を貼り付けると SSH host/port/user/project/tmux target が入力欄に反映される。
+4. 不正な URI は既存設定を上書きせず、ユーザーに失敗を知らせる。

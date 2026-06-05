@@ -46,6 +46,7 @@ import com.shogun.android.ui.SettingsScreen
 import com.shogun.android.ui.ShogunScreen
 import com.shogun.android.ui.theme.ShogunTheme
 import com.shogun.android.util.Defaults
+import com.shogun.android.util.parseShogunateSetupUri
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Shogun : Screen("shogun", "将軍", Icons.Default.Star)
@@ -98,14 +99,20 @@ class MainActivity : ComponentActivity() {
         val uri = intent.data ?: return
         if (intent.action != Intent.ACTION_VIEW || uri.scheme != "shogunate" || uri.host != "setup") return
 
+        val config = runCatching { parseShogunateSetupUri(uri.toString()) }
+            .onFailure {
+                Toast.makeText(this, "Shogunate接続設定を取り込めませんでした", Toast.LENGTH_LONG).show()
+            }
+            .getOrNull() ?: return
+
         getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE).edit().apply {
-            uri.getQueryParameter("host")?.let { putString(PrefsKeys.SSH_HOST, it) }
-            uri.getQueryParameter("port")?.let { putString(PrefsKeys.SSH_PORT, it) }
-            uri.getQueryParameter("user")?.let { putString(PrefsKeys.SSH_USER, it) }
-            uri.getQueryParameter("key")?.let { putString(PrefsKeys.SSH_KEY_PATH, it) }
-            uri.getQueryParameter("project")?.let { putString(PrefsKeys.PROJECT_PATH, it) }
-            putString(PrefsKeys.SHOGUN_SESSION, uri.getQueryParameter("shogun") ?: Defaults.SHOGUN_SESSION)
-            putString(PrefsKeys.AGENTS_SESSION, uri.getQueryParameter("agents") ?: Defaults.AGENTS_SESSION)
+            config.host?.let { putString(PrefsKeys.SSH_HOST, it) }
+            config.port?.let { putString(PrefsKeys.SSH_PORT, it) }
+            config.user?.let { putString(PrefsKeys.SSH_USER, it) }
+            config.keyPath?.let { putString(PrefsKeys.SSH_KEY_PATH, it) }
+            config.projectPath?.let { putString(PrefsKeys.PROJECT_PATH, it) }
+            putString(PrefsKeys.SHOGUN_SESSION, config.shogunTarget ?: Defaults.SHOGUN_SESSION)
+            putString(PrefsKeys.AGENTS_SESSION, config.agentsTarget ?: Defaults.AGENTS_SESSION)
             apply()
         }
         Toast.makeText(this, "Shogunate接続設定を取り込みました", Toast.LENGTH_LONG).show()

@@ -121,7 +121,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             ) {
                 Text("かんたん接続セットアップ", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
                 Text(
-                    "PC側で Shogunate を起動してから、接続方式を選び、SSH情報を入れて接続診断を実行してください。将軍表示は agent:shogun が標準です。",
+                    "PC側で Shogunate を起動してから、接続方式を選び、SSH情報を入れて接続診断を実行してください。無線のポートはセットアップスクリプトの表示値を使います。",
                     color = TextMuted,
                     fontSize = 13.sp
                 )
@@ -185,7 +185,9 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                             if (host == Defaults.USB_SSH_HOST) {
                                 host = ""
                             }
-                            port = Defaults.WIRELESS_SSH_PORT_STR
+                            if (port.isBlank() || port == Defaults.USB_SSH_PORT_STR) {
+                                port = Defaults.WIRELESS_SSH_PORT_STR
+                            }
                             saved = false
                         },
                         modifier = Modifier.weight(1f),

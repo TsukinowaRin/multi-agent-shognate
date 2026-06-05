@@ -27,6 +27,7 @@ import com.shogun.android.ui.theme.*
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
 import com.shogun.android.util.ShogunateSetupConfig
+import com.shogun.android.util.normalizeConnectionEndpoint
 import com.shogun.android.util.parseShogunateSetupUri
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -53,6 +54,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     var projectPath by remember { mutableStateOf(prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: "") }
     var shogunSession by remember { mutableStateOf(prefs.getString(PrefsKeys.SHOGUN_SESSION, Defaults.SHOGUN_SESSION) ?: Defaults.SHOGUN_SESSION) }
     var agentsSession by remember { mutableStateOf(prefs.getString(PrefsKeys.AGENTS_SESSION, Defaults.AGENTS_SESSION) ?: Defaults.AGENTS_SESSION) }
+    var endpointText by remember { mutableStateOf(host) }
     var setupUriText by remember { mutableStateOf("") }
 
     var saved by remember { mutableStateOf(false) }
@@ -73,7 +75,10 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         saved = true
     }
     fun applySetupConfig(config: ShogunateSetupConfig) {
-        config.host?.let { host = it }
+        config.host?.let {
+            host = it
+            endpointText = it
+        }
         config.port?.let { port = it }
         config.user?.let { user = it }
         config.keyPath?.let { keyPath = it }
@@ -81,6 +86,25 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         config.shogunTarget?.let { shogunSession = it }
         config.agentsTarget?.let { agentsSession = it }
         saved = false
+    }
+
+    fun applyEndpointInput(showToast: Boolean): Boolean {
+        val raw = endpointText.trim()
+        if (raw.isBlank()) return true
+        return runCatching { normalizeConnectionEndpoint(raw) }
+            .onSuccess {
+                host = it.host
+                it.port?.let { normalizedPort -> port = normalizedPort }
+                endpointText = it.host
+                saved = false
+                if (showToast) {
+                    Toast.makeText(context, "接続先を反映しました", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .onFailure {
+                Toast.makeText(context, it.message ?: "接続先を確認してください", Toast.LENGTH_LONG).show()
+            }
+            .isSuccess
     }
 
     fun importSetupUri(raw: String) {
@@ -147,9 +171,17 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             ) {
                 Text("ワンタッチ接続", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
                 Text(
-                    "PC側でセットアップスクリプトを実行し、USBペアリングまたはsetup URI取込を使います。通常は下の詳細項目を入力する必要はありません。",
+                    "PC側でセットアップスクリプトを実行し、USBペアリングまたはsetup URI取込を使います。リモート接続は接続先だけ入力します。",
                     color = TextMuted,
                     fontSize = 13.sp
+                )
+                OutlinedTextField(
+                    value = endpointText,
+                    onValueChange = { endpointText = it },
+                    label = { Text("接続先（DNS / URL / Tailscale IP / LAN IP）") },
+                    placeholder = { Text("例: pc.tailnet.ts.net / 100.x.x.x / https://example.com:2223") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -168,6 +200,9 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                     }
                     Button(
                         onClick = {
+                            if (!applyEndpointInput(showToast = false)) {
+                                return@Button
+                            }
                             saveSettings()
                             settingsViewModel.testConnection(
                                 host = host,
@@ -198,6 +233,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                     OutlinedButton(
                         onClick = {
                             host = Defaults.USB_SSH_HOST
+                            endpointText = Defaults.USB_SSH_HOST
                             port = Defaults.USB_SSH_PORT_STR
                             saved = false
                         },
@@ -210,6 +246,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                         onClick = {
                             if (host == Defaults.USB_SSH_HOST) {
                                 host = ""
+                                endpointText = ""
                             }
                             if (port.isBlank() || port == Defaults.USB_SSH_PORT_STR) {
                                 port = Defaults.WIRELESS_SSH_PORT_STR
@@ -221,6 +258,13 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                     ) {
                         Text("無線/Tailscale")
                     }
+                }
+                OutlinedButton(
+                    onClick = { applyEndpointInput(showToast = true) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("接続先を反映")
                 }
                 OutlinedTextField(
                     value = setupUriText,

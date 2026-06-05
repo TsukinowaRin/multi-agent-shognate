@@ -61,13 +61,15 @@ Or build from source:
 2. On the host, run one of:
    - First-time USB one-touch setup: `bash android/tools/setup_android_ssh.sh --pair` or `--pair-usb`
    - First-time wireless one-touch setup: `bash android/tools/setup_android_ssh.sh --pair-wireless`
+   - Wireless one-touch setup with a destination: `bash android/tools/setup_android_ssh.sh --pair-wireless --host <DNS-or-URL-or-IP>`
    - USB manual value push: `bash android/tools/setup_android_ssh.sh --usb`
    - Wireless candidate display: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: double-click `android/tools/setup_android_ssh.bat`, or run the `.sh` from WSL
 3. One-touch pairing makes the Android app generate its own SSH key in app private storage. The host script reads only the public key and adds it to `authorized_keys`; the private key never leaves the phone.
-4. `--pair-usb` configures `adb reverse` and sets the app to `127.0.0.1:2222`. `--pair-wireless` uses USB debugging only for the first setup message, then configures direct Tailscale/LAN SSH. Wireless pairing prefers the host candidate closest to the phone's current IPv4. Use `SHOGUNATE_PAIR_HOST=<ip-or-host>` to force a specific wireless host.
+4. `--pair-usb` configures `adb reverse` and sets the app to `127.0.0.1:2222`. `--pair-wireless` uses USB debugging only for the first setup message, then configures direct Tailscale/LAN SSH. Wireless pairing prefers the host candidate closest to the phone's current IPv4. Use `--host <DNS-or-URL-or-IP>` or `SHOGUNATE_PAIR_HOST=<DNS-or-URL-or-IP>` to force a specific wireless host.
 5. When you have a setup URI, use **貼付** → **URI取込** in Settings to import host/port/user/project/tmux target/key path.
-6. Open **マニュアルモード** only when you need to edit detailed values:
+6. For a remote destination, enter a DNS name, URL, Tailscale IP, or LAN IP in **接続先**, then tap **接続先を反映** or **接続診断**. URL path/query text is ignored; only host and port are used for SSH.
+7. Open **マニュアルモード** only when you need to edit detailed values:
    - **Host**: USB uses `127.0.0.1`; wireless uses your Tailscale/LAN IP
    - **Port**: USB uses `2222`; wireless uses the SSH port printed by `setup_android_ssh.sh --wireless` (`22` by default, or another port such as `2223` when WSL is configured that way)
    - **User**: Your SSH username
@@ -75,8 +77,8 @@ Or build from source:
    - **Project Path**: Server-side path to multi-agent-shogun (e.g., `/mnt/c/tools/multi-agent-shogun`)
    - **Shogun target**: default is `agent:shogun`, which auto-detects the pane with `@agent_id=shogun`
    - **Agents target**: default is `shogunate:goza`
-7. Tap **接続診断** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
-8. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only.
+8. Tap **接続診断** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
+9. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only.
 
 ### Prerequisites
 

@@ -18,15 +18,16 @@ fun parseShogunateSetupUri(raw: String): ShogunateSetupConfig {
         "shogunate://setup 形式ではありません"
     }
 
-    val host = uri.getQueryParameter("host")?.trim()
+    val rawHost = uri.getQueryParameter("host")?.trim()
     val port = uri.getQueryParameter("port")?.trim()
-    require(!host.isNullOrBlank() && !port.isNullOrBlank()) {
+    require(!rawHost.isNullOrBlank() && !port.isNullOrBlank()) {
         "host と port が必要です"
     }
+    val endpoint = normalizeConnectionEndpoint(rawHost)
 
     return ShogunateSetupConfig(
-        host = host,
-        port = port,
+        host = endpoint.host,
+        port = endpoint.port ?: port,
         user = uri.getQueryParameter("user")?.trim(),
         keyPath = uri.getQueryParameter("key")?.trim(),
         projectPath = uri.getQueryParameter("project")?.trim(),

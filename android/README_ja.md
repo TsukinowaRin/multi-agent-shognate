@@ -61,13 +61,15 @@
 2. ホスト側で以下のどれかを実行:
    - 初回USBワンタッチ: `bash android/tools/setup_android_ssh.sh --pair` または `--pair-usb`
    - 初回無線ワンタッチ: `bash android/tools/setup_android_ssh.sh --pair-wireless`
+   - 接続先を指定して無線ワンタッチ: `bash android/tools/setup_android_ssh.sh --pair-wireless --host <DNSまたはURLまたはIP>`
    - USB手動値送信: `bash android/tools/setup_android_ssh.sh --usb`
    - 無線候補表示: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: `android/tools/setup_android_ssh.bat` をダブルクリック、または WSL から `.sh` を実行
 3. ワンタッチ接続では、Android app が app 内に専用 SSH 鍵を生成し、PC 側スクリプトは公開鍵だけを取得して `authorized_keys` に登録します。秘密鍵はスマホの app private storage から出しません。
-4. `--pair-usb` は `adb reverse` を設定し、Android app を `127.0.0.1:2222` に自動設定します。`--pair-wireless` は初回設定だけ USB デバッグを使い、以後は Tailscale / LAN へ直接 SSH 接続します。無線候補はスマホの現在の IPv4 に近いものを優先します。接続先を固定したい場合は `SHOGUNATE_PAIR_HOST=<ip-or-host>` を付けます。
+4. `--pair-usb` は `adb reverse` を設定し、Android app を `127.0.0.1:2222` に自動設定します。`--pair-wireless` は初回設定だけ USB デバッグを使い、以後は Tailscale / LAN へ直接 SSH 接続します。無線候補はスマホの現在の IPv4 に近いものを優先します。接続先を固定したい場合は `--host <DNSまたはURLまたはIP>` または `SHOGUNATE_PAIR_HOST=<DNSまたはURLまたはIP>` を付けます。
 5. setup URI がある場合は設定画面の **貼付** → **URI取込** で host/port/user/project/tmux target/key path を取り込めます。
-6. 手動で細かく設定したい場合だけ **マニュアルモード** を開きます:
+6. リモート接続先を手入力する場合は、通常画面の **接続先** に DNS 名、URL、Tailscale IP、LAN IP のいずれかを入力し、**接続先を反映** または **接続診断** を押します。URL の path/query は無視され、host と port だけが SSH 接続に使われます。
+7. 手動で細かく設定したい場合だけ **マニュアルモード** を開きます:
    - **ホスト**: USB は `127.0.0.1`、無線は Tailscale / LAN IP
    - **ポート**: USB は `2222`、無線は `setup_android_ssh.sh --wireless` が表示した SSH ポート（通常は `22`、WSL で変更している場合は `2223` など）
    - **ユーザー**: SSHユーザー名
@@ -75,8 +77,8 @@
    - **プロジェクトパス**: サーバー側のmulti-agent-shogunパス（例: `/mnt/c/tools/multi-agent-shogun`）
    - **将軍 target**: 標準は `agent:shogun`。`@agent_id=shogun` の pane を自動検出します。
    - **エージェント target**: 標準は `shogunate:goza`
-7. **接続診断** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
-8. 診断が通ったら **将軍** タブに切替 → 将軍 pane のみに自動接続
+8. **接続診断** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
+9. 診断が通ったら **将軍** タブに切替 → 将軍 pane のみに自動接続
 
 ### 前提条件
 

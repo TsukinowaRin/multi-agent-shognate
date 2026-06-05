@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MODE="auto"
 ASSUME_YES=0
+PAIR_HOST_OVERRIDE="${SHOGUNATE_PAIR_HOST:-}"
 ADB_BIN="${ADB:-adb}"
 HOST_SSH_PORT="${HOST_SSH_PORT:-}"
 ANDROID_USB_PORT="${ANDROID_USB_PORT:-2222}"
@@ -14,7 +15,7 @@ OS_NAME="$(uname -s 2>/dev/null || echo unknown)"
 usage() {
   cat <<'USAGE'
 Usage:
-  bash android/tools/setup_android_ssh.sh [--pair|--pair-usb|--pair-wireless|--usb|--wireless|--auto]
+  bash android/tools/setup_android_ssh.sh [--pair|--pair-usb|--pair-wireless|--usb|--wireless|--auto] [--host <dns-url-or-ip>]
 
 Options:
   --pair       Same as --pair-usb. Recommended first-time setup.
@@ -26,6 +27,8 @@ Options:
                only for pairing.
   --usb        USB debugging + adb reverse for Android -> host SSH.
   --wireless   Print LAN / Tailscale candidates for manual wireless SSH.
+  --host       Destination for --pair-wireless. Accepts DNS name, SSH URL,
+               HTTPS URL, Tailscale IP, or LAN IP. URL paths are ignored.
   --yes        Skip the pairing confirmation prompt.
   --auto       Use USB when one adb device is visible; otherwise print wireless info.
 
@@ -35,7 +38,7 @@ Environment:
   ANDROID_USB_PORT=2222
   SSH_USER=<host ssh user>
   PROJECT_PATH=<remote Shogunate path>
-  SHOGUNATE_PAIR_HOST=<ip-or-host>  Override the host selected by --pair-wireless.
+  SHOGUNATE_PAIR_HOST=<dns-url-or-ip>  Same as --host.
   SHOGUNATE_QR=0  Disable terminal QR output.
 USAGE
 }
@@ -46,6 +49,15 @@ while [[ $# -gt 0 ]]; do
     --wireless) MODE="wireless"; shift ;;
     --pair|--pair-usb) MODE="pair-usb"; shift ;;
     --pair-wireless) MODE="pair-wireless"; shift ;;
+    --host)
+      if [ $# -lt 2 ]; then
+        echo "[ERROR] --host requires a value" >&2
+        usage >&2
+        exit 2
+      fi
+      PAIR_HOST_OVERRIDE="$2"
+      shift 2
+      ;;
     --yes|-y) ASSUME_YES=1; shift ;;
     --auto) MODE="auto"; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -198,6 +210,41 @@ print_setup_qr() {
   printf '%s' "$uri" | qrencode -t ANSIUTF8
 }
 
+normalize_endpoint() {
+  local input="$1"
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$input" <<'PY'
+import sys
+from urllib.parse import urlsplit
+
+raw = sys.argv[1].strip()
+if not raw:
+    raise SystemExit(1)
+parsed = urlsplit(raw if "://" in raw else f"ssh://{raw}")
+host = parsed.hostname
+if not host:
+    raise SystemExit(1)
+print(host)
+print(parsed.port or "")
+PY
+    return $?
+  fi
+
+  local authority host port
+  authority="${input#*://}"
+  authority="${authority%%/*}"
+  authority="${authority%%\?*}"
+  authority="${authority%%#*}"
+  authority="${authority##*@}"
+  host="${authority%%:*}"
+  port="${authority#*:}"
+  [ "$port" != "$authority" ] || port=""
+  host="${host#[}"
+  host="${host%]}"
+  [ -n "$host" ] || return 1
+  printf '%s\n%s\n' "$host" "$port"
+}
+
 wireless_candidate_hosts() {
   {
     if command -v tailscale >/dev/null 2>&1; then
@@ -238,11 +285,6 @@ android_ipv4_addresses() {
 select_wireless_host() {
   local candidates="$1"
   local android_ips candidate android_ip
-
-  if [ -n "${SHOGUNATE_PAIR_HOST:-}" ]; then
-    printf '%s' "$SHOGUNATE_PAIR_HOST"
-    return 0
-  fi
 
   android_ips="$(android_ipv4_addresses || true)"
 
@@ -503,9 +545,23 @@ pair_wireless() {
   require_usb_device
   confirm_pairing
 
-  local candidates selected_host
+  local candidates selected_host normalized override_port
   candidates="$(wireless_candidate_hosts)"
-  selected_host="$(select_wireless_host "$candidates")"
+
+  if [ -n "$PAIR_HOST_OVERRIDE" ]; then
+    if ! normalized="$(normalize_endpoint "$PAIR_HOST_OVERRIDE")"; then
+      echo "[ERROR] --host / SHOGUNATE_PAIR_HOST の接続先を解釈できません: $PAIR_HOST_OVERRIDE" >&2
+      exit 1
+    fi
+    selected_host="$(printf '%s\n' "$normalized" | sed -n '1p')"
+    override_port="$(printf '%s\n' "$normalized" | sed -n '2p')"
+    if [ -n "$override_port" ]; then
+      HOST_SSH_PORT="$override_port"
+    fi
+  else
+    selected_host="$(select_wireless_host "$candidates")"
+  fi
+
   if [ -z "$selected_host" ]; then
     echo "[ERROR] Tailscale / LAN IP 候補を検出できませんでした。--wireless で確認してください。" >&2
     exit 1
@@ -522,8 +578,8 @@ pair_wireless() {
   print_app_values "$selected_host" "$HOST_SSH_PORT"
   echo "  SSH秘密鍵パス: ${ANDROID_PAIR_KEY_PATH}"
   echo "  端末: ${ANDROID_PAIR_DEVICE_LABEL:-$(adb_single_device_serial)}"
-  if [ -n "${SHOGUNATE_PAIR_HOST:-}" ]; then
-    echo "  接続先選択: SHOGUNATE_PAIR_HOST override"
+  if [ -n "$PAIR_HOST_OVERRIDE" ]; then
+    echo "  接続先選択: user input (${PAIR_HOST_OVERRIDE})"
   else
     echo "  接続先選択: Android端末の現在のIPv4に近い候補を優先"
   fi

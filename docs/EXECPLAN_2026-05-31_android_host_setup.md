@@ -39,7 +39,7 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 3. `bash android/tools/setup_android_ssh.sh --pair-wireless` を実行する。
 4. スクリプトが Android app の pairing provider から公開鍵を取得し、ホストの `authorized_keys` へ登録する。
 5. `tailscale ip -4` / LAN / default route から候補 IP を出し、USB 接続中の Android 端末の現在の IPv4 に近い候補を優先して app へ鍵認証つき setup intent として送る。
-6. 自動選択を変えたい場合は `SHOGUNATE_PAIR_HOST=<ip-or-host> bash android/tools/setup_android_ssh.sh --pair-wireless` を使う。
+6. 自動選択を変えたい場合は `bash android/tools/setup_android_ssh.sh --pair-wireless --host <dns-url-or-ip>` または `SHOGUNATE_PAIR_HOST=<dns-url-or-ip> ...` を使う。DNS 名、SSH/HTTPS URL、Tailscale IP、LAN IP を受け付け、URL path / query は無視する。
 7. setup URI candidates には app 内秘密鍵 path も含めるため、手動で URI 取込しても鍵認証設定を維持できる。
 
 ### 無線
@@ -82,6 +82,9 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 - `--pair-usb --yes`: PASS。provider 経由の app 内生成鍵を使い、`ssh_key_path=/data/user/0/com.shogun.android/files/ssh_keys/shogunate_mobile_rsa.pem` を保存。Android app UI dump で `接続中 — 将軍セッション` を確認。
 - `--pair-wireless --yes`: PASS。Tailscale 候補 `100.71.16.5`、LAN 候補 `192.168.1.5` を検出し、端末の Wi-Fi IPv4 `192.168.1.7` に近い LAN 側 `192.168.1.5` を自動設定。Android app UI dump で `接続中 — 将軍セッション` を確認。必要なら `SHOGUNATE_PAIR_HOST` で選択を固定できる。
 - Android app 設定画面: 通常表示を `ワンタッチ接続` に寄せ、SSH詳細入力は `マニュアルモード` 配下へ移動。
+- 2026-06-05 追補: Android app 設定画面に `接続先（DNS / URL / Tailscale IP / LAN IP）` 欄を追加。入力値は SSH 用 host/port に正規化し、URL の path/query/fragment は無視する。
+- `bash android/tools/setup_android_ssh.sh --pair-wireless --host 'https://192.168.1.5:2223/shogunate' --yes`: PASS。URL を `192.168.1.5:2223` に正規化し、Android app へ鍵認証つき setup intent を送信。
+- 実機 URL setup URI 取り込み: PASS。`shogunate://setup?host=https%3A%2F%2F192.168.1.5%3A2223%2Fremote&port=22...` は Android prefs に `ssh_host=192.168.1.5`, `ssh_port=2223` を保存し、UI dump で `接続中 — 将軍セッション` を確認。
 
 ## 復旧
 

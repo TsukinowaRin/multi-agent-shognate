@@ -320,3 +320,21 @@
 3. `bash android/tools/setup_android_ssh.sh --pair-wireless --yes` が同じ app 内生成鍵を使い、Tailscale / LAN 候補の接続設定を app に送る。
 4. Android app の設定画面では `ワンタッチ接続` が通常表示され、SSH詳細入力は `マニュアルモード` を開いた時だけ表示される。
 5. `cd android && ./gradlew testDebugUnitTest assembleDebug`、`bash -n android/tools/setup_android_ssh.sh`、`git diff --check` が PASS する。
+
+## 追補（2026-06-05: Android app 接続先入力の追加）
+
+### 要求
+
+1. Android app の通常導線に `接続先` 入力欄を追加する。
+2. 接続先は DNS 名、SSH/HTTPS 等のURL、Tailscale IP、LAN IP を受け付ける。
+3. URLが入力された場合、SSH接続に使う host と port だけを取り出し、path / query / fragment は無視する。
+4. URLまたは `host:port` に port が含まれる場合は、その port をSSHポートとして反映する。port が無い場合は現在のSSHポート設定を維持する。
+5. ホスト側スクリプトの `--pair-wireless` でも `--host <dns-url-or-ip>` / `SHOGUNATE_PAIR_HOST=<dns-url-or-ip>` を受け付け、同じ正規化を行う。
+
+### 受け入れ条件（観測可能）
+
+1. `normalizeConnectionEndpoint()` は DNS 名、`host:port`、HTTPS URL、SSH URL、Tailscale/LAN IP を正規化できる。
+2. Android app 設定画面の `接続先` 欄から、手入力した接続先をSSH host/portへ反映できる。
+3. `shogunate://setup?host=<URL>&port=<fallback>` を取り込むと、URL内 host/port が優先される。
+4. `bash android/tools/setup_android_ssh.sh --pair-wireless --host 'https://192.168.1.5:2223/path' --yes` が Android app へ `192.168.1.5:2223` を送る。
+5. 実機で URL setup URI 取り込み後、Android app が `接続中 — 将軍セッション` になる。

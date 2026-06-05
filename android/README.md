@@ -65,7 +65,7 @@ Or build from source:
 3. USB setup automatically sends a `shogunate://setup` intent to the app when the APK is installed. If you configure manually, tap **USB接続** or **無線接続**, then tap **標準値を入力**.
 4. Enter SSH connection info:
    - **Host**: USB uses `127.0.0.1`; wireless uses your Tailscale/LAN IP
-   - **Port**: USB uses `2222`; wireless usually uses `22`
+   - **Port**: USB uses `2222`; wireless uses the SSH port printed by `setup_android_ssh.sh --wireless` (`22` by default, or another port such as `2223` when WSL is configured that way)
    - **User**: Your SSH username
    - **Key Path** or **Password**: Authentication method
    - **Project Path**: Server-side path to multi-agent-shogun (e.g., `/mnt/c/tools/multi-agent-shogun`)

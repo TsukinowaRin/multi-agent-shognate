@@ -22,7 +22,7 @@ Options:
 
 Environment:
   ADB=/path/to/adb
-  HOST_SSH_PORT=22
+  HOST_SSH_PORT=<override auto-detected host SSH port>
   ANDROID_USB_PORT=2222
   SSH_USER=<host ssh user>
   PROJECT_PATH=<remote Shogunate path>
@@ -84,11 +84,23 @@ port_is_ssh() {
   return 1
 }
 
+configured_ssh_ports() {
+  local file
+  for file in /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf; do
+    [ -f "$file" ] || continue
+    awk 'tolower($1) == "port" && $2 ~ /^[0-9]+$/ {print $2}' "$file"
+  done 2>/dev/null | awk '!seen[$0]++'
+}
+
 detect_host_ssh_port() {
+  local port
   if [ -n "${HOST_SSH_PORT:-}" ]; then
     return 0
   fi
-  for port in 22 2222 2223; do
+  for port in $(configured_ssh_ports) 22 2222 2223; do
+    case "$port" in
+      ''|*[!0-9]*) continue ;;
+    esac
     if port_is_ssh "$port"; then
       HOST_SSH_PORT="$port"
       return 0

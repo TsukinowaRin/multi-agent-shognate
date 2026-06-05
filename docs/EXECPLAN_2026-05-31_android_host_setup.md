@@ -19,7 +19,7 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 1. Android 端末で USB デバッグを許可する。
 2. ホストで SSH server を起動しておく。
 3. `bash android/tools/setup_android_ssh.sh --usb` を実行する。
-4. スクリプトが `adb reverse tcp:2222 tcp:22` を設定する。
+4. スクリプトが host SSH port を自動検出し、`adb reverse tcp:2222 tcp:<detected>` を設定する。
 5. APK がインストール済みなら、スクリプトが `shogunate://setup` intent を送り、Android app に `SSHホスト=127.0.0.1`, `SSHポート=2222` などを保存する。
 6. 自動送信できない場合は、Android app で同じ値を手入力する。
 
@@ -28,7 +28,7 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 1. Android とホストを同じ LAN または Tailscale に入れる。
 2. `bash android/tools/setup_android_ssh.sh --wireless` を実行する。
 3. 表示された Tailscale / LAN IP のいずれかを Android app の SSH ホストに入れる。
-4. Android app では通常 `SSHポート=22` を使う。
+4. Android app の SSH ポートには、スクリプトが表示した host SSH port を入れる。通常は `22` だが、WSL 側で競合回避用に `2223` などへ変更している場合はその値を使う。
 5. スクリプトは `shogunate://setup` URI も表示する。将来 QR 化する場合はこの URI をそのまま使える。
 
 ## tmux target
@@ -52,9 +52,9 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 - `bash -n android/tools/setup_android_ssh.sh`: PASS
 - `bash android/tools/setup_android_ssh.sh --wireless`: PASS。WSL/Linux 環境で Tailscale/LAN/default route 候補を表示。
 - `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`: PASS
-- `bash android/tools/setup_android_ssh.sh --usb`: PASS。`adb reverse tcp:2222 tcp:22` を設定し、`shogunate://setup` intent で app prefs に `127.0.0.1:2222`, `agent:shogun`, `shogunate:goza` を保存。
+- `bash android/tools/setup_android_ssh.sh --usb`: PASS。host SSH port を自動検出して `adb reverse tcp:2222 tcp:<detected>` を設定し、`shogunate://setup` intent で app prefs に `127.0.0.1:2222`, `agent:shogun`, `shogunate:goza` を保存。
 - 実機設定画面: USB/無線ボタン、保存済み host/port/user、接続診断表示を確認。
-- 残リスク: この環境ではホスト側 `127.0.0.1:22` の SSH server が応答せず、接続診断は `connection is closed by foreign host`。Android 側設定と `adb reverse` までは通っている。
+- 2026-06-05 時点の WSL 実機では、`/etc/ssh/sshd_config.d/99-shogun-android.conf` により SSH server が `2223` で待受中。USB は Android 側 `127.0.0.1:2222` から host `127.0.0.1:2223` へ reverse するため、Android app 側の USB ポートは `2222` のままでよい。接続診断には SSH 認証設定が別途必要。
 
 ## 復旧
 

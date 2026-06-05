@@ -59,10 +59,11 @@ Or build from source:
 
 1. Launch the app → **Settings** tab
 2. On the host, run one of:
+   - USB key pairing: `bash android/tools/setup_android_ssh.sh --pair-usb`
    - USB: `bash android/tools/setup_android_ssh.sh --usb`
    - Wireless: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: double-click `android/tools/setup_android_ssh.bat`, or run the `.sh` from WSL
-3. USB setup automatically sends a `shogunate://setup` intent to the app when the APK is installed. Wireless setup prints a complete setup URI for each candidate IP and a terminal QR when `qrencode` is available.
+3. USB key pairing creates or reuses a dedicated SSH key after confirmation, authorizes the public key on the PC, transfers the private key into the Android app private storage, and sends a key-auth setup intent. USB setup automatically sends a `shogunate://setup` intent to the app when the APK is installed. Wireless setup prints a complete setup URI for each candidate IP and a terminal QR when `qrencode` is available.
 4. For manual setup, tap **USB接続** or **無線接続**, then tap **標準値を入力**. When you have a setup URI, use **貼付** → **URI取込** in Settings to import host/port/user/project/tmux target.
 5. Enter SSH connection info:
    - **Host**: USB uses `127.0.0.1`; wireless uses your Tailscale/LAN IP
@@ -81,6 +82,7 @@ Or build from source:
 - tmux sessions already launched via `shutsujin_departure.sh`
 - Network connectivity between phone and server: USB debugging + `adb reverse`, LAN, or Tailscale
 - `adb` for USB setup
+- USB key pairing uses debug / prerelease APK `run-as`. Release APK pairing should move to app-side key generation or a temporary pairing endpoint.
 
 ## Architecture
 

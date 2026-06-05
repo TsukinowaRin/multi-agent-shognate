@@ -23,6 +23,15 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 5. APK がインストール済みなら、スクリプトが `shogunate://setup` intent を送り、Android app に `SSHホスト=127.0.0.1`, `SSHポート=2222` などを保存する。
 6. 自動送信できない場合は、Android app で同じ値を手入力する。
 
+### USB 鍵ペアリング
+
+1. Android 端末で USB デバッグを許可し、debug / prerelease APK をインストールしておく。
+2. `bash android/tools/setup_android_ssh.sh --pair-usb` を実行する。
+3. スクリプトが同意 prompt を出し、同意後に Shogunate Android 専用 SSH 鍵を `.shogunate/android-ssh/` に生成または再利用する。
+4. 公開鍵を `~/.ssh/authorized_keys` へ重複なく追加し、秘密鍵を Android app 専用領域 `files/ssh_keys/` へ転送する。秘密鍵の内容は表示しない。
+5. USB reverse と `shogunate://setup` intent を送信し、Android app は `127.0.0.1:2222` と app 内秘密鍵 path を保存する。
+6. release APK で `run-as` が使えない場合は、app 内 key generation / 一時 pairing endpoint 方式へ移行する。
+
 ### 無線
 
 1. Android とホストを同じ LAN または Tailscale に入れる。
@@ -58,6 +67,7 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 - 2026-06-05 時点の WSL 実機では、`/etc/ssh/sshd_config.d/99-shogun-android.conf` により SSH server が `2223` で待受中。USB は Android 側 `127.0.0.1:2222` から host `127.0.0.1:2223` へ reverse するため、Android app 側の USB ポートは `2222` のままでよい。接続診断には SSH 認証設定が別途必要。
 - 2026-06-05 追補: Android app 設定画面に setup URI 貼り付け取り込みを追加し、`--wireless` は候補 IP ごとの完成済み setup URI と optional QR を表示する。
 - `SHOGUNATE_QR=0 bash android/tools/setup_android_ssh.sh --wireless`: PASS。`100.71.16.5` と `192.168.1.5` の完成済み setup URI を表示。
+- `bash android/tools/setup_android_ssh.sh --pair-usb --yes`: PASS。OnePlus LE2121 (`661ecd40`) で専用鍵を生成/再利用し、公開鍵を `authorized_keys` へ追加、秘密鍵を Android app 専用領域へ転送、`adb reverse tcp:2222 tcp:2223` と setup intent を送信。host 側 SSH publickey 認証も PASS。
 
 ## 復旧
 

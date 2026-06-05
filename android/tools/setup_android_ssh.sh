@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MODE="auto"
+ASSUME_YES=0
 ADB_BIN="${ADB:-adb}"
 HOST_SSH_PORT="${HOST_SSH_PORT:-}"
 ANDROID_USB_PORT="${ANDROID_USB_PORT:-2222}"
@@ -13,12 +14,15 @@ OS_NAME="$(uname -s 2>/dev/null || echo unknown)"
 usage() {
   cat <<'USAGE'
 Usage:
-  bash android/tools/setup_android_ssh.sh [--usb|--wireless|--auto]
+  bash android/tools/setup_android_ssh.sh [--usb|--wireless|--pair-usb|--auto]
 
 Options:
-  --usb       USB debugging + adb reverse for Android -> host SSH.
-  --wireless  Print LAN / Tailscale candidates for wireless SSH.
-  --auto      Use USB when one adb device is visible; otherwise print wireless info.
+  --usb        USB debugging + adb reverse for Android -> host SSH.
+  --wireless   Print LAN / Tailscale candidates for wireless SSH.
+  --pair-usb   Generate a dedicated SSH key, install it into the Android app,
+               authorize it on this host, then configure USB SSH.
+  --yes        Skip the pairing confirmation prompt.
+  --auto       Use USB when one adb device is visible; otherwise print wireless info.
 
 Environment:
   ADB=/path/to/adb
@@ -34,6 +38,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --usb) MODE="usb"; shift ;;
     --wireless) MODE="wireless"; shift ;;
+    --pair-usb) MODE="pair-usb"; shift ;;
+    --yes|-y) ASSUME_YES=1; shift ;;
     --auto) MODE="auto"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "[ERROR] Unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -150,13 +156,19 @@ urlencode() {
 setup_uri() {
   local host="$1"
   local port="$2"
-  printf 'shogunate://setup?host=%s&port=%s&user=%s&project=%s&shogun=%s&agents=%s' \
+  local key_path="${3:-}"
+  local uri
+  uri="$(printf 'shogunate://setup?host=%s&port=%s&user=%s&project=%s&shogun=%s&agents=%s' \
     "$(urlencode "$host")" \
     "$(urlencode "$port")" \
     "$(urlencode "$SSH_USER")" \
     "$(urlencode "$PROJECT_PATH")" \
     "$(urlencode "agent:shogun")" \
-    "$(urlencode "shogunate:goza")"
+    "$(urlencode "shogunate:goza")")"
+  if [ -n "$key_path" ]; then
+    uri="${uri}&key=$(urlencode "$key_path")"
+  fi
+  printf '%s' "$uri"
 }
 
 print_setup_uri_block() {
@@ -218,6 +230,131 @@ setup_usb() {
   echo "[OK] USB reverse を設定しました: Android 127.0.0.1:${ANDROID_USB_PORT} -> host 127.0.0.1:${HOST_SSH_PORT}"
   print_app_values "127.0.0.1" "$ANDROID_USB_PORT"
   push_android_settings "127.0.0.1" "$ANDROID_USB_PORT"
+}
+
+adb_single_device_serial() {
+  "$ADB_BIN" devices 2>/dev/null | tr -d '\r' | awk '$2 == "device" {print $1}'
+}
+
+require_usb_device() {
+  if ! command -v "$ADB_BIN" >/dev/null 2>&1; then
+    echo "[ERROR] adb が見つかりません。Android platform-tools を PATH に追加してください。" >&2
+    exit 1
+  fi
+  if ! has_adb_device; then
+    echo "[ERROR] USBデバッグ許可済み Android 端末が1台だけ接続されている状態にしてください。" >&2
+    "$ADB_BIN" devices || true
+    exit 1
+  fi
+}
+
+confirm_pairing() {
+  if [ "$ASSUME_YES" = "1" ]; then
+    return 0
+  fi
+  cat <<CONFIRM
+
+[PAIRING]
+この操作は次を行います。
+  1. Shogunate Android 専用SSH鍵を ${ROOT_DIR}/.shogunate/android-ssh/ に作成または再利用
+  2. 公開鍵を ${HOME}/.ssh/authorized_keys に追加
+  3. 秘密鍵を USB 接続中の Android app 専用領域へ転送
+  4. Android app に USB 接続設定を送信
+
+秘密鍵の内容は表示しません。続行しますか？ [y/N]
+CONFIRM
+  local answer
+  read -r answer
+  case "$answer" in
+    y|Y|yes|YES) return 0 ;;
+    *) echo "[CANCEL] pairing を中止しました。"; exit 1 ;;
+  esac
+}
+
+install_public_key() {
+  local public_key_file="$1"
+  local authorized_keys="${HOME}/.ssh/authorized_keys"
+  install -d -m 700 "${HOME}/.ssh"
+  touch "$authorized_keys"
+  chmod 600 "$authorized_keys"
+  if grep -qxF "$(cat "$public_key_file")" "$authorized_keys"; then
+    echo "[OK] 公開鍵は既に authorized_keys に登録済みです。"
+  else
+    cat "$public_key_file" >> "$authorized_keys"
+    echo "[OK] 公開鍵を authorized_keys に追加しました。"
+  fi
+}
+
+push_private_key_to_app() {
+  local key_file="$1"
+  local key_name="$2"
+  local serial="$3"
+  local app_home tmp_remote app_key_path
+  app_home="$("$ADB_BIN" shell run-as com.shogun.android pwd 2>/dev/null | tr -d '\r')"
+  if [ -z "$app_home" ]; then
+    echo "[ERROR] Android app の run-as に失敗しました。debug APK をインストールしてから再実行してください。" >&2
+    exit 1
+  fi
+  tmp_remote="/data/local/tmp/shogunate_${serial}_${key_name}"
+  app_key_path="${app_home}/files/ssh_keys/${key_name}"
+
+  "$ADB_BIN" push "$key_file" "$tmp_remote" >/dev/null 2>&1
+  "$ADB_BIN" shell "cat '$tmp_remote' | run-as com.shogun.android sh -c 'mkdir -p files/ssh_keys && cat > files/ssh_keys/$key_name && chmod 600 files/ssh_keys/$key_name'" >/dev/null
+  "$ADB_BIN" shell "rm -f '$tmp_remote'" >/dev/null 2>&1 || true
+  echo "$app_key_path"
+}
+
+pair_usb() {
+  detect_host_ssh_port
+  require_usb_device
+  confirm_pairing
+
+  local serial safe_serial key_dir key_file key_name app_key_path uri
+  serial="$(adb_single_device_serial)"
+  safe_serial="$(printf '%s' "$serial" | sed 's/[^A-Za-z0-9._-]/_/g')"
+  key_dir="${ROOT_DIR}/.shogunate/android-ssh"
+  key_name="shogunate_${safe_serial}_rsa"
+  key_file="${key_dir}/${key_name}"
+
+  install -d -m 700 "$key_dir"
+  if [ ! -f "$key_file" ]; then
+    ssh-keygen -q -t rsa -b 4096 -m PEM -N "" -C "shogunate-android-${safe_serial}" -f "$key_file"
+    chmod 600 "$key_file"
+    echo "[OK] Android 専用SSH鍵を作成しました。"
+  else
+    chmod 600 "$key_file"
+    echo "[OK] 既存の Android 専用SSH鍵を再利用します。"
+  fi
+
+  install_public_key "${key_file}.pub"
+  app_key_path="$(push_private_key_to_app "$key_file" "$key_name" "$safe_serial")"
+  echo "[OK] 秘密鍵を Android app 専用領域へ転送しました。"
+
+  "$ADB_BIN" reverse --remove "tcp:${ANDROID_USB_PORT}" >/dev/null 2>&1 || true
+  "$ADB_BIN" reverse "tcp:${ANDROID_USB_PORT}" "tcp:${HOST_SSH_PORT}" >/dev/null
+  echo "[OK] USB reverse を設定しました: Android 127.0.0.1:${ANDROID_USB_PORT} -> host 127.0.0.1:${HOST_SSH_PORT}"
+
+  uri="$(setup_uri "127.0.0.1" "$ANDROID_USB_PORT" "$app_key_path")"
+  if "$ADB_BIN" shell "am start -a android.intent.action.VIEW -d $(remote_shell_quote "$uri") -p com.shogun.android" >/dev/null 2>&1; then
+    echo "[OK] Android app に鍵認証つき接続設定を送信しました。"
+  else
+    echo "[WARN] Android app への自動設定送信に失敗しました。次の URI をアプリ設定画面で取り込んでください。" >&2
+    echo "  $uri"
+  fi
+
+  local verify_key
+  verify_key="$(mktemp)"
+  cp "$key_file" "$verify_key"
+  chmod 600 "$verify_key"
+  if ssh -i "$verify_key" -p "$HOST_SSH_PORT" -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$SSH_USER@127.0.0.1" "echo shogunate_pair_ok" 2>/dev/null | grep -q shogunate_pair_ok; then
+    echo "[OK] ホスト側 SSH 鍵認証を確認しました。"
+  else
+    echo "[WARN] ホスト側 SSH 鍵認証の確認に失敗しました。sshd / authorized_keys / user を確認してください。" >&2
+  fi
+  rm -f "$verify_key"
+
+  print_app_values "127.0.0.1" "$ANDROID_USB_PORT"
+  echo "  SSH秘密鍵パス: ${app_key_path}"
 }
 
 print_wireless_candidates() {
@@ -298,6 +435,7 @@ CANDIDATES
 case "$MODE" in
   usb) setup_usb ;;
   wireless) print_wireless_candidates ;;
+  pair-usb) pair_usb ;;
   auto)
     if has_adb_device; then
       setup_usb

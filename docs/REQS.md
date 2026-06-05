@@ -282,3 +282,21 @@
 2. `qrencode` が無い環境でも script は失敗せず、URI のテキスト表示にフォールバックする。
 3. Android app の設定画面で `shogunate://setup?...` を貼り付けると SSH host/port/user/project/tmux target が入力欄に反映される。
 4. 不正な URI は既存設定を上書きせず、ユーザーに失敗を知らせる。
+
+## 追補（2026-06-05: Android app USB SSH鍵ペアリング）
+
+### 要求
+
+1. USB デバッグでユーザーが許可した Android 端末に対して、SSH host/port/user/key path を手入力せず接続できる導線を用意する。
+2. ホスト側スクリプトはユーザー同意後に Shogunate Android 専用 SSH 鍵を生成または再利用し、公開鍵をホストの `authorized_keys` へ追加する。
+3. 秘密鍵は Android app の専用領域へ転送し、内容は標準出力や docs に出さない。
+4. スクリプトは USB `adb reverse` と `shogunate://setup` intent を設定し、Android app が鍵認証で接続できる状態にする。
+5. 将来的な release APK では、debug `run-as` 依存ではなく app 内 key generation / 一時ペアリング endpoint / QR などへ移行できる設計余地を残す。
+
+### 受け入れ条件
+
+1. `bash android/tools/setup_android_ssh.sh --pair-usb` が同意 prompt を出し、`--yes` 指定時は非対話で実行できる。
+2. USB デバッグ許可済み端末が1台の場合、専用鍵を `.shogunate/android-ssh/` に生成または再利用する。
+3. 公開鍵は `~/.ssh/authorized_keys` に重複なく追加される。
+4. Android app prefs に `ssh_host=127.0.0.1`, `ssh_port=2222`, `ssh_key_path=<app files>/ssh_keys/<key>` が保存される。
+5. host 側で同じ鍵による SSH publickey 認証が確認できる。

@@ -59,10 +59,11 @@
 
 1. アプリを起動 → **設定** タブ
 2. ホスト側で以下のどれかを実行:
+   - USB鍵ペアリング: `bash android/tools/setup_android_ssh.sh --pair-usb`
    - USB: `bash android/tools/setup_android_ssh.sh --usb`
    - 無線: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: `android/tools/setup_android_ssh.bat` をダブルクリック、または WSL から `.sh` を実行
-3. USB セットアップは、APK がインストール済みなら `shogunate://setup` intent でアプリへ設定を自動送信します。無線セットアップは候補 IP ごとの setup URI を表示し、`qrencode` があればターミナル QR も表示します。
+3. USB鍵ペアリングは、同意後に専用SSH鍵を作成/再利用し、公開鍵をPCへ登録、秘密鍵をAndroid app専用領域へ転送して、鍵認証つき設定を自動送信します。USB セットアップは、APK がインストール済みなら `shogunate://setup` intent でアプリへ設定を自動送信します。無線セットアップは候補 IP ごとの setup URI を表示し、`qrencode` があればターミナル QR も表示します。
 4. 手動設定する場合は **USB接続** または **無線接続** を押し、続けて **標準値を入力** を押します。setup URI がある場合は設定画面の **貼付** → **URI取込** で host/port/user/project/tmux target を取り込めます。
 5. SSH接続情報を入力:
    - **ホスト**: USB は `127.0.0.1`、無線は Tailscale / LAN IP
@@ -81,6 +82,7 @@
 - `shutsujin_departure.sh` でtmuxセッション起動済み
 - スマホとサーバー間の接続（USBデバッグ + `adb reverse`、LAN、Tailscale等）
 - USB 接続を使う場合は `adb`
+- USB鍵ペアリングは debug / prerelease APK の `run-as` を使います。release APK では将来の app 内鍵生成方式へ移行予定です。
 
 ## アーキテクチャ
 

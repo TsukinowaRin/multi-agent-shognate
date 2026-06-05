@@ -14,13 +14,18 @@ OS_NAME="$(uname -s 2>/dev/null || echo unknown)"
 usage() {
   cat <<'USAGE'
 Usage:
-  bash android/tools/setup_android_ssh.sh [--usb|--wireless|--pair-usb|--auto]
+  bash android/tools/setup_android_ssh.sh [--pair|--pair-usb|--pair-wireless|--usb|--wireless|--auto]
 
 Options:
+  --pair       Same as --pair-usb. Recommended first-time setup.
+  --pair-usb   Use the Android app generated SSH key, authorize it on this host,
+               then configure USB SSH through adb reverse.
+  --pair-wireless
+               Use the Android app generated SSH key, authorize it on this host,
+               then configure direct Tailscale/LAN SSH. Requires USB debugging
+               only for pairing.
   --usb        USB debugging + adb reverse for Android -> host SSH.
-  --wireless   Print LAN / Tailscale candidates for wireless SSH.
-  --pair-usb   Generate a dedicated SSH key, install it into the Android app,
-               authorize it on this host, then configure USB SSH.
+  --wireless   Print LAN / Tailscale candidates for manual wireless SSH.
   --yes        Skip the pairing confirmation prompt.
   --auto       Use USB when one adb device is visible; otherwise print wireless info.
 
@@ -30,6 +35,7 @@ Environment:
   ANDROID_USB_PORT=2222
   SSH_USER=<host ssh user>
   PROJECT_PATH=<remote Shogunate path>
+  SHOGUNATE_PAIR_HOST=<ip-or-host>  Override the host selected by --pair-wireless.
   SHOGUNATE_QR=0  Disable terminal QR output.
 USAGE
 }
@@ -38,7 +44,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --usb) MODE="usb"; shift ;;
     --wireless) MODE="wireless"; shift ;;
-    --pair-usb) MODE="pair-usb"; shift ;;
+    --pair|--pair-usb) MODE="pair-usb"; shift ;;
+    --pair-wireless) MODE="pair-wireless"; shift ;;
     --yes|-y) ASSUME_YES=1; shift ;;
     --auto) MODE="auto"; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -136,7 +143,8 @@ print_app_values() {
   将軍 tmux target: agent:shogun
   エージェント tmux target: shogunate:goza
 
-アプリ側では「設定」→「USB接続」または「無線接続」→「標準値を入力」→「接続診断」の順で確認してください。
+アプリ側では「設定」→「ワンタッチ接続」→「接続診断」で確認してください。
+細かく直す場合だけ「マニュアルモード」を開いてください。
 VALUES
 }
 
@@ -174,8 +182,9 @@ setup_uri() {
 print_setup_uri_block() {
   local host="$1"
   local port="$2"
+  local key_path="${3:-}"
   local uri
-  uri="$(setup_uri "$host" "$port")"
+  uri="$(setup_uri "$host" "$port" "$key_path")"
   echo "  ${host}: ${uri}"
 }
 
@@ -187,6 +196,92 @@ print_setup_qr() {
   echo
   echo "[Setup QR]"
   printf '%s' "$uri" | qrencode -t ANSIUTF8
+}
+
+wireless_candidate_hosts() {
+  {
+    if command -v tailscale >/dev/null 2>&1; then
+      tailscale ip -4 2>/dev/null || true
+    fi
+
+    if command -v powershell.exe >/dev/null 2>&1; then
+      powershell.exe -NoProfile -Command "if (Get-Command tailscale -ErrorAction SilentlyContinue) { tailscale ip -4 }" 2>/dev/null \
+        | tr -d '\r' || true
+    fi
+
+    if [[ "$OS_NAME" == "Darwin" ]]; then
+      for iface in en0 en1 en2 bridge100; do
+        ipconfig getifaddr "$iface" 2>/dev/null || true
+      done
+      if command -v ifconfig >/dev/null 2>&1; then
+        ifconfig 2>/dev/null \
+          | awk '/^[a-zA-Z0-9]/ {iface=$1; sub(":", "", iface)} /inet / && $2 != "127.0.0.1" {print $2}' \
+          || true
+      fi
+    elif command -v hostname >/dev/null 2>&1; then
+      hostname -I 2>/dev/null | tr ' ' '\n' || true
+    fi
+
+    if command -v ip >/dev/null 2>&1; then
+      ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($i=="src") print $(i+1)}' || true
+    fi
+  } | awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && $0 != "127.0.0.1"' | unique_lines
+}
+
+android_ipv4_addresses() {
+  "$ADB_BIN" shell ip -4 addr show scope global 2>/dev/null \
+    | tr -d '\r' \
+    | sed -n 's/.*inet \([0-9][0-9.]*\)\/.*/\1/p' \
+    | unique_lines
+}
+
+select_wireless_host() {
+  local candidates="$1"
+  local android_ips candidate android_ip
+
+  if [ -n "${SHOGUNATE_PAIR_HOST:-}" ]; then
+    printf '%s' "$SHOGUNATE_PAIR_HOST"
+    return 0
+  fi
+
+  android_ips="$(android_ipv4_addresses || true)"
+
+  while IFS= read -r candidate; do
+    [ -n "$candidate" ] || continue
+    while IFS= read -r android_ip; do
+      [ -n "$android_ip" ] || continue
+      if [ "$(printf '%s' "$candidate" | cut -d. -f1-3)" = "$(printf '%s' "$android_ip" | cut -d. -f1-3)" ]; then
+        printf '%s' "$candidate"
+        return 0
+      fi
+    done <<ANDROID_IPS
+$android_ips
+ANDROID_IPS
+  done <<CANDIDATES
+$candidates
+CANDIDATES
+
+  while IFS= read -r candidate; do
+    [ -n "$candidate" ] || continue
+    case "$candidate" in
+      100.*)
+        while IFS= read -r android_ip; do
+          case "$android_ip" in
+            100.*)
+              printf '%s' "$candidate"
+              return 0
+              ;;
+          esac
+        done <<ANDROID_IPS
+$android_ips
+ANDROID_IPS
+        ;;
+    esac
+  done <<CANDIDATES
+$candidates
+CANDIDATES
+
+  printf '%s\n' "$candidates" | head -n 1
 }
 
 remote_shell_quote() {
@@ -256,12 +351,13 @@ confirm_pairing() {
 
 [PAIRING]
 この操作は次を行います。
-  1. Shogunate Android 専用SSH鍵を ${ROOT_DIR}/.shogunate/android-ssh/ に作成または再利用
+  1. Android app が自分の専用SSH鍵を app 内に作成または再利用
   2. 公開鍵を ${HOME}/.ssh/authorized_keys に追加
-  3. 秘密鍵を USB 接続中の Android app 専用領域へ転送
-  4. Android app に USB 接続設定を送信
+  3. Android app に接続設定を送信
 
-秘密鍵の内容は表示しません。続行しますか？ [y/N]
+秘密鍵はPCへ取り出しません。公開鍵だけをPCへ登録します。
+古いdebug APKでは fallback としてPC生成鍵を app 専用領域へ転送します。
+続行しますか？ [y/N]
 CONFIRM
   local answer
   read -r answer
@@ -273,15 +369,43 @@ CONFIRM
 
 install_public_key() {
   local public_key_file="$1"
+  install_public_key_line "$(cat "$public_key_file")"
+}
+
+install_public_key_line() {
+  local public_key="$1"
   local authorized_keys="${HOME}/.ssh/authorized_keys"
   install -d -m 700 "${HOME}/.ssh"
   touch "$authorized_keys"
   chmod 600 "$authorized_keys"
-  if grep -qxF "$(cat "$public_key_file")" "$authorized_keys"; then
+  if grep -qxF "$public_key" "$authorized_keys"; then
     echo "[OK] 公開鍵は既に authorized_keys に登録済みです。"
   else
-    cat "$public_key_file" >> "$authorized_keys"
+    printf '%s\n' "$public_key" >> "$authorized_keys"
     echo "[OK] 公開鍵を authorized_keys に追加しました。"
+  fi
+}
+
+query_android_pairing_profile() {
+  local output
+  output="$("$ADB_BIN" shell content query --uri content://com.shogun.android.pairing/profile 2>/dev/null | tr -d '\r' || true)"
+  ANDROID_PAIR_PUBLIC_KEY="$(printf '%s\n' "$output" | sed -n 's/.*public_key=\(ssh-rsa [^,]*\), key_path=.*/\1/p' | head -n 1)"
+  ANDROID_PAIR_KEY_PATH="$(printf '%s\n' "$output" | sed -n 's/.*key_path=\([^,]*\), device_label=.*/\1/p' | head -n 1)"
+  ANDROID_PAIR_DEVICE_LABEL="$(printf '%s\n' "$output" | sed -n 's/.*device_label=\([^,]*\).*/\1/p' | head -n 1)"
+  [ -n "$ANDROID_PAIR_PUBLIC_KEY" ] && [ -n "$ANDROID_PAIR_KEY_PATH" ]
+}
+
+send_key_setup_to_android() {
+  local host="$1"
+  local port="$2"
+  local key_path="$3"
+  local uri
+  uri="$(setup_uri "$host" "$port" "$key_path")"
+  if "$ADB_BIN" shell "am start -a android.intent.action.VIEW -d $(remote_shell_quote "$uri") -p com.shogun.android" >/dev/null 2>&1; then
+    echo "[OK] Android app に鍵認証つき接続設定を送信しました。"
+  else
+    echo "[WARN] Android app への自動設定送信に失敗しました。次の URI をアプリ設定画面で取り込んでください。" >&2
+    echo "  $uri"
   fi
 }
 
@@ -312,6 +436,23 @@ pair_usb() {
   local serial safe_serial key_dir key_file key_name app_key_path uri
   serial="$(adb_single_device_serial)"
   safe_serial="$(printf '%s' "$serial" | sed 's/[^A-Za-z0-9._-]/_/g')"
+
+  if query_android_pairing_profile; then
+    install_public_key_line "$ANDROID_PAIR_PUBLIC_KEY"
+    "$ADB_BIN" reverse --remove "tcp:${ANDROID_USB_PORT}" >/dev/null 2>&1 || true
+    "$ADB_BIN" reverse "tcp:${ANDROID_USB_PORT}" "tcp:${HOST_SSH_PORT}" >/dev/null
+    echo "[OK] USB reverse を設定しました: Android 127.0.0.1:${ANDROID_USB_PORT} -> host 127.0.0.1:${HOST_SSH_PORT}"
+
+    send_key_setup_to_android "127.0.0.1" "$ANDROID_USB_PORT" "$ANDROID_PAIR_KEY_PATH"
+
+    print_app_values "127.0.0.1" "$ANDROID_USB_PORT"
+    echo "  SSH秘密鍵パス: ${ANDROID_PAIR_KEY_PATH}"
+    echo "  端末: ${ANDROID_PAIR_DEVICE_LABEL:-$safe_serial}"
+    echo "[OK] Android app 内生成鍵の公開鍵をPCへ登録しました。"
+    return 0
+  fi
+
+  echo "[WARN] Android app の pairing provider が見つかりません。debug APK 用の fallback pairing を使います。" >&2
   key_dir="${ROOT_DIR}/.shogunate/android-ssh"
   key_name="shogunate_${safe_serial}_rsa"
   key_file="${key_dir}/${key_name}"
@@ -357,6 +498,45 @@ pair_usb() {
   echo "  SSH秘密鍵パス: ${app_key_path}"
 }
 
+pair_wireless() {
+  detect_host_ssh_port
+  require_usb_device
+  confirm_pairing
+
+  local candidates selected_host
+  candidates="$(wireless_candidate_hosts)"
+  selected_host="$(select_wireless_host "$candidates")"
+  if [ -z "$selected_host" ]; then
+    echo "[ERROR] Tailscale / LAN IP 候補を検出できませんでした。--wireless で確認してください。" >&2
+    exit 1
+  fi
+
+  if ! query_android_pairing_profile; then
+    echo "[ERROR] Android app の pairing provider が見つかりません。最新APKをインストールしてください。" >&2
+    exit 1
+  fi
+
+  install_public_key_line "$ANDROID_PAIR_PUBLIC_KEY"
+  send_key_setup_to_android "$selected_host" "$HOST_SSH_PORT" "$ANDROID_PAIR_KEY_PATH"
+
+  print_app_values "$selected_host" "$HOST_SSH_PORT"
+  echo "  SSH秘密鍵パス: ${ANDROID_PAIR_KEY_PATH}"
+  echo "  端末: ${ANDROID_PAIR_DEVICE_LABEL:-$(adb_single_device_serial)}"
+  if [ -n "${SHOGUNATE_PAIR_HOST:-}" ]; then
+    echo "  接続先選択: SHOGUNATE_PAIR_HOST override"
+  else
+    echo "  接続先選択: Android端末の現在のIPv4に近い候補を優先"
+  fi
+  echo
+  echo "[Setup URI candidates]"
+  while IFS= read -r candidate; do
+    [ -n "$candidate" ] || continue
+    print_setup_uri_block "$candidate" "$HOST_SSH_PORT" "$ANDROID_PAIR_KEY_PATH"
+  done <<CANDIDATES
+$candidates
+CANDIDATES
+}
+
 print_wireless_candidates() {
   detect_host_ssh_port
   local candidates first_host first_uri
@@ -365,35 +545,7 @@ print_wireless_candidates() {
     tailscale ip -4 2>/dev/null | sed 's/^/  Tailscale: /' || true
   fi
 
-  candidates="$(
-    {
-      if command -v tailscale >/dev/null 2>&1; then
-        tailscale ip -4 2>/dev/null || true
-      fi
-
-      if command -v powershell.exe >/dev/null 2>&1; then
-        powershell.exe -NoProfile -Command "if (Get-Command tailscale -ErrorAction SilentlyContinue) { tailscale ip -4 }" 2>/dev/null \
-          | tr -d '\r' || true
-      fi
-
-      if [[ "$OS_NAME" == "Darwin" ]]; then
-        for iface in en0 en1 en2 bridge100; do
-          ipconfig getifaddr "$iface" 2>/dev/null || true
-        done
-        if command -v ifconfig >/dev/null 2>&1; then
-          ifconfig 2>/dev/null \
-            | awk '/^[a-zA-Z0-9]/ {iface=$1; sub(":", "", iface)} /inet / && $2 != "127.0.0.1" {print $2}' \
-            || true
-        fi
-      elif command -v hostname >/dev/null 2>&1; then
-        hostname -I 2>/dev/null | tr ' ' '\n' || true
-      fi
-
-      if command -v ip >/dev/null 2>&1; then
-        ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($i=="src") print $(i+1)}' || true
-      fi
-    } | awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && $0 != "127.0.0.1"' | unique_lines
-  )"
+  candidates="$(wireless_candidate_hosts)"
 
   if [[ "$OS_NAME" == "Darwin" ]]; then
     for iface in en0 en1 en2 bridge100; do
@@ -405,7 +557,7 @@ print_wireless_candidates() {
         | sort -u
     fi
   elif command -v hostname >/dev/null 2>&1; then
-    hostname -I 2>/dev/null | tr ' ' '\n' | awk 'NF {print "  LAN: " $1}' || true
+    hostname -I 2>/dev/null | tr ' ' '\n' | awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {print "  LAN: " $1}' || true
   fi
 
   if command -v ip >/dev/null 2>&1; then
@@ -436,6 +588,7 @@ case "$MODE" in
   usb) setup_usb ;;
   wireless) print_wireless_candidates ;;
   pair-usb) pair_usb ;;
+  pair-wireless) pair_wireless ;;
   auto)
     if has_adb_device; then
       setup_usb

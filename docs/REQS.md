@@ -300,3 +300,23 @@
 3. 公開鍵は `~/.ssh/authorized_keys` に重複なく追加される。
 4. Android app prefs に `ssh_host=127.0.0.1`, `ssh_port=2222`, `ssh_key_path=<app files>/ssh_keys/<key>` が保存される。
 5. host 側で同じ鍵による SSH publickey 認証が確認できる。
+
+## 追補（2026-06-05: Android app ワンタッチ接続とマニュアルモード）
+
+### 要求
+
+1. Android app の接続設定は、USB / Tailscale / LAN / setup URI を問わず、通常導線では詳細項目入力を不要にする。
+2. 旧来のホスト、ポート、ユーザー、鍵、パスワード、tmux target の個別入力は `マニュアルモード` として残す。
+3. USB デバッグが使える初回セットアップでは、Android app が app 内で SSH 鍵を生成または再利用し、ホスト側スクリプトは公開鍵だけを取得して `authorized_keys` に登録する。
+4. 秘密鍵は Android app の private storage に残し、PCへ取り出さない。古い debug APK で app 内鍵 provider が使えない場合だけ、既存の `run-as` fallback を使う。
+5. `--pair-usb` は USB reverse まで設定して、Android app を `127.0.0.1:2222` に自動設定する。
+6. `--pair-wireless` は USB デバッグを初回設定の搬送路として使い、以後は Tailscale / LAN の直接 SSH へ自動設定する。
+7. 無線接続先は自動検出候補から選ぶ。USB 接続中の Android 端末の現在の IPv4 に近い候補を優先し、必要なら `SHOGUNATE_PAIR_HOST=<ip-or-host>` で明示できる。
+
+### 受け入れ条件（観測可能）
+
+1. `content://com.shogun.android.pairing/profile` が `public_key`, `key_path`, `device_label` を返す。`public_key` は公開鍵で、秘密鍵本文は返さない。
+2. `bash android/tools/setup_android_ssh.sh --pair-usb --yes` が app 内生成鍵の公開鍵を `authorized_keys` に追加し、USB reverse と鍵認証つき setup intent を送る。
+3. `bash android/tools/setup_android_ssh.sh --pair-wireless --yes` が同じ app 内生成鍵を使い、Tailscale / LAN 候補の接続設定を app に送る。
+4. Android app の設定画面では `ワンタッチ接続` が通常表示され、SSH詳細入力は `マニュアルモード` を開いた時だけ表示される。
+5. `cd android && ./gradlew testDebugUnitTest assembleDebug`、`bash -n android/tools/setup_android_ssh.sh`、`git diff --check` が PASS する。

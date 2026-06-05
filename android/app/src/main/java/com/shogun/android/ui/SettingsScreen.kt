@@ -58,6 +58,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     var saved by remember { mutableStateOf(false) }
     var tapCount by remember { mutableIntStateOf(0) }
     var showDebugLog by remember { mutableStateOf(false) }
+    var showManualMode by remember { mutableStateOf(false) }
     fun saveSettings() {
         prefs.edit()
             .putString(PrefsKeys.SSH_HOST, host.trim())
@@ -123,7 +124,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            "SSH設定",
+            "接続設定",
             style = MaterialTheme.typography.titleLarge,
             color = Kinpaku,
             modifier = Modifier.clickable {
@@ -144,9 +145,9 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 modifier = Modifier.padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("かんたん接続セットアップ", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+                Text("ワンタッチ接続", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
                 Text(
-                    "PC側で Shogunate を起動してから、接続方式を選び、SSH情報を入れて接続診断を実行してください。無線のポートはセットアップスクリプトの表示値を使います。",
+                    "PC側でセットアップスクリプトを実行し、USBペアリングまたはsetup URI取込を使います。通常は下の詳細項目を入力する必要はありません。",
                     color = TextMuted,
                     fontSize = 13.sp
                 )
@@ -163,7 +164,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(4.dp)
                     ) {
-                        Text("標準値を入力")
+                        Text("標準target")
                     }
                     Button(
                         onClick = {
@@ -203,7 +204,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(4.dp)
                     ) {
-                        Text("USB接続")
+                        Text("USB")
                     }
                     OutlinedButton(
                         onClick = {
@@ -218,7 +219,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(4.dp)
                     ) {
-                        Text("無線接続")
+                        Text("無線/Tailscale")
                     }
                 }
                 OutlinedTextField(
@@ -266,99 +267,38 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             }
         }
 
-        OutlinedTextField(
-            value = host,
-            onValueChange = { host = it },
-            label = { Text("SSHホスト") },
+        OutlinedButton(
+            onClick = { showManualMode = !showManualMode },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = port,
-            onValueChange = { port = it },
-            label = { Text("SSHポート") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-
-        OutlinedTextField(
-            value = user,
-            onValueChange = { user = it },
-            label = { Text("SSHユーザー") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            shape = RoundedCornerShape(4.dp)
         ) {
-            OutlinedTextField(
-                value = keyPath,
-                onValueChange = {
+            Text(if (showManualMode) "マニュアルモードを閉じる" else "マニュアルモード")
+        }
+
+        if (showManualMode) {
+            ManualConnectionSettings(
+                host = host,
+                onHostChange = { host = it },
+                port = port,
+                onPortChange = { port = it },
+                user = user,
+                onUserChange = { user = it },
+                keyPath = keyPath,
+                onKeyPathChange = {
                     keyPath = it
                     saved = false
                 },
-                label = { Text("SSH秘密鍵パス") },
-                modifier = Modifier.weight(1f),
-                singleLine = true
+                password = password,
+                onPasswordChange = { password = it },
+                projectPath = projectPath,
+                onProjectPathChange = { projectPath = it },
+                shogunSession = shogunSession,
+                onShogunSessionChange = { shogunSession = it },
+                agentsSession = agentsSession,
+                onAgentsSessionChange = { agentsSession = it },
+                onPickSshKey = { pickSshKeyLauncher.launch(arrayOf("*/*")) }
             )
-
-            OutlinedButton(
-                onClick = { pickSshKeyLauncher.launch(arrayOf("*/*")) },
-                modifier = Modifier.defaultMinSize(minHeight = 56.dp),
-                shape = RoundedCornerShape(4.dp)
-            ) {
-                Text("ファイルを選択")
-            }
         }
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("SSHパスワード（鍵なし時に使用）") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
-        )
-
-        Divider()
-
-        Text("プロジェクト設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
-
-        OutlinedTextField(
-            value = projectPath,
-            onValueChange = { projectPath = it },
-            label = { Text("プロジェクトパス（サーバー側）") },
-            placeholder = { Text("/mnt/d/git_workspace/multi-agent-shognate/multi-agent-shognate") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Divider()
-
-        Text("セッション設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
-
-        OutlinedTextField(
-            value = shogunSession,
-            onValueChange = { shogunSession = it },
-            label = { Text("将軍 tmux target") },
-            supportingText = { Text("標準: agent:shogun。@agent_id=shogun の pane を自動検出します。session名だけなら shogun:main として扱います。") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = agentsSession,
-            onValueChange = { agentsSession = it },
-            label = { Text("エージェント tmux target") },
-            supportingText = { Text("標準: shogunate:goza。session名だけなら multiagent:0 として扱います。") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
 
         Divider()
 
@@ -386,6 +326,124 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 color = MaterialTheme.colorScheme.primary
             )
         }
+    }
+}
+
+@Composable
+private fun ManualConnectionSettings(
+    host: String,
+    onHostChange: (String) -> Unit,
+    port: String,
+    onPortChange: (String) -> Unit,
+    user: String,
+    onUserChange: (String) -> Unit,
+    keyPath: String,
+    onKeyPathChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    projectPath: String,
+    onProjectPathChange: (String) -> Unit,
+    shogunSession: String,
+    onShogunSessionChange: (String) -> Unit,
+    agentsSession: String,
+    onAgentsSessionChange: (String) -> Unit,
+    onPickSshKey: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Divider()
+
+        Text("SSH詳細", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+
+        OutlinedTextField(
+            value = host,
+            onValueChange = onHostChange,
+            label = { Text("SSHホスト") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = port,
+            onValueChange = onPortChange,
+            label = { Text("SSHポート") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+
+        OutlinedTextField(
+            value = user,
+            onValueChange = onUserChange,
+            label = { Text("SSHユーザー") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = keyPath,
+                onValueChange = onKeyPathChange,
+                label = { Text("SSH秘密鍵パス") },
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+
+            OutlinedButton(
+                onClick = onPickSshKey,
+                modifier = Modifier.defaultMinSize(minHeight = 56.dp),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text("ファイルを選択")
+            }
+        }
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = onPasswordChange,
+            label = { Text("SSHパスワード（鍵なし時に使用）") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation()
+        )
+
+        Divider()
+
+        Text("プロジェクト設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+
+        OutlinedTextField(
+            value = projectPath,
+            onValueChange = onProjectPathChange,
+            label = { Text("プロジェクトパス（サーバー側）") },
+            placeholder = { Text("/mnt/d/git_workspace/multi-agent-shognate/multi-agent-shognate") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        Divider()
+
+        Text("セッション設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+
+        OutlinedTextField(
+            value = shogunSession,
+            onValueChange = onShogunSessionChange,
+            label = { Text("将軍 tmux target") },
+            supportingText = { Text("標準: agent:shogun。@agent_id=shogun の pane を自動検出します。session名だけなら shogun:main として扱います。") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = agentsSession,
+            onValueChange = onAgentsSessionChange,
+            label = { Text("エージェント tmux target") },
+            supportingText = { Text("標準: shogunate:goza。session名だけなら multiagent:0 として扱います。") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
     }
 }
 

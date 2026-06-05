@@ -17,7 +17,7 @@
 | **将軍** | 将軍ペインへのSSHターミナル。テキスト/音声でコマンド送信。ANSI256色対応、特殊キーバー（Enter, C-c, C-b, 矢印, Tab, ESC等） |
 | **エージェント** | 9ペイン一覧表示（家老 + 足軽7 + 軍師）。タップで全画面展開。個別エージェントへのコマンド送信 |
 | **ダッシュボード** | `dashboard.md` をHTML描画。表のテキスト選択・コピー対応 |
-| **設定** | SSH接続設定（ホスト、ポート、ユーザー、鍵/パスワード）、プロジェクトパス、tmuxセッション名 |
+| **設定** | USB/Tailscale/LAN のワンタッチ接続設定。従来の SSH 詳細入力はマニュアルモードに格納 |
 
 ### 主要機能
 
@@ -59,13 +59,15 @@
 
 1. アプリを起動 → **設定** タブ
 2. ホスト側で以下のどれかを実行:
-   - USB鍵ペアリング: `bash android/tools/setup_android_ssh.sh --pair-usb`
-   - USB: `bash android/tools/setup_android_ssh.sh --usb`
-   - 無線: `bash android/tools/setup_android_ssh.sh --wireless`
+   - 初回USBワンタッチ: `bash android/tools/setup_android_ssh.sh --pair` または `--pair-usb`
+   - 初回無線ワンタッチ: `bash android/tools/setup_android_ssh.sh --pair-wireless`
+   - USB手動値送信: `bash android/tools/setup_android_ssh.sh --usb`
+   - 無線候補表示: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: `android/tools/setup_android_ssh.bat` をダブルクリック、または WSL から `.sh` を実行
-3. USB鍵ペアリングは、同意後に専用SSH鍵を作成/再利用し、公開鍵をPCへ登録、秘密鍵をAndroid app専用領域へ転送して、鍵認証つき設定を自動送信します。USB セットアップは、APK がインストール済みなら `shogunate://setup` intent でアプリへ設定を自動送信します。無線セットアップは候補 IP ごとの setup URI を表示し、`qrencode` があればターミナル QR も表示します。
-4. 手動設定する場合は **USB接続** または **無線接続** を押し、続けて **標準値を入力** を押します。setup URI がある場合は設定画面の **貼付** → **URI取込** で host/port/user/project/tmux target を取り込めます。
-5. SSH接続情報を入力:
+3. ワンタッチ接続では、Android app が app 内に専用 SSH 鍵を生成し、PC 側スクリプトは公開鍵だけを取得して `authorized_keys` に登録します。秘密鍵はスマホの app private storage から出しません。
+4. `--pair-usb` は `adb reverse` を設定し、Android app を `127.0.0.1:2222` に自動設定します。`--pair-wireless` は初回設定だけ USB デバッグを使い、以後は Tailscale / LAN へ直接 SSH 接続します。無線候補はスマホの現在の IPv4 に近いものを優先します。接続先を固定したい場合は `SHOGUNATE_PAIR_HOST=<ip-or-host>` を付けます。
+5. setup URI がある場合は設定画面の **貼付** → **URI取込** で host/port/user/project/tmux target/key path を取り込めます。
+6. 手動で細かく設定したい場合だけ **マニュアルモード** を開きます:
    - **ホスト**: USB は `127.0.0.1`、無線は Tailscale / LAN IP
    - **ポート**: USB は `2222`、無線は `setup_android_ssh.sh --wireless` が表示した SSH ポート（通常は `22`、WSL で変更している場合は `2223` など）
    - **ユーザー**: SSHユーザー名
@@ -73,8 +75,8 @@
    - **プロジェクトパス**: サーバー側のmulti-agent-shogunパス（例: `/mnt/c/tools/multi-agent-shogun`）
    - **将軍 target**: 標準は `agent:shogun`。`@agent_id=shogun` の pane を自動検出します。
    - **エージェント target**: 標準は `shogunate:goza`
-6. **接続診断** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
-7. 診断が通ったら **将軍** タブに切替 → 将軍 pane のみに自動接続
+7. **接続診断** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
+8. 診断が通ったら **将軍** タブに切替 → 将軍 pane のみに自動接続
 
 ### 前提条件
 
@@ -82,7 +84,7 @@
 - `shutsujin_departure.sh` でtmuxセッション起動済み
 - スマホとサーバー間の接続（USBデバッグ + `adb reverse`、LAN、Tailscale等）
 - USB 接続を使う場合は `adb`
-- USB鍵ペアリングは debug / prerelease APK の `run-as` を使います。release APK では将来の app 内鍵生成方式へ移行予定です。
+- ワンタッチ鍵ペアリングは release APK でも使える app 内鍵生成 provider を優先します。古い debug APK で provider がない場合だけ `run-as` fallback を使います。
 
 ## アーキテクチャ
 

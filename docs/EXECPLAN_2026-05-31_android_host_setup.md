@@ -27,10 +27,20 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 
 1. Android 端末で USB デバッグを許可し、debug / prerelease APK をインストールしておく。
 2. `bash android/tools/setup_android_ssh.sh --pair-usb` を実行する。
-3. スクリプトが同意 prompt を出し、同意後に Shogunate Android 専用 SSH 鍵を `.shogunate/android-ssh/` に生成または再利用する。
-4. 公開鍵を `~/.ssh/authorized_keys` へ重複なく追加し、秘密鍵を Android app 専用領域 `files/ssh_keys/` へ転送する。秘密鍵の内容は表示しない。
+3. スクリプトが同意 prompt を出し、同意後に Android app の pairing provider から app 内生成 SSH 鍵の公開鍵と app 内秘密鍵 path を取得する。
+4. 公開鍵を `~/.ssh/authorized_keys` へ重複なく追加する。秘密鍵は Android app の private storage に残し、PCへ取り出さない。
 5. USB reverse と `shogunate://setup` intent を送信し、Android app は `127.0.0.1:2222` と app 内秘密鍵 path を保存する。
-6. release APK で `run-as` が使えない場合は、app 内 key generation / 一時 pairing endpoint 方式へ移行する。
+6. 古い debug APK で pairing provider が使えない場合だけ、fallback として `.shogunate/android-ssh/` にPC生成鍵を作り、`run-as` で app 専用領域へ転送する。
+
+### 無線 鍵ペアリング
+
+1. Android 端末で USB デバッグを許可する。USB は初回設定を送るためだけに使う。
+2. Android とホストを同じ LAN または Tailscale に入れる。
+3. `bash android/tools/setup_android_ssh.sh --pair-wireless` を実行する。
+4. スクリプトが Android app の pairing provider から公開鍵を取得し、ホストの `authorized_keys` へ登録する。
+5. `tailscale ip -4` / LAN / default route から候補 IP を出し、USB 接続中の Android 端末の現在の IPv4 に近い候補を優先して app へ鍵認証つき setup intent として送る。
+6. 自動選択を変えたい場合は `SHOGUNATE_PAIR_HOST=<ip-or-host> bash android/tools/setup_android_ssh.sh --pair-wireless` を使う。
+7. setup URI candidates には app 内秘密鍵 path も含めるため、手動で URI 取込しても鍵認証設定を維持できる。
 
 ### 無線
 
@@ -67,7 +77,11 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 - 2026-06-05 時点の WSL 実機では、`/etc/ssh/sshd_config.d/99-shogun-android.conf` により SSH server が `2223` で待受中。USB は Android 側 `127.0.0.1:2222` から host `127.0.0.1:2223` へ reverse するため、Android app 側の USB ポートは `2222` のままでよい。接続診断には SSH 認証設定が別途必要。
 - 2026-06-05 追補: Android app 設定画面に setup URI 貼り付け取り込みを追加し、`--wireless` は候補 IP ごとの完成済み setup URI と optional QR を表示する。
 - `SHOGUNATE_QR=0 bash android/tools/setup_android_ssh.sh --wireless`: PASS。`100.71.16.5` と `192.168.1.5` の完成済み setup URI を表示。
-- `bash android/tools/setup_android_ssh.sh --pair-usb --yes`: PASS。OnePlus LE2121 (`661ecd40`) で専用鍵を生成/再利用し、公開鍵を `authorized_keys` へ追加、秘密鍵を Android app 専用領域へ転送、`adb reverse tcp:2222 tcp:2223` と setup intent を送信。host 側 SSH publickey 認証も PASS。
+- `bash android/tools/setup_android_ssh.sh --pair-usb --yes`: PASS。初期実装では OnePlus LE2121 (`661ecd40`) でPC生成鍵 fallback を使い、公開鍵登録、秘密鍵転送、`adb reverse tcp:2222 tcp:2223`、setup intent、host 側 SSH publickey 認証を確認。
+- 2026-06-05 追補: Android app 内で RSA 4096 key を生成し、`content://com.shogun.android.pairing/profile` から公開鍵だけをホストへ渡す方式へ更新。OnePlus LE2121 で provider query、`--pair-usb --yes`、`--pair-wireless --yes` を確認。
+- `--pair-usb --yes`: PASS。provider 経由の app 内生成鍵を使い、`ssh_key_path=/data/user/0/com.shogun.android/files/ssh_keys/shogunate_mobile_rsa.pem` を保存。Android app UI dump で `接続中 — 将軍セッション` を確認。
+- `--pair-wireless --yes`: PASS。Tailscale 候補 `100.71.16.5`、LAN 候補 `192.168.1.5` を検出し、端末の Wi-Fi IPv4 `192.168.1.7` に近い LAN 側 `192.168.1.5` を自動設定。Android app UI dump で `接続中 — 将軍セッション` を確認。必要なら `SHOGUNATE_PAIR_HOST` で選択を固定できる。
+- Android app 設定画面: 通常表示を `ワンタッチ接続` に寄せ、SSH詳細入力は `マニュアルモード` 配下へ移動。
 
 ## 復旧
 

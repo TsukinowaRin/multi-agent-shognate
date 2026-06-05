@@ -17,7 +17,7 @@ Companion app for [multi-agent-shogun](https://github.com/yohey-w/multi-agent-sh
 | **Shogun** | Live SSH terminal to the Shogun pane. Send text/voice commands, view ANSI-colored output with special key bar (Enter, C-c, C-b, arrows, Tab, ESC, etc.) |
 | **Agents** | 9-pane grid view (Karo + 7 Ashigaru + Gunshi). Tap to expand fullscreen. Send commands to individual agents. |
 | **Dashboard** | Renders `dashboard.md` as HTML with full table text selection and copy support. |
-| **Settings** | SSH connection config (host, port, user, key/password), project path, tmux session names. |
+| **Settings** | One-touch USB/Tailscale/LAN connection setup. Detailed SSH fields remain available in Manual Mode. |
 
 ### Key Features
 
@@ -59,13 +59,15 @@ Or build from source:
 
 1. Launch the app → **Settings** tab
 2. On the host, run one of:
-   - USB key pairing: `bash android/tools/setup_android_ssh.sh --pair-usb`
-   - USB: `bash android/tools/setup_android_ssh.sh --usb`
-   - Wireless: `bash android/tools/setup_android_ssh.sh --wireless`
+   - First-time USB one-touch setup: `bash android/tools/setup_android_ssh.sh --pair` or `--pair-usb`
+   - First-time wireless one-touch setup: `bash android/tools/setup_android_ssh.sh --pair-wireless`
+   - USB manual value push: `bash android/tools/setup_android_ssh.sh --usb`
+   - Wireless candidate display: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: double-click `android/tools/setup_android_ssh.bat`, or run the `.sh` from WSL
-3. USB key pairing creates or reuses a dedicated SSH key after confirmation, authorizes the public key on the PC, transfers the private key into the Android app private storage, and sends a key-auth setup intent. USB setup automatically sends a `shogunate://setup` intent to the app when the APK is installed. Wireless setup prints a complete setup URI for each candidate IP and a terminal QR when `qrencode` is available.
-4. For manual setup, tap **USB接続** or **無線接続**, then tap **標準値を入力**. When you have a setup URI, use **貼付** → **URI取込** in Settings to import host/port/user/project/tmux target.
-5. Enter SSH connection info:
+3. One-touch pairing makes the Android app generate its own SSH key in app private storage. The host script reads only the public key and adds it to `authorized_keys`; the private key never leaves the phone.
+4. `--pair-usb` configures `adb reverse` and sets the app to `127.0.0.1:2222`. `--pair-wireless` uses USB debugging only for the first setup message, then configures direct Tailscale/LAN SSH. Wireless pairing prefers the host candidate closest to the phone's current IPv4. Use `SHOGUNATE_PAIR_HOST=<ip-or-host>` to force a specific wireless host.
+5. When you have a setup URI, use **貼付** → **URI取込** in Settings to import host/port/user/project/tmux target/key path.
+6. Open **マニュアルモード** only when you need to edit detailed values:
    - **Host**: USB uses `127.0.0.1`; wireless uses your Tailscale/LAN IP
    - **Port**: USB uses `2222`; wireless uses the SSH port printed by `setup_android_ssh.sh --wireless` (`22` by default, or another port such as `2223` when WSL is configured that way)
    - **User**: Your SSH username
@@ -73,8 +75,8 @@ Or build from source:
    - **Project Path**: Server-side path to multi-agent-shogun (e.g., `/mnt/c/tools/multi-agent-shogun`)
    - **Shogun target**: default is `agent:shogun`, which auto-detects the pane with `@agent_id=shogun`
    - **Agents target**: default is `shogunate:goza`
-6. Tap **接続診断** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
-7. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only.
+7. Tap **接続診断** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
+8. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only.
 
 ### Prerequisites
 
@@ -82,7 +84,7 @@ Or build from source:
 - tmux sessions already launched via `shutsujin_departure.sh`
 - Network connectivity between phone and server: USB debugging + `adb reverse`, LAN, or Tailscale
 - `adb` for USB setup
-- USB key pairing uses debug / prerelease APK `run-as`. Release APK pairing should move to app-side key generation or a temporary pairing endpoint.
+- One-touch key pairing prefers the release-compatible app-side key provider. Older debug APKs without that provider fall back to `run-as`.
 
 ## Architecture
 

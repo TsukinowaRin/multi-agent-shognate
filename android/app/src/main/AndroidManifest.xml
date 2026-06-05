@@ -44,6 +44,12 @@
             </intent-filter>
         </activity>
 
+        <provider
+            android:name=".PairingProvider"
+            android:authorities="com.shogun.android.pairing"
+            android:exported="true"
+            android:grantUriPermissions="false" />
+
         <service
             android:name=".SshForegroundService"
             android:foregroundServiceType="dataSync"

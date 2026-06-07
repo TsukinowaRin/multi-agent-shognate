@@ -55,6 +55,10 @@
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## バージョン
+
+Android APK は Shogunate 本体のリリースバージョンに fork/app 側の改訂番号を足します。例: Shogunate `5.1.0` に対する Android 側の最初の改訂は `5.1.0.1` です。
+
 ## セットアップ
 
 1. アプリを起動 → **設定** タブ

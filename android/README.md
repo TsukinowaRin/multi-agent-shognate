@@ -55,6 +55,10 @@ Or build from source:
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## Versioning
+
+The Android APK follows the Shogunate release version plus a fork/app revision. For example, Shogunate `5.1.0` with the first Android-specific revision is `5.1.0.1`.
+
 ## Setup
 
 1. Launch the app → **Settings** tab

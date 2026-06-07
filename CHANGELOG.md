@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.1.0.1] - 2026-06-07
+
+### Changed
+- Android APK version now follows the Shogunate release version plus a fork/app revision: `5.1.0.1`.
+- Android `versionCode` increased from `2` to `51001` so existing `4.1` APK installs are treated as upgrades.
+
 ## [5.1.0] - 2026-05-23
 
 ### Changed

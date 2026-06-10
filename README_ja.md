@@ -55,6 +55,15 @@ npx @tsukinowarin/shogunate install
 npx @tsukinowarin/shogunate install -- --version v5.0.0.12 --prefix "$HOME/.shogunate/shogunate"
 ```
 
+cURL installer は既定で runtime を `~/.shogunate/shogunate` に配置し、`~/.local/bin` に `shogunate` コマンドを登録します。
+
+```bash
+shogunate --help
+shogunate
+shogunate resume
+shogunate configure
+```
+
 version tag は本家 version に fork revision を足した形式にします。例: `v5.0.0.0`、`v5.0.0.12`。
 
 将軍ペインに命令を入力：

@@ -55,6 +55,15 @@ npx @tsukinowarin/shogunate install
 npx @tsukinowarin/shogunate install -- --version v5.0.0.12 --prefix "$HOME/.shogunate/shogunate"
 ```
 
+The cURL installer places the runtime in `~/.shogunate/shogunate` and registers `shogunate` in `~/.local/bin` by default:
+
+```bash
+shogunate --help
+shogunate
+shogunate resume
+shogunate configure
+```
+
 Version tags follow the upstream version plus a fork revision, for example `v5.0.0.0` or `v5.0.0.12`.
 
 Type a command in the Shogun pane:

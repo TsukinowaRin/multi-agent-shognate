@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.2.0] - 2026-06-06
+
+### Added
+- Cursor Agent CLI support (`type: cursor`) with generated instructions and `.cursor/skills/inbox-write/`.
+- Antigravity CLI support updates and compatibility aliases for `gemini` / `agy`.
+- MCP health check script and watcher startup hardening from upstream.
+
+### Fixed
+- Prevent duplicate inbox watcher startup through per-agent locking.
+- Use relative hook paths and refresh generated instruction files from upstream role fixes.
+
 ## [5.1.0.1] - 2026-06-07
 
 ### Changed

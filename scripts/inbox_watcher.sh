@@ -31,8 +31,10 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
     AGENT_ID="$1"
     PANE_TARGET="$2"
-    CLI_TYPE="${3:-claude}"  # CLI種別（claude/codex/copilot/kimi/antigravity/opencode/kilo/localapi）
-    [ "$CLI_TYPE" = "gemini" ] && CLI_TYPE="antigravity"
+    CLI_TYPE="${3:-claude}"  # CLI種別（claude/codex/copilot/kimi/antigravity/opencode/kilo/localapi/cursor）
+    case "$CLI_TYPE" in
+        gemini|agy) CLI_TYPE="antigravity" ;;
+    esac
     MUX_TYPE="tmux"
 
     INBOX="$SCRIPT_DIR/queue/inbox/${AGENT_ID}.yaml"
@@ -159,7 +161,7 @@ disable_normal_nudge() {
 
 is_valid_cli_type() {
     case "${1:-}" in
-        claude|codex|copilot|kimi|antigravity|opencode|kilo|localapi) return 0 ;;
+        claude|codex|copilot|kimi|antigravity|opencode|kilo|localapi|cursor) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -721,6 +723,7 @@ restart_command_for_cli() {
         kilo) printf '%s\n' "${KILO_RESTART_CMD:-kilo}" ;;
         localapi) printf '%s\n' "${LOCALAPI_RESTART_CMD:-python3 scripts/localapi_repl.py}" ;;
         copilot) printf '%s\n' "${COPILOT_RESTART_CMD:-copilot --yolo}" ;;
+        cursor) printf '%s\n' "${CURSOR_RESTART_CMD:-cursor-agent --yolo}" ;;
         codex) printf '%s\n' "${CODEX_RESTART_CMD:-codex --search --sandbox danger-full-access --ask-for-approval never}" ;;
         *) return 1 ;;
     esac
@@ -737,7 +740,7 @@ recover_shell_returned_cli_if_needed() {
         effective_cli=$(get_effective_cli_type)
     fi
     case "$effective_cli" in
-        codex|antigravity|opencode|kilo|localapi|copilot) ;;
+        codex|antigravity|opencode|kilo|localapi|copilot|cursor) ;;
         *) return 0 ;;
     esac
 
@@ -747,7 +750,7 @@ recover_shell_returned_cli_if_needed() {
         return 0
     fi
     case "$effective_cli:$current_command" in
-        codex:node|antigravity:agy|antigravity:antigravity|opencode:opencode|kilo:kilo|localapi:python3|copilot:copilot)
+        codex:node|antigravity:agy|antigravity:antigravity|opencode:opencode|kilo:kilo|localapi:python3|copilot:copilot|cursor:cursor-agent|cursor:agent)
             LAST_CLI_RESTART_TS=0
             return 0
             ;;
@@ -811,7 +814,8 @@ bootstrap_ready_pattern() {
         localapi) printf '%s\n' '(localapi|LocalAPI|ready:|\\$)' ;;
         opencode) printf '%s\n' '(opencode|OpenCode|/model|ready:)' ;;
         kilo) printf '%s\n' '(kilo|Kilo|/model|ready:)' ;;
-        *) printf '%s\n' '(claude|codex|antigravity|agy|copilot|kimi|localapi|opencode|kilo|ready:)' ;;
+        cursor) printf '%s\n' '(cursor|Cursor|cursor-agent|/model|ready:|ctrl\\+c to stop)' ;;
+        *) printf '%s\n' '(claude|codex|antigravity|agy|copilot|kimi|localapi|opencode|kilo|cursor|ready:)' ;;
     esac
 }
 

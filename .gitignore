@@ -43,6 +43,7 @@
 !instructions/cli_specific/localapi_tools.md
 !instructions/cli_specific/opencode_tools.md
 !instructions/cli_specific/kilo_tools.md
+!instructions/cli_specific/cursor_tools.md
 
 # Multi-CLI: Build template parts (roles, common sections)
 !instructions/roles/
@@ -61,6 +62,10 @@
 .opencode/agents/*-runtime.md
 !.opencode/tools/
 !.opencode/tools/mark-as-read.ts
+!.cursor/
+!.cursor/skills/
+!.cursor/skills/inbox-write/
+!.cursor/skills/inbox-write/SKILL.md
 
 # Multi-CLI: CLI adapter library + ntfy auth
 !lib/
@@ -168,6 +173,7 @@
 !scripts/update_manager.py
 !scripts/shell_aliases.sh
 !scripts/install_shell_aliases.sh
+!scripts/mcp_health_check.sh
 
 # Runtime validation sandboxes are disposable local artifacts.
 runtime_sandboxes/**

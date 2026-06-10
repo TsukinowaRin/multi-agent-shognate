@@ -95,6 +95,9 @@ EOFYAML
         kimi)
             cat "$PARTS_DIR/cli_specific/kimi_tools.md" >> "$output_path"
             ;;
+        cursor)
+            cat "$PARTS_DIR/cli_specific/cursor_tools.md" >> "$output_path"
+            ;;
         antigravity)
             cat "$PARTS_DIR/cli_specific/antigravity_tools.md" >> "$output_path"
             ;;
@@ -148,6 +151,13 @@ build_instruction_file "antigravity" "karo" "antigravity-karo.md"
 build_instruction_file "antigravity" "ashigaru" "antigravity-ashigaru.md"
 build_instruction_file "antigravity" "gunshi" "antigravity-gunshi.md"
 build_instruction_file "antigravity" "gunkan" "antigravity-gunkan.md"
+
+# Build Cursor Agent instruction files
+build_instruction_file "cursor" "shogun" "cursor-shogun.md"
+build_instruction_file "cursor" "karo" "cursor-karo.md"
+build_instruction_file "cursor" "ashigaru" "cursor-ashigaru.md"
+build_instruction_file "cursor" "gunshi" "cursor-gunshi.md"
+build_instruction_file "cursor" "gunkan" "cursor-gunkan.md"
 
 # Build Local API instruction files
 build_instruction_file "localapi" "shogun" "localapi-shogun.md"

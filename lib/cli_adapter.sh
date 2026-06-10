@@ -3,7 +3,7 @@
 # Multi-CLI統合設計書 (reports/design_multi_cli_support.md) §2.2 準拠
 #
 # 提供関数:
-#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "antigravity" | "localapi" | "opencode" | "kilo"
+#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "antigravity" | "localapi" | "opencode" | "kilo" | "cursor"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
 #   build_cli_command_with_type(agent_id, cli_type) → 指定CLIでの完全なコマンド文字列
 #   build_cli_command_with_startup_prompt(agent_id, cli_type, prompt) → 初回プロンプト付き完全コマンド
@@ -11,6 +11,7 @@
 #   get_instruction_file(agent_id [,cli_type]) → 指示書パス
 #   validate_cli_availability(cli_type)     → 0=OK, 1=NG
 #   get_agent_model(agent_id)               → "opus" | "sonnet" | "haiku" | "k2.5"
+#   get_agent_effort(agent_id)              → "low" | "medium" | "high" | "xhigh" | "max" | ""
 #   get_startup_prompt(agent_id)            → 初期プロンプト文字列 or ""
 
 # プロジェクトルートを基準にsettings.yamlのパスを解決
@@ -27,7 +28,7 @@ if [[ -z "$CLI_ADAPTER_PYTHON" || ! -x "$CLI_ADAPTER_PYTHON" ]]; then
 fi
 
 # 許可されたCLI種別
-CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi antigravity localapi opencode kilo"
+CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi antigravity localapi opencode kilo cursor"
 
 # normalize_opencode_model(model)
 # OpenCode 向けに provider-qualified なモデル名へ正規化する。
@@ -47,6 +48,12 @@ normalize_opencode_model() {
     case "$model" in
         gpt-5.4-mini|gpt-5.4|gpt-5.3-codex|gpt-5.3-codex-spark|gpt-5*)
             echo "openai/${model}"
+            ;;
+        claude-opus-4-8)
+            echo "anthropic/claude-opus-4-8"
+            ;;
+        claude-opus-4-7)
+            echo "anthropic/claude-opus-4-7"
             ;;
         claude-opus-4-6|opus)
             echo "anthropic/claude-opus-4-6"
@@ -268,7 +275,7 @@ _cli_adapter_normalize_cli_type() {
     local cli_type
     cli_type="$(_cli_adapter_normalize_lower "${1:-}")"
     case "$cli_type" in
-        gemini) echo "antigravity" ;;
+        gemini|agy) echo "antigravity" ;;
         *) echo "$cli_type" ;;
     esac
 }
@@ -704,13 +711,10 @@ _cli_adapter_prepare_codex_home_cmd() {
     fi
     shared_auth_dir="$(dirname "$shared_auth_file")"
 
-    printf 'mkdir -p %s %s && if [ -f %s ] && [ ! -e %s ]; then cp %s %s; fi && if ! ln -sfn %s %s 2>/dev/null; then if [ -f %s ]; then cp %s %s; fi; fi' \
+    printf 'mkdir -p %s %s && if [ -f %s ] && [ ! -e %s ]; then cp %s %s; fi && ln -sfn %s %s' \
         "$(_cli_adapter_shell_quote "$codex_home")" \
         "$(_cli_adapter_shell_quote "$shared_auth_dir")" \
         "$(_cli_adapter_shell_quote "$role_auth_file")" \
-        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
-        "$(_cli_adapter_shell_quote "$role_auth_file")" \
-        "$(_cli_adapter_shell_quote "$shared_auth_file")" \
         "$(_cli_adapter_shell_quote "$shared_auth_file")" \
         "$(_cli_adapter_shell_quote "$role_auth_file")" \
         "$(_cli_adapter_shell_quote "$shared_auth_file")" \
@@ -774,6 +778,22 @@ get_agent_reasoning_effort() {
     esac
 }
 
+get_agent_effort() {
+    local agent_id="$1"
+    local effort
+    effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.effort" "")")
+    if [[ -z "$effort" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
+        effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.karo.effort" "")")
+    fi
+    if [[ -z "$effort" ]]; then
+        effort="$(get_agent_reasoning_effort "$agent_id")"
+    fi
+    case "$effort" in
+        auto|none|low|medium|high|xhigh|max) echo "$effort" ;;
+        *) echo "" ;;
+    esac
+}
+
 get_agent_antigravity_runtime_model() {
     local agent_id="$1"
     local configured_model
@@ -791,7 +811,8 @@ get_agent_antigravity_runtime_model() {
 # _cli_adapter_is_valid_cli cli_type
 # 許可されたCLI種別かチェック
 _cli_adapter_is_valid_cli() {
-    local cli_type="$1"
+    local cli_type
+    cli_type="$(_cli_adapter_normalize_cli_type "${1:-}")"
     local allowed
     for allowed in $CLI_ADAPTER_ALLOWED_CLIS; do
         [[ "$cli_type" == "$allowed" ]] && return 0
@@ -814,10 +835,10 @@ get_cli_type() {
     local result
     result=$("$CLI_ADAPTER_PYTHON" -c "
 import re, yaml, sys
-allowed = ('claude','codex','copilot','kimi','antigravity','localapi','opencode','kilo')
+allowed = ('claude','codex','copilot','kimi','antigravity','localapi','opencode','kilo','cursor')
 def norm(value):
     value = str(value or '').strip().lower()
-    return 'antigravity' if value == 'gemini' else value
+    return 'antigravity' if value in ('gemini', 'agy') else value
 try:
     with open('${CLI_ADAPTER_SETTINGS}') as f:
         cfg = yaml.safe_load(f) or {}
@@ -921,17 +942,9 @@ build_cli_command_with_type() {
             local cmd
             local codex_bin
             local codex_path
-            local codex_dir
-            local codex_path_prefix=""
             codex_path="$(_cli_adapter_pick_executable "codex" "codex")"
             codex_bin="$(_cli_adapter_shell_quote "$codex_path")"
-            if [[ "$codex_path" == */* ]]; then
-                codex_dir="$(dirname "$codex_path")"
-                if [[ -d "$codex_dir" ]]; then
-                    codex_path_prefix="PATH=$(_cli_adapter_shell_quote "$codex_dir"):\$PATH "
-                fi
-            fi
-            cmd="$(_cli_adapter_prepare_codex_home_cmd "$agent_id") && ${codex_path_prefix}${agent_env_prefix}CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 ${codex_bin}"
+            cmd="$(_cli_adapter_prepare_codex_home_cmd "$agent_id") && ${agent_env_prefix}CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 ${codex_bin}"
             if ! _cli_adapter_is_valid_codex_model "$configured_model"; then
                 configured_model="default"
             fi
@@ -948,6 +961,22 @@ build_cli_command_with_type() {
             local copilot_bin
             copilot_bin="$(_cli_adapter_pick_executable_cmd "copilot" "copilot")"
             _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${copilot_bin} --yolo"
+            ;;
+        cursor)
+            local cursor_cmd
+            local cursor_bin
+            if cursor_bin="$(_cli_adapter_find_executable "cursor-agent" 2>/dev/null)"; then
+                cursor_cmd="$(_cli_adapter_shell_quote "$cursor_bin")"
+            elif cursor_bin="$(_cli_adapter_find_executable "agent" 2>/dev/null)"; then
+                cursor_cmd="$(_cli_adapter_shell_quote "$cursor_bin")"
+            else
+                cursor_cmd="cursor-agent"
+            fi
+            cursor_cmd="$cursor_cmd --yolo"
+            if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
+                cursor_cmd="$cursor_cmd --model $configured_model"
+            fi
+            _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${cursor_cmd}"
             ;;
         kimi)
             local kimi_bin
@@ -1060,7 +1089,7 @@ build_cli_command_with_startup_prompt() {
         kilo)
             printf '%s --prompt %q\n' "$base_cmd" "$prompt"
             ;;
-        codex|claude)
+        cursor|codex|claude)
             printf '%s %q\n' "$base_cmd" "$prompt"
             ;;
         *)
@@ -1073,7 +1102,7 @@ build_cli_command_with_startup_prompt() {
 # 現在の環境で利用可能なCLIを優先順で1つ返す
 get_first_available_cli() {
     local cli_type
-    for cli_type in codex antigravity opencode kilo localapi claude copilot kimi; do
+    for cli_type in codex antigravity opencode cursor kilo localapi claude copilot kimi; do
         case "$cli_type" in
             claude)
                 _cli_adapter_find_executable claude >/dev/null 2>&1 && { echo "claude"; return 0; }
@@ -1095,6 +1124,9 @@ get_first_available_cli() {
                 ;;
             opencode)
                 _cli_adapter_find_executable opencode >/dev/null 2>&1 && { echo "opencode"; return 0; }
+                ;;
+            cursor)
+                (_cli_adapter_find_executable cursor-agent >/dev/null 2>&1 || _cli_adapter_find_executable agent >/dev/null 2>&1) && { echo "cursor"; return 0; }
                 ;;
             kilo)
                 _cli_adapter_find_executable kilo >/dev/null 2>&1 && { echo "kilo"; return 0; }
@@ -1176,6 +1208,7 @@ get_instruction_file() {
         localapi) echo "instructions/generated/localapi-${role}.md" ;;
         opencode) echo "instructions/generated/opencode-${role}.md" ;;
         kilo) echo "instructions/generated/kilo-${role}.md" ;;
+        cursor) echo "instructions/generated/cursor-${role}.md" ;;
         *) echo "instructions/generated/${role}.md" ;;
     esac
 }
@@ -1251,6 +1284,12 @@ validate_cli_availability() {
                 return 1
             }
             ;;
+        cursor)
+            if ! _cli_adapter_find_executable cursor-agent &>/dev/null && ! _cli_adapter_find_executable agent &>/dev/null; then
+                echo "[ERROR] Cursor Agent CLI not found. Install: curl https://cursor.com/install -fsS | bash (Linux/WSL2) / brew install cursor-agent (macOS)" >&2
+                return 1
+            fi
+            ;;
         kilo)
             _cli_adapter_find_executable kilo &>/dev/null || {
                 echo "[ERROR] Kilo CLI not found. Install with: npm install -g @kilocode/cli" >&2
@@ -1312,7 +1351,7 @@ get_agent_model() {
         localapi)
             echo "auto"
             ;;
-        opencode|kilo)
+        opencode|kilo|cursor)
             echo "auto"
             ;;
         *)
@@ -1345,6 +1384,7 @@ get_model_display_name() {
             localapi) short="Local" ;;
             opencode) short="OpenCode" ;;
             kilo)    short="Kilo" ;;
+            cursor)  short="Cursor" ;;
         esac
     fi
 
@@ -1375,6 +1415,7 @@ get_model_display_name() {
                 localapi) short="Local" ;;
                 opencode) short="OpenCode" ;;
                 kilo) short="Kilo" ;;
+                cursor) short="Cursor" ;;
                 *)       short="$model" ;;
             esac
             ;;

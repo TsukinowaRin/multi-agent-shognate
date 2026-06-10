@@ -3130,6 +3130,15 @@ NINJA_EOF
         log_success "  └─ Android 互換 session を更新完了"
     fi
     notify_pending_merge_candidates
+
+    if [ -x "$SCRIPT_DIR/scripts/mcp_health_check.sh" ]; then
+        log_info "🔎 MCP ヘルスチェックを実行中..."
+        if bash "$SCRIPT_DIR/scripts/mcp_health_check.sh" 2>&1 | tee -a "$SCRIPT_DIR/logs/mcp_health.log" >/dev/null; then
+            log_success "  └─ MCP ヘルスチェック完了"
+        else
+            log_error "  └─ ⚠️ MCP 初期化失敗を検知。logs/mcp_health.log を確認してください"
+        fi
+    fi
     echo ""
 fi
 

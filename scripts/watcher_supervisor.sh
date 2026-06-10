@@ -440,6 +440,7 @@ start_watcher_if_missing() {
     local pane="$2"
     local log_file="$3"
     local cli
+    local lockfile="$SCRIPT_DIR/queue/runtime/watcher_start_${agent}.lock"
     local window_name=""
     local window_target=""
     local shell_cmd=""
@@ -447,28 +448,33 @@ start_watcher_if_missing() {
     ensure_inbox_file "$agent"
     pane_exists "$pane" || return 0
 
-    if watcher_window_is_current "$agent" "$pane"; then
-        return 0
-    fi
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    (
+        flock -n 9 || return 0
 
-    cli=$(resolve_cli_type "$agent" "$pane")
-    window_name="$(watcher_window_name "$agent")"
-    window_target="$(watcher_window_target "$agent")"
-    shell_cmd="$(watcher_shell_command "$agent" "$pane" "$cli" "$log_file")"
+        if watcher_window_is_current "$agent" "$pane"; then
+            return 0
+        fi
 
-    if watcher_window_exists "$agent"; then
-        tmux kill-window -t "$window_target" >/dev/null 2>&1 || true
-        sleep 0.2
-    fi
-    if pgrep -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1; then
-        pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1 || true
-        sleep 0.2
-    fi
+        cli=$(resolve_cli_type "$agent" "$pane")
+        window_name="$(watcher_window_name "$agent")"
+        window_target="$(watcher_window_target "$agent")"
+        shell_cmd="$(watcher_shell_command "$agent" "$pane" "$cli" "$log_file")"
 
-    tmux new-window -d -t "$WATCHER_RUNTIME_SESSION" -n "$window_name" "$shell_cmd" >/dev/null 2>&1
-    tmux set-option -w -t "$window_target" @watch_agent "$agent" >/dev/null 2>&1 || true
-    tmux set-option -w -t "$window_target" @watch_pane "$pane" >/dev/null 2>&1 || true
-    tmux set-option -w -t "$window_target" @watch_cli "$cli" >/dev/null 2>&1 || true
+        if watcher_window_exists "$agent"; then
+            tmux kill-window -t "$window_target" >/dev/null 2>&1 || true
+            sleep 0.2
+        fi
+        if pgrep -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1; then
+            pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1 || true
+            sleep 0.2
+        fi
+
+        tmux new-window -d -t "$WATCHER_RUNTIME_SESSION" -n "$window_name" "$shell_cmd" >/dev/null 2>&1
+        tmux set-option -w -t "$window_target" @watch_agent "$agent" >/dev/null 2>&1 || true
+        tmux set-option -w -t "$window_target" @watch_pane "$pane" >/dev/null 2>&1 || true
+        tmux set-option -w -t "$window_target" @watch_cli "$cli" >/dev/null 2>&1 || true
+    ) 9>"$lockfile"
 }
 
 cleanup_stale_watchers() {

@@ -34,6 +34,29 @@
 - 可能なら Bats の関連 subset。
 - `Shogunate-test` clean start smoke。
 
+## 結果（2026-06-10）
+
+- `upstream/main` `v5.2.0` 系を `codex/upstream-main-rebuild-shogunate` に merge した。
+- 本家の Cursor CLI support、Antigravity alias / generated instruction 更新、watcher 起動重複防止、MCP health check を Shogunate の軍監・Android・launcher 拡張と共存する形で反映した。
+- `scripts/seo_qc.py` / `scripts/seo_qc.sh` は本家と同じく削除した。
+- `Shogunate-test` は runtime に必要な top-level files / `scripts` / `lib` / `instructions` / `config` / docs / launcher / CLI auto-load files を同期済み。
+- `Shogunate-test` で `./Shogunate-Runtime.sh --clean --no-attach` を実行し、`shogunate` と `goza-runtime` が起動した。
+
+## 検証結果（2026-06-10）
+
+- PASS: `git diff --check --cached`
+- PASS: `bash -n lib/cli_adapter.sh scripts/build_instructions.sh scripts/inbox_watcher.sh scripts/inbox_write.sh scripts/switch_cli.sh scripts/watcher_supervisor.sh shutsujin_departure.sh scripts/mcp_health_check.sh`
+- PASS: `python3 -m py_compile scripts/gunkan_codd_audit.py scripts/gunkan_event_log.py scripts/gunkan_light_watch.py scripts/runtime_blocker_notice.py scripts/shogun_to_karo_bridge.py scripts/karo_done_to_shogun_bridge.py`
+- PASS: `bash scripts/build_instructions.sh`
+- PASS: `bats tests/unit/test_cli_adapter.bats`
+- PASS: `bats tests/unit/test_build_system.bats tests/unit/test_switch_cli.bats tests/unit/test_watcher_supervisor.bats`
+- PASS with warning: `Shogunate-test` clean start completed and MCP health check passed。OpenCode の `ready:ashigaru1` 表示が TUI 装飾で1行検出できず、初動 ready 待機は `5/6 ready` で timeout して続行した。
+
+## 残リスク
+
+- `Shogunate-test` の Android ディレクトリ全体同期は、古い test フォルダの build / SDK cache 走査が重く中断した。runtime 検証に必要なファイルは同期済みだが、Android 実機検証前には source-only 同期または test フォルダ整理が必要。
+- OpenCode TUI は `ready:<agent>` を1行として残さないことがあり、ready 検出が過小評価される。起動自体は継続できるが、検出ロジック改善が望ましい。
+
 ## 復旧
 
 - merge 前の差分は `.shogunate/backups/upstream-v5.2-sync-20260610_222006/tracked.diff` から戻せる。

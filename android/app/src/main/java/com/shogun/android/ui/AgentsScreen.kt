@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -45,6 +46,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -440,6 +442,7 @@ fun PaneFullScreen(
     val context = LocalContext.current
     var commandTextValue by remember { mutableStateOf(TextFieldValue("")) }
     var isListening by remember { mutableStateOf(false) }
+    var compactTui by remember { mutableStateOf(true) }
     val speechRecognizer = remember {
         if (SpeechRecognizer.isRecognitionAvailable(context))
             SpeechRecognizer.createSpeechRecognizer(context)
@@ -523,6 +526,36 @@ fun PaneFullScreen(
             }
         }
 
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0x802D2D2D))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            FilterChip(
+                selected = !compactTui,
+                onClick = { compactTui = false },
+                label = { Text("標準") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Surface4,
+                    selectedLabelColor = Kinpaku,
+                    labelColor = Zouge
+                )
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            FilterChip(
+                selected = compactTui,
+                onClick = { compactTui = true },
+                label = { Text("縮小") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Surface4,
+                    selectedLabelColor = Kinpaku,
+                    labelColor = Zouge
+                )
+            )
+        }
+
         // Full screen pane content
         Box(
             modifier = Modifier
@@ -535,7 +568,7 @@ fun PaneFullScreen(
                     text = parsedPaneContent,
                     color = Zouge,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
+                    fontSize = if (compactTui) 10.sp else 13.sp,
                     softWrap = false,
                     modifier = Modifier
                         .fillMaxHeight()
@@ -560,6 +593,7 @@ fun PaneFullScreen(
                 onValueChange = { commandTextValue = it },
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("コマンドを入力") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 singleLine = true
             )
             Spacer(modifier = Modifier.width(4.dp))

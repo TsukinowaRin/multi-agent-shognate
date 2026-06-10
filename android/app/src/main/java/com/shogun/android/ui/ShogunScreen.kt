@@ -12,22 +12,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.Lifecycle
@@ -52,6 +43,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shogun.android.R
 import com.shogun.android.viewmodel.ShogunViewModel
 
+private enum class ShogunDisplayMode {
+    Chat,
+    RawLog
+}
+
+private data class ShogunChatMessage(
+    val fromUser: Boolean,
+    val text: String
+)
+
 @Composable
 fun ShogunScreen(
     viewModel: ShogunViewModel = viewModel(),
@@ -64,11 +65,22 @@ fun ShogunScreen(
     val paneContent by viewModel.paneContent.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val draftText by viewModel.draftText.collectAsState()
     val targetMissing = errorMessage?.contains("pane が見つかりません") == true
+    val shogunPaneBusy = remember(paneContent) { isShogunPaneBusy(paneContent) }
+    val shogunComposerDirty = remember(paneContent) { isShogunComposerDirty(paneContent) }
 
-    var inputTextValue by remember { mutableStateOf(TextFieldValue("")) }
+    var inputTextValue by remember { mutableStateOf(TextFieldValue(draftText, selection = TextRange(draftText.length))) }
     var isListening by remember { mutableStateOf(false) }
     var isInputExpanded by remember { mutableStateOf(false) }
+    var displayMode by remember { mutableStateOf(ShogunDisplayMode.Chat) }
+    val canSend = inputTextValue.text.isNotBlank() && isConnected && !isListening && !shogunPaneBusy
+
+    LaunchedEffect(draftText) {
+        if (draftText != inputTextValue.text) {
+            inputTextValue = TextFieldValue(draftText, selection = TextRange(draftText.length))
+        }
+    }
 
     // Duck BGM while voice input is active
     LaunchedEffect(isListening) {
@@ -81,6 +93,7 @@ fun ShogunScreen(
 
     val listState = rememberLazyListState()
     val lines = remember(paneContent) { paneContent.lines() }
+    val chatMessages = remember(paneContent) { parseShogunChatMessages(paneContent) }
 
     val speechRecognizer = remember {
         if (SpeechRecognizer.isRecognitionAvailable(context))
@@ -95,6 +108,7 @@ fun ShogunScreen(
             startContinuousListening(speechRecognizer, { isListening }) { result ->
                 val newText = if (inputTextValue.text.isEmpty()) result else "${inputTextValue.text} $result"
                 inputTextValue = TextFieldValue(text = newText, selection = TextRange(newText.length))
+                viewModel.setDraftText(newText)
             }
             isListening = true
         }
@@ -122,6 +136,7 @@ fun ShogunScreen(
                         startContinuousListening(speechRecognizer, { isListening }) { result ->
                             val newText = if (inputTextValue.text.isEmpty()) result else "${inputTextValue.text} $result"
                             inputTextValue = TextFieldValue(text = newText, selection = TextRange(newText.length))
+                            viewModel.setDraftText(newText)
                         }
                     }
                 }
@@ -137,9 +152,10 @@ fun ShogunScreen(
     }
 
     // Auto-scroll to bottom when content changes
-    LaunchedEffect(lines.size) {
-        if (lines.isNotEmpty()) {
-            listState.scrollToItem(lines.size - 1)
+    LaunchedEffect(lines.size, chatMessages.size, displayMode) {
+        val itemCount = if (displayMode == ShogunDisplayMode.Chat) chatMessages.size else lines.size
+        if (itemCount > 0) {
+            listState.scrollToItem(itemCount - 1)
         }
     }
 
@@ -173,11 +189,43 @@ fun ShogunScreen(
             Text(
                 text = when {
                     isConnected && targetMissing -> "SSH接続中 — pane未検出"
+                    isConnected && shogunPaneBusy -> "処理中 — 将軍セッション"
+                    isConnected && shogunComposerDirty -> "入力待ち — 将軍側の下書きあり"
                     isConnected -> "接続中 — 将軍セッション"
                     else -> "未接続"
                 },
                 color = if (targetMissing) Shikkoku else Zouge,
                 fontSize = 12.sp
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0x802D2D2D))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            FilterChip(
+                selected = displayMode == ShogunDisplayMode.Chat,
+                onClick = { displayMode = ShogunDisplayMode.Chat },
+                label = { Text("会話") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Surface4,
+                    selectedLabelColor = Kinpaku,
+                    labelColor = Zouge
+                )
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            FilterChip(
+                selected = displayMode == ShogunDisplayMode.RawLog,
+                onClick = { displayMode = ShogunDisplayMode.RawLog },
+                label = { Text("RAWログ") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Surface4,
+                    selectedLabelColor = Kinpaku,
+                    labelColor = Zouge
+                )
             )
         }
 
@@ -201,7 +249,6 @@ fun ShogunScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .horizontalScroll(rememberScrollState())
                 ) {
                     LazyColumn(
                         state = listState,
@@ -209,15 +256,35 @@ fun ShogunScreen(
                             .fillMaxHeight()
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        items(lines) { line ->
-                            SelectionContainer {
-                                Text(
-                                    text = parseAnsiColors(line),
-                                    color = Zouge,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 13.sp,
-                                    softWrap = false
-                                )
+                        if (displayMode == ShogunDisplayMode.Chat) {
+                            if (chatMessages.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = "会話として表示できるメッセージはまだありません",
+                                        color = TextMuted,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp)
+                                    )
+                                }
+                            } else {
+                                items(chatMessages) { message ->
+                                    ShogunMessageBubble(message)
+                                }
+                            }
+                        } else {
+                            items(lines) { line ->
+                                SelectionContainer {
+                                    Text(
+                                        text = parseAnsiColors(line),
+                                        color = Zouge,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 13.sp,
+                                        softWrap = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
                             }
                         }
                     }
@@ -226,75 +293,30 @@ fun ShogunScreen(
         }
 
         // Special keys bar
-        SpecialKeysRow(onSendKey = { viewModel.sendCommand(it) })
+        SpecialKeysRow(onSendKey = { viewModel.sendRawKey(it) })
 
-        // Input area
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-        ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = inputTextValue,
-                onValueChange = { inputTextValue = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("コマンドを入力", color = TextMuted) },
-                singleLine = !isInputExpanded,
-                maxLines = if (isInputExpanded) 6 else 1,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Zouge,
-                    unfocusedTextColor = Zouge,
-                    focusedBorderColor = BorderFocus,
-                    unfocusedBorderColor = BorderStandard,
-                    cursorColor = Kinpaku,
-                    focusedContainerColor = Surface4,
-                    unfocusedContainerColor = Surface4,
-                )
-            )
-
-            // Expand/collapse text button
-            IconButton(
-                onClick = { isInputExpanded = !isInputExpanded },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = if (isInputExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = "展開",
-                    tint = Kinpaku
-                )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // BGM toggle button — cycles through 3 tracks + OFF
-            IconButton(onClick = onBgmToggle) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = if (isBgmPlaying) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                        contentDescription = "BGM",
-                        tint = if (isBgmPlaying) Kinpaku else TextMuted
-                    )
-                    if (isBgmPlaying && bgmTrackLabel.isNotEmpty()) {
-                        Text(
-                            text = bgmTrackLabel,
-                            color = Kinpaku,
-                            fontSize = 8.sp
-                        )
-                    }
-                }
-            }
-
-            // Voice input button (manual ON/OFF — stays on until user taps again)
-            IconButton(
-                onClick = {
-                    if (speechRecognizer == null) return@IconButton
+        ShogunInputArea(
+            inputTextValue = inputTextValue,
+            onInputChange = {
+                inputTextValue = it
+                viewModel.setDraftText(it.text)
+            },
+            isInputExpanded = isInputExpanded,
+            onToggleInputExpanded = { isInputExpanded = !isInputExpanded },
+            isConnected = isConnected,
+            isListening = isListening,
+            shogunPaneBusy = shogunPaneBusy,
+            canSend = canSend,
+            isBgmPlaying = isBgmPlaying,
+            bgmTrackLabel = bgmTrackLabel,
+            onBgmToggle = onBgmToggle,
+            onSend = {
+                viewModel.sendCommand(inputTextValue.text)
+                inputTextValue = TextFieldValue("")
+                viewModel.clearDraftText()
+            },
+            onVoiceToggle = {
+                if (speechRecognizer != null) {
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
                         == PackageManager.PERMISSION_GRANTED
                     ) {
@@ -305,6 +327,7 @@ fun ShogunScreen(
                             startContinuousListening(speechRecognizer, { isListening }) { result ->
                                 val newText = if (inputTextValue.text.isEmpty()) result else "${inputTextValue.text} $result"
                                 inputTextValue = TextFieldValue(text = newText, selection = TextRange(newText.length))
+                                viewModel.setDraftText(newText)
                             }
                             isListening = true
                         }
@@ -312,32 +335,8 @@ fun ShogunScreen(
                         permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Mic,
-                    contentDescription = "音声入力",
-                    tint = if (isListening) Kurenai else Kinpaku
-                )
             }
-
-            // Send button
-            IconButton(
-                onClick = {
-                    if (inputTextValue.text.isNotBlank()) {
-                        viewModel.sendCommand(inputTextValue.text)
-                        inputTextValue = TextFieldValue("")
-                    }
-                },
-                enabled = inputTextValue.text.isNotBlank() && isConnected && !isListening
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Send,
-                    contentDescription = "送信",
-                    tint = if (inputTextValue.text.isNotBlank() && isConnected && !isListening) Kinpaku else TextMuted
-                )
-            }
-        } // Row (buttons)
-        } // Column (input area)
+        )
         } // Column (main)
     } // Box
 }
@@ -382,6 +381,200 @@ fun SpecialKeysRow(onSendKey: (String) -> Unit) {
         }
     }
 }
+
+@Composable
+private fun ShogunMessageBubble(message: ShogunChatMessage) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = if (message.fromUser) Arrangement.End else Arrangement.Start
+    ) {
+        Surface(
+            color = if (message.fromUser) Surface4 else Color(0xCC151515),
+            tonalElevation = 1.dp,
+            shape = MaterialTheme.shapes.small,
+            border = BorderStroke(1.dp, if (message.fromUser) BorderFocus else Color(0x665C5640)),
+            modifier = Modifier.widthIn(max = 320.dp)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Text(
+                    text = if (message.fromUser) "あなた" else "将軍",
+                    color = if (message.fromUser) Kinpaku else Zouge,
+                    fontSize = 11.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                SelectionContainer {
+                    Text(
+                        text = message.text,
+                        color = Zouge,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun parseShogunChatMessages(raw: String): List<ShogunChatMessage> {
+    val messages = mutableListOf<ShogunChatMessage>()
+    val current = StringBuilder()
+    var currentFromUser: Boolean? = null
+    var currentUserSubmitted = false
+    var skippingUserPrompt = false
+    var seenBusyStatus = false
+
+    fun flush() {
+        val text = current.toString().trim()
+        val fromUser = currentFromUser
+        if (fromUser != null && text.isNotBlank() && (!fromUser || currentUserSubmitted)) {
+            messages.add(ShogunChatMessage(fromUser, text))
+        }
+        current.clear()
+        currentFromUser = null
+        currentUserSubmitted = false
+    }
+
+    fun start(fromUser: Boolean, text: String) {
+        flush()
+        currentFromUser = fromUser
+        currentUserSubmitted = !fromUser
+        current.append(text.trim())
+    }
+
+    for (sourceLine in raw.lines()) {
+        val line = stripTerminalControl(sourceLine).trimEnd()
+        val trimmed = line.trim()
+        if (trimmed.isBlank()) {
+            if (skippingUserPrompt) skippingUserPrompt = false
+            continue
+        }
+        if (isCodexBusyLine(trimmed)) {
+            if (currentFromUser == true) {
+                currentUserSubmitted = true
+            }
+            seenBusyStatus = true
+            continue
+        }
+        if (isTerminalNoiseLine(trimmed)) continue
+
+        if (trimmed.startsWith("› ")) {
+            val prompt = trimmed.removePrefix("› ").trim()
+            if (seenBusyStatus) {
+                // Codex shows editable composer text below the active Working block.
+                // That text is not a completed user turn yet.
+                continue
+            } else if (isIgnoredPrompt(prompt)) {
+                skippingUserPrompt = true
+                flush()
+            } else {
+                skippingUserPrompt = false
+                start(fromUser = true, text = prompt)
+            }
+            continue
+        }
+        if (skippingUserPrompt) continue
+
+        if (trimmed.startsWith("• ")) {
+            if (currentFromUser == true) {
+                currentUserSubmitted = true
+            }
+            seenBusyStatus = false
+            val message = trimmed.removePrefix("• ").trim()
+            if (!isCodexStatusLine(message)) {
+                start(fromUser = false, text = message)
+            }
+            continue
+        }
+
+        if (currentFromUser != null && shouldAppendToCurrent(trimmed)) {
+            if (current.isNotEmpty()) current.append('\n')
+            current.append(trimmed)
+        }
+    }
+    flush()
+    return messages.takeLast(30)
+}
+
+private fun stripTerminalControl(text: String): String =
+    text
+        .replace(Regex("\\u001B\\[[0-9;?]*[ -/]*[@-~]"), "")
+        .replace(Regex("[⠁-⣿]"), "")
+
+private fun isTerminalNoiseLine(line: String): Boolean {
+    if (line.all { it in "─━═ │┃┌┐└┘╭╮╰╯┏┓┗┛╔╗╚╝╠╣╦╩╬+-_ " }) return true
+    return line.startsWith("╭") ||
+        line.startsWith("╰") ||
+        line.startsWith("│") ||
+        line.startsWith("└") ||
+        line.startsWith("┌") ||
+        line.startsWith("Tip:") ||
+        line.startsWith("Learn more:") ||
+        line.startsWith("model:") ||
+        line.startsWith("directory:") ||
+        line.startsWith("permissions:") ||
+        line.startsWith("gpt-") ||
+        line.startsWith("Backed up Codex local data") ||
+        line.startsWith("Retrying startup") ||
+        line.startsWith("Codex couldn't start") ||
+        line.startsWith("Repair Codex local data") ||
+        line.startsWith("Technical details:") ||
+        line.startsWith("Location:") ||
+        line.startsWith("Cause:") ||
+        line.startsWith("returned from database:")
+}
+
+private fun isShogunPaneBusy(raw: String): Boolean =
+    raw.lines()
+        .map { stripTerminalControl(it).trim() }
+        .any { isCodexBusyLine(it) }
+
+private fun isShogunComposerDirty(raw: String): Boolean {
+    var dirty = false
+    for (sourceLine in raw.lines()) {
+        val trimmed = stripTerminalControl(sourceLine).trim()
+        if (trimmed.isBlank() || isTerminalNoiseLine(trimmed)) continue
+        if (isCodexBusyLine(trimmed) || trimmed.startsWith("• ")) {
+            dirty = false
+            continue
+        }
+        if (trimmed.startsWith("› ")) {
+            val prompt = trimmed.removePrefix("› ").trim()
+            dirty = prompt.isNotBlank() && !isIgnoredPrompt(prompt)
+        }
+    }
+    return dirty
+}
+
+private fun isCodexBusyLine(line: String): Boolean =
+    line.startsWith("◦ Working") ||
+        line.contains("esc to interrupt")
+
+private fun isIgnoredPrompt(prompt: String): Boolean =
+    prompt.startsWith("【初動命令】") ||
+        prompt == "Write tests for @filename" ||
+        prompt == "Find and fix a bug in @filename" ||
+        prompt == "Summarize recent commits"
+
+private fun isCodexStatusLine(text: String): Boolean =
+    text.startsWith("Ran ") ||
+        text.startsWith("Explored") ||
+        text.startsWith("Working") ||
+        text.contains("bootstrap_") ||
+        text.contains("初動") ||
+        text.startsWith("Messages to be submitted") ||
+        text.startsWith("Booting MCP") ||
+        text.startsWith("Called ") ||
+        text.startsWith("Updated ") ||
+        Regex("^ready:[a-z0-9_-]+$").matches(text)
+
+private fun shouldAppendToCurrent(line: String): Boolean =
+    !isTerminalNoiseLine(line) &&
+        !line.startsWith("› ") &&
+        !line.startsWith("• ") &&
+        !line.startsWith("◦ ") &&
+        !line.startsWith("─ Worked for")
 
 /**
  * Continuous listening — auto-restarts after each result.

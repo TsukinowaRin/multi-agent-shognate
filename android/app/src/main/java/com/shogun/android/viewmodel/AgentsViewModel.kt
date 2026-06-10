@@ -42,6 +42,7 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
     val rateLimitLoading: StateFlow<Boolean> = _rateLimitLoading
 
     private var refreshJob: Job? = null
+    private var reconnectJob: Job? = null
     @Volatile private var paused = false
     @Volatile private var isRefreshing = false
 
@@ -53,7 +54,22 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
     fun pauseRefresh() { paused = true }
     fun resumeRefresh() {
         paused = false
-        viewModelScope.launch { refreshAllPanesInternal() }
+        viewModelScope.launch {
+            if (!sshManager.isConnected()) {
+                connectFromPrefs()
+                return@launch
+            }
+            refreshAllPanesInternal()
+        }
+    }
+
+    private fun connectFromPrefs() {
+        val host = prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST
+        val port = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR)?.toIntOrNull() ?: Defaults.SSH_PORT
+        val user = prefs.getString(PrefsKeys.SSH_USER, "") ?: ""
+        val keyPath = prefs.getString(PrefsKeys.SSH_KEY_PATH, "") ?: ""
+        val password = prefs.getString(PrefsKeys.SSH_PASSWORD, "") ?: ""
+        connect(host, port, user, keyPath, password)
     }
 
     fun connect(host: String, port: Int, user: String, keyPath: String, password: String = "") {
@@ -61,9 +77,28 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
             val result = sshManager.connect(host, port, user, keyPath, password)
             if (result.isSuccess) {
                 _isConnected.value = true
+                _errorMessage.value = null
                 startAutoRefresh()
             } else {
                 _errorMessage.value = "接続失敗: ${result.exceptionOrNull()?.message}"
+                startReconnect()
+            }
+        }
+    }
+
+    private fun startReconnect() {
+        reconnectJob?.cancel()
+        reconnectJob = viewModelScope.launch {
+            delay(3000)
+            val result = sshManager.reconnect(maxAttempts = 3, delayMs = 5000)
+            if (result.isSuccess) {
+                _isConnected.value = true
+                _errorMessage.value = null
+                startAutoRefresh()
+                refreshAllPanesInternal()
+            } else {
+                _isConnected.value = false
+                _errorMessage.value = "再接続失敗: ${result.exceptionOrNull()?.message}"
             }
         }
     }
@@ -121,6 +156,8 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
                 }
             } else {
                 _errorMessage.value = "エージェント一覧の取得に失敗しました: ${result.exceptionOrNull()?.message ?: "不明なエラー"}"
+                _isConnected.value = false
+                connectFromPrefs()
             }
         } finally {
             isRefreshing = false
@@ -203,6 +240,7 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
     override fun onCleared() {
         super.onCleared()
         refreshJob?.cancel()
+        reconnectJob?.cancel()
         // Do NOT disconnect the shared singleton SshManager here.
         // Tab navigation triggers onCleared, killing the connection for all ViewModels.
     }

@@ -41,7 +41,13 @@ class SshManager private constructor() {
     private var lastKeyPath = ""
     private var lastPassword = ""
 
+    private fun clearReconnectSecret() {
+        lastPassword = ""
+    }
+
     var disconnectCallback: (() -> Unit)? = null
+    private val hasReconnectTarget: Boolean
+        get() = lastHost.isNotBlank() && lastUser.isNotBlank()
 
     suspend fun connect(
         host: String,
@@ -55,17 +61,25 @@ class SshManager private constructor() {
         if (onDisconnect != null) disconnectCallback = onDisconnect
 
         sshMutex.withLock {
-            if (isConnectedInternal()) {
-                AppLogger.log("SSH", "Already connected, skipping")
-                return@withContext Result.success(Unit)
-            }
-
-            AppLogger.log("SSH", "Connecting to $host:$port user=$user key=${privateKeyPath.takeLast(20)}")
             lastHost = host
             lastPort = port
             lastUser = user
             lastKeyPath = privateKeyPath.trim()
             lastPassword = password
+
+            val existing = session
+            if (existing?.isConnected == true) {
+                val probe = execCommandInternal(existing, "echo ssh_alive")
+                if (probe.isSuccess && probe.getOrDefault("").trim() == "ssh_alive") {
+                    AppLogger.log("SSH", "Existing session verified")
+                    return@withContext Result.success(Unit)
+                }
+                AppLogger.log("SSH", "Existing session stale, reconnecting: ${probe.exceptionOrNull()?.message}")
+                existing.disconnect()
+                session = null
+            }
+
+            AppLogger.log("SSH", "Connecting to $host:$port user=$user key=${privateKeyPath.takeLast(20)}")
             connectInternal()
         }
     }
@@ -84,6 +98,8 @@ class SshManager private constructor() {
             val config = Properties()
             config["StrictHostKeyChecking"] = "no"
             config["MaxAuthTries"] = "2"
+            config["ServerAliveInterval"] = "15"
+            config["ServerAliveCountMax"] = "2"
             if (privateKeyIdentity != null) {
                 config["PreferredAuthentications"] = "publickey"
             } else {
@@ -119,10 +135,15 @@ class SshManager private constructor() {
             } else {
                 AppLogger.log("SSH", "Connected but exec FAILED: ${testResult.exceptionOrNull()?.message}")
             }
-            Result.success(Unit)
+            Result.success(Unit).also {
+                if (trimmedPassword.isEmpty()) {
+                    clearReconnectSecret()
+                }
+            }
         } catch (e: Exception) {
+            clearReconnectSecret()
             AppLogger.log("SSH", "Connect FAILED: ${e.message}")
-            Result.failure(Exception("SSH接続失敗 (pw=${lastPassword.trim().length}文字): ${e.message}", e))
+            Result.failure(Exception("SSH接続失敗: ${e.message}", e))
         }
     }
 
@@ -141,6 +162,7 @@ class SshManager private constructor() {
                 AppLogger.log("SSH", "exec: session dead, reconnecting...")
                 val reconn = reconnectLocked()
                 if (reconn.isFailure) {
+                    clearReconnectSecret()
                     disconnectCallback?.invoke()
                     return@withContext Result.failure(IllegalStateException("SSH not connected"))
                 }
@@ -156,10 +178,10 @@ class SshManager private constructor() {
                 return@withContext result
             }
 
-            // Session died mid-exec — reconnect and retry once
-            val errorMsg = result.exceptionOrNull()?.message ?: ""
-            if (errorMsg.contains("channel is not opened") || errorMsg.contains("session is down")) {
-                AppLogger.log("SSH", "exec failed (session dead), auto-reconnecting...")
+            // Sleep / VPN / Wi-Fi transitions often leave JSch sessions half-open.
+            // Any exec exception here is treated as a transport failure and retried once.
+            if (hasReconnectTarget) {
+                AppLogger.log("SSH", "exec failed, auto-reconnecting: ${result.exceptionOrNull()?.message}")
                 val reconn = reconnectLocked()
                 if (reconn.isSuccess) {
                     val retrySession = session
@@ -168,6 +190,7 @@ class SshManager private constructor() {
                         return@withContext execCommandInternal(retrySession, cmd)
                     }
                 }
+                clearReconnectSecret()
                 disconnectCallback?.invoke()
             }
 
@@ -180,6 +203,9 @@ class SshManager private constructor() {
      * No synchronization needed — caller holds the mutex.
      */
     private fun reconnectLocked(): Result<Unit> {
+        if (!hasReconnectTarget) {
+            return Result.failure(IllegalStateException("SSH reconnect target is not configured"))
+        }
         AppLogger.log("SSH", "reconnectLocked: disconnecting old session...")
         session?.disconnect()
         session = null
@@ -203,14 +229,31 @@ class SshManager private constructor() {
             val baos = ByteArrayOutputStream()
             val errBaos = ByteArrayOutputStream()
             val buffer = ByteArray(4096)
-            while (true) {
-                val n = inputStream.read(buffer)
+            val deadlineMs = System.currentTimeMillis() + 15000
+            while (!channel.isClosed || inputStream.available() > 0 || errStream.available() > 0) {
+                while (inputStream.available() > 0) {
+                    val n = inputStream.read(buffer, 0, minOf(buffer.size, inputStream.available()))
+                    if (n < 0) break
+                    baos.write(buffer, 0, n)
+                }
+                while (errStream.available() > 0) {
+                    val n = errStream.read(buffer, 0, minOf(buffer.size, errStream.available()))
+                    if (n < 0) break
+                    errBaos.write(buffer, 0, n)
+                }
+                if (System.currentTimeMillis() > deadlineMs) {
+                    channel.disconnect()
+                    throw java.net.SocketTimeoutException("SSH exec timed out after 15s")
+                }
+                Thread.sleep(25)
+            }
+            while (inputStream.available() > 0) {
+                val n = inputStream.read(buffer, 0, minOf(buffer.size, inputStream.available()))
                 if (n < 0) break
                 baos.write(buffer, 0, n)
             }
-            // Read any remaining stderr
             while (errStream.available() > 0) {
-                val n = errStream.read(buffer)
+                val n = errStream.read(buffer, 0, minOf(buffer.size, errStream.available()))
                 if (n < 0) break
                 errBaos.write(buffer, 0, n)
             }
@@ -245,7 +288,9 @@ class SshManager private constructor() {
                 }
                 if (attempt < maxAttempts - 1) Thread.sleep(delayMs)
             }
-            Result.failure(lastError ?: Exception("再接続失敗（${maxAttempts}回試行）"))
+            Result.failure<Unit>(lastError ?: Exception("再接続失敗（${maxAttempts}回試行）")).also {
+                clearReconnectSecret()
+            }
         }
 
     private fun loadPrivateKeyIdentity(): Pair<String, ByteArray>? {
@@ -291,5 +336,6 @@ class SshManager private constructor() {
         AppLogger.log("SSH", "disconnect() called")
         session?.disconnect()
         session = null
+        clearReconnectSecret()
     }
 }

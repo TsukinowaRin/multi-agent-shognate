@@ -66,7 +66,7 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 - `git diff --check`
 - 可能なら adb 実機 install / launch で設定画面を確認する。
 - 実機で将軍 / エージェント / 戦況 / 設定タブを開き、スクリーンショットまたは UI dump で主要操作を確認する。
-- 設定画面ではワンタッチ接続、接続先入力、接続設定リンク取込、マニュアルモード、通知設定の表示を確認する。
+- 設定画面ではワンタッチ接続、接続先入力、USB/無線/接続ボタン、マニュアルモード、通知設定の表示を確認する。
 
 ## 結果
 
@@ -75,8 +75,8 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 - `bash android/tools/setup_android_ssh.sh --wireless`: PASS。WSL/Linux 環境で Tailscale/LAN/default route 候補を表示。
 - `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`: PASS
 - `bash android/tools/setup_android_ssh.sh --usb`: PASS。host SSH port を自動検出して `adb reverse tcp:2222 tcp:<detected>` を設定し、`shogunate://setup` intent で app prefs に `127.0.0.1:2222`, `agent:shogun`, `shogunate:goza` を保存。
-- 実機設定画面: USB/無線ボタン、保存済み host/port/user、接続診断表示を確認。
-- 2026-06-05 時点の WSL 実機では、`/etc/ssh/sshd_config.d/99-shogun-android.conf` により SSH server が `2223` で待受中。USB は Android 側 `127.0.0.1:2222` から host `127.0.0.1:2223` へ reverse するため、Android app 側の USB ポートは `2222` のままでよい。接続診断には SSH 認証設定が別途必要。
+- 実機設定画面: USB/無線ボタン、保存済み host/port/user、接続結果表示を確認。
+- 2026-06-05 時点の WSL 実機では、`/etc/ssh/sshd_config.d/99-shogun-android.conf` により SSH server が `2223` で待受中。USB は Android 側 `127.0.0.1:2222` から host `127.0.0.1:2223` へ reverse するため、Android app 側の USB ポートは `2222` のままでよい。接続には SSH 認証設定が別途必要。
 - 2026-06-05 追補: Android app 設定画面に setup URI 貼り付け取り込みを追加し、`--wireless` は候補 IP ごとの完成済み setup URI と optional QR を表示する。
 - `SHOGUNATE_QR=0 bash android/tools/setup_android_ssh.sh --wireless`: PASS。`100.71.16.5` と `192.168.1.5` の完成済み setup URI を表示。
 - `bash android/tools/setup_android_ssh.sh --pair-usb --yes`: PASS。初期実装では OnePlus LE2121 (`661ecd40`) でPC生成鍵 fallback を使い、公開鍵登録、秘密鍵転送、`adb reverse tcp:2222 tcp:2223`、setup intent、host 側 SSH publickey 認証を確認。
@@ -88,7 +88,8 @@ Android app からホストPC上の Shogunate へ、USB または無線で迷わ
 - `bash android/tools/setup_android_ssh.sh --pair-wireless --host 'https://192.168.1.5:2223/shogunate' --yes`: PASS。URL を `192.168.1.5:2223` に正規化し、Android app へ鍵認証つき setup intent を送信。
 - 実機 URL setup URI 取り込み: PASS。`shogunate://setup?host=https%3A%2F%2F192.168.1.5%3A2223%2Fremote&port=22...` は Android prefs に `ssh_host=192.168.1.5`, `ssh_port=2223` を保存し、UI dump で `接続中 — 将軍セッション` を確認。
 - 2026-06-05 追補: OnePlus LE2121 で4タブ、接続先入力、接続設定リンク取込、マニュアルモード、主要アクションを実機操作。Shogunate runtime 未起動時もSSH接続だけ成立する状態で、将軍 pane 未検出とエージェント view 未検出の表示を確認。
-- 実機UI修正: 将軍タブは target 未検出時に `SSH接続中 — pane未検出` と折り返しエラーを表示。エージェントタブは空白ではなく `エージェント未表示` カードと `再読込` を表示。設定画面は `setup URI` / `URI取込` をユーザー向けに `接続設定リンク` / `設定取込` へ変更。戦況タブの表はスマホ幅で折り返す。使用量チェックは取得不可時の説明表示へフォールバックする。
+- 2026-06-09 追補: 設定画面の通常導線を `接続先`、`USB`、`無線`、`接続` に整理し、`接続設定リンク`、`設定取込`、`接続診断`、`接続先を反映`、`標準に戻す` を通常画面から削除。入力中の接続先は常時 host/port 正規化し、`接続` 押下で保存と SSH 接続試行を行う。
+- 実機UI修正: 将軍タブは target 未検出時に `SSH接続中 — pane未検出` と折り返しエラーを表示。エージェントタブは空白ではなく `エージェント未表示` カードと `再読込` を表示。戦況タブの表はスマホ幅で折り返す。使用量チェックは取得不可時の説明表示へフォールバックする。
 - 実機操作: BGM ボタンのラベル更新、音声入力の録音権限ダイアログ、使用量ダイアログ、マニュアルモード開閉、SSH詳細表示を確認。送信操作は runtime pane 未起動のため実ジョブ送信までは行わず、UIが壊れない範囲で確認。
 
 ## 復旧

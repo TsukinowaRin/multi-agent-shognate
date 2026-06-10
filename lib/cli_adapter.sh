@@ -920,8 +920,18 @@ build_cli_command_with_type() {
             codex_home="$(_cli_adapter_codex_home "$agent_id")"
             local cmd
             local codex_bin
-            codex_bin="$(_cli_adapter_pick_executable_cmd "codex" "codex")"
-            cmd="$(_cli_adapter_prepare_codex_home_cmd "$agent_id") && ${agent_env_prefix}CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 ${codex_bin}"
+            local codex_path
+            local codex_dir
+            local codex_path_prefix=""
+            codex_path="$(_cli_adapter_pick_executable "codex" "codex")"
+            codex_bin="$(_cli_adapter_shell_quote "$codex_path")"
+            if [[ "$codex_path" == */* ]]; then
+                codex_dir="$(dirname "$codex_path")"
+                if [[ -d "$codex_dir" ]]; then
+                    codex_path_prefix="PATH=$(_cli_adapter_shell_quote "$codex_dir"):\$PATH "
+                fi
+            fi
+            cmd="$(_cli_adapter_prepare_codex_home_cmd "$agent_id") && ${codex_path_prefix}${agent_env_prefix}CODEX_HOME=$(_cli_adapter_shell_quote "$codex_home") NO_UPDATE_NOTIFIER=1 ${codex_bin}"
             if ! _cli_adapter_is_valid_codex_model "$configured_model"; then
                 configured_model="default"
             fi

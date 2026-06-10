@@ -26,9 +26,7 @@ import androidx.compose.ui.graphics.Color
 import com.shogun.android.ui.theme.*
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
-import com.shogun.android.util.ShogunateSetupConfig
 import com.shogun.android.util.normalizeConnectionEndpoint
-import com.shogun.android.util.parseShogunateSetupUri
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
@@ -55,13 +53,54 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     var shogunSession by remember { mutableStateOf(prefs.getString(PrefsKeys.SHOGUN_SESSION, Defaults.SHOGUN_SESSION) ?: Defaults.SHOGUN_SESSION) }
     var agentsSession by remember { mutableStateOf(prefs.getString(PrefsKeys.AGENTS_SESSION, Defaults.AGENTS_SESSION) ?: Defaults.AGENTS_SESSION) }
     var endpointText by remember { mutableStateOf(host) }
-    var setupUriText by remember { mutableStateOf("") }
+    var lastWirelessHost by remember {
+        mutableStateOf(
+            prefs.getString(PrefsKeys.LAST_WIRELESS_HOST, "")?.takeIf { it.isNotBlank() }
+                ?: host.takeIf { it.isNotBlank() && it != Defaults.USB_SSH_HOST }
+                ?: ""
+        )
+    }
+    var lastWirelessPort by remember {
+        mutableStateOf(
+            prefs.getString(PrefsKeys.LAST_WIRELESS_PORT, "")?.takeIf { it.isNotBlank() }
+                ?: port.takeIf { it.isNotBlank() && it != Defaults.USB_SSH_PORT_STR }
+                ?: Defaults.WIRELESS_SSH_PORT_STR
+        )
+    }
+    var endpointError by remember { mutableStateOf<String?>(null) }
+    var endpointPreview by remember { mutableStateOf("") }
 
     var saved by remember { mutableStateOf(false) }
     var tapCount by remember { mutableIntStateOf(0) }
     var showDebugLog by remember { mutableStateOf(false) }
     var showManualMode by remember { mutableStateOf(false) }
+
+    fun rememberWirelessEndpoint(wirelessHost: String, wirelessPort: String) {
+        val trimmedHost = wirelessHost.trim()
+        val trimmedPort = wirelessPort.trim()
+        if (trimmedHost.isBlank() || trimmedHost == Defaults.USB_SSH_HOST || trimmedPort.toIntOrNull() == null) {
+            return
+        }
+        lastWirelessHost = trimmedHost
+        lastWirelessPort = trimmedPort
+        prefs.edit()
+            .putString(PrefsKeys.LAST_WIRELESS_HOST, trimmedHost)
+            .putString(PrefsKeys.LAST_WIRELESS_PORT, trimmedPort)
+            .apply()
+    }
+
+    fun rememberCurrentWirelessEndpoint() {
+        val parsed = runCatching { normalizeConnectionEndpoint(endpointText) }.getOrNull()
+        rememberWirelessEndpoint(
+            wirelessHost = parsed?.host ?: host,
+            wirelessPort = parsed?.port ?: port
+        )
+    }
+
     fun saveSettings() {
+        if (host.trim() != Defaults.USB_SSH_HOST) {
+            rememberWirelessEndpoint(host, port)
+        }
         prefs.edit()
             .putString(PrefsKeys.SSH_HOST, host.trim())
             .putString(PrefsKeys.SSH_PORT, port.trim())
@@ -74,48 +113,71 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             .apply()
         saved = true
     }
-    fun applySetupConfig(config: ShogunateSetupConfig) {
-        config.host?.let {
-            host = it
-            endpointText = it
+
+    fun validateEndpointInput(commit: Boolean): Boolean {
+        val raw = endpointText.trim()
+        if (raw.isBlank()) {
+            endpointError = "接続先を入力してください"
+            endpointPreview = ""
+            return false
         }
-        config.port?.let { port = it }
-        config.user?.let { user = it }
-        config.keyPath?.let { keyPath = it }
-        config.projectPath?.let { projectPath = it }
-        config.shogunTarget?.let { shogunSession = it }
-        config.agentsTarget?.let { agentsSession = it }
+        val parsed = runCatching { normalizeConnectionEndpoint(raw) }
+            .onFailure {
+                endpointError = it.message ?: "接続先を確認してください"
+                endpointPreview = ""
+            }
+            .getOrNull() ?: return false
+        val effectivePort = (parsed.port ?: port).trim()
+        if (effectivePort.toIntOrNull() == null) {
+            endpointError = "ポートを確認してください"
+            endpointPreview = ""
+            return false
+        }
+        endpointError = null
+        endpointPreview = "${parsed.host}:$effectivePort"
+        if (commit) {
+            host = parsed.host
+            port = effectivePort
+            if (parsed.host != Defaults.USB_SSH_HOST) {
+                rememberWirelessEndpoint(parsed.host, effectivePort)
+            }
+            saved = false
+        }
+        return true
+    }
+
+    LaunchedEffect(endpointText, port) {
+        validateEndpointInput(commit = false)
+    }
+
+    fun connectWithCurrentEndpoint() {
+        if (!validateEndpointInput(commit = true)) return
+        saveSettings()
+        settingsViewModel.testConnection(
+            host = host,
+            portText = port,
+            user = user,
+            keyPath = keyPath,
+            password = password,
+            projectPath = projectPath,
+            shogunTargetInput = shogunSession,
+            agentsTargetInput = agentsSession
+        )
+    }
+
+    fun selectUsbEndpoint() {
+        rememberCurrentWirelessEndpoint()
+        endpointText = Defaults.USB_SSH_HOST
+        host = Defaults.USB_SSH_HOST
+        port = Defaults.USB_SSH_PORT_STR
         saved = false
     }
 
-    fun applyEndpointInput(showToast: Boolean): Boolean {
-        val raw = endpointText.trim()
-        if (raw.isBlank()) return true
-        return runCatching { normalizeConnectionEndpoint(raw) }
-            .onSuccess {
-                host = it.host
-                it.port?.let { normalizedPort -> port = normalizedPort }
-                endpointText = it.host
-                saved = false
-                if (showToast) {
-                    Toast.makeText(context, "接続先を反映しました", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .onFailure {
-                Toast.makeText(context, it.message ?: "接続先を確認してください", Toast.LENGTH_LONG).show()
-            }
-            .isSuccess
-    }
-
-    fun importSetupUri(raw: String) {
-        runCatching { parseShogunateSetupUri(raw) }
-            .onSuccess {
-                applySetupConfig(it)
-                Toast.makeText(context, "接続設定を取り込みました", Toast.LENGTH_SHORT).show()
-            }
-            .onFailure {
-                Toast.makeText(context, "setup URIを確認してください", Toast.LENGTH_LONG).show()
-            }
+    fun selectWirelessEndpoint() {
+        endpointText = lastWirelessHost
+        host = lastWirelessHost
+        port = lastWirelessPort.takeIf { it.isNotBlank() } ?: Defaults.WIRELESS_SSH_PORT_STR
+        saved = false
     }
 
     val pickSshKeyLauncher = rememberLauncherForActivityResult(
@@ -170,135 +232,53 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text("ワンタッチ接続", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
-                Text(
-                    "PC側でセットアップスクリプトを実行し、USBペアリングまたは接続設定リンクを使います。リモート接続は接続先だけ入力します。",
-                    color = TextMuted,
-                    fontSize = 13.sp
-                )
                 OutlinedTextField(
                     value = endpointText,
-                    onValueChange = { endpointText = it },
+                    onValueChange = {
+                        endpointText = it
+                        saved = false
+                    },
                     label = { Text("接続先（DNS / URL / Tailscale IP / LAN IP）") },
                     placeholder = { Text("例: pc.tailnet.ts.net / 100.x.x.x / https://example.com:2223") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = endpointError != null,
+                    supportingText = {
+                        Text(
+                            endpointError ?: if (endpointPreview.isNotBlank()) "接続先: $endpointPreview" else ""
+                        )
+                    }
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedButton(
-                        onClick = {
-                            shogunSession = Defaults.SHOGUN_SESSION
-                            agentsSession = Defaults.AGENTS_SESSION
-                            saved = false
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text("標準に戻す")
-                    }
-                    Button(
-                        onClick = {
-                            if (!applyEndpointInput(showToast = false)) {
-                                return@Button
-                            }
-                            saveSettings()
-                            settingsViewModel.testConnection(
-                                host = host,
-                                portText = port,
-                                user = user,
-                                keyPath = keyPath,
-                                password = password,
-                                projectPath = projectPath,
-                                shogunTargetInput = shogunSession,
-                                agentsTargetInput = agentsSession
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = !connectionTest.running,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Shuaka,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(if (connectionTest.running) "確認中..." else "接続診断")
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            host = Defaults.USB_SSH_HOST
-                            endpointText = Defaults.USB_SSH_HOST
-                            port = Defaults.USB_SSH_PORT_STR
-                            saved = false
-                        },
+                        onClick = { selectUsbEndpoint() },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text("USB")
                     }
                     OutlinedButton(
-                        onClick = {
-                            if (host == Defaults.USB_SSH_HOST) {
-                                host = ""
-                                endpointText = ""
-                            }
-                            if (port.isBlank() || port == Defaults.USB_SSH_PORT_STR) {
-                                port = Defaults.WIRELESS_SSH_PORT_STR
-                            }
-                            saved = false
-                        },
+                        onClick = { selectWirelessEndpoint() },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(4.dp)
                     ) {
-                        Text("無線/Tailscale")
+                        Text("無線")
                     }
                 }
-                OutlinedButton(
-                    onClick = { applyEndpointInput(showToast = true) },
+                Button(
+                    onClick = { connectWithCurrentEndpoint() },
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !connectionTest.running,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Shuaka,
+                        contentColor = Color.White
+                    ),
                     shape = RoundedCornerShape(4.dp)
                 ) {
-                    Text("接続先を反映")
-                }
-                OutlinedTextField(
-                    value = setupUriText,
-                    onValueChange = { setupUriText = it },
-                    label = { Text("接続設定リンク") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            setupUriText = clipboard.primaryClip
-                                ?.takeIf { it.itemCount > 0 }
-                                ?.getItemAt(0)
-                                ?.coerceToText(context)
-                                ?.toString()
-                                ?: ""
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text("貼付")
-                    }
-                    OutlinedButton(
-                        onClick = { importSetupUri(setupUriText) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text("設定取込")
-                    }
+                    Text(if (connectionTest.running) "接続中..." else "接続")
                 }
                 if (connectionTest.message.isNotBlank()) {
                     Text(

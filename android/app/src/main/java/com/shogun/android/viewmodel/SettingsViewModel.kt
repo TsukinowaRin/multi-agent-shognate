@@ -112,7 +112,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
 
         viewModelScope.launch {
-            _connectionTest.value = ConnectionTestState(running = true, message = "SSH接続を確認中...")
+            _connectionTest.value = ConnectionTestState(running = true, message = "SSH接続中...")
             val lines = mutableListOf<String>()
             val sshResult = sshManager.connect(trimmedHost, port, trimmedUser, keyPath.trim(), password)
             if (sshResult.isFailure) {
@@ -123,7 +123,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 )
                 return@launch
             }
-            lines += "SSH: OK"
+            lines += "接続: OK"
 
             val tmuxOk = remoteOk("command -v tmux >/dev/null 2>&1")
             lines += "tmux: " + if (tmuxOk) "OK" else "見つかりません"

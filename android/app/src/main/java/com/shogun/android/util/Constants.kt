@@ -8,6 +8,8 @@ object PrefsKeys {
     const val SSH_USER = "ssh_user"
     const val SSH_KEY_PATH = "ssh_key_path"
     const val SSH_PASSWORD = "ssh_password"
+    const val LAST_WIRELESS_HOST = "last_wireless_host"
+    const val LAST_WIRELESS_PORT = "last_wireless_port"
     const val PROJECT_PATH = "project_path"
     const val SHOGUN_SESSION = "shogun_session"
     const val AGENTS_SESSION = "agents_session"

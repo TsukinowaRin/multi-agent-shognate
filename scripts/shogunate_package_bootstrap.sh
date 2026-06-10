@@ -12,7 +12,7 @@ usage() {
     cat <<'EOF'
 Usage:
   curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
-  curl -fsSL .../shogunate_package_bootstrap.sh | bash -s -- --version v5.0.0.12 --prefix ~/.shogunate/shogunate
+  curl -fsSL .../shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.1-preview --prefix ~/.shogunate/shogunate
 
 Options:
   --version TAG    GitHub Release tag to install. Defaults to latest.

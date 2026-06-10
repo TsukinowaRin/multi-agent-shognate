@@ -1,16 +1,16 @@
 <div align="center">
 
-# multi-agent-shogun
+# multi-agent-shognate / Shogunate
 
-**Command your AI army like a feudal warlord.**
+**Package-installable Shogunate runtime for multi-agent-shogun.**
 
-Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copilot, Kimi Code, OpenCode, Cursor, Antigravity** — orchestrated through a samurai-inspired hierarchy with zero coordination overhead.
+Run multiple AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copilot, Kimi Code, OpenCode, Cursor, Antigravity** — with Shogunate-specific package distribution, role configuration, Android companion access, and audit roles.
 
 **Talk Coding, not Vibe Coding. Speak to your phone, AI executes.**
 
-[![GitHub Stars](https://img.shields.io/github/stars/yohey-w/multi-agent-shogun?style=social)](https://github.com/yohey-w/multi-agent-shogun)
+[![GitHub Stars](https://img.shields.io/github/stars/TsukinowaRin/multi-agent-shognate?style=social)](https://github.com/TsukinowaRin/multi-agent-shognate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![v5.1.0 Karo Traffic Control](https://img.shields.io/badge/v5.1.0-Karo%20Traffic%20Control-ff6600?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHRleHQgeD0iMCIgeT0iMTIiIGZvbnQtc2l6ZT0iMTIiPuKalTwvdGV4dD48L3N2Zz4=)](https://github.com/yohey-w/multi-agent-shogun/releases/tag/v5.1.0)
+[![v5.2.0.1 Preview](https://img.shields.io/badge/v5.2.0.1-Shogunate%20Preview-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.1-preview)
 [![Shell](https://img.shields.io/badge/Shell%2FBash-100%25-green)]()
 
 [English](README.md) | [日本語](README_ja.md)
@@ -32,39 +32,85 @@ Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copi
 
 ## Quick Start
 
-**Requirements:** tmux, bash 4+, at least one of: [Claude Code](https://claude.ai/code) / Codex / Copilot / Kimi / OpenCode / Antigravity
+Shogunate is distributed as a version-fixed package. Install it once, then start it with the `shogunate` command.
+
+**Requirements:** Linux, macOS, or WSL on Windows; `bash`, `curl`, `tar`, `tmux`; and at least one supported agent CLI: Claude Code, OpenAI Codex, GitHub Copilot, Kimi Code, OpenCode, Cursor, or Antigravity.
+
+### Recommended cURL Install
+
+Use the tag-fixed installer when you want a reproducible install:
 
 ```bash
-git clone https://github.com/yohey-w/multi-agent-shogun
-cd multi-agent-shogun
-bash first_setup.sh                        # one-time setup: config, dependencies, MCP
-source ~/.bashrc                           # reload PATH
-claude --dangerously-skip-permissions      # first run only: OAuth + accept Bypass Permissions → /exit
-bash shutsujin_departure.sh                # launch all agents
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview
 ```
 
-> For full install steps (incl. Windows) and the first-30-minutes walkthrough, see [🚀 Quick Start](#-quick-start) and the basic usage section below.
+This installs the runtime to `~/.shogunate/shogunate` and registers `~/.local/bin/shogunate`.
 
-### Shogunate Package Distribution
+If `shogunate` is not found after install, reload your shell or add `~/.local/bin` to `PATH`:
 
-This Shogunate rebuild can also be installed from version-fixed release packages instead of a moving branch checkout. The release assets are `multi-agent-shognate-package.tar.gz` and `multi-agent-shognate-package.zip`.
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### Start Shogunate
+
+```bash
+shogunate
+```
+
+Useful commands:
+
+```bash
+shogunate --help       # show commands
+shogunate clean        # clean start
+shogunate resume       # resume previous state
+shogunate attach       # attach to tmux session shogunate
+shogunate configure    # configure roles and CLI types
+shogunate status       # show package/update state
+shogunate aliases      # print shell alias setup command
+```
+
+### Install Options
+
+Install a specific version to a custom directory:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
+```
+
+Skip first setup when you only want to unpack/update the runtime:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview --no-setup
+```
+
+After this branch is merged to `main`, the moving installer can be used for the latest release channel:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
-npx @tsukinowarin/shogunate install
-npx @tsukinowarin/shogunate install -- --version v5.0.0.12 --prefix "$HOME/.shogunate/shogunate"
 ```
 
-The cURL installer places the runtime in `~/.shogunate/shogunate` and registers `shogunate` in `~/.local/bin` by default:
+The npm wrapper is a thin helper around the same cURL bootstrap:
 
 ```bash
-shogunate --help
-shogunate
-shogunate resume
-shogunate configure
+npx @tsukinowarin/shogunate install -- --version v5.2.0.1-preview
 ```
 
-Version tags follow the upstream version plus a fork revision, for example `v5.0.0.0` or `v5.0.0.12`.
+Release assets are fixed per version: `multi-agent-shognate-package.tar.gz`, `multi-agent-shognate-package.zip`, and the Android APK when published. Version tags follow the upstream version plus a fork/app revision, for example `v5.0.0.0`, `v5.0.0.12`, or `v5.2.0.1-preview`.
+
+### Developer Checkout
+
+Use a source checkout when you are developing Shogunate itself:
+
+```bash
+git clone https://github.com/TsukinowaRin/multi-agent-shognate
+cd multi-agent-shognate
+bash first_setup.sh
+bash shutsujin_departure.sh
+```
 
 Type a command in the Shogun pane:
 
@@ -79,7 +125,7 @@ You watch the dashboard. That's it.
 
 ## What is this?
 
-**multi-agent-shogun** is a system that runs multiple AI coding CLI instances simultaneously, orchestrating them like a feudal Japanese army. Supports **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, **Kimi Code**, **OpenCode**, **Cursor**, and **Antigravity**.
+**Shogunate** is a package-installable rebuild of **multi-agent-shogun**. It runs multiple AI coding CLI instances simultaneously, orchestrating them like a feudal Japanese army. It supports **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, **Kimi Code**, **OpenCode**, **Cursor**, and **Antigravity**, while adding Shogunate-specific release packaging, role configuration, Android companion access, and the Gunkan audit role.
 
 **Why use it?**
 - One command spawns 7 AI workers + 1 strategist executing in parallel
@@ -211,103 +257,42 @@ Skills grow organically from real work — not from a predefined template librar
 
 ### Windows (WSL2)
 
-<table>
-<tr>
-<td width="60">
+If WSL2 is not installed yet, run this from an Administrator PowerShell, restart Windows, then open Ubuntu:
 
-**Step 1**
-
-</td>
-<td>
-
-📥 **Download the repository**
-
-[Download ZIP](https://github.com/yohey-w/multi-agent-shogun/archive/refs/heads/main.zip) and extract to `C:\tools\multi-agent-shogun`
-
-*Or use git:* `git clone https://github.com/yohey-w/multi-agent-shogun.git C:\tools\multi-agent-shogun`
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Step 2**
-
-</td>
-<td>
-
-🐧 **Prepare WSL2 / Ubuntu**
-
-If WSL2 is not installed yet, run `wsl --install` from an Administrator PowerShell, restart Windows, then open Ubuntu.
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Step 3**
-
-</td>
-<td>
-
-🐧 **Open Ubuntu and run** (first time only)
-
-```bash
-cd /mnt/c/tools/multi-agent-shogun
-./first_setup.sh
+```powershell
+wsl --install
 ```
 
-</td>
-</tr>
-<tr>
-<td>
-
-**Step 4**
-
-</td>
-<td>
-
-✅ **Deploy!**
+Inside Ubuntu / WSL:
 
 ```bash
-./shutsujin_departure.sh
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview
+shogunate
 ```
-
-</td>
-</tr>
-</table>
 
 #### First-time only: Authentication
 
-After `first_setup.sh`, run these commands once to authenticate:
+Authenticate the CLIs you plan to use in the same WSL user account before assigning them to roles. Shogunate uses the host terminal credentials, while role-specific model/config state is kept isolated by the runtime.
 
 ```bash
-# 1. Apply PATH changes
-source ~/.bashrc
-
-# 2. OAuth login + Bypass Permissions approval (one command)
-claude --dangerously-skip-permissions
-#    → Browser opens → Log in with Anthropic account → Return to CLI
-#    → "Bypass Permissions" prompt appears → Select "Yes, I accept" (↓ to option 2, Enter)
-#    → Type /exit to quit
+codex
+claude
+opencode
+agy
 ```
 
-This saves credentials to `~/.claude/` — you won't need to do it again.
+You only need to run the commands for the CLIs you actually use. Exit each CLI after login/setup.
 
 #### Daily startup
 
 Open an **Ubuntu terminal** (WSL) and run:
 
 ```bash
-cd /mnt/c/tools/multi-agent-shogun
-./shutsujin_departure.sh
+shogunate
 ```
 
-On Windows, use the launchers according to how much automation you want:
-
-- `Shutsujin.bat`: starts `shutsujin_departure.sh`, launches agent CLIs after tmux attach so Codex can initialize with the visible terminal UI, then opens an alias-ready command shell where you can type `cgo`, `CMA`, `csa`, `css`, `csk`, etc. Pass `--no-attach` only when you want the old manual shell workflow.
-- `Shutsujin-Clean.bat` / `Shutsujin-Resume.bat`: Windows debug launchers for explicit clean start or resume. The installed package is expected to use command launchers instead of these debug bat files.
-- `Shogunate-Runtime.bat`: one-click runtime launcher that automatically opens Goza View.
+Use `shogunate resume` to keep previous runtime state, or `shogunate configure` to change role/CLI assignments.
 
 ### 📱 Mobile / Remote Access — SSH First
 
@@ -389,22 +374,14 @@ SSH via Termux requires no APK sideloading and uses the same tmux runtime as des
 ### First-time setup
 
 ```bash
-# 1. Clone
-git clone https://github.com/yohey-w/multi-agent-shogun.git ~/multi-agent-shogun
-cd ~/multi-agent-shogun
-
-# 2. Make scripts executable
-chmod +x *.sh
-
-# 3. Run first-time setup
-./first_setup.sh
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview
 ```
 
 ### Daily startup
 
 ```bash
-cd ~/multi-agent-shogun
-./shutsujin_departure.sh
+shogunate
 ```
 
 </details>
@@ -1618,13 +1595,25 @@ tmux kill-session -t multiagent
 <details>
 <summary><b>Convenient Aliases</b> (click to expand)</summary>
 
-Running `first_setup.sh` automatically adds these aliases to `~/.bashrc`:
+After package install, load Shogunate aliases with:
 
 ```bash
-alias csst='cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh'
-alias css='tmux attach-session -t shogun'      # Connect to Shogun
-alias csm='tmux attach-session -t multiagent'  # Connect to Karo + Ashigaru
-alias cgo='bash scripts/goza_no_ma.sh'         # Goza View (Shogunate)
+source ~/.shogunate/shogunate/scripts/shell_aliases.sh
+```
+
+To make them persistent:
+
+```bash
+bash ~/.shogunate/shogunate/scripts/install_shell_aliases.sh
+```
+
+The aliases are:
+
+```bash
+alias csst='cd ~/.shogunate/shogunate && ./shutsujin_departure.sh'
+alias css='bash scripts/focus_agent_pane.sh shogun' # Shogun pane
+alias csm='bash scripts/goza_no_ma.sh -t multiagent' # Karo + Ashigaru
+alias cgo='bash scripts/goza_no_ma.sh'         # Goza View
 alias csa='bash scripts/goza_no_ma.sh -t ashigaru' # Ashigaru View
 alias csg='bash scripts/focus_agent_pane.sh gunshi' # Gunshi pane
 alias csk='bash scripts/focus_agent_pane.sh karo'   # Karo pane

@@ -1,16 +1,16 @@
 <div align="center">
 
-# multi-agent-shogun
+# multi-agent-shognate / Shogunate
 
-**AIコーディング軍団統率システム — Multi-CLI対応**
+**multi-agent-shogun を package install できる Shogunate runtime として配布するリポジトリ**
 
-*コマンド1つで、10体のAIエージェントが並列稼働 — **Claude Code / OpenAI Codex / GitHub Copilot / Kimi Code / OpenCode / Cursor / Antigravity** 混成軍*
+*複数のAIエージェントが並列稼働 — **Claude Code / OpenAI Codex / GitHub Copilot / Kimi Code / OpenCode / Cursor / Antigravity** 混成軍。Shogunate 独自の package 配布、役職設定、Android companion、監査 role を追加。*
 
 **Talk Coding — Vibe Codingではなく、スマホに話すだけでAIが実行**
 
-[![GitHub Stars](https://img.shields.io/github/stars/yohey-w/multi-agent-shogun?style=social)](https://github.com/yohey-w/multi-agent-shogun)
+[![GitHub Stars](https://img.shields.io/github/stars/TsukinowaRin/multi-agent-shognate?style=social)](https://github.com/TsukinowaRin/multi-agent-shognate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![v5.1.0 Karo Traffic Control](https://img.shields.io/badge/v5.1.0-Karo%20Traffic%20Control-ff6600?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHRleHQgeD0iMCIgeT0iMTIiIGZvbnQtc2l6ZT0iMTIiPuKalTwvdGV4dD48L3N2Zz4=)](https://github.com/yohey-w/multi-agent-shogun/releases/tag/v5.1.0)
+[![v5.2.0.1 Preview](https://img.shields.io/badge/v5.2.0.1-Shogunate%20Preview-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.1-preview)
 [![Shell](https://img.shields.io/badge/Shell%2FBash-100%25-green)]()
 
 [English](README.md) | [日本語](README_ja.md)
@@ -32,39 +32,85 @@
 
 ## クイックスタート
 
-**必要なもの:** tmux、bash 4+、以下のいずれか: [Claude Code](https://claude.ai/code) / Codex / Copilot / Kimi / OpenCode
+Shogunate は、バージョン固定の Release package として配布します。一度インストールすれば、以後は `shogunate` コマンドで起動できます。
+
+**必要なもの:** Linux、macOS、または Windows の WSL。`bash`、`curl`、`tar`、`tmux`。さらに Claude Code、OpenAI Codex、GitHub Copilot、Kimi Code、OpenCode、Cursor、Antigravity のいずれか。
+
+### 推奨 cURL インストール
+
+再現性を重視する場合は、タグ固定 installer を使います。
 
 ```bash
-git clone https://github.com/yohey-w/multi-agent-shogun
-cd multi-agent-shogun
-bash first_setup.sh                        # 初回セットアップ: 設定・依存関係・MCP
-source ~/.bashrc                           # PATH反映
-claude --dangerously-skip-permissions      # 初回のみ: OAuth認証 + Bypass承認 → /exit で退出
-bash shutsujin_departure.sh                # 全エージェント起動
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview
 ```
 
-> 詳しいインストール手順（Windows含む）と「最初の30分の歩き方」は下記 [🚀 クイックスタート](#-クイックスタート) と [📖 基本的な使い方](#-基本的な使い方) を参照。
+既定では runtime を `~/.shogunate/shogunate` に配置し、`~/.local/bin/shogunate` を登録します。
 
-### Shogunate package 配布
+インストール後に `shogunate` が見つからない場合は、shell を開き直すか、`~/.local/bin` を `PATH` に追加してください。
 
-この Shogunate 再構築版では、moving branch checkout ではなく、バージョン固定の Release package からも導入できます。配布 asset は `multi-agent-shognate-package.tar.gz` と `multi-agent-shognate-package.zip` です。
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### 起動
+
+```bash
+shogunate
+```
+
+よく使うコマンド:
+
+```bash
+shogunate --help       # コマンド一覧
+shogunate clean        # clean start
+shogunate resume       # 前回状態から resume
+shogunate attach       # tmux session shogunate に attach
+shogunate configure    # 役職と CLI 種別を設定
+shogunate status       # package/update 状態を表示
+shogunate aliases      # shell alias 読み込みコマンドを表示
+```
+
+### インストールオプション
+
+導入する version、runtime の配置先、コマンドの配置先を明示できます。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
+```
+
+runtime の展開だけ行い、初回セットアップを走らせない場合:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview --no-setup
+```
+
+このブランチが `main` に merge された後は、最新 release channel 用の moving installer も使えます。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
-npx @tsukinowarin/shogunate install
-npx @tsukinowarin/shogunate install -- --version v5.0.0.12 --prefix "$HOME/.shogunate/shogunate"
 ```
 
-cURL installer は既定で runtime を `~/.shogunate/shogunate` に配置し、`~/.local/bin` に `shogunate` コマンドを登録します。
+npm wrapper は同じ cURL bootstrap を呼び出す薄い補助コマンドです。
 
 ```bash
-shogunate --help
-shogunate
-shogunate resume
-shogunate configure
+npx @tsukinowarin/shogunate install -- --version v5.2.0.1-preview
 ```
 
-version tag は本家 version に fork revision を足した形式にします。例: `v5.0.0.0`、`v5.0.0.12`。
+Release asset は version ごとに固定されます。runtime package は `multi-agent-shognate-package.tar.gz` / `.zip`、Android APK がある場合は APK も同じ release に配置します。version tag は本家 version に fork/app revision を足した形式です。例: `v5.0.0.0`、`v5.0.0.12`、`v5.2.0.1-preview`。
+
+### 開発者向け checkout
+
+Shogunate 自体を開発する場合は source checkout を使います。
+
+```bash
+git clone https://github.com/TsukinowaRin/multi-agent-shognate
+cd multi-agent-shognate
+bash first_setup.sh
+bash shutsujin_departure.sh
+```
 
 将軍ペインに命令を入力：
 
@@ -79,7 +125,7 @@ version tag は本家 version に fork revision を足した形式にします�
 
 ## これは何？
 
-**multi-agent-shogun** は、複数のAIコーディングCLIインスタンスを同時に実行し、戦国時代の軍制のように統率するシステムです。**Claude Code**、**OpenAI Codex**、**GitHub Copilot**、**Kimi Code**、**OpenCode**、**Cursor**、**Antigravity** の7CLIに対応。
+**Shogunate** は、**multi-agent-shogun** を package install できる形に再構築した runtime です。複数のAIコーディングCLIインスタンスを同時に実行し、戦国時代の軍制のように統率します。**Claude Code**、**OpenAI Codex**、**GitHub Copilot**、**Kimi Code**、**OpenCode**、**Cursor**、**Antigravity** に対応し、Shogunate 独自の release package、役職設定、Android companion、軍監 audit role を追加しています。
 
 **なぜ使うのか？**
 - 1つの命令で、7体のAIワーカー+1体の軍師が並列で実行
@@ -209,97 +255,42 @@ dashboard.md に掲載 → 殿が承認 → .claude/commands/ にスキル作成
 
 ### 🪟 Windowsユーザー（最も一般的）
 
-<table>
-<tr>
-<td width="60">
+WSL2 が未インストールの場合は、管理者 PowerShell で以下を実行し、Windows を再起動してから Ubuntu を開きます。
 
-**Step 1**
-
-</td>
-<td>
-
-📥 **リポジトリをダウンロード**
-
-[ZIPダウンロード](https://github.com/yohey-w/multi-agent-shogun/archive/refs/heads/main.zip) して `C:\tools\multi-agent-shogun` に展開
-
-*または git を使用:* `git clone https://github.com/yohey-w/multi-agent-shogun.git C:\tools\multi-agent-shogun`
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Step 2**
-
-</td>
-<td>
-
-🐧 **WSL2 / Ubuntu を用意**
-
-WSL2 が未インストールの場合は、管理者 PowerShell で `wsl --install` を実行し、Windows を再起動してから Ubuntu を開きます。
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Step 3**
-
-</td>
-<td>
-
-🐧 **Ubuntu を開いて以下を実行**（初回のみ）
-
-```bash
-cd /mnt/c/tools/multi-agent-shogun
-./first_setup.sh
+```powershell
+wsl --install
 ```
 
-</td>
-</tr>
-<tr>
-<td>
-
-**Step 4**
-
-</td>
-<td>
-
-✅ **出陣！**
+Ubuntu / WSL の中で実行:
 
 ```bash
-./shutsujin_departure.sh
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview
+shogunate
 ```
-
-</td>
-</tr>
-</table>
 
 #### 🔑 初回のみ: 認証
 
-`first_setup.sh` 完了後、一度だけ以下を実行して認証：
+使う予定の CLI は、同じ WSL ユーザーで一度ログインしておきます。Shogunate はターミナル側の認証情報を使い、役職ごとのモデル設定や runtime 設定だけを分離します。
 
 ```bash
-# 1. PATHの反映
-source ~/.bashrc
-
-# 2. OAuthログイン + Bypass Permissions承認（1コマンドで完了）
-claude --dangerously-skip-permissions
-#    → ブラウザが開く → Anthropicアカウントでログイン → CLIに戻る
-#    → 「Bypass Permissions」の承認画面 → 「Yes, I accept」を選択（↓キーで2を選んでEnter）
-#    → /exit で退出
+codex
+claude
+opencode
+agy
 ```
 
-認証情報は `~/.claude/` に保存され、以降は不要。
+実際に使う CLI だけで大丈夫です。ログインや初期設定が終わったら各 CLI から exit してください。
 
 #### 📅 毎日の起動（初回セットアップ後）
 
 **Ubuntuターミナル**（WSL）を開いて実行：
 
 ```bash
-cd /mnt/c/tools/multi-agent-shogun
-./shutsujin_departure.sh
+shogunate
 ```
+
+前回状態を使う場合は `shogunate resume`、役職や CLI 種別を変更する場合は `shogunate configure` を使います。
 
 ### 📱 スマホ / リモートアクセス — SSH 優先
 
@@ -383,22 +374,14 @@ Termux を使うと APK の sideload なしで、デスクトップ端末と同�
 ### 初回セットアップ
 
 ```bash
-# 1. リポジトリをクローン
-git clone https://github.com/yohey-w/multi-agent-shogun.git ~/multi-agent-shogun
-cd ~/multi-agent-shogun
-
-# 2. スクリプトに実行権限を付与
-chmod +x *.sh
-
-# 3. 初回セットアップを実行
-./first_setup.sh
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.1-preview
 ```
 
 ### 毎日の起動
 
 ```bash
-cd ~/multi-agent-shogun
-./shutsujin_departure.sh
+shogunate
 ```
 
 </details>
@@ -1554,13 +1537,25 @@ tmux kill-session -t multiagent
 <details>
 <summary><b>便利なエイリアス</b>（クリックで展開）</summary>
 
-`first_setup.sh` を実行すると、以下のエイリアスが `~/.bashrc` に自動追加されます：
+package install 後、Shogunate alias は以下で読み込めます。
 
 ```bash
-alias csst='cd /mnt/c/tools/multi-agent-shogun && ./shutsujin_departure.sh'
-alias css='tmux attach-session -t shogun'      # 将軍ウィンドウの起動
-alias csm='tmux attach-session -t multiagent'  # 家老・足軽ウィンドウの起動
-alias cgo='bash scripts/goza_no_ma.sh'         # Goza View (Shogunate)
+source ~/.shogunate/shogunate/scripts/shell_aliases.sh
+```
+
+永続化する場合:
+
+```bash
+bash ~/.shogunate/shogunate/scripts/install_shell_aliases.sh
+```
+
+alias 一覧:
+
+```bash
+alias csst='cd ~/.shogunate/shogunate && ./shutsujin_departure.sh'
+alias css='bash scripts/focus_agent_pane.sh shogun' # 将軍 pane
+alias csm='bash scripts/goza_no_ma.sh -t multiagent' # 家老 + 足軽
+alias cgo='bash scripts/goza_no_ma.sh'         # Goza View
 alias csa='bash scripts/goza_no_ma.sh -t ashigaru' # 足軽 View
 alias csg='bash scripts/focus_agent_pane.sh gunshi' # 軍師 pane
 alias csk='bash scripts/focus_agent_pane.sh karo'   # 家老 pane

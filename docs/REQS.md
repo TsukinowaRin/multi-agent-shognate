@@ -420,3 +420,17 @@
 2. Android debug APK build が成功し、release asset としてアップロードされている。
 3. `multi-agent-shognate-package.tar.gz` / `.zip` が同じ release tag にアップロードされている。
 4. `scripts/shogunate_package_bootstrap.sh --version <tag> --prefix ~/.shogunate/shogunate --no-setup` 相当の導入がこのPCで成功する。
+
+## 追補（2026-06-11: README package install 導線）
+
+### 要求
+
+1. README の導入手順を Shogunate package distribution 中心に整理する。
+2. 導入用 cURL を、実際に再現できるタグ固定コマンドとして明示する。
+3. 導入後に使う `shogunate` コマンド、既定 install path、PATH 注意点を README から分かるようにする。
+
+### 受け入れ条件（観測可能）
+
+1. `README.md` / `README_ja.md` の冒頭 Quick Start で cURL install が最初に提示される。
+2. `v5.2.0.1-preview` 固定の install command と、将来 main 反映後の moving command の違いが分かる。
+3. `shogunate`, `shogunate resume`, `shogunate configure`, `shogunate status`, `shogunate aliases` が導入後コマンドとして記載される。

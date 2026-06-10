@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Android APK version now follows upstream `v5.2.0` plus Shogunate Android revision: `5.2.0.1`.
 - Android `versionCode` increased to `52001`.
+- npm package metadata version updated to semver-compatible `5.2.0-1`.
 
 ## [5.2.0] - 2026-06-06
 

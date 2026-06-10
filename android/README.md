@@ -48,7 +48,7 @@ Companion app for [multi-agent-shogun](https://github.com/yohey-w/multi-agent-sh
 
 ## Install
 
-Download the pre-built APK from [`release/multi-agent-shogun.apk`](release/multi-agent-shogun.apk) and sideload it.
+Download the latest prerelease APK from the GitHub Releases page and sideload it.
 
 Or build from source:
 
@@ -59,7 +59,7 @@ Or build from source:
 
 ## Versioning
 
-The Android APK follows the Shogunate release version plus a fork/app revision. For example, Shogunate `5.1.0` with the first Android-specific revision is `5.1.0.1`.
+The Android APK follows the Shogunate release version plus a fork/app revision. For example, Shogunate `5.2.0` with the first Android-specific revision is `5.2.0.1`.
 
 ## Setup
 

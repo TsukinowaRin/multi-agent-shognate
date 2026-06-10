@@ -294,7 +294,7 @@ cd /mnt/c/tools/multi-agent-shogun
 
 ### 📱 スマホ / リモートアクセス — SSH 優先
 
-この Shogunate package 再構築版では APK を配布しません。LAN または Tailscale 越しの SSH で接続し、任意の端末アプリから tmux session に attach します。
+Shogunate runtime package には Android app を同梱しません。Android APK は GitHub Release asset として別配布し、スマホは LAN、USB forward、Tailscale 越しの SSH で接続します。
 
 #### セットアップ手順
 

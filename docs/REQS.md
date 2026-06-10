@@ -404,3 +404,19 @@
 3. 本家 v5.2.0 系の CLI / watcher / startup hardening 修正が、Shogunate の軍監・Android・launcher 拡張と共存している。
 4. `Shogunate-test` は開発リポジトリの最新内容で同期され、`.git` や認証情報はコピーされない。
 5. `Shogunate-test` で clean start し、少なくとも tmux session と主要 pane の起動状態を確認する。
+
+## 追補（2026-06-10: Android APK release とローカル package install）
+
+### 要求
+
+1. 本家 `v5.2.0` 反映後の Android app を release asset として配布する。
+2. Android APK version は Shogunate 本体版に従い、`5.2.0.1` へ更新する。
+3. Shogunate package も同じ release tag へ固定 asset として配置し、cURL installer でこのPCへ導入できることを確認する。
+4. Android app は GitHub Release の APK asset として配布し、runtime package archive には Android app を含めない。
+
+### 受け入れ条件（観測可能）
+
+1. `android/app/build.gradle.kts` の `versionName` が `5.2.0.1`、`versionCode` が `52001`。
+2. Android debug APK build が成功し、release asset としてアップロードされている。
+3. `multi-agent-shognate-package.tar.gz` / `.zip` が同じ release tag にアップロードされている。
+4. `scripts/shogunate_package_bootstrap.sh --version <tag> --prefix ~/.shogunate/shogunate --no-setup` 相当の導入がこのPCで成功する。

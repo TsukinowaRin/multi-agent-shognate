@@ -302,7 +302,7 @@ On Windows, use the launchers according to how much automation you want:
 
 ### 📱 Mobile / Remote Access — SSH First
 
-The Shogunate package does not ship an APK in this rebuild. Use SSH over LAN or Tailscale, then attach to the tmux sessions from any terminal client.
+The Shogunate runtime package does not embed the Android app. Android APKs are published separately as GitHub Release assets, while the phone still connects over SSH via LAN, USB forwarding, or Tailscale.
 
 #### Setup
 

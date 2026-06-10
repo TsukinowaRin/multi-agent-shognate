@@ -48,7 +48,7 @@
 
 ## インストール
 
-[`release/multi-agent-shogun.apk`](release/multi-agent-shogun.apk) からビルド済みAPKをダウンロードしてサイドロード。
+GitHub Releases の最新 prerelease APK をダウンロードしてサイドロードします。
 
 またはソースからビルド:
 
@@ -59,7 +59,7 @@
 
 ## バージョン
 
-Android APK は Shogunate 本体のリリースバージョンに fork/app 側の改訂番号を足します。例: Shogunate `5.1.0` に対する Android 側の最初の改訂は `5.1.0.1` です。
+Android APK は Shogunate 本体のリリースバージョンに fork/app 側の改訂番号を足します。例: Shogunate `5.2.0` に対する Android 側の最初の改訂は `5.2.0.1` です。
 
 ## セットアップ
 

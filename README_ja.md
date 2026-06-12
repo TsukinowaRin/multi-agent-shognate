@@ -10,7 +10,7 @@
 
 [![GitHub Stars](https://img.shields.io/github/stars/TsukinowaRin/multi-agent-shognate?style=social)](https://github.com/TsukinowaRin/multi-agent-shognate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![v5.2.0.1 Preview](https://img.shields.io/badge/v5.2.0.1-Shogunate%20Preview-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.1-preview)
+[![v5.2.0.2](https://img.shields.io/badge/v5.2.0.2-Shogunate-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.2)
 [![Shell](https://img.shields.io/badge/Shell%2FBash-100%25-green)]()
 
 [English](README.md) | [日本語](README_ja.md)
@@ -41,8 +41,8 @@ Shogunate は、バージョン固定の Release package として配布しま�
 再現性を重視する場合は、タグ固定 installer を使います。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2
 ```
 
 既定では runtime を `~/.shogunate/shogunate` に配置し、`~/.local/bin/shogunate` を登録します。
@@ -76,15 +76,15 @@ shogunate aliases      # shell alias 読み込みコマンドを表示
 導入する version、runtime の配置先、コマンドの配置先を明示できます。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2 --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
 ```
 
 runtime の展開だけ行い、初回セットアップを走らせない場合:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview --no-setup
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2 --no-setup
 ```
 
 このブランチが `main` に merge された後は、最新 release channel 用の moving installer も使えます。
@@ -96,10 +96,10 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 npm wrapper は同じ cURL bootstrap を呼び出す薄い補助コマンドです。
 
 ```bash
-npx @tsukinowarin/shogunate install -- --version v5.2.0.1-preview
+npx @tsukinowarin/shogunate install -- --version v5.2.0.2
 ```
 
-Release asset は version ごとに固定されます。runtime package は `multi-agent-shognate-package.tar.gz` / `.zip`、Android APK がある場合は APK も同じ release に配置します。version tag は本家 version に fork/app revision を足した形式です。例: `v5.0.0.0`、`v5.0.0.12`、`v5.2.0.1-preview`。
+Release asset は version ごとに固定されます。runtime package は `multi-agent-shognate-package.tar.gz` / `.zip`、Android APK がある場合は APK も同じ release に配置します。version tag は本家 version に fork/app revision を足した形式です。例: `v5.0.0.0`、`v5.0.0.12`、`v5.2.0.2`。
 
 ### 開発者向け checkout
 
@@ -264,8 +264,8 @@ wsl --install
 Ubuntu / WSL の中で実行:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2
 shogunate
 ```
 
@@ -374,8 +374,8 @@ Termux を使うと APK の sideload なしで、デスクトップ端末と同�
 ### 初回セットアップ
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2
 ```
 
 ### 毎日の起動

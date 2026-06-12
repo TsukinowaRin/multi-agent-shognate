@@ -10,7 +10,7 @@ Run multiple AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHu
 
 [![GitHub Stars](https://img.shields.io/github/stars/TsukinowaRin/multi-agent-shognate?style=social)](https://github.com/TsukinowaRin/multi-agent-shognate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![v5.2.0.1 Preview](https://img.shields.io/badge/v5.2.0.1-Shogunate%20Preview-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.1-preview)
+[![v5.2.0.2](https://img.shields.io/badge/v5.2.0.2-Shogunate-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.2)
 [![Shell](https://img.shields.io/badge/Shell%2FBash-100%25-green)]()
 
 [English](README.md) | [日本語](README_ja.md)
@@ -41,8 +41,8 @@ Shogunate is distributed as a version-fixed package. Install it once, then start
 Use the tag-fixed installer when you want a reproducible install:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2
 ```
 
 This installs the runtime to `~/.shogunate/shogunate` and registers `~/.local/bin/shogunate`.
@@ -76,15 +76,15 @@ shogunate aliases      # print shell alias setup command
 Install a specific version to a custom directory:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2 --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
 ```
 
 Skip first setup when you only want to unpack/update the runtime:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview --no-setup
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2 --no-setup
 ```
 
 After this branch is merged to `main`, the moving installer can be used for the latest release channel:
@@ -96,10 +96,10 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 The npm wrapper is a thin helper around the same cURL bootstrap:
 
 ```bash
-npx @tsukinowarin/shogunate install -- --version v5.2.0.1-preview
+npx @tsukinowarin/shogunate install -- --version v5.2.0.2
 ```
 
-Release assets are fixed per version: `multi-agent-shognate-package.tar.gz`, `multi-agent-shognate-package.zip`, and the Android APK when published. Version tags follow the upstream version plus a fork/app revision, for example `v5.0.0.0`, `v5.0.0.12`, or `v5.2.0.1-preview`.
+Release assets are fixed per version: `multi-agent-shognate-package.tar.gz`, `multi-agent-shognate-package.zip`, and the Android APK when published. Version tags follow the upstream version plus a fork/app revision, for example `v5.0.0.0`, `v5.0.0.12`, or `v5.2.0.2`.
 
 ### Developer Checkout
 
@@ -266,8 +266,8 @@ wsl --install
 Inside Ubuntu / WSL:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2
 shogunate
 ```
 
@@ -374,8 +374,8 @@ SSH via Termux requires no APK sideloading and uses the same tmux runtime as des
 ### First-time setup
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.1-preview/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.1-preview
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.2
 ```
 
 ### Daily startup

@@ -410,13 +410,13 @@
 ### 要求
 
 1. 本家 `v5.2.0` 反映後の Android app を release asset として配布する。
-2. Android APK version は Shogunate 本体版に従い、`5.2.0.1` へ更新する。
+2. Android APK version は Shogunate 本体版に従い、`5.2.0.2` へ更新する。
 3. Shogunate package も同じ release tag へ固定 asset として配置し、cURL installer でこのPCへ導入できることを確認する。
 4. Android app は GitHub Release の APK asset として配布し、runtime package archive には Android app を含めない。
 
 ### 受け入れ条件（観測可能）
 
-1. `android/app/build.gradle.kts` の `versionName` が `5.2.0.1`、`versionCode` が `52001`。
+1. `android/app/build.gradle.kts` の `versionName` が `5.2.0.2`、`versionCode` が `52002`。
 2. Android debug APK build が成功し、release asset としてアップロードされている。
 3. `multi-agent-shognate-package.tar.gz` / `.zip` が同じ release tag にアップロードされている。
 4. `scripts/shogunate_package_bootstrap.sh --version <tag> --prefix ~/.shogunate/shogunate --no-setup` 相当の導入がこのPCで成功する。
@@ -432,7 +432,7 @@
 ### 受け入れ条件（観測可能）
 
 1. `README.md` / `README_ja.md` の冒頭 Quick Start で cURL install が最初に提示される。
-2. `v5.2.0.1-preview` 固定の install command と、将来 main 反映後の moving command の違いが分かる。
+2. `v5.2.0.2` 固定の install command と、将来 main 反映後の moving command の違いが分かる。
 3. `shogunate`, `shogunate resume`, `shogunate configure`, `shogunate status`, `shogunate aliases` が導入後コマンドとして記載される。
 
 ## 追補（2026-06-12: package clean 警告と軍監口調維持）

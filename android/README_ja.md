@@ -48,7 +48,7 @@
 
 ## インストール
 
-GitHub Releases の最新 prerelease APK をダウンロードしてサイドロードします。
+GitHub Releases の最新 APK をダウンロードしてサイドロードします。
 
 またはソースからビルド:
 

@@ -10,7 +10,7 @@
 - `docs/EXECPLAN_2026-05-28_gunkan_role.md` - Shogunate 独自の軍監 role 追加計画。
 - `docs/EXECPLAN_2026-05-28_upstream_v5_1_sync.md` - 本家 `upstream/main` v5.1.0 反映計画と検証記録。
 - `docs/EXECPLAN_2026-06-10_upstream_v5_2_test_runtime.md` - 本家 `upstream/main` v5.2.0 反映と `Shogunate-test` 再起動計画。
-- `docs/EXECPLAN_2026-06-10_android_release_local_install.md` - Android APK prerelease とこのPCへの release package install 計画。
+- `docs/EXECPLAN_2026-06-10_android_release_local_install.md` - Android APK release とこのPCへの release package install 計画。
 - `docs/EXECPLAN_2026-05-30_android_setup.md` - Android app の SSH / tmux target 設定改善計画。
 - `docs/EXECPLAN_2026-05-31_android_host_setup.md` - Android app の USB/無線 SSH セットアップと将軍単体表示計画。
 

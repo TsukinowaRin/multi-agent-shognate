@@ -48,7 +48,7 @@ Companion app for [multi-agent-shogun](https://github.com/yohey-w/multi-agent-sh
 
 ## Install
 
-Download the latest prerelease APK from the GitHub Releases page and sideload it.
+Download the latest APK from the GitHub Releases page and sideload it.
 
 Or build from source:
 

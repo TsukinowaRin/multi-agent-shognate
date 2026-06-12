@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Android `versionCode` increased to `52001`.
 - npm package metadata version updated to semver-compatible `5.2.0-1`.
 - cURL package install now registers a `shogunate` command in `~/.local/bin` by default.
+- Shutsujin startup window now preserves ANSI colors, and Shogunate/Shutsujin launchers print colored status banners.
 
 ## [5.2.0] - 2026-06-06
 

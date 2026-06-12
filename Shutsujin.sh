@@ -6,6 +6,26 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  C_RESET=$'\033[0m'
+  C_BOLD=$'\033[1m'
+  C_CYAN=$'\033[1;36m'
+  C_YELLOW=$'\033[1;33m'
+  C_GREEN=$'\033[1;32m'
+  C_RED=$'\033[1;31m'
+else
+  C_RESET=""
+  C_BOLD=""
+  C_CYAN=""
+  C_YELLOW=""
+  C_GREEN=""
+  C_RED=""
+fi
+
+info() { printf '  %s[INFO]%s %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
+ok() { printf '  %s[OK]%s %s\n' "$C_GREEN" "$C_RESET" "$*"; }
+err() { printf '  %s[ERROR]%s %s\n' "$C_RED" "$C_RESET" "$*" >&2; }
+
 SHOGUNATE_SESSION_NAME="${SHOGUNATE_SESSION_NAME:-shogunate}"
 ATTACH_AFTER=1
 OPEN_SHELL=1
@@ -55,21 +75,20 @@ EOF
   esac
 done
 
-echo ""
-echo "  +============================================================+"
-echo "  |  [SHOGUN] multi-agent-shognate - Shutsujin Launcher        |"
-echo "  |      Starts agents, then opens cgo/CMA command shell        |"
-echo "  +============================================================+"
-echo ""
+printf '\n'
+printf '  %s+============================================================+%s\n' "$C_CYAN" "$C_RESET"
+printf '  %s|  %s[SHOGUN]%s multi-agent-shognate - Shutsujin Launcher        |%s\n' "$C_CYAN" "$C_BOLD" "$C_CYAN" "$C_RESET"
+printf '  %s|      Starts agents, then opens cgo/CMA command shell        |%s\n' "$C_CYAN" "$C_RESET"
+printf '  %s+============================================================+%s\n\n' "$C_CYAN" "$C_RESET"
 
 if [[ ! -f "shutsujin_departure.sh" ]]; then
-  echo "  [ERROR] shutsujin_departure.sh not found."
-  echo "          Run this launcher from the Shogunate folder."
+  err "shutsujin_departure.sh not found."
+  echo "          Run this launcher from the Shogunate folder." >&2
   exit 1
 fi
 
 if ! command -v tmux >/dev/null 2>&1; then
-  echo "  [ERROR] tmux is not installed or not on PATH."
+  err "tmux is not installed or not on PATH."
   exit 1
 fi
 
@@ -78,10 +97,10 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
   STARTUP_LOG="queue/runtime/shogunate_shutsujin_launcher.log"
   : > "$STARTUP_LOG"
 
-  echo "  [INFO] Starting Shutsujin in background."
-  echo "  [INFO] CLI panes will launch after tmux session '$SHOGUNATE_SESSION_NAME' is attached."
-  echo "  [INFO] After startup, type cgo/CMA/csa/css/cgn/csk in the command shell."
-  echo "  [INFO] Startup log: $STARTUP_LOG"
+  info "Starting Shutsujin in background."
+  info "CLI panes will launch after tmux session '$SHOGUNATE_SESSION_NAME' is attached."
+  info "After startup, type cgo/CMA/csa/css/cgn/csk in the command shell."
+  info "Startup log: $STARTUP_LOG"
   RUN_ID="shutsujin-$(date +%s)-$$"
   SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_GOZA_FINISH_TARGET=command MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   RUNTIME_PID=$!
@@ -92,7 +111,7 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
     fi
     if ! kill -0 "$RUNTIME_PID" 2>/dev/null; then
       echo ""
-      echo "  [ERROR] Shutsujin exited before '$SHOGUNATE_SESSION_NAME' was created."
+      err "Shutsujin exited before '$SHOGUNATE_SESSION_NAME' was created."
       echo "  ----- $STARTUP_LOG -----"
       tail -120 "$STARTUP_LOG" 2>/dev/null || true
       exit 1
@@ -102,25 +121,25 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
 
   if [[ "$(tmux show-options -t "$SHOGUNATE_SESSION_NAME" -v @mas_launcher_run_id 2>/dev/null || true)" != "$RUN_ID" ]]; then
     echo ""
-    echo "  [ERROR] Timed out waiting for '$SHOGUNATE_SESSION_NAME'."
+    err "Timed out waiting for '$SHOGUNATE_SESSION_NAME'."
     echo "  ----- $STARTUP_LOG -----"
     tail -120 "$STARTUP_LOG" 2>/dev/null || true
     exit 1
   fi
 
   echo ""
-  echo "  [INFO] Attaching to $SHOGUNATE_SESSION_NAME. CLI launch continues inside tmux."
-  echo "  [INFO] Detach from tmux with Ctrl+B, then D."
+  info "Attaching to $SHOGUNATE_SESSION_NAME. CLI launch continues inside tmux."
+  info "Detach from tmux with Ctrl+B, then D."
   disown "$RUNTIME_PID" 2>/dev/null || true
   exec tmux attach-session -t "$SHOGUNATE_SESSION_NAME"
 fi
 
-echo "  [INFO] Starting without auto attach: bash shutsujin_departure.sh ${SHUTSUJIN_ARGS[*]}"
+info "Starting without auto attach: bash shutsujin_departure.sh ${SHUTSUJIN_ARGS[*]}"
 bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}"
 
 echo ""
-echo "  [OK] Shutsujin finished."
-echo "  [INFO] View commands are available in the next shell:"
+ok "Shutsujin finished."
+info "View commands are available in the next shell:"
 echo "        cgo/CGO = Goza View, csa/CSA = Ashigaru View"
 echo "        css/CSS = Shogun, csm/CSM = Multiagent, cma/CMA = Multiagent"
 echo "        cgn/CGN = Gunkan, csg/CSG = Gunshi, csk/CSK or ckr/CKR = Karo"

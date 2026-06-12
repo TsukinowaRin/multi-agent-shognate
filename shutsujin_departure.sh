@@ -609,7 +609,7 @@ create_goza_startup_window() {
     local startup_log="${MAS_GOZA_STARTUP_LOG:-queue/runtime/shogunate_runtime_launcher.log}"
 
     goza_startup_window_enabled || return 0
-    printf -v shell_cmd 'cd %q && touch %q; tail -n +1 -F %q | sed -u -E "s/\x1B\[[0-9;?]*[ -/]*[@-~]//g"' "$SCRIPT_DIR" "$startup_log" "$startup_log"
+    printf -v shell_cmd 'cd %q && touch %q; tail -n +1 -F %q' "$SCRIPT_DIR" "$startup_log" "$startup_log"
     tmux new-window -d -t "$GOZA_SESSION_NAME" -n "$GOZA_STARTUP_WINDOW_NAME" "$shell_cmd" >/dev/null 2>&1 || return 0
     tmux select-window -t "$GOZA_SESSION_NAME:$GOZA_STARTUP_WINDOW_NAME" >/dev/null 2>&1 || true
 }

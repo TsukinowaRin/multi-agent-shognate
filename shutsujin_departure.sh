@@ -1088,7 +1088,7 @@ generate_bootstrap_file() {
     local delivered_file="$bootstrap_dir/bootstrap_${agent_id}.delivered"
     local role_instruction_file=""
     local optimized_instruction_file=""
-    local lang_rule="" event_rule="" report_rule="" linkage_rule="" startup_fastpath=""
+    local lang_rule="" event_rule="" report_rule="" linkage_rule="" tone_rule="" startup_fastpath=""
 
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
@@ -1098,6 +1098,7 @@ generate_bootstrap_file() {
     if [ -z "$role_instruction_file" ]; then
         case "$agent_id" in
             shogun) role_instruction_file="instructions/shogun.md" ;;
+            gunkan) role_instruction_file="instructions/gunkan.md" ;;
             gunshi) role_instruction_file="instructions/gunshi.md" ;;
             karo|karo[1-9]*|karo_gashira) role_instruction_file="instructions/karo.md" ;;
             ashigaru*) role_instruction_file="instructions/ashigaru.md" ;;
@@ -1113,13 +1114,14 @@ generate_bootstrap_file() {
     lang_rule="$(language_directive)"
     event_rule="$(event_driven_directive "$agent_id")"
     report_rule="$(reporting_chain_directive "$agent_id")"
+    tone_rule="$(role_tone_directive "$agent_id")"
     startup_fastpath="$(startup_fastpath_directive "$agent_id")"
 
     local startup_msg
     if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
-        startup_msg="【初動命令】あなたは${agent_id}。AGENTS.md を読み、続けて ${optimized_instruction_file} を読み、その内容を ${cli_type} 用の正本指示として即適用せよ。${role_instruction_file} との比較・diff・読み比べは不要。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。AGENTS.md を読み、続けて ${optimized_instruction_file} を読み、その内容を ${cli_type} 用の正本指示として即適用せよ。${role_instruction_file} との比較・diff・読み比べは不要。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、未読inbox監視へ戻れ。"
     else
-        startup_msg="【初動命令】あなたは${agent_id}。AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。AGENTS.md と ${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、未読inbox監視へ戻れ。"
     fi
 
     mkdir -p "$bootstrap_dir"
@@ -1747,7 +1749,7 @@ create_android_compat_sessions() {
 
 ensure_generated_instructions() {
     local ensure_script="$SCRIPT_DIR/scripts/ensure_generated_instructions.sh"
-    if [ ! -x "$ensure_script" ]; then
+    if [ ! -f "$ensure_script" ]; then
         log_info "⚠️  指示書再生成スクリプトが見つからないため、既存 generated を使用します"
         return 0
     fi
@@ -1784,6 +1786,18 @@ language_directive() {
     else
         echo "Language rule: Follow system language '${LANG_SETTING}' for all outputs (include all agent communication)."
     fi
+}
+
+role_tone_directive() {
+    local agent_id="$1"
+    case "$agent_id" in
+        gunkan)
+            echo "口調規則: 直接応答でも inbox 応答でも、必ず軍監として振る舞え。通常の汎用アシスタント口調へ戻らず、冷静・厳格な監査官/記録官の戦国口調で返答せよ。短い直接応答では冒頭または結語に『軍監として申し上げる』等の軍監らしい一節を入れよ。ただし YAML・コマンド・ファイルパス・技術的事実は正確性を優先せよ。"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
 }
 
 event_driven_directive() {

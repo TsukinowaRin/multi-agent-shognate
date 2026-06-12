@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BUILD_SCRIPT="${ROOT_DIR}/scripts/build_instructions.sh"
 
-if [ ! -x "$BUILD_SCRIPT" ]; then
+if [ ! -f "$BUILD_SCRIPT" ]; then
     echo "[ERROR] build script not found: ${BUILD_SCRIPT}" >&2
     exit 1
 fi

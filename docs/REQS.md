@@ -434,3 +434,20 @@
 1. `README.md` / `README_ja.md` の冒頭 Quick Start で cURL install が最初に提示される。
 2. `v5.2.0.1-preview` 固定の install command と、将来 main 反映後の moving command の違いが分かる。
 3. `shogunate`, `shogunate resume`, `shogunate configure`, `shogunate status`, `shogunate aliases` が導入後コマンドとして記載される。
+
+## 追補（2026-06-12: package clean 警告と軍監口調維持）
+
+### 要求
+
+1. cURL/package install 後の `shogunate clean` で、`scripts/ensure_generated_instructions.sh` が存在するのに実行ビット不足だけで「指示書再生成スクリプトが見つからない」と警告しない。
+2. package 展開後の生成指示書再構築は、script file が存在すれば `bash` 経由で実行できる。
+3. 軍監（`gunkan`）pane は直接会話でも通常の Codex / 汎用アシスタント口調に戻らず、軍監 persona と戦国口調を維持する。
+4. YAML、shell command、file path、正確な技術名は口調より正確性を優先する。
+
+### 受け入れ条件（観測可能）
+
+1. package 内で `scripts/ensure_generated_instructions.sh` / `scripts/build_instructions.sh` が `0644` でも、`shogunate clean` の生成指示書確認が file existence 判定で進む。
+2. `bash scripts/ensure_generated_instructions.sh` が generated instruction を再生成または up-to-date 判定できる。
+3. `queue/runtime/bootstrap_gunkan.md` に、軍監として振る舞うための明示的な口調規則が含まれる。
+4. `instructions/generated/*-gunkan.md` と `.opencode/agents/gunkan.md` に、直接応答時も軍監 persona を維持する規則が含まれる。
+5. `bash -n shutsujin_departure.sh scripts/ensure_generated_instructions.sh scripts/build_instructions.sh` と `git diff --check` が PASS する。

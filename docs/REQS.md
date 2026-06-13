@@ -451,3 +451,20 @@
 3. `queue/runtime/bootstrap_gunkan.md` に、軍監として振る舞うための明示的な口調規則が含まれる。
 4. `instructions/generated/*-gunkan.md` と `.opencode/agents/gunkan.md` に、直接応答時も軍監 persona を維持する規則が含まれる。
 5. `bash -n shutsujin_departure.sh scripts/ensure_generated_instructions.sh scripts/build_instructions.sh` と `git diff --check` が PASS する。
+
+## 追補（2026-06-13: README 全面再整理）
+
+### 要求
+
+1. `README.md` / `README_ja.md` を package install 前提の導入文書として全面的に書き直す。
+2. 冒頭 Quick Start に、現在の通常 release tag `v5.2.0.2` 固定の cURL install command を明示する。
+3. 導入後に使う `shogunate` command、alias、role/CLI 設定、軍監、Android companion、開発 checkout、troubleshooting、release versioning を短く辿れる構成にする。
+4. `-preview` 前提の記述や重複した古い導入導線を README から外す。
+
+### 受け入れ条件（観測可能）
+
+1. `README.md` / `README_ja.md` の冒頭に `v5.2.0.2` 固定 cURL がある。
+2. README 内の導入例は `~/.shogunate/shogunate`、`~/.local/bin/shogunate`、`shogunate clean/resume/configure/status/aliases` を説明する。
+3. README 内に `v5.2.0.1-preview` や古い preview install 導線が残っていない。
+4. README の cURL URL が `scripts/shogunate_package_bootstrap.sh` の実在 path を指している。
+5. `git diff --check` が PASS する。

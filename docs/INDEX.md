@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-06-12
+最終更新: 2026-06-13
 
 ## Must-read
 
@@ -29,3 +29,4 @@
 - Android APK の `versionName` は Shogunate 本体バージョン + fork/app 改訂番号にする。例: 本体 `5.2.0` の Android 側1回目の改訂は `5.2.0.1`。`versionCode` は同じ更新順に単調増加させる。
 - npm package の `version` は semver 制約に従うため、同じ意味の改訂番号は `5.2.0-1` のように表す。
 - cURL package installer は既定で runtime を `~/.shogunate/shogunate` に展開し、`~/.local/bin/shogunate` を登録する。PATH に `~/.local/bin` が入っていれば `shogunate` だけで起動できる。package 展開後の helper scripts は executable bit が無くても `bash` 経由で使える前提にする。
+- README / README_ja は package install 前提の導入正本。固定導入例は `v5.2.0.2` の cURL command を使い、通常 release tag は `v5.2.0.1`, `v5.2.0.2`, `v5.2.0.3` のように `-preview` なしで進める。

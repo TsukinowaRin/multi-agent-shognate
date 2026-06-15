@@ -162,9 +162,12 @@ write_with_lock() {
     # filesystems, so use a lock directory as the portable fallback.
     local lockdir="${LOCKFILE}.d"
     local status=0
-    if ! mkdir "$lockdir" 2>/dev/null; then
-        return 1
-    fi
+    local lock_attempt=0
+    while ! mkdir "$lockdir" 2>/dev/null; do
+        lock_attempt=$((lock_attempt + 1))
+        [ "$lock_attempt" -lt 50 ] || return 1
+        sleep 0.1
+    done
     write_inbox_message || status=$?
     rmdir "$lockdir" 2>/dev/null || true
     return "$status"

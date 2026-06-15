@@ -987,6 +987,11 @@ get_effective_cli_type() {
     local pane_cli_raw=""
     local pane_cli=""
 
+    if [ "${MAS_WATCHER_TRUST_CLI_ARG:-0}" = "1" ] && is_valid_cli_type "${CLI_TYPE:-}"; then
+        echo "${CLI_TYPE}"
+        return 0
+    fi
+
     pane_cli_raw=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @agent_cli 2>/dev/null || true)
     pane_cli=$(echo "$pane_cli_raw" | tr -d '\r' | head -n1 | tr -d '[:space:]')
 
@@ -1031,6 +1036,8 @@ normalize_special_command() {
 
 enqueue_recovery_task_assigned() {
     local recovery_hint="${1:-}"
+    mkdir -p "$(dirname "$LOCKFILE")" 2>/dev/null || true
+
     (
         flock -x 200
         INBOX_PATH="$INBOX" AGENT_ID="$AGENT_ID" RECOVERY_HINT="$recovery_hint" python3 - << 'PY'
@@ -1219,6 +1226,8 @@ PY
 # Returns JSON lines: {"count": N, "has_special": true/false, "specials": [...]}
 # Test anchor for bats awk pattern: get_unread_info\\(\\)
 get_unread_info() {
+    mkdir -p "$(dirname "$LOCKFILE")" 2>/dev/null || true
+
     (
         flock -x 200
         INBOX_PATH="$INBOX" python3 - << 'PY'

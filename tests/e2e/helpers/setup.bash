@@ -17,6 +17,7 @@ setup_e2e_session() {
     export E2E_SESSION="${E2E_SESSION_PREFIX}_$$"
     export PROJECT_ROOT
     PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+    export MAS_WATCHER_TRUST_CLI_ARG=1
 
     # Create isolated project root with queue/ subdirectory
     # inbox_write.sh resolves SCRIPT_DIR to parent of scripts/, then uses queue/inbox/

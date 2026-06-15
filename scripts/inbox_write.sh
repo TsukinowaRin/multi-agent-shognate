@@ -92,16 +92,9 @@ fi
 MSG_ID="msg_$(date +%Y%m%d_%H%M%S)_$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
 TIMESTAMP=$(date "+%Y-%m-%dT%H:%M:%S")
 
-# Atomic write with flock (3 retries)
-attempt=0
-max_attempts=3
-
-while [ $attempt -lt $max_attempts ]; do
-    if (
-        flock -w 5 200 || exit 1
-
-        # Add message via python3 (unified YAML handling)
-        python3 - "$INBOX" "$MSG_ID" "$FROM" "$TIMESTAMP" "$TYPE" "$CONTENT" <<'PY' || exit 1
+write_inbox_message() {
+    # Add message via python3 (unified YAML handling)
+    python3 - "$INBOX" "$MSG_ID" "$FROM" "$TIMESTAMP" "$TYPE" "$CONTENT" <<'PY'
 import os
 import sys
 import tempfile
@@ -154,8 +147,35 @@ except Exception as e:
     print(f"ERROR: {e}", file=sys.stderr)
     sys.exit(1)
 PY
+}
 
-    ) 200>"$LOCKFILE"; then
+write_with_lock() {
+    if command -v flock >/dev/null 2>&1; then
+        (
+            flock -w 5 200 || exit 1
+            write_inbox_message
+        ) 200>"$LOCKFILE"
+        return $?
+    fi
+
+    # macOS does not provide flock by default. mkdir is atomic on local
+    # filesystems, so use a lock directory as the portable fallback.
+    local lockdir="${LOCKFILE}.d"
+    local status=0
+    if ! mkdir "$lockdir" 2>/dev/null; then
+        return 1
+    fi
+    write_inbox_message || status=$?
+    rmdir "$lockdir" 2>/dev/null || true
+    return "$status"
+}
+
+# Atomic write with lock (3 retries)
+attempt=0
+max_attempts=3
+
+while [ $attempt -lt $max_attempts ]; do
+    if write_with_lock; then
         # Success
         if [ -x "$SCRIPT_DIR/scripts/history_book.sh" ]; then
             bash "$SCRIPT_DIR/scripts/history_book.sh" >/dev/null 2>&1 || true

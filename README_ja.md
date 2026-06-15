@@ -125,6 +125,8 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4
 ```
 
+各 GitHub Release ページには、その tag 固定の cURL も載せています。
+
 インストール済み bootstrap から再実行する場合:
 
 ```bash

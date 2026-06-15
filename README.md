@@ -125,6 +125,8 @@ Pin an exact release only when you need reproducible installs:
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4
 ```
 
+Each GitHub Release page includes the version-pinned cURL command for that tag.
+
 Use the same installed bootstrap later:
 
 ```bash

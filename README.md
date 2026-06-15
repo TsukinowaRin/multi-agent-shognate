@@ -13,9 +13,22 @@ Run a Shogun, Karo managers, Ashigaru workers, Gunshi strategist, and Gunkan aud
 
 </div>
 
-## Install With cURL
+## Overview
 
-Copy this command to install the current fixed release:
+Shogunate is a local-first multi-agent runtime for AI coding CLIs. It turns one repository workspace into a visible `tmux` command center where a Shogun receives work, Karo managers plan and integrate, Ashigaru workers execute tasks, Gunshi reviews strategy, and Gunkan audits completion.
+
+This repository contains the packaged runtime, role instructions, shell orchestration, queue-based agent messaging, Android pairing support, and release installers needed to run that system on Linux, macOS, or Windows with WSL2.
+
+Shogunate is designed for developers who want:
+
+- Multi-agent coding workflows without a hosted control plane
+- Plain-file coordination through `queue/`, `dashboard.md`, and runtime metadata
+- Role-specific CLI assignment across Codex, Claude Code, Copilot CLI, OpenCode, Kimi, Cursor, and Antigravity
+- A cURL-installable runtime that can be updated or unpacked into a predictable local directory
+
+## Installation
+
+Install the current fixed release with cURL:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
@@ -110,7 +123,7 @@ Use the same installed bootstrap later:
 shogunate install --version v5.2.0.3 --no-setup
 ```
 
-After this branch is published on `main`, the moving latest channel is:
+The moving latest channel is:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash

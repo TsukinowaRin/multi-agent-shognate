@@ -31,8 +31,7 @@ Shogunate は次のような用途に向いています。
 現在の固定 release は cURL でインストールできます。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.3
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3
 ```
 
 その後、起動します。
@@ -104,17 +103,13 @@ cma   # multi-agent view
 導入先を明示する場合:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.3 \
-      --prefix "$HOME/.shogunate/shogunate" \
-      --bin-dir "$HOME/.local/bin"
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3 --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
 ```
 
 runtime の展開・更新だけ行い、初回 setup を走らせない場合:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.3 --no-setup
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3 --no-setup
 ```
 
 インストール済み bootstrap から再実行する場合:

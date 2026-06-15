@@ -31,8 +31,7 @@ Shogunate is designed for developers who want:
 Install the current fixed release with cURL:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.3
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3
 ```
 
 Then start Shogunate:
@@ -104,17 +103,13 @@ cma   # multi-agent view
 Install into explicit directories:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.3 \
-      --prefix "$HOME/.shogunate/shogunate" \
-      --bin-dir "$HOME/.local/bin"
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3 --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
 ```
 
 Update or unpack without running setup:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.3 --no-setup
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3 --no-setup
 ```
 
 Use the same installed bootstrap later:

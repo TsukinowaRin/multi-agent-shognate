@@ -6,7 +6,7 @@
 
 将軍、家老、足軽、軍師、軍監を `tmux` 上に並べ、YAML queue と release package で運用します。
 
-[![Release](https://img.shields.io/badge/release-v5.2.0.4-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.4)
+[![Release](https://img.shields.io/github/v/release/TsukinowaRin/multi-agent-shognate?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](README.md) | [日本語](README_ja.md)
@@ -28,10 +28,10 @@ Shogunate は次のような用途に向いています。
 
 ## インストール
 
-現在の固定 release は cURL でインストールできます。
+latest release channel は cURL でインストールできます。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
 ```
 
 その後、起動します。
@@ -40,12 +40,19 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v
 shogunate
 ```
 
-既定では runtime を `~/.shogunate/shogunate` に展開し、`~/.local/bin/shogunate` を登録します。
+installer は最新の GitHub Release package を取得し、runtime を `~/.shogunate/shogunate` に展開し、`~/.local/bin/shogunate` を登録します。
 
 `shogunate` が見つからない場合は shell を開き直すか、PATH を追加してください。
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
+```
+
+古い install が `~/.bashrc` に stale な `css()` / `csm()` 関数を残している場合は、latest release channel を再実行してから shell を読み直してください。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+source ~/.bashrc
 ```
 
 ## 必要なもの
@@ -103,31 +110,31 @@ cma   # multi-agent view
 導入先を明示する場合:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4 --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash -s -- --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
 ```
 
 runtime の展開・更新だけ行い、初回 setup を走らせない場合:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4 --no-setup
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash -s -- --no-setup
+```
+
+再現性のために固定 release を入れたい場合だけ、version tag を指定します。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4
 ```
 
 インストール済み bootstrap から再実行する場合:
 
 ```bash
-shogunate install --version v5.2.0.4 --no-setup
-```
-
-moving latest channel:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+shogunate install --no-setup
 ```
 
 npm wrapper は同じ cURL bootstrap を呼ぶ薄い補助です。
 
 ```bash
-npx @tsukinowarin/shogunate install -- --version v5.2.0.4
+npx @tsukinowarin/shogunate install
 ```
 
 ## Shogunate が動かすもの

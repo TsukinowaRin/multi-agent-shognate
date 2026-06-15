@@ -68,12 +68,31 @@ jobs:
           git archive --format=zip --prefix=multi-agent-shognate/ "$TAG" -o "dist/${PACKAGE_ZIP_ASSET}"
           cp "dist/${PACKAGE_TGZ_ASSET}" "dist/${VERSIONED_PACKAGE_TGZ_ASSET}"
           cp "dist/${PACKAGE_ZIP_ASSET}" "dist/${VERSIONED_PACKAGE_ZIP_ASSET}"
+          {
+            echo "## Install With cURL"
+            echo
+            echo "Install this exact release:"
+            echo
+            echo '```bash'
+            echo "curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${TAG}/scripts/shogunate_package_bootstrap.sh | bash -s -- --version ${TAG}"
+            echo '```'
+            echo
+            echo "This pins both the bootstrap script and package resolution to \`${TAG}\`."
+            echo
+            echo "For the latest release channel, use:"
+            echo
+            echo '```bash'
+            echo "curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/scripts/shogunate_package_bootstrap.sh | bash"
+            echo '```'
+            echo
+          } > dist/release-notes.md
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "package_tgz_asset=${PACKAGE_TGZ_ASSET}" >> "$GITHUB_OUTPUT"
           echo "package_zip_asset=${PACKAGE_ZIP_ASSET}" >> "$GITHUB_OUTPUT"
           echo "versioned_package_tgz_asset=${VERSIONED_PACKAGE_TGZ_ASSET}" >> "$GITHUB_OUTPUT"
           echo "versioned_package_zip_asset=${VERSIONED_PACKAGE_ZIP_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "release_notes_path=dist/release-notes.md" >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -95,6 +114,7 @@ jobs:
             dist/${{ steps.asset.outputs.package_zip_asset }}
             dist/${{ steps.asset.outputs.versioned_package_tgz_asset }}
             dist/${{ steps.asset.outputs.versioned_package_zip_asset }}
+          body_path: ${{ steps.asset.outputs.release_notes_path }}
           generate_release_notes: true
           prerelease: ${{ github.event.inputs.prerelease == true }}
           target_commitish: ${{ github.sha }}

@@ -29,6 +29,8 @@ object Defaults {
     const val USB_SSH_PORT_STR = "2222"
     const val WIRELESS_SSH_PORT = 22
     const val WIRELESS_SSH_PORT_STR = "22"
+    const val PAIRING_PORT = 8765
+    const val PAIRING_PORT_STR = "8765"
     const val SSH_HOST = USB_SSH_HOST
     const val SSH_PORT = USB_SSH_PORT
     const val SSH_PORT_STR = USB_SSH_PORT_STR

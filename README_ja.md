@@ -6,7 +6,7 @@
 
 将軍、家老、足軽、軍師、軍監を `tmux` 上に並べ、YAML queue と release package で運用します。
 
-[![Release](https://img.shields.io/badge/release-v5.2.0.2-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.2)
+[![Release](https://img.shields.io/badge/release-v5.2.0.3-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](README.md) | [日本語](README_ja.md)
@@ -22,8 +22,8 @@
 固定 release package を cURL で入れます。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.2
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3
 ```
 
 起動します。
@@ -95,8 +95,8 @@ cma   # multi-agent view
 導入先を明示する場合:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.2 \
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3 \
       --prefix "$HOME/.shogunate/shogunate" \
       --bin-dir "$HOME/.local/bin"
 ```
@@ -104,14 +104,14 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v
 runtime の展開・更新だけ行い、初回 setup を走らせない場合:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.2 --no-setup
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3 --no-setup
 ```
 
 インストール済み bootstrap から再実行する場合:
 
 ```bash
-shogunate install --version v5.2.0.2 --no-setup
+shogunate install --version v5.2.0.3 --no-setup
 ```
 
 この branch が `main` に載った後の moving latest channel:
@@ -123,7 +123,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 npm wrapper は同じ cURL bootstrap を呼ぶ薄い補助です。
 
 ```bash
-npx @tsukinowarin/shogunate install -- --version v5.2.0.2
+npx @tsukinowarin/shogunate install -- --version v5.2.0.3
 ```
 
 ## Shogunate が動かすもの
@@ -187,14 +187,22 @@ cgn
 release page には公開時に APK を置きます。
 
 ```text
-shogunate-android-v5.2.0.2.apk
+shogunate-android-v5.2.0.3.apk
 ```
 
-Android app は SSH で host runtime へ接続し、既定では将軍 pane を対象にします。source checkout での pairing helper:
+Android app は SSH で host runtime へ接続し、既定では将軍 pane を対象にします。初回セットアップは Shogunate Pair を使います。秘密鍵はスマホ app 内に残し、PC 側は承認した公開鍵だけを登録します。
 
 ```bash
-bash android/tools/setup_android_ssh.sh --pair-usb --yes
-bash android/tools/setup_android_ssh.sh --wireless
+shogunate pair        # USB auto + Tailscale / LAN
+```
+
+その後、Android app で USB を選ぶか Tailscale/LAN IP を入力して、接続を押します。PC terminal に端末名が出るので、確認してから Pair Password prompt に入力すると端末が承認されます。pairing 成功後は Shogunate が resume 起動し、以後は保存済み SSH 鍵で再セットアップなしに接続できます。
+
+source checkout 互換 helper:
+
+```bash
+bash android/tools/setup_android_ssh.sh --pair-usb
+bash android/tools/setup_android_ssh.sh --pair-wireless
 ```
 
 runtime package archive には Android source は含めません。APK は release asset として配布します。

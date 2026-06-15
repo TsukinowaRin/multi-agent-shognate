@@ -6,7 +6,7 @@
 
 Run a Shogun, Karo managers, Ashigaru workers, Gunshi strategist, and Gunkan auditor in visible `tmux` panes, backed by plain YAML queues and release-packaged installers.
 
-[![Release](https://img.shields.io/badge/release-v5.2.0.2-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.2)
+[![Release](https://img.shields.io/badge/release-v5.2.0.3-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](README.md) | [日本語](README_ja.md)
@@ -22,8 +22,8 @@ Run a Shogun, Karo managers, Ashigaru workers, Gunshi strategist, and Gunkan aud
 Install the fixed release package with cURL:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.2
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3
 ```
 
 Start Shogunate:
@@ -95,8 +95,8 @@ cma   # multi-agent view
 Install into explicit directories:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.2 \
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3 \
       --prefix "$HOME/.shogunate/shogunate" \
       --bin-dir "$HOME/.local/bin"
 ```
@@ -104,14 +104,14 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v
 Update or unpack without running setup:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.2/scripts/shogunate_package_bootstrap.sh \
-  | bash -s -- --version v5.2.0.2 --no-setup
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3 --no-setup
 ```
 
 Use the same installed bootstrap later:
 
 ```bash
-shogunate install --version v5.2.0.2 --no-setup
+shogunate install --version v5.2.0.3 --no-setup
 ```
 
 After this branch is published on `main`, the moving latest channel is:
@@ -123,7 +123,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 The npm wrapper calls the same bootstrap:
 
 ```bash
-npx @tsukinowarin/shogunate install -- --version v5.2.0.2
+npx @tsukinowarin/shogunate install -- --version v5.2.0.3
 ```
 
 ## What Shogunate Runs
@@ -187,14 +187,22 @@ cgn
 The release page includes an Android APK when published:
 
 ```text
-shogunate-android-v5.2.0.2.apk
+shogunate-android-v5.2.0.3.apk
 ```
 
-The Android app connects to the host runtime over SSH and targets the Shogun pane by default. For source checkout pairing helpers:
+The Android app connects to the host runtime over SSH and targets the Shogun pane by default. First-time setup uses Shogunate Pair: the app keeps its private key, and the PC registers only the approved public key.
 
 ```bash
-bash android/tools/setup_android_ssh.sh --pair-usb --yes
-bash android/tools/setup_android_ssh.sh --wireless
+shogunate pair        # USB auto + Tailscale / LAN
+```
+
+Then open the Android app, choose USB or enter the Tailscale/LAN IP, and press Connect. The PC terminal shows the device name; approve it by entering the local Pair Password prompt. After pairing succeeds, Shogunate starts in resume mode and later connections use the saved SSH key without re-pairing.
+
+For source checkout compatibility helpers:
+
+```bash
+bash android/tools/setup_android_ssh.sh --pair-usb
+bash android/tools/setup_android_ssh.sh --pair-wireless
 ```
 
 Runtime package archives intentionally do not include Android source; the APK is distributed as a release asset.

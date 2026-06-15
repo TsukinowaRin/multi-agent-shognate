@@ -12,7 +12,7 @@ usage() {
     cat <<'EOF'
 Usage:
   curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
-  curl -fsSL .../shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.2 --prefix ~/.shogunate/shogunate
+  curl -fsSL .../shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3 --prefix ~/.shogunate/shogunate
 
 Options:
   --version TAG    GitHub Release tag to install. Defaults to latest.
@@ -140,12 +140,15 @@ Usage:
   shogunate clean           Clean start
   shogunate resume          Resume start
   shogunate attach          Attach to tmux session shogunate
+  shogunate pair [opts]     Pair Android app over USB auto + Tailscale/LAN
   shogunate configure       Open role/CLI configuration
   shogunate status          Show package update status
   shogunate aliases         Print shell alias setup command
   shogunate install [opts]  Run package bootstrap again
   shogunate help            Show this help
 
+Pair options are forwarded to scripts/shogunate_pair_server.py.
+Set SHOGUNATE_PAIR_PASSWORD to require a fixed local approval password.
 Runtime args are forwarded to Shogunate-Runtime.sh.
 USAGE
 }
@@ -173,6 +176,11 @@ case "\$command_name" in
     attach)
         shift || true
         exec tmux attach -t "\${SHOGUNATE_SESSION_NAME:-shogunate}" "\$@"
+        ;;
+    pair)
+        shift || true
+        cd "\$SHOGUNATE_INSTALL_DIR"
+        exec python3 scripts/shogunate_pair_server.py "\$@"
         ;;
     configure)
         shift || true

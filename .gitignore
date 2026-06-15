@@ -169,6 +169,7 @@
 !scripts/ensure_generated_instructions.sh
 !scripts/prepublish_check.sh
 !scripts/shogunate_package_bootstrap.sh
+!scripts/shogunate_pair_server.py
 !scripts/upstream_sync.sh
 !scripts/update_manager.py
 !scripts/shell_aliases.sh

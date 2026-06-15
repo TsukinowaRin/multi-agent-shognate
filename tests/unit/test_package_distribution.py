@@ -14,6 +14,9 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("first_setup.sh", text)
         self.assertIn("install.bat", text)
         self.assertIn("Shogunate-Uninstaller.bat", text)
+        self.assertIn("shogunate pair", text)
+        self.assertIn("shogunate_pair_server.py", text)
+        self.assertIn("SHOGUNATE_PAIR_PASSWORD", text)
 
     def test_npm_wrapper_points_to_curl_bootstrap(self):
         package = (ROOT / "package.json").read_text(encoding="utf-8")
@@ -21,6 +24,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn('"name": "@tsukinowarin/shogunate"', package)
         self.assertIn('"shogunate": "bin/shogunate.js"', package)
         self.assertIn("shogunate_package_bootstrap.sh", wrapper)
+        self.assertIn("shogunate_pair_server.py", wrapper)
+        self.assertIn("SHOGUNATE_PAIR_PASSWORD", wrapper)
         self.assertIn("curl -fsSL", wrapper)
 
     def test_release_workflow_builds_packages_not_installers_or_apks(self):
@@ -52,6 +57,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         )
         self.assertIn("curl -fsSL", docs)
         self.assertIn("npx @tsukinowarin/shogunate install", docs)
+        self.assertIn("shogunate pair", docs)
         self.assertIn("multi-agent-shognate-package.tar.gz", docs)
         self.assertIn("multi-agent-shognate-package.zip", docs)
         self.assertIn("v5.0.0.0", docs)

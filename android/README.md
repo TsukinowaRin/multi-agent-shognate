@@ -65,14 +65,14 @@ The Android APK follows the Shogunate release version plus a fork/app revision. 
 
 1. Launch the app → **Settings** tab
 2. On the host, run one of:
-   - First-time USB one-touch setup: `bash android/tools/setup_android_ssh.sh --pair` or `--pair-usb`
-   - First-time wireless one-touch setup: `bash android/tools/setup_android_ssh.sh --pair-wireless`
-   - Wireless one-touch setup with a destination: `bash android/tools/setup_android_ssh.sh --pair-wireless --host <DNS-or-URL-or-IP>`
+   - Installed package, USB auto + Tailscale/LAN: `shogunate pair`
+   - Source checkout helper: `bash android/tools/setup_android_ssh.sh --pair` (`--pair-usb` remains a compatibility alias)
+   - Source checkout Tailscale/LAN helper: `bash android/tools/setup_android_ssh.sh --pair-wireless`
    - USB manual value push: `bash android/tools/setup_android_ssh.sh --usb`
    - Wireless candidate display: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: double-click `android/tools/setup_android_ssh.bat`, or run the `.sh` from WSL
-3. One-touch pairing makes the Android app generate its own SSH key in app private storage. The host script reads only the public key and adds it to `authorized_keys`; the private key never leaves the phone.
-4. `--pair-usb` configures `adb reverse` and sets the app to `127.0.0.1:2222`. `--pair-wireless` uses USB debugging only for the first setup message, then configures direct Tailscale/LAN SSH. Wireless pairing prefers the host candidate closest to the phone's current IPv4. Use `--host <DNS-or-URL-or-IP>` or `SHOGUNATE_PAIR_HOST=<DNS-or-URL-or-IP>` to force a specific wireless host.
+3. Shogunate Pair makes the Android app generate its own SSH key in app private storage. The PC receives only the public key and adds it to `authorized_keys` after you confirm the displayed device name and enter the local Pair Password prompt; the private key never leaves the phone.
+4. `shogunate pair` tries USB `adb reverse` and keeps Tailscale/LAN listening at the same time. USB pairing uses Android `127.0.0.1:8765` → pairing server and `127.0.0.1:2222` → host SSH. Tailscale/LAN pairing listens on port `8765`; enter a reachable host IP/DNS in the app and tap **接続**.
 5. The **接続先** field validates DNS names, URLs, Tailscale IPs, and LAN IPs while you type, then normalizes them to the SSH host/port. URL path/query text is ignored; only host and port are used for SSH.
 6. **USB** selects `127.0.0.1:2222`. **無線** restores the previous wireless destination, so enter any reachable Tailscale/LAN/DNS address and tap **接続**. Connecting saves the settings, and the app keeps retrying the same host/port until you change them.
 7. Open **マニュアルモード** only when you need to edit detailed values:
@@ -83,8 +83,8 @@ The Android APK follows the Shogunate release version plus a fork/app revision. 
    - **Project Path**: Server-side path to multi-agent-shogun (e.g., `/mnt/c/tools/multi-agent-shogun`)
    - **Shogun target**: default is `agent:shogun`, which auto-detects the pane with `@agent_id=shogun`
    - **Agents target**: default is `shogunate:goza`
-8. Tap **接続** to save settings and verify SSH, `tmux`, project path, Shogun target, Agents target, and `dashboard.md`.
-9. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only.
+8. Tap **接続**. If SSH is not configured yet, the app sends a pairing request to the PC, saves the returned SSH settings after approval, then retries SSH.
+9. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only. Later connections use the saved SSH key without re-running Shogunate Pair.
 
 ### Prerequisites
 

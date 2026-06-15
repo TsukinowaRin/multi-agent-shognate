@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.shogun.android.ssh.SshManager
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
+import com.shogun.android.util.WirelessPairingClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -100,13 +101,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         agentsTargetInput: String
     ) {
         val trimmedHost = host.trim()
-        val trimmedUser = user.trim()
+        var activeUser = user.trim()
         val port = portText.trim().toIntOrNull()
-        if (trimmedHost.isBlank() || trimmedUser.isBlank() || port == null) {
+        if (trimmedHost.isBlank() || port == null) {
             _connectionTest.value = ConnectionTestState(
                 running = false,
                 success = false,
-                message = "SSHホスト、ポート、ユーザーを確認してください。"
+                message = "SSHホストとポートを確認してください。"
             )
             return
         }
@@ -114,21 +115,72 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             _connectionTest.value = ConnectionTestState(running = true, message = "SSH接続中...")
             val lines = mutableListOf<String>()
-            val sshResult = sshManager.connect(trimmedHost, port, trimmedUser, keyPath.trim(), password)
+            var activeHost = trimmedHost
+            var activePort = port
+            var activeKeyPath = keyPath.trim()
+            var activeProject = projectPath.trim()
+            var activeShogunTargetInput = shogunTargetInput
+            var activeAgentsTargetInput = agentsTargetInput
+
+            var sshResult = if (activeUser.isNotBlank()) {
+                sshManager.connect(activeHost, activePort, activeUser, activeKeyPath, password)
+            } else {
+                Result.failure(IllegalStateException("SSHユーザー未設定"))
+            }
+
             if (sshResult.isFailure) {
                 _connectionTest.value = ConnectionTestState(
-                    running = false,
-                    success = false,
-                    message = "SSH: 失敗\n${sshResult.exceptionOrNull()?.message ?: "不明なエラー"}"
+                    running = true,
+                    message = "SSH未設定または接続失敗。PC側の shogunate pair 承認待ち..."
                 )
-                return@launch
+                val pairResult = WirelessPairingClient.pair(
+                    context = getApplication(),
+                    host = activeHost
+                )
+                if (pairResult.isFailure) {
+                    _connectionTest.value = ConnectionTestState(
+                        running = false,
+                        success = false,
+                        message = "SSH: 失敗\n${sshResult.exceptionOrNull()?.message ?: "不明なエラー"}\n\nPair: 失敗\nPC側で shogunate pair を起動してから再実行してください。\n${pairResult.exceptionOrNull()?.message ?: "不明なエラー"}"
+                    )
+                    return@launch
+                }
+                val paired = pairResult.getOrThrow()
+                activeHost = paired.host
+                activePort = paired.port.toIntOrNull() ?: activePort
+                activeUser = paired.user
+                activeKeyPath = paired.keyPath
+                activeProject = paired.project
+                activeShogunTargetInput = paired.shogunTarget
+                activeAgentsTargetInput = paired.agentsTarget
+                prefs.edit()
+                    .putString(PrefsKeys.SSH_HOST, activeHost)
+                    .putString(PrefsKeys.SSH_PORT, activePort.toString())
+                    .putString(PrefsKeys.SSH_USER, activeUser)
+                    .putString(PrefsKeys.SSH_KEY_PATH, activeKeyPath)
+                    .putString(PrefsKeys.PROJECT_PATH, activeProject)
+                    .putString(PrefsKeys.SHOGUN_SESSION, activeShogunTargetInput)
+                    .putString(PrefsKeys.AGENTS_SESSION, activeAgentsTargetInput)
+                    .apply()
+                lines += "Pair: OK"
+                lines += "Runtime: " + if (paired.runtimeStarted) "起動要求済み" else paired.runtimeMessage.ifBlank { "未起動" }
+                _connectionTest.value = ConnectionTestState(running = true, message = lines.joinToString("\n") + "\nSSH再接続中...")
+                sshResult = sshManager.connect(activeHost, activePort, activeUser, activeKeyPath, "")
+                if (sshResult.isFailure) {
+                    _connectionTest.value = ConnectionTestState(
+                        running = false,
+                        success = false,
+                        message = lines.joinToString("\n") + "\nSSH: 失敗\n${sshResult.exceptionOrNull()?.message ?: "不明なエラー"}"
+                    )
+                    return@launch
+                }
             }
             lines += "接続: OK"
 
             val tmuxOk = remoteOk("command -v tmux >/dev/null 2>&1")
             lines += "tmux: " + if (tmuxOk) "OK" else "見つかりません"
 
-            val trimmedProject = projectPath.trim().trimEnd('/')
+            val trimmedProject = activeProject.trim().trimEnd('/')
             val projectOk = trimmedProject.isNotBlank() && remoteOk("[ -d ${shellQuote(trimmedProject)} ]")
             lines += "Project: " + when {
                 trimmedProject.isBlank() -> "未設定"
@@ -136,10 +188,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 else -> "見つかりません ($trimmedProject)"
             }
 
-            val shogunTarget = Defaults.resolveShogunTarget(shogunTargetInput)
-            val agentsTarget = Defaults.resolveAgentsTarget(agentsTargetInput)
-            val shogunOk = remoteOk(Defaults.shogunTargetExistsCommand(shogunTargetInput))
-            val agentsOk = remoteOk(Defaults.agentsTargetExistsCommand(agentsTargetInput))
+            val shogunTarget = Defaults.resolveShogunTarget(activeShogunTargetInput)
+            val agentsTarget = Defaults.resolveAgentsTarget(activeAgentsTargetInput)
+            val shogunOk = remoteOk(Defaults.shogunTargetExistsCommand(activeShogunTargetInput))
+            val agentsOk = remoteOk(Defaults.agentsTargetExistsCommand(activeAgentsTargetInput))
             lines += "将軍 target: " + if (shogunOk) "OK ($shogunTarget)" else "見つかりません ($shogunTarget)"
             lines += "エージェント target: " + if (agentsOk) "OK ($agentsTarget)" else "見つかりません ($agentsTarget)"
 

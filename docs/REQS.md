@@ -432,7 +432,7 @@
 ### 受け入れ条件（観測可能）
 
 1. `README.md` / `README_ja.md` の冒頭 Quick Start で cURL install が最初に提示される。
-2. `v5.2.0.2` 固定の install command と、将来 main 反映後の moving command の違いが分かる。
+2. `v5.2.0.3` 固定の install command と、将来 main 反映後の moving command の違いが分かる。
 3. `shogunate`, `shogunate resume`, `shogunate configure`, `shogunate status`, `shogunate aliases` が導入後コマンドとして記載される。
 
 ## 追補（2026-06-12: package clean 警告と軍監口調維持）
@@ -457,14 +457,54 @@
 ### 要求
 
 1. `README.md` / `README_ja.md` を package install 前提の導入文書として全面的に書き直す。
-2. 冒頭 Quick Start に、現在の通常 release tag `v5.2.0.2` 固定の cURL install command を明示する。
+2. 冒頭 Quick Start に、現在の通常 release tag `v5.2.0.3` 固定の cURL install command を明示する。
 3. 導入後に使う `shogunate` command、alias、role/CLI 設定、軍監、Android companion、開発 checkout、troubleshooting、release versioning を短く辿れる構成にする。
 4. `-preview` 前提の記述や重複した古い導入導線を README から外す。
 
 ### 受け入れ条件（観測可能）
 
-1. `README.md` / `README_ja.md` の冒頭に `v5.2.0.2` 固定 cURL がある。
+1. `README.md` / `README_ja.md` の冒頭に `v5.2.0.3` 固定 cURL がある。
 2. README 内の導入例は `~/.shogunate/shogunate`、`~/.local/bin/shogunate`、`shogunate clean/resume/configure/status/aliases` を説明する。
 3. README 内に `v5.2.0.1-preview` や古い preview install 導線が残っていない。
 4. README の cURL URL が `scripts/shogunate_package_bootstrap.sh` の実在 path を指している。
 5. `git diff --check` が PASS する。
+
+## 追補（2026-06-15: Android 初回 Shogunate Pair）
+
+### 要求
+
+1. 初回セットアップ時は PC 側で `shogunate pair` を起動し、短時間の pairing 待受を行う。
+2. Android app は USB/Tailscale/LAN の接続先を入力して **接続** を押した時、既存 SSH 鍵や password で接続できない場合、同じ host の pairing server へ app 内生成 SSH 公開鍵を送る。
+3. PC 側 pairing server は端末名、接続元、接続先、公開鍵 fingerprint を表示し、ユーザーが端末名を確認して Pair Password prompt に入力した場合だけ `~/.ssh/authorized_keys` へ公開鍵を追加する。
+4. pairing 成功後、Android app は返却された `host/port/user/project/shogun target/agents target/key path` を保存し、SSH 再接続を試みる。
+5. 以後は保存済み app 内秘密鍵と PC 側 `authorized_keys` により、`shogunate pair` を再実行せず直接 Shogunate に接続できる。
+6. pairing server は秘密鍵や SSH password を扱わず、公開鍵登録だけを行う。Pair Password は PC terminal 上のローカル承認入力としてのみ使い、既存 authorized key の削除や上書きはしない。
+7. `shogunate pair` は USB と Tailscale/LAN の両方で待ち受ける。USB が接続済みなら adb reverse で Android `127.0.0.1:8765` を pairing server、`127.0.0.1:2222` を PC 側 SSH へ転送する。USB が無い場合も Tailscale/LAN の待受は継続する。
+8. `shogunate pair --usb` は廃止し、導入済み package では `shogunate pair` だけを初回セットアップ入口にする。source checkout helper の `--pair-usb` は互換 alias として統合 Pair を起動する。
+9. pairing 成功後、PC 側は best-effort で `Shogunate-Runtime.sh --resume --no-attach` を起動し、Android app はその後の SSH 接続確認へ進む。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate pair` または `python3 scripts/shogunate_pair_server.py` で pairing server が起動し、`/health` と `/pair` を提供する。
+2. Android app の設定画面で USB/Tailscale/LAN 接続先を入れて **接続** を押し、SSH が未設定で失敗した場合、pairing server への自動 pairing を試みる。
+3. PC 側で表示端末名を確認し、Pair Password prompt に入力した時だけ、公開鍵が `~/.ssh/authorized_keys` に重複なく追加される。
+4. pairing response を受けた Android app は SSH key path と接続設定を SharedPreferences に保存し、同じ操作内で SSH 接続確認を再試行する。
+5. `shogunate pair` は USB reverse を自動試行しつつ Tailscale/LAN でも待ち受ける。USB request には Android 側 SSH port `2222`、無線 request には PC 側 SSH port を返す。
+6. `android/tools/setup_android_ssh.sh --pair-usb` は互換 alias として統合 Pair を起動し、Android app の USB 接続先 `127.0.0.1` から同じ pairing flow を使える。
+7. `bash -n scripts/shogunate_package_bootstrap.sh android/tools/setup_android_ssh.sh`、pairing server unit/smoke、Android unit/build、`git diff --check` が PASS する。
+
+## 追補（2026-06-15: Shogunate Pair Android app release）
+
+### 要求
+
+1. `shogunate pair` を USB/無線統合入口にした Android app を release asset として配布する。
+2. Android APK version は `5.2.0.3`、`versionCode` は `52003` にする。
+3. README の固定 cURL / APK 名は `v5.2.0.3` に更新する。
+4. package command の `shogunate help` に `pair` と Pair Password の案内を表示する。
+
+### 受け入れ条件（観測可能）
+
+1. `android/app/build.gradle.kts` の `versionName` が `5.2.0.3`、`versionCode` が `52003`。
+2. `shogunate-android-v5.2.0.3.apk` が GitHub Release asset としてアップロードされる。
+3. `multi-agent-shognate-package.tar.gz` / `.zip` も同じ release tag にアップロードされる。
+4. `shogunate help` に `shogunate pair [opts]` と `SHOGUNATE_PAIR_PASSWORD` が表示される。

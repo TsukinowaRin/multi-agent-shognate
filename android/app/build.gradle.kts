@@ -11,8 +11,8 @@ android {
         applicationId = "com.shogun.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 52002
-        versionName = "5.2.0.2"
+        versionCode = 52003
+        versionName = "5.2.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

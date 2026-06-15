@@ -11,14 +11,17 @@ function usage() {
   console.log(`Usage:
   shogunate install [-- --version v5.0.0.12 --prefix ~/.shogunate/shogunate]
   shogunate run [args...]
+  shogunate pair [args...]
   shogunate --help
 
 Commands:
   install   Run the cURL-based package bootstrap.
   run       Run Shogunate-Runtime.sh from this package checkout.
+  pair      Pair Android app over USB auto + Tailscale/LAN.
 
 The npm package is a thin wrapper. The canonical install path is:
   curl -fsSL ${bootstrapUrl} | bash
+Set SHOGUNATE_PAIR_PASSWORD to require a fixed local approval password.
 `);
 }
 
@@ -54,6 +57,11 @@ if (command === "install") {
 if (command === "run") {
   const root = path.resolve(__dirname, "..");
   run("bash", ["Shogunate-Runtime.sh", ...args], { cwd: root });
+}
+
+if (command === "pair") {
+  const root = path.resolve(__dirname, "..");
+  run("python3", ["scripts/shogunate_pair_server.py", ...args], { cwd: root });
 }
 
 console.error(`Unknown command: ${command}`);

@@ -65,14 +65,14 @@ Android APK は Shogunate 本体のリリースバージョンに fork/app 側�
 
 1. アプリを起動 → **設定** タブ
 2. ホスト側で以下のどれかを実行:
-   - 初回USBワンタッチ: `bash android/tools/setup_android_ssh.sh --pair` または `--pair-usb`
-   - 初回無線ワンタッチ: `bash android/tools/setup_android_ssh.sh --pair-wireless`
-   - 接続先を指定して無線ワンタッチ: `bash android/tools/setup_android_ssh.sh --pair-wireless --host <DNSまたはURLまたはIP>`
+   - package 導入済み、USB auto + Tailscale/LAN: `shogunate pair`
+   - source checkout helper: `bash android/tools/setup_android_ssh.sh --pair`（`--pair-usb` は互換 alias）
+   - source checkout Tailscale/LAN helper: `bash android/tools/setup_android_ssh.sh --pair-wireless`
    - USB手動値送信: `bash android/tools/setup_android_ssh.sh --usb`
    - 無線候補表示: `bash android/tools/setup_android_ssh.sh --wireless`
    - Windows/WSL: `android/tools/setup_android_ssh.bat` をダブルクリック、または WSL から `.sh` を実行
-3. ワンタッチ接続では、Android app が app 内に専用 SSH 鍵を生成し、PC 側スクリプトは公開鍵だけを取得して `authorized_keys` に登録します。秘密鍵はスマホの app private storage から出しません。
-4. `--pair-usb` は `adb reverse` を設定し、Android app を `127.0.0.1:2222` に自動設定します。`--pair-wireless` は初回設定だけ USB デバッグを使い、以後は Tailscale / LAN へ直接 SSH 接続します。無線候補はスマホの現在の IPv4 に近いものを優先します。接続先を固定したい場合は `--host <DNSまたはURLまたはIP>` または `SHOGUNATE_PAIR_HOST=<DNSまたはURLまたはIP>` を付けます。
+3. Shogunate Pair では、Android app が app 内に専用 SSH 鍵を生成します。PC 側は公開鍵だけを受け取り、表示された端末名を確認して Pair Password prompt に入力した場合だけ `authorized_keys` に登録します。秘密鍵はスマホの app private storage から出しません。
+4. `shogunate pair` は USB `adb reverse` を試しながら、同時に Tailscale/LAN でも待ち受けます。USB pairing は Android `127.0.0.1:8765` → pairing server、`127.0.0.1:2222` → host SSH を使います。Tailscale/LAN pairing は port `8765` で待ち受けるため、app 側に到達可能な IP/DNS を入れて **接続** を押します。
 5. 設定画面の **接続先** は入力中に DNS 名、URL、Tailscale IP、LAN IP を SSH 用 host/port へ正規化します。URL の path/query は無視され、host と port だけが SSH 接続に使われます。
 6. **USB** は `127.0.0.1:2222` を選びます。**無線** は前回の無線接続先を復元するため、Tailscale / LAN / DNS のどれでも到達できるアドレスを入れて **接続** を押します。接続すると設定を保存し、設定が変わるまで同じ host/port で再接続を試みます。
 7. 手動で細かく設定したい場合だけ **マニュアルモード** を開きます:
@@ -83,8 +83,8 @@ Android APK は Shogunate 本体のリリースバージョンに fork/app 側�
    - **プロジェクトパス**: サーバー側のmulti-agent-shogunパス（例: `/mnt/c/tools/multi-agent-shogun`）
    - **将軍 target**: 標準は `agent:shogun`。`@agent_id=shogun` の pane を自動検出します。
    - **エージェント target**: 標準は `shogunate:goza`
-8. **接続** を押すと、設定保存後に SSH、`tmux`、project path、将軍 target、エージェント target、`dashboard.md` を確認できます。
-9. 診断が通ったら **将軍** タブに切替 → 将軍 pane のみに自動接続
+8. **接続** を押します。SSH 未設定なら app が PC へ pairing request を送り、承認後に返却された SSH 設定を保存して同じ操作内で再接続します。
+9. 診断が通ったら **将軍** タブに切替 → 将軍 pane のみに自動接続。以後は保存済み SSH 鍵で、Shogunate Pair を再実行せず接続できます。
 
 ### 前提条件
 

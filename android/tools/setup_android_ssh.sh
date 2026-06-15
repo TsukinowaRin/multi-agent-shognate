@@ -18,18 +18,16 @@ Usage:
   bash android/tools/setup_android_ssh.sh [--pair|--pair-usb|--pair-wireless|--usb|--wireless|--auto] [--host <dns-url-or-ip>]
 
 Options:
-  --pair       Same as --pair-usb. Recommended first-time setup.
-  --pair-usb   Use the Android app generated SSH key, authorize it on this host,
-               then configure USB SSH through adb reverse.
+  --pair       Start unified Shogunate Pair.
+  --pair-usb   Compatibility alias for --pair. USB is auto-detected.
   --pair-wireless
-               Use the Android app generated SSH key, authorize it on this host,
-               then configure direct Tailscale/LAN SSH. Requires USB debugging
-               only for pairing.
+               Start Shogunate Pair for direct Tailscale/LAN SSH. No USB is
+               required after the Android app can reach this host.
   --usb        USB debugging + adb reverse for Android -> host SSH.
   --wireless   Print LAN / Tailscale candidates for manual wireless SSH.
-  --host       Destination for --pair-wireless. Accepts DNS name, SSH URL,
-               HTTPS URL, Tailscale IP, or LAN IP. URL paths are ignored.
-  --yes        Skip the pairing confirmation prompt.
+  --host       Kept for compatibility with older helpers. New Shogunate Pair
+               reads the destination from the Android app.
+  --yes        Kept for compatibility. Shogunate Pair always requires Password approval.
   --auto       Use USB when one adb device is visible; otherwise print wireless info.
 
 Environment:
@@ -472,125 +470,34 @@ push_private_key_to_app() {
 
 pair_usb() {
   detect_host_ssh_port
-  require_usb_device
-  confirm_pairing
-
-  local serial safe_serial key_dir key_file key_name app_key_path uri
-  serial="$(adb_single_device_serial)"
-  safe_serial="$(printf '%s' "$serial" | sed 's/[^A-Za-z0-9._-]/_/g')"
-
-  if query_android_pairing_profile; then
-    install_public_key_line "$ANDROID_PAIR_PUBLIC_KEY"
-    "$ADB_BIN" reverse --remove "tcp:${ANDROID_USB_PORT}" >/dev/null 2>&1 || true
-    "$ADB_BIN" reverse "tcp:${ANDROID_USB_PORT}" "tcp:${HOST_SSH_PORT}" >/dev/null
-    echo "[OK] USB reverse を設定しました: Android 127.0.0.1:${ANDROID_USB_PORT} -> host 127.0.0.1:${HOST_SSH_PORT}"
-
-    send_key_setup_to_android "127.0.0.1" "$ANDROID_USB_PORT" "$ANDROID_PAIR_KEY_PATH"
-
-    print_app_values "127.0.0.1" "$ANDROID_USB_PORT"
-    echo "  SSH秘密鍵パス: ${ANDROID_PAIR_KEY_PATH}"
-    echo "  端末: ${ANDROID_PAIR_DEVICE_LABEL:-$safe_serial}"
-    echo "[OK] Android app 内生成鍵の公開鍵をPCへ登録しました。"
-    return 0
-  fi
-
-  echo "[WARN] Android app の pairing provider が見つかりません。debug APK 用の fallback pairing を使います。" >&2
-  key_dir="${ROOT_DIR}/.shogunate/android-ssh"
-  key_name="shogunate_${safe_serial}_rsa"
-  key_file="${key_dir}/${key_name}"
-
-  install -d -m 700 "$key_dir"
-  if [ ! -f "$key_file" ]; then
-    ssh-keygen -q -t rsa -b 4096 -m PEM -N "" -C "shogunate-android-${safe_serial}" -f "$key_file"
-    chmod 600 "$key_file"
-    echo "[OK] Android 専用SSH鍵を作成しました。"
-  else
-    chmod 600 "$key_file"
-    echo "[OK] 既存の Android 専用SSH鍵を再利用します。"
-  fi
-
-  install_public_key "${key_file}.pub"
-  app_key_path="$(push_private_key_to_app "$key_file" "$key_name" "$safe_serial")"
-  echo "[OK] 秘密鍵を Android app 専用領域へ転送しました。"
-
-  "$ADB_BIN" reverse --remove "tcp:${ANDROID_USB_PORT}" >/dev/null 2>&1 || true
-  "$ADB_BIN" reverse "tcp:${ANDROID_USB_PORT}" "tcp:${HOST_SSH_PORT}" >/dev/null
-  echo "[OK] USB reverse を設定しました: Android 127.0.0.1:${ANDROID_USB_PORT} -> host 127.0.0.1:${HOST_SSH_PORT}"
-
-  uri="$(setup_uri "127.0.0.1" "$ANDROID_USB_PORT" "$app_key_path")"
-  if "$ADB_BIN" shell "am start -a android.intent.action.VIEW -d $(remote_shell_quote "$uri") -p com.shogun.android" >/dev/null 2>&1; then
-    echo "[OK] Android app に鍵認証つき接続設定を送信しました。"
-  else
-    echo "[WARN] Android app への自動設定送信に失敗しました。次の URI をアプリ設定画面で取り込んでください。" >&2
-    echo "  $uri"
-  fi
-
-  local verify_key
-  verify_key="$(mktemp)"
-  cp "$key_file" "$verify_key"
-  chmod 600 "$verify_key"
-  if ssh -i "$verify_key" -p "$HOST_SSH_PORT" -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$SSH_USER@127.0.0.1" "echo shogunate_pair_ok" 2>/dev/null | grep -q shogunate_pair_ok; then
-    echo "[OK] ホスト側 SSH 鍵認証を確認しました。"
-  else
-    echo "[WARN] ホスト側 SSH 鍵認証の確認に失敗しました。sshd / authorized_keys / user を確認してください。" >&2
-  fi
-  rm -f "$verify_key"
-
-  print_app_values "127.0.0.1" "$ANDROID_USB_PORT"
-  echo "  SSH秘密鍵パス: ${app_key_path}"
+  echo "[PAIRING] Android app で USB を選ぶか Tailscale/LAN IP を入力し、接続を押してください。"
+  echo "[PAIRING] USB が接続されていれば自動で adb reverse を設定します。"
+  echo "[PAIRING] PC 側に表示される端末名を確認し、Password を入力すると公開鍵が登録されます。"
+  exec python3 "$ROOT_DIR/scripts/shogunate_pair_server.py" \
+    --adb "$ADB_BIN" \
+    --ssh-port "$HOST_SSH_PORT" \
+    --usb-ssh-port "$ANDROID_USB_PORT" \
+    --project-root "$PROJECT_PATH" \
+    --user "$SSH_USER"
 }
 
 pair_wireless() {
   detect_host_ssh_port
-  require_usb_device
-  confirm_pairing
-
-  local candidates selected_host normalized override_port
+  local candidates
   candidates="$(wireless_candidate_hosts)"
-
-  if [ -n "$PAIR_HOST_OVERRIDE" ]; then
-    if ! normalized="$(normalize_endpoint "$PAIR_HOST_OVERRIDE")"; then
-      echo "[ERROR] --host / SHOGUNATE_PAIR_HOST の接続先を解釈できません: $PAIR_HOST_OVERRIDE" >&2
-      exit 1
-    fi
-    selected_host="$(printf '%s\n' "$normalized" | sed -n '1p')"
-    override_port="$(printf '%s\n' "$normalized" | sed -n '2p')"
-    if [ -n "$override_port" ]; then
-      HOST_SSH_PORT="$override_port"
-    fi
+  echo "[Wireless pairing candidates]"
+  if [ -n "$candidates" ]; then
+    printf '%s\n' "$candidates" | sed 's/^/  /'
   else
-    selected_host="$(select_wireless_host "$candidates")"
-  fi
-
-  if [ -z "$selected_host" ]; then
-    echo "[ERROR] Tailscale / LAN IP 候補を検出できませんでした。--wireless で確認してください。" >&2
-    exit 1
-  fi
-
-  if ! query_android_pairing_profile; then
-    echo "[ERROR] Android app の pairing provider が見つかりません。最新APKをインストールしてください。" >&2
-    exit 1
-  fi
-
-  install_public_key_line "$ANDROID_PAIR_PUBLIC_KEY"
-  send_key_setup_to_android "$selected_host" "$HOST_SSH_PORT" "$ANDROID_PAIR_KEY_PATH"
-
-  print_app_values "$selected_host" "$HOST_SSH_PORT"
-  echo "  SSH秘密鍵パス: ${ANDROID_PAIR_KEY_PATH}"
-  echo "  端末: ${ANDROID_PAIR_DEVICE_LABEL:-$(adb_single_device_serial)}"
-  if [ -n "$PAIR_HOST_OVERRIDE" ]; then
-    echo "  接続先選択: user input (${PAIR_HOST_OVERRIDE})"
-  else
-    echo "  接続先選択: Android端末の現在のIPv4に近い候補を優先"
+    echo "  IP候補を自動検出できませんでした。Tailscale/LAN IP を Android app に手入力してください。"
   fi
   echo
-  echo "[Setup URI candidates]"
-  while IFS= read -r candidate; do
-    [ -n "$candidate" ] || continue
-    print_setup_uri_block "$candidate" "$HOST_SSH_PORT" "$ANDROID_PAIR_KEY_PATH"
-  done <<CANDIDATES
-$candidates
-CANDIDATES
+  echo "[PAIRING] Android app で Tailscale/LAN IP を入力し、接続を押してください。"
+  echo "[PAIRING] PC 側に表示される端末名を確認し、Password を入力すると公開鍵が登録されます。"
+  exec python3 "$ROOT_DIR/scripts/shogunate_pair_server.py" \
+    --ssh-port "$HOST_SSH_PORT" \
+    --project-root "$PROJECT_PATH" \
+    --user "$SSH_USER"
 }
 
 print_wireless_candidates() {

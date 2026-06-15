@@ -13,20 +13,16 @@
 
 </div>
 
-<p align="center">
-  <img src="images/screenshots/hero/latest-translucent-20260210-190453.png" alt="Shogunate tmux runtime" width="940">
-</p>
+## cURLでインストール
 
-## クイックスタート
-
-固定 release package を cURL で入れます。
+まず、このコマンドをコピーして現在の固定 release を入れます。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
   | bash -s -- --version v5.2.0.3
 ```
 
-起動します。
+その後、起動します。
 
 ```bash
 shogunate

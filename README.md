@@ -13,20 +13,16 @@ Run a Shogun, Karo managers, Ashigaru workers, Gunshi strategist, and Gunkan aud
 
 </div>
 
-<p align="center">
-  <img src="images/screenshots/hero/latest-translucent-20260210-190453.png" alt="Shogunate tmux runtime" width="940">
-</p>
+## Install With cURL
 
-## Quick Start
-
-Install the fixed release package with cURL:
+Copy this command to install the current fixed release:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
   | bash -s -- --version v5.2.0.3
 ```
 
-Start Shogunate:
+Then start Shogunate:
 
 ```bash
 shogunate

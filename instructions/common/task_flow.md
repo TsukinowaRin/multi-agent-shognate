@@ -53,6 +53,28 @@ Cross-reference with dashboard.md — process any reports not yet reflected.
 
 **Why**: Ashigaru inbox messages may be delayed. Report files are already written and scannable as a safety net.
 
+### Karo Report Wake Scope
+
+When the wakeup reason is `report_received`, keep the read scope narrow:
+
+1. relevant report YAML
+2. parent cmd in `queue/shogun_to_karo.yaml`
+3. `dashboard.md`
+
+Do not wander into bridge scripts, relay state TSVs, notification helpers, `streaks.yaml`, `*.sample`, or unrelated docs unless completion genuinely fails. The goal of a report wakeup is closure, not exploration.
+
+### Implementation Cmd Closure Rule
+
+For implementation or file-generation work, "report says tests passed" is not enough.
+
+Karo must:
+
+1. read `result.verification.command` and `result.verification.cwd`
+2. rerun that command from that directory
+3. close the cmd only if the rerun actually succeeds
+
+If the report has modified code/files but lacks reproducible verification metadata, treat it as incomplete and send it back instead of closing.
+
 ## Foreground Block Prevention (24-min Freeze Lesson)
 
 **Karo blocking = entire army halts.** On 2026-02-06, foreground `sleep` during delivery checks froze karo for 24 minutes.

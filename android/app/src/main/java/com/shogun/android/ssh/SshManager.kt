@@ -6,13 +6,12 @@ import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelSftp
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.Session
-import com.jcraft.jsch.UIKeyboardInteractive
-import com.jcraft.jsch.UserInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import com.shogun.android.util.AppLogger
+import java.io.File
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -42,7 +41,13 @@ class SshManager private constructor() {
     private var lastKeyPath = ""
     private var lastPassword = ""
 
+    private fun clearReconnectSecret() {
+        lastPassword = ""
+    }
+
     var disconnectCallback: (() -> Unit)? = null
+    private val hasReconnectTarget: Boolean
+        get() = lastHost.isNotBlank() && lastUser.isNotBlank()
 
     suspend fun connect(
         host: String,
@@ -56,74 +61,56 @@ class SshManager private constructor() {
         if (onDisconnect != null) disconnectCallback = onDisconnect
 
         sshMutex.withLock {
-            if (isConnectedInternal()) {
-                AppLogger.log("SSH", "Already connected, skipping")
-                return@withContext Result.success(Unit)
-            }
-
-            AppLogger.log("SSH", "Connecting to $host:$port user=$user key=${privateKeyPath.takeLast(20)}")
             lastHost = host
             lastPort = port
             lastUser = user
-            lastKeyPath = privateKeyPath
+            lastKeyPath = privateKeyPath.trim()
             lastPassword = password
+
+            val existing = session
+            if (existing?.isConnected == true) {
+                val probe = execCommandInternal(existing, "echo ssh_alive")
+                if (probe.isSuccess && probe.getOrDefault("").trim() == "ssh_alive") {
+                    AppLogger.log("SSH", "Existing session verified")
+                    return@withContext Result.success(Unit)
+                }
+                AppLogger.log("SSH", "Existing session stale, reconnecting: ${probe.exceptionOrNull()?.message}")
+                existing.disconnect()
+                session = null
+            }
+
+            AppLogger.log("SSH", "Connecting to $host:$port user=$user key=${privateKeyPath.takeLast(20)}")
             connectInternal()
         }
     }
 
     private fun connectInternal(): Result<Unit> {
-        val trimmedKeyPath = lastKeyPath.trim()
-        val primaryMode = if (trimmedKeyPath.isNotBlank()) "publickey" else "password"
-        val primary = connectInternalOnce(usePublicKey = trimmedKeyPath.isNotBlank())
-        if (primary.isSuccess) return Result.success(Unit)
-
-        val primaryError = primary.exceptionOrNull()
-        val canRetryWithPassword = trimmedKeyPath.isNotBlank() && lastPassword.trim().isNotEmpty()
-        if (!canRetryWithPassword) {
-            AppLogger.log("SSH", "Connect FAILED (mode=$primaryMode): ${primaryError?.message}")
-            return Result.failure(Exception("SSH接続失敗 (${primaryMode}, pw=${lastPassword.trim().length}文字): ${primaryError?.message}", primaryError))
-        }
-
-        AppLogger.log("SSH", "Publickey auth failed, retrying with password auth")
-        val fallback = connectInternalOnce(usePublicKey = false)
-        if (fallback.isSuccess) {
-            AppLogger.log("SSH", "Password fallback succeeded after publickey failure")
-            return Result.success(Unit)
-        }
-
-        val fallbackError = fallback.exceptionOrNull()
-        AppLogger.log("SSH", "Connect FAILED after fallback: ${fallbackError?.message}")
-        return Result.failure(
-            Exception(
-                "SSH接続失敗 (鍵→パスワード再試行済み, pw=${lastPassword.trim().length}文字): ${fallbackError?.message}",
-                fallbackError
-            )
-        )
-    }
-
-    private fun connectInternalOnce(usePublicKey: Boolean): Result<Unit> {
         return try {
             val trimmedPassword = lastPassword.trim()
-            val trimmedKeyPath = lastKeyPath.trim()
             val jsch = JSch()
-            if (usePublicKey && trimmedKeyPath.isNotBlank()) {
-                jsch.addIdentity(trimmedKeyPath)
+            val privateKeyIdentity = loadPrivateKeyIdentity()
+            if (privateKeyIdentity != null) {
+                val (identityName, privateKeyBytes) = privateKeyIdentity
+                val passphraseBytes = trimmedPassword.takeIf { it.isNotEmpty() }?.toByteArray()
+                jsch.addIdentity(identityName, privateKeyBytes, null, passphraseBytes)
             }
             val newSession = jsch.getSession(lastUser, lastHost, lastPort)
             val config = Properties()
             config["StrictHostKeyChecking"] = "no"
             config["MaxAuthTries"] = "2"
-            config["PreferredAuthentications"] = if (usePublicKey) {
-                "publickey"
+            config["ServerAliveInterval"] = "15"
+            config["ServerAliveCountMax"] = "2"
+            if (privateKeyIdentity != null) {
+                config["PreferredAuthentications"] = "publickey"
             } else {
-                "keyboard-interactive,password"
+                config["PreferredAuthentications"] = "keyboard-interactive,password"
             }
             newSession.setConfig(config)
-            if (!usePublicKey && trimmedPassword.isNotEmpty()) {
+            if (privateKeyIdentity == null && trimmedPassword.isNotEmpty()) {
                 newSession.setPassword(trimmedPassword)
             }
             var passwordAttempted = false
-            val userInfo = object : UserInfo, UIKeyboardInteractive {
+            val userInfo = object : com.jcraft.jsch.UserInfo {
                 override fun getPassword(): String = trimmedPassword
                 override fun promptPassword(message: String): Boolean {
                     if (passwordAttempted) return false
@@ -134,31 +121,29 @@ class SshManager private constructor() {
                 override fun getPassphrase(): String = ""
                 override fun promptYesNo(message: String): Boolean = true
                 override fun showMessage(message: String) {}
-                override fun promptKeyboardInteractive(
-                    destination: String?,
-                    name: String?,
-                    instruction: String?,
-                    prompt: Array<out String>?,
-                    echo: BooleanArray?
-                ): Array<String>? {
-                    if (trimmedPassword.isEmpty()) return null
-                    if (prompt.isNullOrEmpty()) return arrayOf(trimmedPassword)
-                    return Array(prompt.size) { trimmedPassword }
-                }
             }
             newSession.userInfo = userInfo
+            // No aggressive keepalive — Tailscale VPN delays cause false disconnects
+            // Disconnect detection handled by exec retry logic instead
             newSession.connect(10000)
             session = newSession
+            // Verify exec channel works immediately after connect
             val testResult = execCommandInternal(newSession, "echo ssh_exec_ok")
             if (testResult.isSuccess) {
                 val out = testResult.getOrDefault("").trim()
-                AppLogger.log("SSH", "Connected OK (mode=${if (usePublicKey) "publickey" else "password"}, exec verified: $out)")
+                AppLogger.log("SSH", "Connected OK (exec verified: $out)")
             } else {
                 AppLogger.log("SSH", "Connected but exec FAILED: ${testResult.exceptionOrNull()?.message}")
             }
-            Result.success(Unit)
+            Result.success(Unit).also {
+                if (trimmedPassword.isEmpty()) {
+                    clearReconnectSecret()
+                }
+            }
         } catch (e: Exception) {
-            Result.failure(e)
+            clearReconnectSecret()
+            AppLogger.log("SSH", "Connect FAILED: ${e.message}")
+            Result.failure(Exception("SSH接続失敗: ${e.message}", e))
         }
     }
 
@@ -177,6 +162,7 @@ class SshManager private constructor() {
                 AppLogger.log("SSH", "exec: session dead, reconnecting...")
                 val reconn = reconnectLocked()
                 if (reconn.isFailure) {
+                    clearReconnectSecret()
                     disconnectCallback?.invoke()
                     return@withContext Result.failure(IllegalStateException("SSH not connected"))
                 }
@@ -192,10 +178,10 @@ class SshManager private constructor() {
                 return@withContext result
             }
 
-            // Session died mid-exec — reconnect and retry once
-            val errorMsg = result.exceptionOrNull()?.message ?: ""
-            if (errorMsg.contains("channel is not opened") || errorMsg.contains("session is down")) {
-                AppLogger.log("SSH", "exec failed (session dead), auto-reconnecting...")
+            // Sleep / VPN / Wi-Fi transitions often leave JSch sessions half-open.
+            // Any exec exception here is treated as a transport failure and retried once.
+            if (hasReconnectTarget) {
+                AppLogger.log("SSH", "exec failed, auto-reconnecting: ${result.exceptionOrNull()?.message}")
                 val reconn = reconnectLocked()
                 if (reconn.isSuccess) {
                     val retrySession = session
@@ -204,6 +190,7 @@ class SshManager private constructor() {
                         return@withContext execCommandInternal(retrySession, cmd)
                     }
                 }
+                clearReconnectSecret()
                 disconnectCallback?.invoke()
             }
 
@@ -216,6 +203,9 @@ class SshManager private constructor() {
      * No synchronization needed — caller holds the mutex.
      */
     private fun reconnectLocked(): Result<Unit> {
+        if (!hasReconnectTarget) {
+            return Result.failure(IllegalStateException("SSH reconnect target is not configured"))
+        }
         AppLogger.log("SSH", "reconnectLocked: disconnecting old session...")
         session?.disconnect()
         session = null
@@ -234,16 +224,45 @@ class SshManager private constructor() {
             val channel = s.openChannel("exec") as ChannelExec
             channel.setCommand(cmd)
             val inputStream = channel.inputStream
+            val errStream = channel.errStream
             channel.connect(5000)
             val baos = ByteArrayOutputStream()
+            val errBaos = ByteArrayOutputStream()
             val buffer = ByteArray(4096)
-            while (true) {
-                val n = inputStream.read(buffer)
+            val deadlineMs = System.currentTimeMillis() + 15000
+            while (!channel.isClosed || inputStream.available() > 0 || errStream.available() > 0) {
+                while (inputStream.available() > 0) {
+                    val n = inputStream.read(buffer, 0, minOf(buffer.size, inputStream.available()))
+                    if (n < 0) break
+                    baos.write(buffer, 0, n)
+                }
+                while (errStream.available() > 0) {
+                    val n = errStream.read(buffer, 0, minOf(buffer.size, errStream.available()))
+                    if (n < 0) break
+                    errBaos.write(buffer, 0, n)
+                }
+                if (System.currentTimeMillis() > deadlineMs) {
+                    channel.disconnect()
+                    throw java.net.SocketTimeoutException("SSH exec timed out after 15s")
+                }
+                Thread.sleep(25)
+            }
+            while (inputStream.available() > 0) {
+                val n = inputStream.read(buffer, 0, minOf(buffer.size, inputStream.available()))
                 if (n < 0) break
                 baos.write(buffer, 0, n)
             }
+            while (errStream.available() > 0) {
+                val n = errStream.read(buffer, 0, minOf(buffer.size, errStream.available()))
+                if (n < 0) break
+                errBaos.write(buffer, 0, n)
+            }
             channel.disconnect()
             val out = baos.toString("UTF-8")
+            val err = errBaos.toString("UTF-8")
+            if (err.isNotBlank()) {
+                AppLogger.log("SSH", "exec STDERR (${err.length}ch): ${err.take(200)}")
+            }
             AppLogger.log("SSH", "exec OK (${out.length}ch): $shortCmd")
             Result.success(out)
         } catch (e: Exception) {
@@ -269,8 +288,19 @@ class SshManager private constructor() {
                 }
                 if (attempt < maxAttempts - 1) Thread.sleep(delayMs)
             }
-            Result.failure(lastError ?: Exception("再接続失敗（${maxAttempts}回試行）"))
+            Result.failure<Unit>(lastError ?: Exception("再接続失敗（${maxAttempts}回試行）")).also {
+                clearReconnectSecret()
+            }
         }
+
+    private fun loadPrivateKeyIdentity(): Pair<String, ByteArray>? {
+        val keyPath = lastKeyPath.trim()
+        if (keyPath.isBlank()) return null
+
+        val keyFile = File(keyPath)
+        require(keyFile.isFile) { "SSH秘密鍵が見つかりませぬ: $keyPath" }
+        return keyPath to keyFile.readBytes()
+    }
 
     suspend fun uploadScreenshot(context: Context, imageUri: Uri, projectPath: String = ""): Result<String> =
         withContext(Dispatchers.IO) {
@@ -306,5 +336,6 @@ class SshManager private constructor() {
         AppLogger.log("SSH", "disconnect() called")
         session?.disconnect()
         session = null
+        clearReconnectSecret()
     }
 }

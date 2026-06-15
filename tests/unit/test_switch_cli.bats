@@ -84,7 +84,7 @@ load_send_exit() {
                 sleep 0.3
                 tmux send-keys -t "$pane" Enter 2>/dev/null || true
                 ;;
-            gemini|opencode|kilo)
+            antigravity|gemini|opencode|kilo)
                 tmux send-keys -t "$pane" C-c 2>/dev/null || true
                 sleep 0.5
                 ;;
@@ -248,7 +248,7 @@ PYEOF
     source "${PROJECT_ROOT}/lib/cli_adapter.sh"
 
     result=$(build_cli_command "ashigaru1")
-    [[ "$result" == MAX_THINKING_TOKENS=0* ]]
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=ashigaru1"* ]]
 }
 
 # =============================================================================
@@ -278,18 +278,19 @@ PYEOF
     [ "$status" -ne 0 ]
 }
 
-@test "switch_cli.sh --help に gemini / opencode / kilo / localapi が出る" {
+@test "switch_cli.sh --help に antigravity / opencode / kilo / localapi が出る" {
     run bash "${PROJECT_ROOT}/scripts/switch_cli.sh" --help
     [ "$status" -eq 1 ]
-    [[ "$output" == *"gemini"* ]]
+    [[ "$output" == *"antigravity"* ]]
     [[ "$output" == *"opencode"* ]]
     [[ "$output" == *"kilo"* ]]
     [[ "$output" == *"localapi"* ]]
+    [[ "$output" == *"--variant"* ]]
 }
 
-@test "send_exit: gemini は Ctrl-C のみ送る" {
+@test "send_exit: antigravity は Ctrl-C のみ送る" {
     load_send_exit
-    send_exit "multiagent:agents.1" "gemini"
+    send_exit "multiagent:agents.1" "antigravity"
     grep -q "send-keys -t multiagent:agents.1 C-c" "$TMUX_LOG"
     ! grep -q "/exit" "$TMUX_LOG"
 }

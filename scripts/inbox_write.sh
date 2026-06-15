@@ -1,15 +1,15 @@
 #!/bin/bash
 # inbox_write.sh — メールボックスへのメッセージ書き込み（排他ロック付き）
-# Usage: bash scripts/inbox_write.sh <target_agent> <content> [type] [from]
+# Usage: bash scripts/inbox_write.sh <target_agent> <content> <type> <from>
 # Example: bash scripts/inbox_write.sh karo "足軽5号、任務完了" report_received ashigaru5
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET="$1"
-CONTENT="$2"
-TYPE="${3:-wake_up}"
-FROM="${4:-unknown}"
+TARGET="${1:-}"
+CONTENT="${2:-}"
+TYPE="${3:-}"
+FROM="${4:-}"
 OWNER_MAP="$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
 
 INBOX="$SCRIPT_DIR/queue/inbox/${TARGET}.yaml"
@@ -17,8 +17,14 @@ LOCKFILE="${INBOX}.lock"
 INBOX_DIR="$(dirname "$INBOX")"
 
 # Validate arguments
-if [ -z "$TARGET" ] || [ -z "$CONTENT" ]; then
-    echo "Usage: inbox_write.sh <target_agent> <content> [type] [from]" >&2
+if [ -z "$TARGET" ] || [ -z "$CONTENT" ] || [ -z "$TYPE" ] || [ -z "$FROM" ]; then
+    echo "Usage: inbox_write.sh <target_agent> <content> <type> <from>" >&2
+    exit 1
+fi
+
+# Self-send guard: reject messages where sender == target.
+if [ "$FROM" = "$TARGET" ]; then
+    echo "[inbox_write] REJECTED: self-send detected (from=$FROM, target=$TARGET)" >&2
     exit 1
 fi
 
@@ -40,10 +46,16 @@ lookup_owner_karo() {
 
 validate_route_policy() {
     local owner=""
-    # 家老同士の直接通信は禁止（自己宛は許可）
+    # 家老同士の自由な直接通信は禁止。構造化 coordination board の wake-up notice だけ許可。
     if is_karo_agent "$FROM" && is_karo_agent "$TARGET" && [ "$FROM" != "$TARGET" ]; then
-        echo "[inbox_write] route rejected: karo-to-karo direct communication is forbidden ($FROM -> $TARGET)" >&2
-        return 1
+        case "$TYPE" in
+            coordination_notice|dependency_notice|conflict_notice|handoff_request|merge_request|status_sync)
+                ;;
+            *)
+                echo "[inbox_write] route rejected: karo-to-karo free direct communication is forbidden ($FROM -> $TARGET, type=$TYPE). Use queue/runtime/karo_coordination.yaml plus coordination_notice." >&2
+                return 1
+                ;;
+        esac
     fi
 
     # 足軽→家老は担当固定（owner map がある場合）
@@ -75,72 +87,110 @@ if [ ! -f "$INBOX" ]; then
     echo "messages: []" > "$INBOX"
 fi
 
-# Generate unique message ID (timestamp-based)
-MSG_ID="msg_$(date +%Y%m%d_%H%M%S)_$(head -c 4 /dev/urandom | xxd -p)"
+# Generate unique message ID (timestamp + 4 random bytes).
+# Use od instead of xxd because od is available on GNU/Linux and macOS runners.
+MSG_ID="msg_$(date +%Y%m%d_%H%M%S)_$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
 TIMESTAMP=$(date "+%Y-%m-%dT%H:%M:%S")
 
-# Atomic write with flock (3 retries)
-attempt=0
-max_attempts=3
+write_inbox_message() {
+    # Add message via python3 (unified YAML handling)
+    python3 - "$INBOX" "$MSG_ID" "$FROM" "$TIMESTAMP" "$TYPE" "$CONTENT" <<'PY'
+import os
+import sys
+import tempfile
 
-while [ $attempt -lt $max_attempts ]; do
-    if (
-        flock -w 5 200 || exit 1
+import yaml
 
-        # Add message via python3 (unified YAML handling)
-        python3 -c "
-import yaml, sys
+inbox_path, msg_id, msg_from, timestamp, msg_type, content = sys.argv[1:]
 
 try:
     # Load existing inbox
-    with open('$INBOX') as f:
+    with open(inbox_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     # Initialize if needed
     if not data:
         data = {}
-    if not data.get('messages'):
-        data['messages'] = []
+    if not data.get("messages"):
+        data["messages"] = []
 
     # Add new message
     new_msg = {
-        'id': '$MSG_ID',
-        'from': '$FROM',
-        'timestamp': '$TIMESTAMP',
-        'type': '$TYPE',
-        'content': '''$CONTENT''',
-        'read': False
+        "id": msg_id,
+        "from": msg_from,
+        "timestamp": timestamp,
+        "type": msg_type,
+        "content": content,
+        "read": False,
     }
-    data['messages'].append(new_msg)
+    data["messages"].append(new_msg)
 
     # Overflow protection: keep max 50 messages
-    if len(data['messages']) > 50:
-        msgs = data['messages']
-        unread = [m for m in msgs if not m.get('read', False)]
-        read = [m for m in msgs if m.get('read', False)]
+    if len(data["messages"]) > 50:
+        msgs = data["messages"]
+        unread = [m for m in msgs if not m.get("read", False)]
+        read = [m for m in msgs if m.get("read", False)]
         # Keep all unread + newest 30 read messages
-        data['messages'] = unread + read[-30:]
+        data["messages"] = unread + read[-30:]
 
     # Atomic write: tmp file + rename (prevents partial reads)
-    import tempfile, os
-    tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname('$INBOX'), suffix='.tmp')
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(inbox_path), suffix=".tmp")
     try:
-        with os.fdopen(tmp_fd, 'w') as f:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, allow_unicode=True, indent=2)
-        os.replace(tmp_path, '$INBOX')
-    except:
+        os.replace(tmp_path, inbox_path)
+    except Exception:
         os.unlink(tmp_path)
         raise
 
 except Exception as e:
-    print(f'ERROR: {e}', file=sys.stderr)
+    print(f"ERROR: {e}", file=sys.stderr)
     sys.exit(1)
-" || exit 1
+PY
+}
 
-    ) 200>"$LOCKFILE"; then
+write_with_lock() {
+    if command -v flock >/dev/null 2>&1; then
+        (
+            flock -w 5 200 || exit 1
+            write_inbox_message
+        ) 200>"$LOCKFILE"
+        return $?
+    fi
+
+    # macOS does not provide flock by default. mkdir is atomic on local
+    # filesystems, so use a lock directory as the portable fallback.
+    local lockdir="${LOCKFILE}.d"
+    local status=0
+    local lock_attempt=0
+    while ! mkdir "$lockdir" 2>/dev/null; do
+        lock_attempt=$((lock_attempt + 1))
+        [ "$lock_attempt" -lt 50 ] || return 1
+        sleep 0.1
+    done
+    write_inbox_message || status=$?
+    rmdir "$lockdir" 2>/dev/null || true
+    return "$status"
+}
+
+# Atomic write with lock (3 retries)
+attempt=0
+max_attempts=3
+
+while [ $attempt -lt $max_attempts ]; do
+    if write_with_lock; then
         # Success
         if [ -x "$SCRIPT_DIR/scripts/history_book.sh" ]; then
             bash "$SCRIPT_DIR/scripts/history_book.sh" >/dev/null 2>&1 || true
+        fi
+        if [ -f "$SCRIPT_DIR/scripts/gunkan_event_log.py" ] && command -v python3 >/dev/null 2>&1; then
+            python3 "$SCRIPT_DIR/scripts/gunkan_event_log.py" \
+                --target "$TARGET" \
+                --from-agent "$FROM" \
+                --type "$TYPE" \
+                --content "$CONTENT" \
+                --message-id "$MSG_ID" \
+                --timestamp "$TIMESTAMP" >/dev/null 2>&1 || true
         fi
         exit 0
     else

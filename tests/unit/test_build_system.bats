@@ -55,6 +55,17 @@ setup() {
     [ "$count" -ge 6 ]
 }
 
+@test "build: OpenCode agent definitions are generated" {
+    [ -f "$PROJECT_ROOT/.opencode/agents/shogun.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/gunkan.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/karo.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/karo2.md" ]
+    [ -f "$PROJECT_ROOT/.opencode/agents/ashigaru8.md" ]
+    grep -q "mode: primary" "$PROJECT_ROOT/.opencode/agents/shogun.md"
+    grep -q "Canonical agent_id: \`gunkan\`" "$PROJECT_ROOT/.opencode/agents/gunkan.md"
+    grep -q "Canonical agent_id: \`ashigaru8\`" "$PROJECT_ROOT/.opencode/agents/ashigaru8.md"
+}
+
 # =============================================================================
 # ファイル生成テスト — Claude
 # =============================================================================
@@ -71,6 +82,10 @@ setup() {
     [ -f "$OUTPUT_DIR/ashigaru.md" ]
 }
 
+@test "claude: gunkan.md generated" {
+    [ -f "$OUTPUT_DIR/gunkan.md" ]
+}
+
 # =============================================================================
 # ファイル生成テスト — Codex
 # =============================================================================
@@ -85,6 +100,10 @@ setup() {
 
 @test "codex: codex-ashigaru.md generated" {
     [ -f "$OUTPUT_DIR/codex-ashigaru.md" ]
+}
+
+@test "codex: codex-gunkan.md generated" {
+    [ -f "$OUTPUT_DIR/codex-gunkan.md" ]
 }
 
 # =============================================================================
@@ -155,9 +174,20 @@ setup() {
     grep -qi "karo\|家老" "$OUTPUT_DIR/codex-karo.md"
 }
 
+@test "content: codex-karo.md requires task_assigned to name task_id and queue/tasks path" {
+    grep -q "task_id" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "queue/tasks/ashigaru1.yaml" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Bad:" "$OUTPUT_DIR/codex-karo.md"
+}
+
 @test "content: codex-karo.md uses active_ashigaru as force roster" {
     grep -q "topology.active_ashigaru" "$OUTPUT_DIR/codex-karo.md"
     grep -q "If only \`ashigaru1\` and \`ashigaru2\` are active, then the force size is two" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md documents lead karo and coordination board" {
+    grep -q "queue/runtime/lead_karo" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "queue/runtime/karo_coordination.yaml" "$OUTPUT_DIR/codex-karo.md"
 }
 
 @test "content: codex-karo.md does not hardcode ashigaru1-4/5-8 lanes" {
@@ -170,8 +200,138 @@ setup() {
     grep -q "If only \`ashigaru1\` and \`ashigaru2\` are active, then \"all ashigaru\" means those two" "$OUTPUT_DIR/codex-shogun.md"
 }
 
+@test "content: codex-shogun.md enforces event-driven dispatch and cmd_done wakeups" {
+    grep -q "event-driven dispatcher" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "\`type: cmd_done\`" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "\`type: runtime_blocked\`" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "No \`sleep\`, no background monitor, no periodic re-check while idle" "$OUTPUT_DIR/codex-shogun.md"
+}
+
+@test "content: codex-shogun.md keeps task_assigned on dispatch fast path only" {
+    grep -q "Read only the minimum routing sources needed to create the cmd" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Do \*\*not\*\* open implementation targets such as \`app.py\`, test files, README files" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Do \*\*not\*\* run project tests, \`git status\`, or codebase-wide searches" "$OUTPUT_DIR/codex-shogun.md"
+}
+
 @test "content: codex-ashigaru.md contains ashigaru role reference" {
     grep -qi "ashigaru\|足軽" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-gunkan.md defines independent event-driven audit role" {
+    grep -q "Gunkan (軍監) Role Definition" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "将軍直属の独立監査役" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "queue/reports/gunkan_report.yaml" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "常時ポーリングや周期監視でトークンを使う" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "Event-Driven Activation" "$OUTPUT_DIR/codex-gunkan.md"
+}
+
+@test "content: codex-ashigaru.md handles task_assigned by reading queue/tasks first" {
+    grep -q "On \`task_assigned\` receipt" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "queue/tasks/ashigaru{N}.yaml" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-ashigaru.md treats missing new target_path as normal greenfield work" {
+    grep -q "If \`target_path\` points to a new deliverable that does not exist yet, treat that as normal" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Create the parent directory as needed and proceed with implementation" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "target_path\` is the intended output path" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-ashigaru.md requires exact contract match with sibling lane artifacts" {
+    grep -q "If sibling-lane artifacts such as \`README.md\`, \`tests/test_app.py\`, or \`app.py\` already exist, re-read them and match their public identifiers exactly" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Do not invent near-synonyms" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "must use the exact same function names, exception names, CLI behavior, and JSON keys" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-ashigaru.md requires exact verification command and cwd before claiming pass" {
+    grep -q "result.verification.command" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "result.verification.cwd" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Do not write \`pass\` unless the exact command really exited 0 in that exact directory" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-ashigaru.md enforces event-driven standby after report" {
+    grep -q "Ashigaru must work only from assigned events" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "return to standby immediately" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "No sleep loop, no periodic status re-check" "$OUTPUT_DIR/codex-ashigaru.md"
+}
+
+@test "content: codex-karo.md reruns reported verification before closing implementation cmd" {
+    grep -q "rerun the exact \`result.verification.command\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "treat the report as incomplete and reassign instead of closing" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md enforces inbox-driven wakeups only" {
+    grep -q "Karo must remain event-driven at all times" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "\`cmd_new\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "\`report_received\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not run sleep loops, pane polling, or ad-hoc background monitors" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md dispatches cmd_new before broad reading" {
+    grep -q "When \`queue/inbox/karo.yaml\` receives \`type: cmd_new\`, dispatch first and expand context later" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Mark the cmd \`status: in_progress\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Immediately send \`type: task_assigned\`" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do \*\*not\*\* inspect target code, README, test files, or broad repo state before the first dispatch" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md forces initial multi-ashigaru split when the cmd is naturally parallel" {
+    grep -q "If two or more active ashigaru are available and the cmd naturally splits into independent early lanes" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "the first dispatch must use the active roster broadly" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "assign lanes across all useful active ashigaru in order, including \`ashigaru3+\` when present" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do \*\*not\*\* stop at \`ashigaru1\` / \`ashigaru2\` when \`ashigaru3+\` are active" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md tells karo when to use gunshi" {
+    grep -q "## Gunshi Consultation Rule" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Assign a \`queue/tasks/gunshi.yaml\` analysis task" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not wait for Gunshi before the first dispatch when obvious safe lanes already exist" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Gunshi does \*\*not\*\* implement files, manage ashigaru, update \`dashboard.md\`, or close the cmd" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "### Bloom Level → Agent Routing" "$OUTPUT_DIR/codex-karo.md"
+    grep -q '"Investigating root cause/structure?" | L4 Analyze | \*\*Gunshi\*\*' "$OUTPUT_DIR/codex-karo.md"
+    grep -q "## Quality Control Routing" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Route complex checks to Gunshi via \`queue/tasks/gunshi.yaml\`" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md runs proactive clarification and autonomous PDCA" {
+    grep -q "## Proactive Clarification and Autonomous PDCA" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "High-impact ambiguity: ask Shogun for the lord's decision with 3-5 concrete questions" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Repeat up to 3 QC cycles" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "This PDCA loop must remain event-driven" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md allows greenfield split before files exist" {
+    grep -q "\`target_path\` is the intended output path for the lane" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "For greenfield directories, you may split \`app.py\`, \`README.md\`, and \`tests/test_app.py\` in parallel" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not treat the absence of those files at dispatch time as a reason to serialize the work" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-karo.md writes explicit shared contract into parallel app and README/tests lanes" {
+    grep -q "When those parallel lanes must share a public contract, write the exact same contract into both task descriptions before dispatch" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Name the public function(s), exception type(s), CLI entrypoint behavior, and required output keys explicitly" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Do not write vague instructions such as \"align with README/tests\"" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "For the common split of \`app.py\` vs \`README.md\` + \`tests/test_app.py\`" "$OUTPUT_DIR/codex-karo.md"
+}
+
+@test "content: codex-gunshi.md enforces event-driven standby after analysis" {
+    grep -q "Gunshi must also remain event-driven" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "return to standby immediately" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "No sleep loop, no periodic re-analysis" "$OUTPUT_DIR/codex-gunshi.md"
+}
+
+@test "content: codex-gunshi.md keeps upstream strategist safeguards" {
+    grep -q "## Forbidden Actions" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Manage ashigaru inboxes or assign work" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "## North Star Alignment" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "north_star_alignment" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "## Critical Thinking Protocol" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Confidence label" "$OUTPUT_DIR/codex-gunshi.md"
+}
+
+@test "content: codex-gunshi.md designs clarification and PDCA without taking over execution" {
+    grep -q "## Proactive Clarification and Autonomous PDCA" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "return 3-5 concrete questions for Shogun / ntfy escalation" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "allow up to 3 QC cycles before escalation" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Gunshi may design the loop, critique outputs, and recommend redo / scale-out" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Gunshi must not assign ashigaru" "$OUTPUT_DIR/codex-gunshi.md"
 }
 
 # =============================================================================

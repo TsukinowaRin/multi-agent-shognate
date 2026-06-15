@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Speed
 import androidx.core.content.ContextCompat
@@ -44,6 +46,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -175,12 +178,10 @@ fun AgentsScreen(
     LaunchedEffect(Unit) {
         val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, android.content.Context.MODE_PRIVATE)
         val host = prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST
-        val portText = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR) ?: Defaults.SSH_PORT_STR
+        val port = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR)?.toIntOrNull() ?: Defaults.SSH_PORT
         val user = prefs.getString(PrefsKeys.SSH_USER, "") ?: ""
         val keyPath = prefs.getString(PrefsKeys.SSH_KEY_PATH, "") ?: ""
         val password = prefs.getString(PrefsKeys.SSH_PASSWORD, "") ?: ""
-        if (host.isBlank() || user.isBlank() || portText.isBlank()) return@LaunchedEffect
-        val port = portText.toIntOrNull() ?: return@LaunchedEffect
         viewModel.connect(host, port, user, keyPath, password)
     }
 
@@ -223,7 +224,7 @@ fun AgentsScreen(
                 modifier = Modifier.fillMaxSize()
             )
             Column(modifier = Modifier.fillMaxSize()) {
-                if (errorMessage != null) {
+                if (errorMessage != null && panes.isNotEmpty()) {
                     SelectionContainer {
                         Text(
                             text = "エラー: $errorMessage",
@@ -246,6 +247,23 @@ fun AgentsScreen(
                             onClick = { selectedPaneIndex = pane.index }
                         )
                     }
+                }
+                if (panes.isEmpty() && errorMessage == null) {
+                    AgentsEmptyState(
+                        message = "エージェント pane を確認中…",
+                        onRefresh = { viewModel.refreshAllPanes() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 24.dp)
+                    )
+                } else if (panes.isEmpty() && errorMessage != null) {
+                    AgentsEmptyState(
+                        message = errorMessage ?: "",
+                        onRefresh = { viewModel.refreshAllPanes() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 24.dp)
+                    )
                 }
             }
 
@@ -272,14 +290,26 @@ fun AgentsScreen(
 
         // Rate limit dialog
         if (showRateLimitDialog) {
+            var showRawText by remember { mutableStateOf(false) }
             AlertDialog(
                 onDismissRequest = {
                     showRateLimitDialog = false
                     viewModel.clearRateLimitResult()
                 },
                 title = {
-                    SelectionContainer {
-                        Text("Rate Limit Check", color = Kinpaku)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SelectionContainer {
+                            Text("Rate Limit Check", color = Kinpaku)
+                        }
+                        if (!rateLimitLoading && rateLimitResult != null) {
+                            TextButton(onClick = { showRawText = !showRawText }) {
+                                Text(if (showRawText) "UI" else "Raw", color = Color(0xFF888888), fontSize = 11.sp)
+                            }
+                        }
                     }
                 },
                 text = {
@@ -291,6 +321,16 @@ fun AgentsScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(color = Kinpaku)
+                        }
+                    } else if (showRawText) {
+                        SelectionContainer {
+                            Text(
+                                text = rateLimitResult ?: "",
+                                color = Zouge,
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.verticalScroll(rememberScrollState())
+                            )
                         }
                     } else {
                         RateLimitContent(rawText = rateLimitResult ?: "")
@@ -310,6 +350,37 @@ fun AgentsScreen(
                 titleContentColor = Kinpaku,
                 textContentColor = Zouge
             )
+        }
+    }
+}
+
+@Composable
+private fun AgentsEmptyState(
+    message: String,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Color(0xCC2D2D2D)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderStandard)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("エージェント未表示", color = Kinpaku, style = MaterialTheme.typography.titleMedium)
+            SelectionContainer {
+                Text(message, color = Zouge, fontSize = 13.sp)
+            }
+            OutlinedButton(
+                onClick = onRefresh,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("再読込")
+            }
         }
     }
 }
@@ -371,6 +442,7 @@ fun PaneFullScreen(
     val context = LocalContext.current
     var commandTextValue by remember { mutableStateOf(TextFieldValue("")) }
     var isListening by remember { mutableStateOf(false) }
+    var compactTui by remember { mutableStateOf(true) }
     val speechRecognizer = remember {
         if (SpeechRecognizer.isRecognitionAvailable(context))
             SpeechRecognizer.createSpeechRecognizer(context)
@@ -454,6 +526,36 @@ fun PaneFullScreen(
             }
         }
 
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0x802D2D2D))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            FilterChip(
+                selected = !compactTui,
+                onClick = { compactTui = false },
+                label = { Text("標準") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Surface4,
+                    selectedLabelColor = Kinpaku,
+                    labelColor = Zouge
+                )
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            FilterChip(
+                selected = compactTui,
+                onClick = { compactTui = true },
+                label = { Text("縮小") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Surface4,
+                    selectedLabelColor = Kinpaku,
+                    labelColor = Zouge
+                )
+            )
+        }
+
         // Full screen pane content
         Box(
             modifier = Modifier
@@ -466,7 +568,7 @@ fun PaneFullScreen(
                     text = parsedPaneContent,
                     color = Zouge,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
+                    fontSize = if (compactTui) 10.sp else 13.sp,
                     softWrap = false,
                     modifier = Modifier
                         .fillMaxHeight()
@@ -491,6 +593,7 @@ fun PaneFullScreen(
                 onValueChange = { commandTextValue = it },
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("コマンドを入力") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 singleLine = true
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -550,6 +653,8 @@ private fun RateLimitContent(rawText: String) {
     val claudeMax = data.claudeMax
     val codexQuota = data.codexQuota
     val codexEntries = data.codexEntries
+    val hasAnyData = claudeMax.window5h != null || claudeMax.window7d != null ||
+        codexQuota.account5h != null || codexQuota.model5h != null || codexEntries.isNotEmpty()
     SelectionContainer {
         Column(
             modifier = Modifier
@@ -557,6 +662,11 @@ private fun RateLimitContent(rawText: String) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            if (!hasAnyData && rawText.isNotBlank()) {
+                Text("使用量データを取得できませんでした", color = Color(0xFFCC4444), fontSize = 11.sp)
+                Text(rawText, color = Zouge, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+            }
+
             // ── Claude Max section ──
             Text("Claude Max", color = Kinpaku, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF555555)))
@@ -682,7 +792,7 @@ private fun RateLimitContent(rawText: String) {
         // ── Codex context per agent ──
         if (codexEntries.isNotEmpty()) {
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Codex5.3 コンテキスト", color = Kinpaku, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+            Text("Codex コンテキスト", color = Kinpaku, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF555555)))
 
             codexEntries.forEach { entry ->

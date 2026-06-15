@@ -1,4 +1,4 @@
-.PHONY: test build lint check help install-deps clean
+.PHONY: test build lint check help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
 
 # Default target
 help:
@@ -10,6 +10,8 @@ help:
 	@echo "  make build         - Run build_instructions.sh"
 	@echo "  make lint          - Run shellcheck on lib/ and scripts/"
 	@echo "  make check         - Run build + diff check (CI equivalent)"
+	@echo "  make codd          - Run CoDD validate"
+	@echo "  make codd-gunkan   - Run Gunkan CoDD audit wrapper"
 	@echo "  make install-deps  - Install test dependencies (bats, helpers)"
 	@echo "  make clean         - Clean test artifacts"
 	@echo ""
@@ -77,18 +79,33 @@ lint:
 # Build + diff check (CI equivalent)
 check: build
 	@echo "Checking for uncommitted instruction changes..."
-	@if [ -f scripts/build_instructions.sh ] && [ -d instructions/generated ]; then \
-		if git diff --exit-code instructions/generated/; then \
-			echo "✓ Generated instructions are in sync"; \
+	@if [ -f scripts/build_instructions.sh ] && [ -d instructions/generated ] && [ -d .opencode/agents ]; then \
+		if git diff --exit-code instructions/generated/ .opencode/agents/; then \
+			echo "✓ Generated instructions and OpenCode agents are in sync"; \
 		else \
-			echo "ERROR: Generated instructions are out of sync!"; \
+			echo "ERROR: Generated instructions or OpenCode agents are out of sync!"; \
 			echo "Run 'make build' and commit the changes."; \
 			exit 1; \
 		fi; \
 	else \
-		echo "WARNING: build_instructions.sh or instructions/generated not found"; \
+		echo "WARNING: build_instructions.sh, instructions/generated, or .opencode/agents not found"; \
 		echo "Skipping diff check (Phase 2 feature)"; \
 	fi
+
+codd:
+	bash scripts/codd_check.sh validate
+
+codd-install:
+	bash scripts/codd_check.sh install
+
+codd-scan:
+	bash scripts/codd_check.sh scan
+
+codd-validate:
+	bash scripts/codd_check.sh validate
+
+codd-gunkan:
+	bash scripts/codd_check.sh gunkan
 
 # Install test dependencies
 install-deps:

@@ -1,43 +1,34 @@
 # Docs Index
 
-最終更新: 2026-03-29
+最終更新: 2026-06-13
 
 ## Must-read
-- `docs/DOCS_POLICY.md` - ドキュメント運用方針（index-first / 更新ルール）。
-- `docs/PLANS.md` - ExecPlanの作成・更新規約。
 
-## Specs
-- `docs/REQS.md` - 直近ユーザー要求の正規化要件と受け入れ条件。
-- `docs/PUBLISHING.md` - 公開前の個人情報・履歴・退避物の除外ポリシーと確認手順。
-- `docs/philosophy.md` - システム設計思想（原則・背景）。
-- `docs/NOTES_2026-03-29_portable_install_uninstall_release.md` - portable install / uninstaller 事故対応、修正内容、使うべき release、release asset naming の引き継ぎ。
+- `docs/REQS.md` - 現在の要求と受け入れ条件。
+- `docs/EXECPLAN_2026-05-22_upstream_base_rebuild.md` - 最新 upstream base で Shogunate を再実装する計画。
+- `docs/EXECPLAN_2026-05-22_upstream_agy_pr_local_models.md` - 本家 AGY-only PR と LocalAPI / Ollama / LM Studio 検証計画。
+- `docs/EXECPLAN_2026-05-28_gunkan_role.md` - Shogunate 独自の軍監 role 追加計画。
+- `docs/EXECPLAN_2026-05-28_upstream_v5_1_sync.md` - 本家 `upstream/main` v5.1.0 反映計画と検証記録。
+- `docs/EXECPLAN_2026-06-10_upstream_v5_2_test_runtime.md` - 本家 `upstream/main` v5.2.0 反映と `Shogunate-test` 再起動計画。
+- `docs/EXECPLAN_2026-06-10_android_release_local_install.md` - Android APK release とこのPCへの release package install 計画。
+- `docs/EXECPLAN_2026-06-15_android_wireless_pair.md` - Android app から PC 側 `shogunate pair` へ USB/Tailscale/LAN 共通の初回 pairing を行う計画。
+- `docs/EXECPLAN_2026-05-30_android_setup.md` - Android app の SSH / tmux target 設定改善計画。
+- `docs/EXECPLAN_2026-05-31_android_host_setup.md` - Android app の USB/無線 SSH セットアップと将軍単体表示計画。
 
-## Plans (open)
-- `docs/EXECPLAN_2026-03-25_android_host_update.md` - Android APK から host 側 Shogunate 更新を停止後に安全適用する実行計画（完了）。
-- `docs/EXECPLAN_2026-03-17_codex_role_isolation.md` - Codex の model / reasoning state を role ごとに repo-local `CODEX_HOME` へ分離する実行計画（完了）。
-- `docs/EXECPLAN_2026-03-17_multi_cli_gaps.md` - `inbox_watcher.sh` / `switch_cli.sh` / `ratelimit_check.sh` に残る opencode / kilo / gemini 未対応箇所の修正計画（完了）。
-- `docs/EXECPLAN_2026-03-17_readme_refresh.md` - README 英日をこの fork の実配布・実運用に合わせて全面更新する実行計画（完了）。
-- `docs/EXECPLAN_2026-03-16_upstream_layout_alignment.md` - 最新 upstream 同期済みの確認と、現役ファイル構成を upstream に寄せる整理計画。
-- `docs/EXECPLAN_2026-03-14_android_compat.md` — upstream Android app compatibility check and options.
-- `docs/EXECPLAN_2026-03-11_tmux_only_consolidation.md` - zellij 廃止と tmux 一本化、Waste 退避の実行計画（完了: zellij 廃止済み）。
-- `docs/EXECPLAN_2026-03-11_tmux_goza_return.md` - tmux 専用の御座の間復活と `csg/cgo` 導線追加の実行計画。
-- `docs/EXECPLAN_2026-03-11_runtime_cli_pref_sync.md` - tmux pane の live CLI 設定を次回起動前に settings へ同期する実行計画。
-- `docs/EXECPLAN_2026-03-11_upstream_cli_only_rebase.md` - upstream `main` 正本化と CLI 拡張差分の再整理計画。
-- `docs/EXECPLAN_2026-02-12_role_instruction_sync.md` - 役職別正本MDの必読化と最適化MD自動同期の実行計画。
-- `docs/EXECPLAN_2026-02-12_startup_event_driven.md` - 初動自動送信/イベント駆動安定化/履歴要約（歴史書）導入の実行計画。
-- `docs/EXECPLAN_2026-02-14_multi_karo_round_robin.md` - 複数家老時の足軽均等割り振りと経路制約の実行計画。
-- `docs/EXECPLAN_2026-02-14_upstream_sync.md` - 上流更新の差分取り込み（Codex model / watcher判定）の実行計画。
+## Notes
 
-## Plans (superseded / historical)
-- `docs/EXECPLAN_2026-02-10_zellij_multi_cli.md` - 旧 zellij 移植とCLI拡張の実行計画（zellij 廃止により無効）。
-- `docs/EXECPLAN_2026-02-14_mux_behavior_parity.md` - tmux/zellijのinbox初期化差異を解消し挙動同一化する実行計画（zellij 廃止により無効）。
-- `docs/EXECPLAN_2026-02-17_zellij_bootstrap_stability.md` - zellij初動注入の混線抑止（zellij 廃止により無効）。
-- `docs/EXECPLAN_2026-03-06_zellij_gemini_upstream_sync.md` - 上流同期を zellij / Gemini スコープに絞って修正する計画（zellij 廃止により無効）。
-- `docs/EXECPLAN_2026-03-07_upstream_restart_zellij_gemini.md` - 上流基盤へ戻しつつ zellij / Gemini を再実装する再出発計画（zellij 廃止により無効）。
-- `docs/EXECPLAN_TEMPLATE.md` - ExecPlanテンプレート。
-
-## Archive
-- `Waste/` / `_trash/` / `_upstream_reference/` - ローカル archive / 退避 / upstream 参照用。公開対象外。
-
-## Logs
-- 実運用ログ、引き継ぎメモ、upstream 詳細同期ノートはローカル保持とし、公開対象外。
+- この branch は `upstream/main` を土台にして Shogunate 機能を再移植する作業用。
+- 既存 Shogunate 実装の参照元は `codex/upstream-v4.6.0-sync`。
+- `Shogunate` runtime の tmux 本体 session は `shogunate`、御座の間は `shogunate:goza` view。旧 `goza-no-ma` session は互換 fallback としてのみ扱う。
+- watcher / bridge / runtime-pref daemon は `SHOGUNATE_SESSION_NAME` / `GOZA_SESSION_NAME` を引き継いで起動する。検証用に `shogunate-llm-demo` などの別 session 名を使う場合も、旧 `goza-no-ma` pane へ誤配信しないこと。
+- 家老が `cmd_done` 後に差戻しを受けて同じ `cmd_id` / `timestamp` を再完了した場合、`completed_at` または command/dashboard の完了指紋を含む identity で将軍へ再通知する。古い `cmd_done` が inbox に残っていても、新しい完了は抑止しない。
+- `Shutsujin.bat` は Codex TUI の表示安定化のため Shogunate attach 後に CLI を起動し、完了後は `cgo` / `CMA` などを打てる command shell へ移動する。旧手動 shell workflow は `Shutsujin.bat --no-attach` で使う。Windows debug 用に `Shutsujin-Clean.bat` と `Shutsujin-Resume.bat` を置く。alias は本家系 `csst` / `css` / `csm` と Shogunate 系 `cgo` / `csa` / `csg` / `csk` / `ckr` / `cma` を併用する。
+- CoDD は現行 Shogunate runtime の常駐LLM処理には統合しない。軍監が監査時に `scripts/gunkan_codd_audit.py` 経由でオンデマンド実行し、`codd` CLI がない環境では repo-local `.shogunate/codd-venv/` へ `codd-dev` を bootstrap する。導入失敗時だけ組み込み整合性チェックへフォールバックする。`codd` は `PATH` または repo-local venv から検出する。CoDD graph 用の tracked config は `.codd/codd.yaml`、frontmatter docs は `docs/codd/`。
+- 軍監（`gunkan`）は Shogunate 独自の将軍直属・家老並列の独立監査 role。通常の中間報告取得は `将軍 -> 家老` の仕事で、軍監LLMは常時トークン消費する監視AIではない。通常メッセージは非LLMの `queue/runtime/gunkan_events.yaml` に記録し、非LLMの `scripts/gunkan_light_watch.py` が異常だけを `audit_requested` として軍監へ送る。軽量 watcher は YAML parse、失敗 report、done command と failed report/open task/dashboard の矛盾、完了 report の成果物 path 欠落、worker_id 不一致、secret/destructive diff を検出する。軍監LLMは `queue/inbox/gunkan.yaml` の `audit_requested` / `audit_failed` / `runtime_blocked` / `emergency_stop_requested` 等で起きる event-driven 監査役として扱う。直接会話でも軍監 persona と冷静・厳格な戦国口調を維持する。canonical report は `queue/reports/gunkan_report.yaml`。軍師は家老配下の参謀・高度QC役のまま。
+- Shogunate 系 alias は `cgo` / `csa` / `cgn` / `csg` / `csk` / `ckr` / `cma`。`cgn` は軍監 pane へフォーカスする。
+- Android app の将軍タブ既定 target は `agent:shogun`。これは実 tmux target ではなく、`@agent_id=shogun` の pane を自動検出する仮想 target。設定画面の通常導線は `ワンタッチ接続` で、従来の SSH 詳細入力は `マニュアルモード` 配下。通常画面の `接続先` 欄は DNS 名、URL、Tailscale IP、LAN IP を入力中に SSH 用 host/port へ正規化し、URL path/query/fragment は無視する。通常導線は `USB` / `無線` / `接続` に絞り、接続設定リンク貼付、接続診断、接続先反映、標準に戻すボタンは表示しない。USB 接続は `127.0.0.1:2222`、無線接続は前回の無線 host/port を復元し、入力された到達可能な DNS/IP/URL を使う。`shogunate pair` は USB reverse を自動試行しつつ Tailscale/LAN でも待ち受け、端末名確認後の Pair Password prompt 承認で Android app 内生成鍵の公開鍵だけを PC へ登録する。source checkout helper の `--pair-usb` は互換 alias として統合 Pair を起動する。
+- Android APK の `versionName` は Shogunate 本体バージョン + fork/app 改訂番号にする。例: 本体 `5.2.0` の Android 側1回目の改訂は `5.2.0.1`。`versionCode` は同じ更新順に単調増加させる。
+- npm package の `version` は semver 制約に従うため、同じ意味の改訂番号は `5.2.0-1` のように表す。
+- cURL package installer は既定で runtime を `~/.shogunate/shogunate` に展開し、`~/.local/bin/shogunate` を登録する。PATH に `~/.local/bin` が入っていれば `shogunate` だけで起動できる。package 展開後の helper scripts は executable bit が無くても `bash` 経由で使える前提にする。
+- README / README_ja は package install 前提の導入正本。固定導入例は `v5.2.0.3` の cURL command を使い、通常 release tag は `v5.2.0.1`, `v5.2.0.2`, `v5.2.0.3` のように `-preview` なしで進める。
+- `shogunate pair` は Android app の初回 setup 用。既定で USB reverse を自動試行しつつ Tailscale/LAN でも待ち受ける。`shogunate pair --usb` は廃止し、package command は `shogunate pair` に統一する。Android app は app 内秘密鍵を保持し、PC 側は端末名確認後の Pair Password prompt 承認で公開鍵だけを `~/.ssh/authorized_keys` へ追加する。成功後は PC 側が best-effort で Shogunate runtime を起動し、以後は登録済み SSH 鍵で直接接続する。

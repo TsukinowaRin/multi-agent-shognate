@@ -119,7 +119,7 @@ EOF
 # --- T-AUTH-007: 正常トピック名 ---
 
 @test "T-AUTH-007: ntfy_validate_topic accepts secure topic name" {
-    run ntfy_validate_topic "sho-y0uhey-secret123"
+    run ntfy_validate_topic "sample-topic-secret123"
     [ "$status" -eq 0 ]
 }
 
@@ -178,7 +178,7 @@ MOCK
     # ntfy.shのテスト用コピー（curlをモックに差し替え）
     cp "$PROJECT_ROOT/scripts/ntfy.sh" "$mock_dir/scripts/ntfy.sh"
     # SCRIPT_DIRの解決先をmock_dirに変更
-    sed -i "s|SETTINGS=.*|SETTINGS=\"$mock_dir/config/settings.yaml\"|" "$mock_dir/scripts/ntfy.sh"
+    sed "s|SETTINGS=.*|SETTINGS=\"$mock_dir/config/settings.yaml\"|" "$mock_dir/scripts/ntfy.sh" > "$mock_dir/scripts/ntfy.sh.tmp" && mv "$mock_dir/scripts/ntfy.sh.tmp" "$mock_dir/scripts/ntfy.sh"
 
     # ntfy_auth.shをsource + curlモック化
     cat > "$mock_dir/scripts/ntfy_test.sh" << TESTSH

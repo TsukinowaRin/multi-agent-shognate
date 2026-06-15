@@ -78,8 +78,9 @@ teardown() {
 }
 
 @test "TC-FR-002: inotify + timeout fallback is configured" {
-    grep -q "INOTIFY_TIMEOUT=" "$WATCHER_SCRIPT"
-    grep -F -q 'inotifywait -q -t "$INOTIFY_TIMEOUT" -e modify -e close_write "$INBOX"' "$WATCHER_SCRIPT"
+    grep -q "FILE_WATCH_TIMEOUT=" "$WATCHER_SCRIPT"
+    grep -F -q 'file_watch_wait_once "$INBOX" "$FILE_WATCH_TIMEOUT"' "$WATCHER_SCRIPT"
+    grep -q "lib/file_watch.sh" "$WATCHER_SCRIPT"
 }
 
 @test "TC-FR-003: get_unread_info routes task/special messages correctly" {

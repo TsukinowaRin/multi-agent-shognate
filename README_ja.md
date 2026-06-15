@@ -1,474 +1,282 @@
 <div align="center">
 
-# multi-agent-shognate
+# Shogunate
 
-**tmux 運用と Android リモート操作に寄せた、portable な multi-agent-shogun fork。**
+**AI コーディング CLI を複数体で動かす、package install 対応の multi-agent runtime。**
 
-[![GitHub Stars](https://img.shields.io/github/stars/TsukinowaRin/multi-agent-shognate?style=social)](https://github.com/TsukinowaRin/multi-agent-shognate)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Shell](https://img.shields.io/badge/Shell%2FBash-100%25-green)]()
+将軍、家老、足軽、軍師、軍監を `tmux` 上に並べ、YAML queue と release package で運用します。
+
+[![Release](https://img.shields.io/badge/release-v5.2.0.3-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.3)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](README.md) | [日本語](README_ja.md)
 
 </div>
 
-<p align="center">
-  <img src="images/screenshots/hero/latest-translucent-20260210-190453.png" alt="将軍ペインから複数エージェントを統率する様子" width="940">
-</p>
+## cURLでインストール
 
-## このリポジトリは何か
+まず、このコマンドをコピーして現在の固定 release を入れます。
 
-`multi-agent-shognate` は [`multi-agent-shogun`](https://github.com/yohey-w/multi-agent-shogun) を元にした fork で、upstream の発想は維持しつつ、実運用の前提をこのリポジトリ向けに変えています。
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3
+```
 
-この fork が重視しているのは次です。
+その後、起動します。
 
-- `tmux` 中心の運用
-- 任意のフォルダへそのまま入れられる portable インストール
-- fork 版 APK を使った Android リモート操作
-- upstream より広い Multi-CLI 対応
-- 保守寄りの既定構成: 全役職 `codex`、`model: auto`、初期足軽は `ashigaru1` / `ashigaru2` の2名
+```bash
+shogunate
+```
 
-要点だけ言うと、
+既定では runtime を `~/.shogunate/shogunate` に展開し、`~/.local/bin/shogunate` を登録します。
 
-- 将軍システムを使いたいフォルダに入れる
-- `shutsujin_departure.sh` を起動する
-- 将軍へ自然言語で命令する
-- 家老が意図から人数配分と並列度を判断する
+`shogunate` が見つからない場合は shell を開き直すか、PATH を追加してください。
 
-という運用です。
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
 
-## upstream と何が違うか
+## 必要なもの
 
-| 項目 | upstream | この fork |
-|---|---|---|
-| runtime 構成 | split tmux session が主 | `goza-no-ma:overview` が runtime 正本。`shogun` / `gunshi` / `multiagent` は Android 互換 proxy として維持 |
-| 初期足軽構成 | 歴史的に大きい編成を前提にした記述がある | 既定の現役足軽は `ashigaru1` と `ashigaru2` のみ |
-| 既定 CLI | upstream 既定 | 全役職 `codex`、`model: auto` |
-| CLI 対応範囲 | upstream の中核 CLI | `Gemini CLI`、`OpenCode`、`Kilo`、`localapi`、`Ollama` / `LM Studio` 連携を追加 |
-| Android 配布 | upstream Android アプリ / APK | この repo の Releases にある fork 版 APK を正規配布物として扱う |
-| Windows installer | repo 前提の導線 | Releases の `multi-agent-shognate-installer-<version>.bat` を配布し、置いたフォルダへ portable に導入 |
-| 家老の動き | 指示に応じて分担 | この fork では、家老が意図から自律的に人数・分担・並列度を決めることを明示 |
+- Linux、macOS、または Windows の WSL2
+- `bash`、`curl`、`tar`、`tmux`、`python3`
+- 対応 AI coding CLI のいずれか
+  - OpenAI Codex
+  - Claude Code
+  - GitHub Copilot CLI
+  - OpenCode
+  - Kimi Code
+  - Cursor
+  - Antigravity (`agy`)
 
-## 基本モデル
+役職へ割り当てる前に、通常の shell で使う CLI へログインしておきます。
 
-指揮系統そのものは Shogun 方式です。
+```bash
+codex
+claude
+opencode
+agy
+```
+
+実際に使う CLI だけで大丈夫です。
+
+## よく使うコマンド
+
+```bash
+shogunate                 # runtime 起動
+shogunate clean           # clean start
+shogunate resume          # 前回状態から resume
+shogunate attach          # tmux session shogunate に attach
+shogunate configure       # 役職ごとの CLI を選ぶ
+shogunate status          # package/update metadata を表示
+shogunate aliases         # shell alias の source コマンドを表示
+shogunate help            # help
+```
+
+alias を読むと view 移動が短くなります。
+
+```bash
+source ~/.shogunate/shogunate/scripts/shell_aliases.sh
+
+cgo   # 御座の間 overview
+csg   # 将軍
+cgn   # 軍監
+csk   # 家老
+csa   # 足軽
+cma   # multi-agent view
+```
+
+## インストールオプション
+
+導入先を明示する場合:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3 \
+      --prefix "$HOME/.shogunate/shogunate" \
+      --bin-dir "$HOME/.local/bin"
+```
+
+runtime の展開・更新だけ行い、初回 setup を走らせない場合:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3 --no-setup
+```
+
+インストール済み bootstrap から再実行する場合:
+
+```bash
+shogunate install --version v5.2.0.3 --no-setup
+```
+
+この branch が `main` に載った後の moving latest channel:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+```
+
+npm wrapper は同じ cURL bootstrap を呼ぶ薄い補助です。
+
+```bash
+npx @tsukinowarin/shogunate install -- --version v5.2.0.3
+```
+
+## Shogunate が動かすもの
+
+Shogunate は `tmux` 上に見える runtime を作ります。
 
 ```text
 あなた
- -> 将軍
- -> 家老
- -> 足軽 / 軍師
+  |
+  v
+将軍       命令受付と委譲
+  |
+  v
+家老       計画、分割、統合
+  |
+  +-- 足軽  実作業
+  +-- 軍師  戦略・高度レビュー
+  +-- 軍監  独立監査
 ```
 
-この fork で特に重要なのは次です。
+エージェント間通信は `queue/`、`dashboard.md`、runtime metadata のファイルで行います。連携層は local shell + `tmux` で、モデル呼び出しは作業する CLI agent だけが行います。
 
-- 現役兵力は `topology.active_ashigaru` を正本とする
-- `ashigaru1..8` の歴史的記述は、そのまま現役人数とはみなさない
-- 家老は、現在の active roster と命令内容から編成を適応的に決める
+## 役職と CLI の設定
 
-## 対応 CLI とベンダー
-
-この fork は特定ベンダー前提ではありません。
-
-### 対応している agent CLI type
-
-| CLI type | 想定ベンダー / backend | 補足 |
-|---|---|---|
-| `codex` | OpenAI Codex CLI | この fork の既定 |
-| `claude` | Anthropic Claude Code | upstream 同様に対応 |
-| `copilot` | GitHub Copilot CLI | upstream 同様に対応 |
-| `kimi` | Kimi Code | upstream 同様に対応 |
-| `gemini` | Gemini CLI | この fork で明示対応 |
-| `opencode` | OpenCode CLI | この fork で追加 |
-| `kilo` | Kilo CLI | この fork で追加 |
-| `localapi` | OpenAI 互換 local endpoint | `Ollama` / `LM Studio` / llama.cpp server など向け |
-
-### 既定の権限 / 承認方針
-
-この fork では、全エージェントが既定で「承認確認を挟まない」側に寄るようにしてあります。
-
-| CLI type | 既定の unattended 方針 |
-|---|---|
-| `claude` | `--dangerously-skip-permissions` |
-| `codex` | `--dangerously-bypass-approvals-and-sandbox` |
-| `copilot` | `--yolo` |
-| `kimi` | `--yolo` |
-| `gemini` | `--yolo` |
-| `opencode` | 生成される `opencode.json` に `permission: allow` を入れる |
-| `kilo` | 生成される `opencode.json` に `permission: allow` を入れる |
-| `localapi` | 別の承認レイヤーを持たず、local REPL を直接起動する |
-
-特に `Codex` については、各役職を repo-local の別 `CODEX_HOME` で起動するようにしてあります。これにより、将軍側で選んだ model や `reasoning_effort` が、VSCode の Codex や無関係な別 Codex CLI セッションへ漏れにくくなります。
-
-### local provider 対応
-
-`localapi` は、ローカルまたは self-hosted な provider を Shogunate に載せるための入口です。具体的には次を想定しています。
-
-- `Ollama`
-- `LM Studio`
-- llama.cpp server
-- OpenAI 互換 API を出す local endpoint
-
-任意のローカルモデルを主目的で使うなら、まず `localapi` を使ってください。
-この fork では、次の用途の主経路を `localapi` と位置付けます。
-
-- LM Studio 上の独自 model ID をそのまま使いたい
-- Ollama の local model を素直につなぎたい
-- llama.cpp など OpenAI 互換 endpoint を直接叩きたい
-- OpenCode / Kilo の内蔵 provider registry に載っていない backend を使いたい
-
-`opencode` / `kilo` 自体は引き続き agent CLI として対応していますが、local provider 運用は best-effort です。backend 側では応答可能でも、CLI 側の provider/model registry によって model 名が弾かれることがあります。
-
-### 役職ごとの CLI / model 設定
-
-CLI や model を役職ごとに変えたい時はこれを使います。
+設定画面を開きます。
 
 ```bash
-bash scripts/configure_agents.sh
+shogunate configure
 ```
 
-このスクリプトで設定できるもの:
+代表的な構成:
 
-- 役職ごとの CLI type
-- 役職ごとの model
-- Codex reasoning effort
-- Gemini thinking level / budget
-- OpenCode / Kilo provider 設定
-- active Ashigaru 数
+```text
+shogun   codex
+karo     codex
+gunshi   codex
+gunkan   codex
+ashigaru opencode / codex / claude / agy
+```
 
-## インストール方法
+Shogunate は必要に応じて role-local CLI state を持ちつつ、host 側の認証を再利用します。役職ごとの設定を分けながら、毎回ログインし直す負担を減らします。
 
-### 推奨: Windows portable installer
+## 軍監
 
-好きなフォルダにそのまま入れたいなら、この方法が正規導線です。
+`gunkan` は将軍直属、家老と並列の独立監査 role です。要件、report、dashboard、task 完了、危険変更、release 整合性を確認します。
 
-1. この repo の **GitHub Releases** を開く
-2. `multi-agent-shognate-installer-<version>.bat` をダウンロードする
-3. 将軍システムを置きたいフォルダに置く
-4. 実行する
+軍監は足軽へ通常タスクを割り振らず、家老の代わりにもなりません。監査結果はここへ出します。
 
-重要な挙動:
+```text
+queue/reports/gunkan_report.yaml
+```
 
-- installer は、**ダウンロード元 Release と同じ tag のソース**を取得する
-- 展開先は **`install.bat` を置いたフォルダそのもの**
-- そのフォルダに古い portable Release install があれば、上書き更新モードへ切り替わる
-- 更新モードでは local state / 個人ファイルを保持したまま新しい Release snapshot を適用する
-- WSL2 / Ubuntu を確認し、可能なら `first_setup.sh` まで自動実行する
-- その portable install 用の update metadata も初期化する
+軍監 pane へ移動:
 
-この fork では、これが Windows の標準インストール方法です。
+```bash
+cgn
+```
 
-### clone / ZIP 展開から手動インストール
+## Android companion
 
-repo を直接管理したい場合はこちらです。
+release page には公開時に APK を置きます。
+
+```text
+shogunate-android-v5.2.0.3.apk
+```
+
+Android app は SSH で host runtime へ接続し、既定では将軍 pane を対象にします。初回セットアップは Shogunate Pair を使います。秘密鍵はスマホ app 内に残し、PC 側は承認した公開鍵だけを登録します。
+
+```bash
+shogunate pair        # USB auto + Tailscale / LAN
+```
+
+その後、Android app で USB を選ぶか Tailscale/LAN IP を入力して、接続を押します。PC terminal に端末名が出るので、確認してから Pair Password prompt に入力すると端末が承認されます。pairing 成功後は Shogunate が resume 起動し、以後は保存済み SSH 鍵で再セットアップなしに接続できます。
+
+source checkout 互換 helper:
+
+```bash
+bash android/tools/setup_android_ssh.sh --pair-usb
+bash android/tools/setup_android_ssh.sh --pair-wireless
+```
+
+runtime package archive には Android source は含めません。APK は release asset として配布します。
+
+## 開発者向け checkout
+
+Shogunate 自体を開発する場合だけ source checkout を使います。
 
 ```bash
 git clone https://github.com/TsukinowaRin/multi-agent-shognate
 cd multi-agent-shognate
 bash first_setup.sh
-```
-
-ZIP を使う場合も、展開後に同じように repo ルートで実行します。
-
-### `first_setup.sh` がやること
-
-`first_setup.sh` は、初回ローカル設定を作る前提のスクリプトです。
-
-主な役割:
-
-- `config/settings.yaml` のような local config 生成
-- 依存関係チェック
-- CLI bootstrap 補助
-- tmux runtime の初期準備
-
-この fork では `config/settings.yaml` は local-only で、公開 Git ツリーには含めません。
-
-## アップデート
-
-この fork では、更新経路を 2 つに分けています。
-
-### 1. Git `main` で使う場合
-
-`git clone` した repo をそのまま `main` で運用する場合は、rolling channel 扱いです。
-
-- `shutsujin_departure.sh` の起動前に fast-forward 更新を確認する
-- worktree が clean なら `origin/main` の最新へ追従する
-- tracked な local 編集や local commit が衝突しそうなら、それを壊さない
-- 代わりに `.shogunate/merge-candidates/` に incoming file を退避し、起動後に家老へマージ判断を依頼する
-
-つまり、こちらが「常に最新コードへ寄せる」経路です。
-
-さらに、元の upstream repo の最新内容を取り込み、衝突を Shogunate に整理させたい場合は次を使います。
-
-```bash
-bash scripts/upstream_sync.sh
-```
-
-適用前に何が変わるかだけ確認したいなら、次を使います。
-
-```bash
-bash scripts/upstream_sync.sh --dry-run
-```
-
-この導線では:
-
-- `upstream/main` を fetch する
-- local customization を壊さずに upstream snapshot を取り込む
-- 衝突した incoming file を `.shogunate/merge-candidates/` に退避する
-- `queue/shogun_to_karo.yaml` に pending cmd を追加する
-- 起動後に家老が統合作業をさばく
-
-`--dry-run` は add / update / remove / conflict の予定一覧を JSON で出し、worktree は変更しません。
-
-### 2. Release installer / portable install の場合
-
-`multi-agent-shognate-installer-<version>.bat` で入れたものは、stable release channel 扱いです。
-
-Release tag は `android-v4.2.0.x` 形式で運用します。
-先頭 3 つの数字は upstream Shogun の版を表し、
-最後の 1 つはこの fork 側の配布・パッケージ改訂番号です。
-installer asset 名は `android-` を含めず、たとえば `v4.2.0.1` のような version 部だけを使います。
-
-Windows asset の役割はこうです。
-
-- `multi-agent-shognate-installer-<version>.bat`
-  - 初回導入用
-  - その場所に古い portable Release install があれば、そのコピーを保持付きで更新する
-  - 何も無ければ新規導入する
-  - その bat を置いたフォルダへ対応 Release snapshot を展開する
-  - `first_setup.sh` を実行する
-  - そのコピーを Release install として初期化する
-
-- install 時点では、ダウンロードした Release tag に固定される
-- 新しい installer を同じフォルダで再実行すれば、local state を保持したままその portable install を更新できる
-- 配置先が別の Git working tree の中でも、portable install 自身の release metadata を見るので Release channel として扱える
-
-### portable install のアンインストール
-
-portable install には、インストール後のフォルダ内に `Shogunate-Uninstaller.bat` が含まれます。
-
-- 配置先フォルダの `Shogunate-Uninstaller.bat` を実行する
-- WSL が使える場合は Shogunate の tmux session を止める
-- 個人データを install 外へ保持するか、この install 内のデータごと全削除するかを選べる
-- そのフォルダ内の Shogunate 管理ファイルだけを削除する
-- 同じフォルダ内の unrelated files は残す
-- 親フォルダ自体は残す
-- その後、同じフォルダへクリーンインストールし直せる
-
-Android アプリから SSH で接続している場合は、APK 側から **ホスト上の Shogunate 本体**の更新も実行できます。これは APK 自身の更新ではなく、ホストに入っている Shogunate の更新です。
-
-### 何が保持されるか
-
-アップデートでは、次のような local state / user-specific assets を残します。
-
-- `config/settings.yaml`
-- `.codex/`
-- `.claude/`
-- `projects/`
-- `context/local/`
-- `instructions/local/`
-- `skills/local/`
-- `queue/`, `logs/`, `dashboard.md` などの runtime state
-
-tracked file が local 編集と衝突した場合は、installer / 更新導線は local file を残したまま incoming version を次へ退避します。
-
-- `.shogunate/merge-candidates/<batch>/incoming/...`
-
-その後の起動で、家老にマージ処理を依頼する構成です。
-
-## 初回起動
-
-インストール後はこれです。
-
-```bash
 bash shutsujin_departure.sh
 ```
 
-起動後に使う代表コマンド:
+出荷前の基本確認:
 
 ```bash
-bash scripts/goza_no_ma.sh
-bash scripts/focus_agent_pane.sh shogun
-bash scripts/focus_agent_pane.sh karo
-bash scripts/focus_agent_pane.sh gunshi
+bash -n scripts/shogunate_package_bootstrap.sh shutsujin_departure.sh
+python3 -m unittest tests.unit.test_package_distribution
+git diff --check
 ```
 
-### runtime 正本と互換 session
-
-Android 連携に関わるので、ここは明示しておきます。
-
-| session | 役割 |
-|---|---|
-| `goza-no-ma:overview` | この fork の runtime 正本 |
-| `shogun:main` | Android 互換用の将軍 target |
-| `gunshi:main` | Android 互換用の軍師 target |
-| `multiagent:agents` | Android 互換用の家老 / 足軽 target |
-
-## Android アプリと APK
-
-この repo では **fork 版 Android アプリ**を配布しています。
-
-upstream の APK は使いません。
-
-### この fork で使う APK
-
-この repo の **GitHub Releases** から取得してください。
-
-asset 名は次のようなものです。
-
-- `multi-agent-shognate-android-*.apk`
-
-この fork では、この APK が正規配布物です。
-
-### Android アプリは何をするか
-
-APK は remote control / monitoring client です。
-
-SSH でホストへ接続し、そこで次を読みます。
-
-- `shogun` tmux session
-- `multiagent` tmux session
-- `dashboard.md`
-
-必要なら将軍 pane に命令も送れます。
-
-さらに、この fork 版 APK からは **ホスト側 Shogunate の更新**も操作できます。
-
-- 更新状態確認
-- `upstream-sync --dry-run` の差分確認
-- Shogunate を停止してから Release 更新
-- Shogunate を停止してから upstream 取込
-
-APK 自身の更新は行いません。Android アプリの更新は引き続き GitHub Releases から行います。
-
-### Android の接続モデル
-
-接続は SSH ベースです。特定の VPN 製品が必須というわけではなく、**スマホからホストへ SSH 到達できること**が条件です。
-
-必要な設定:
-
-- 到達可能な SSH ホスト名または IP
-- SSH port
-- ホスト側 Linux ユーザー名
-- その Linux ユーザーの password または key
-- ホスト側 project path
-- session 名
-
-この fork で典型的に使う値:
-
-| 項目 | 値 |
-|---|---|
-| 将軍 session | `shogun` |
-| エージェント session | `multiagent` |
-| project path | ホスト上の repo ルート |
-
-補足:
-
-- Android アプリの初期値は空欄または非識別的な placeholder にしてあります
-- 個人の host 名、IP、topic は焼き込んでいません
-- APK には app 側で `ntfy` を subscribe するための topic 欄もあります
-- APK からの host 更新は、実行中の tmux runtime へ hot-apply せず、Shogunate 停止後に適用します
-
-## 通知 (`ntfy`)
-
-`ntfy` は使えますが、役割は分けて理解した方が安全です。
-
-- サーバー側の将軍システム通知: `config/settings.yaml` などの local config を使う
-- Android アプリ側通知: APK 自身が `ntfy` topic を subscribe できる
-
-`ntfy_topic` のようなローカル値は private 扱いで、公開ツリーに載せない運用です。
-
-## portable に別ワークスペースへ入れる使い方
-
-このシステムは portable 運用を前提にできます。
-
-別のワークスペースで使いたいなら、基本は次です。
-
-- 対象フォルダを作る / 選ぶ
-- そのフォルダに `multi-agent-shognate-installer-<version>.bat` を置く
-- その場で実行する
-- そのフォルダに将軍システムを展開させる
-
-こうすると、次の状態がそのワークスペースに閉じます。
-
-- `queue/`
-- `logs/`
-- `dashboard.md`
-- `config/settings.yaml`
-- tmux runtime state
-
-## この fork の既定値
-
-現在の既定方針は次です。
-
-- 全役職 `codex`
-- `model: auto`
-- 初期 active Ashigaru は `ashigaru1` と `ashigaru2`
-- 家老が意図から自律的に人数配分を決める
-
-足軽数を増やしたい時は、歴史的な 1〜8 記述を信用するのではなく、active topology を変更します。
-
-## よく使うコマンド
+Android build:
 
 ```bash
-bash first_setup.sh
-bash shutsujin_departure.sh
-bash scripts/configure_agents.sh
-bash scripts/goza_no_ma.sh
-bash scripts/focus_agent_pane.sh shogun
-bash scripts/focus_agent_pane.sh karo
-bash scripts/prepublish_check.sh
+cd android
+./gradlew --no-daemon testDebugUnitTest assembleDebug
 ```
 
-## リポジトリ構成
+## トラブルシュート
+
+`shogunate: command not found`
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+TUI に色が出ない場合:
+
+```bash
+echo "TERM=$TERM"
+tput colors
+printf '\033[31mRED\033[0m \033[32mGREEN\033[0m \033[34mBLUE\033[0m\n'
+```
+
+`tput colors` が `256` 未満なら、256色対応 terminal / tmux profile を使ってください。
+
+Antigravity (`agy`) が毎回 login を求める場合:
+
+```bash
+bash ~/.shogunate/shogunate/scripts/ensure_antigravity_keyring.sh
+```
+
+package install 後に generated instruction の警告が出る場合:
+
+```bash
+bash ~/.shogunate/shogunate/scripts/ensure_generated_instructions.sh
+```
+
+## release versioning
+
+Shogunate は通常の version tag を使います。
 
 ```text
-multi-agent-shognate/
-├── android/                   # fork 版 Android アプリ
-├── config/                    # local/runtime 設定テンプレート
-├── docs/                      # 要件、計画、公開ポリシー
-├── instructions/              # 共通と generated の CLI 指示書
-├── lib/                       # shell helper library
-├── scripts/                   # runtime / bootstrap / bridge / watcher
-├── tests/                     # unit / smoke tests
-├── install.bat                # Windows installer / bootstrap entry
-├── updater.bat                # 互換維持のため残している旧 Windows updater
-├── Shogunate-Uninstaller.bat  # インストール済みコピーに含まれる Windows uninstaller
-├── first_setup.sh             # 初回セットアップ
-└── shutsujin_departure.sh     # runtime 起動
+v5.0.0.0
+v5.0.0.12
+v5.2.0.1
+v5.2.0.2
+v5.2.0.3
 ```
 
-## 公開時の衛生ルール
+各 release には必要に応じて以下を置きます。
 
-この fork では、次のようなものを local-only として扱います。
+- `multi-agent-shognate-package.tar.gz`
+- `multi-agent-shognate-package.zip`
+- `shogunate-android-<version>.apk`
 
-- `config/settings.yaml`
-- runtime queue state
-- local logs
-- private notification topic
-- 個人の host 名、path、IP
+## License
 
-公開前はこれを実行してください。
-
-```bash
-bash scripts/prepublish_check.sh
-```
-
-## どんな人に向いているか
-
-この fork が向いているのは次です。
-
-- 好きなフォルダに portable に入れたい
-- GitHub Releases から fork 版 APK を使いたい
-- Gemini / OpenCode / Kilo / localapi まで含めて使いたい
-- `goza-no-ma` を runtime 正本として運用したい
-- 保守寄りの既定値で安定運用したい
-
-元のプロジェクトそのままの既定値や配布体系を求めるなら upstream を選ぶ方が自然です。
-
-## 関連ドキュメント
-
-- `android/README.md` - Android アプリの詳細
-- `docs/REQS.md` - 正規化した現在要件
-- `docs/PUBLISHING.md` - 公開前の privacy / cleanup ポリシー
-- `docs/philosophy.md` - 設計思想
+MIT. See [LICENSE](LICENSE).

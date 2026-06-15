@@ -17,6 +17,7 @@ setup_e2e_session() {
     export E2E_SESSION="${E2E_SESSION_PREFIX}_$$"
     export PROJECT_ROOT
     PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+    export MAS_WATCHER_TRUST_CLI_ARG=1
 
     # Create isolated project root with queue/ subdirectory
     # inbox_write.sh resolves SCRIPT_DIR to parent of scripts/, then uses queue/inbox/
@@ -31,11 +32,10 @@ setup_e2e_session() {
     chmod +x "$E2E_QUEUE/scripts/inbox_write.sh"
     chmod +x "$E2E_QUEUE/scripts/inbox_watcher.sh"
 
-    # Copy lib/ for cli_adapter.sh and agent_status.sh (needed by inbox_watcher)
+    # Copy lib/ helpers needed by inbox_watcher and its sourced modules.
     if [ -d "$PROJECT_ROOT/lib" ]; then
         mkdir -p "$E2E_QUEUE/lib"
-        cp "$PROJECT_ROOT/lib/cli_adapter.sh" "$E2E_QUEUE/lib/" 2>/dev/null || true
-        cp "$PROJECT_ROOT/lib/agent_status.sh" "$E2E_QUEUE/lib/" 2>/dev/null || true
+        cp "$PROJECT_ROOT"/lib/*.sh "$E2E_QUEUE/lib/" 2>/dev/null || true
     fi
 
     # Copy config/ for cli_adapter settings resolution

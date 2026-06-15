@@ -8,18 +8,17 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.shogun.android.shognate"
+        applicationId = "com.shogun.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "4.2.0"
+        versionCode = 52003
+        versionName = "5.2.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

@@ -42,18 +42,34 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
     val rateLimitLoading: StateFlow<Boolean> = _rateLimitLoading
 
     private var refreshJob: Job? = null
+    private var reconnectJob: Job? = null
     @Volatile private var paused = false
     @Volatile private var isRefreshing = false
 
     private fun agentsTarget(): String {
         val session = prefs.getString(PrefsKeys.AGENTS_SESSION, Defaults.AGENTS_SESSION) ?: Defaults.AGENTS_SESSION
-        return "$session:0"
+        return Defaults.resolveAgentsTarget(session)
     }
 
     fun pauseRefresh() { paused = true }
     fun resumeRefresh() {
         paused = false
-        viewModelScope.launch { refreshAllPanesInternal() }
+        viewModelScope.launch {
+            if (!sshManager.isConnected()) {
+                connectFromPrefs()
+                return@launch
+            }
+            refreshAllPanesInternal()
+        }
+    }
+
+    private fun connectFromPrefs() {
+        val host = prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST
+        val port = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR)?.toIntOrNull() ?: Defaults.SSH_PORT
+        val user = prefs.getString(PrefsKeys.SSH_USER, "") ?: ""
+        val keyPath = prefs.getString(PrefsKeys.SSH_KEY_PATH, "") ?: ""
+        val password = prefs.getString(PrefsKeys.SSH_PASSWORD, "") ?: ""
+        connect(host, port, user, keyPath, password)
     }
 
     fun connect(host: String, port: Int, user: String, keyPath: String, password: String = "") {
@@ -61,9 +77,28 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
             val result = sshManager.connect(host, port, user, keyPath, password)
             if (result.isSuccess) {
                 _isConnected.value = true
+                _errorMessage.value = null
                 startAutoRefresh()
             } else {
                 _errorMessage.value = "接続失敗: ${result.exceptionOrNull()?.message}"
+                startReconnect()
+            }
+        }
+    }
+
+    private fun startReconnect() {
+        reconnectJob?.cancel()
+        reconnectJob = viewModelScope.launch {
+            delay(3000)
+            val result = sshManager.reconnect(maxAttempts = 3, delayMs = 5000)
+            if (result.isSuccess) {
+                _isConnected.value = true
+                _errorMessage.value = null
+                startAutoRefresh()
+                refreshAllPanesInternal()
+            } else {
+                _isConnected.value = false
+                _errorMessage.value = "再接続失敗: ${result.exceptionOrNull()?.message}"
             }
         }
     }
@@ -92,6 +127,7 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
             val tmux = Defaults.TMUX
             // Single SSH call: detect pane count + batch-fetch all panes
             val batchCmd = buildString {
+                append("if ! $tmux list-panes -t $target >/dev/null 2>&1; then echo \"===ERROR=target_not_found===\"; exit 0; fi; ")
                 append("N=\$($tmux list-panes -t $target 2>/dev/null | wc -l); ")
                 append("echo \"===PANE_COUNT=\$N===\"; ")
                 append("for i in \$(seq 0 \$((N-1))); do ")
@@ -106,11 +142,22 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
             val result = sshManager.execCommand(batchCmd)
             if (result.isSuccess) {
                 val output = result.getOrDefault("")
-                val newPanes = parseBatchOutput(output)
-                if (newPanes.isNotEmpty()) {
+                if (output.contains("===ERROR=target_not_found===")) {
+                    _panes.value = emptyList()
+                    _errorMessage.value = "エージェント view が見つかりません。設定のエージェント target と Shogunate runtime を確認してください。"
+                } else {
+                    val newPanes = parseBatchOutput(output)
                     _panes.value = newPanes
-                    _errorMessage.value = null
+                    _errorMessage.value = if (newPanes.isEmpty()) {
+                        "エージェント pane がありません。Shogunate runtime を起動してから再読込してください。"
+                    } else {
+                        null
+                    }
                 }
+            } else {
+                _errorMessage.value = "エージェント一覧の取得に失敗しました: ${result.exceptionOrNull()?.message ?: "不明なエラー"}"
+                _isConnected.value = false
+                connectFromPrefs()
             }
         } finally {
             isRefreshing = false
@@ -172,15 +219,17 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _rateLimitLoading.value = true
             _rateLimitResult.value = null
-            val projectPath = prefs.getString(PrefsKeys.PROJECT_PATH, Defaults.PROJECT_PATH) ?: Defaults.PROJECT_PATH
+            val projectPath = prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: ""
             if (projectPath.isBlank()) {
                 _rateLimitLoading.value = false
                 _rateLimitResult.value = "設定画面でプロジェクトパスを設定してください"
                 return@launch
             }
-            val result = sshManager.execCommand("bash $projectPath/scripts/ratelimit_check.sh")
+            val safeProjectPath = projectPath.replace("'", "'\\''")
+            val cmd = "if [ ! -f '$safeProjectPath/scripts/ratelimit_check.sh' ]; then echo '使用量チェック script が見つかりません。Shogunate runtime のプロジェクトパスを確認してください。'; exit 0; fi; timeout 12s bash '$safeProjectPath/scripts/ratelimit_check.sh' 2>&1"
+            val result = sshManager.execCommand(cmd)
             _rateLimitLoading.value = false
-            _rateLimitResult.value = result.getOrElse { "取得失敗: ${it.message}" }
+            _rateLimitResult.value = result.getOrElse { "SSH取得失敗: ${it.message}\ncmd: $cmd" }
         }
     }
 
@@ -191,6 +240,7 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
     override fun onCleared() {
         super.onCleared()
         refreshJob?.cancel()
+        reconnectJob?.cancel()
         // Do NOT disconnect the shared singleton SshManager here.
         // Tab navigation triggers onCleared, killing the connection for all ViewModels.
     }

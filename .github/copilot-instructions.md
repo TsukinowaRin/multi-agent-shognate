@@ -19,6 +19,7 @@ files:
   tasks: "queue/tasks/ashigaru{N}.yaml" # Karo → Ashigaru assignments (per-ashigaru)
   reports: "queue/reports/ashigaru{N}_report.yaml" # Ashigaru → Karo reports
   dashboard: dashboard.md              # Human-readable summary (secondary data)
+  daily_log: "logs/daily/YYYY-MM-DD.md" # Karo appends cmd summary on completion. Shogun reads for daily reports.
   ntfy_inbox: queue/ntfy_inbox.yaml    # Incoming ntfy messages from Lord's phone
 
 cmd_format:
@@ -85,7 +86,7 @@ After compaction, the system may instruct "Continue the conversation from where 
 
 Mandatory before resuming work after compaction:
 1. Execute Session Start Step 3 again.
-2. Re-read your instructions file (`instructions/generated/copilot-shogun.md`, `instructions/generated/copilot-karo.md`, `instructions/generated/copilot-ashigaru.md`, `instructions/generated/copilot-gunshi.md` as applicable).
+2. Re-read your instructions file (`instructions/generated/copilot-shogun.md`, `instructions/generated/copilot-gunkan.md`, `instructions/generated/copilot-karo.md`, `instructions/generated/copilot-ashigaru.md`, `instructions/generated/copilot-gunshi.md` as applicable).
 3. Restore persona and speech style.
 4. Then rebuild state from YAML and resume naturally.
 
@@ -122,8 +123,8 @@ Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
 
 Two layers:
 1. **Message persistence**: `inbox_write.sh` writes to `queue/inbox/{agent}.yaml` with flock. Guaranteed.
-2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `inotifywait` → wakes agent:
-   - **優先度1**: Agent self-watch (agent's own `inotifywait` on its inbox) → no nudge needed
+2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `lib/file_watch.sh` (`inotifywait` on Linux/WSL, `fswatch` on macOS, polling fallback) → wakes agent:
+   - **優先度1**: Agent self-watch (agent's own native watcher on its inbox) → no nudge needed
    - **優先度2**: `tmux send-keys` — short nudge only (text and Enter sent separately, 0.3s gap)
 
 The nudge is minimal: `inboxN` (e.g. `inbox3` = 3 unread). That's it.
@@ -201,7 +202,7 @@ System manages ALL white-collar work, not just self-improvement. Project folders
 1. **Dashboard**: Karo's responsibility. Shogun reads it, never writes it.
 2. **Chain of command**: Shogun → Karo → Ashigaru. Never bypass Karo.
 3. **Reports**: Check `queue/reports/ashigaru{N}_report.yaml` when waiting.
-4. **Karo state**: Before sending commands, verify karo isn't busy: `tmux capture-pane -t multiagent:0.0 -p | tail -20`
+4. **Karo state**: Before sending commands, check only lightweight file state: `queue/shogun_to_karo.yaml`, `queue/inbox/karo.yaml`, and `dashboard.md`. Do not assume a legacy `multiagent` tmux session or hard-coded pane target exists.
 5. **Screenshots**: See `config/settings.yaml` → `screenshot.path`
 6. **Skill candidates**: Ashigaru reports include `skill_candidate:`. Karo collects → dashboard. Shogun approves → creates design doc.
 7. **Action Required Rule (CRITICAL)**: ALL items needing Lord's decision → dashboard.md 🚨要対応 section. ALWAYS. Even if also written elsewhere. Forgetting = Lord gets angry.
@@ -217,8 +218,8 @@ System manages ALL white-collar work, not just self-improvement. Project folders
 
 1. **SKIP = FAIL**: テスト報告でSKIP数が1以上なら「テスト未完了」扱い。「完了」と報告してはならない。
 2. **Preflight check**: テスト実行前に前提条件（依存ツール、エージェント稼働状態等）を確認。満たせないなら実行せず報告。
-3. **E2Eテストは家老が担当**: 全エージェント操作権限を持つ家老がE2Eを実行。足軽はユニットテストのみ。
-4. **テスト計画レビュー**: 家老はテスト計画を事前レビューし、前提条件の実現可能性を確認してから実行に移す。
+3. **家老は交通整理**: 家老はワークフローを回す管理職であり、実作業・品質レビュー・採否判断・RCAを抱え込まない。レビュー系は軍師、実行系は足軽へ委譲する。
+4. **E2Eテストは家老が統括**: 家老はE2Eの責任者として、実行計画レビュー・前提確認・最終判定を担当する。実行コマンドは原則として足軽へ委譲する。家老が直接実行してよいのは、全エージェント操作権限・秘密情報・VPS/本番接続・最終gateの一元管理が必要な場合に限る。その場合も理由をreport/dashboardに明記する。
 
 # Destructive Operation Safety (all agents)
 

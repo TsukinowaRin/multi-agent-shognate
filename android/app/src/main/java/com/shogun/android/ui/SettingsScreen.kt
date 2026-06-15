@@ -3,7 +3,11 @@ package com.shogun.android.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,10 +21,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import com.shogun.android.ui.theme.*
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
+import com.shogun.android.util.normalizeConnectionEndpoint
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
@@ -30,44 +36,169 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shogun.android.util.AppLogger
 import com.shogun.android.viewmodel.SettingsViewModel
+import java.io.File
 
 @Composable
 fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
-    val updateLoading by settingsViewModel.updateLoading.collectAsState()
-    val updateResult by settingsViewModel.updateResult.collectAsState()
+    val connectionTest by settingsViewModel.connectionTest.collectAsState()
 
     var host by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST) }
     var port by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR) ?: Defaults.SSH_PORT_STR) }
     var user by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_USER, "") ?: "") }
     var keyPath by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_KEY_PATH, "") ?: "") }
     var password by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PASSWORD, "") ?: "") }
-    var projectPath by remember { mutableStateOf(prefs.getString(PrefsKeys.PROJECT_PATH, Defaults.PROJECT_PATH) ?: Defaults.PROJECT_PATH) }
+    var projectPath by remember { mutableStateOf(prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: "") }
     var shogunSession by remember { mutableStateOf(prefs.getString(PrefsKeys.SHOGUN_SESSION, Defaults.SHOGUN_SESSION) ?: Defaults.SHOGUN_SESSION) }
     var agentsSession by remember { mutableStateOf(prefs.getString(PrefsKeys.AGENTS_SESSION, Defaults.AGENTS_SESSION) ?: Defaults.AGENTS_SESSION) }
+    var endpointText by remember { mutableStateOf(host) }
+    var lastWirelessHost by remember {
+        mutableStateOf(
+            prefs.getString(PrefsKeys.LAST_WIRELESS_HOST, "")?.takeIf { it.isNotBlank() }
+                ?: host.takeIf { it.isNotBlank() && it != Defaults.USB_SSH_HOST }
+                ?: ""
+        )
+    }
+    var lastWirelessPort by remember {
+        mutableStateOf(
+            prefs.getString(PrefsKeys.LAST_WIRELESS_PORT, "")?.takeIf { it.isNotBlank() }
+                ?: port.takeIf { it.isNotBlank() && it != Defaults.USB_SSH_PORT_STR }
+                ?: Defaults.WIRELESS_SSH_PORT_STR
+        )
+    }
+    var endpointError by remember { mutableStateOf<String?>(null) }
+    var endpointPreview by remember { mutableStateOf("") }
 
     var saved by remember { mutableStateOf(false) }
     var tapCount by remember { mutableIntStateOf(0) }
     var showDebugLog by remember { mutableStateOf(false) }
+    var showManualMode by remember { mutableStateOf(false) }
+
+    fun rememberWirelessEndpoint(wirelessHost: String, wirelessPort: String) {
+        val trimmedHost = wirelessHost.trim()
+        val trimmedPort = wirelessPort.trim()
+        if (trimmedHost.isBlank() || trimmedHost == Defaults.USB_SSH_HOST || trimmedPort.toIntOrNull() == null) {
+            return
+        }
+        lastWirelessHost = trimmedHost
+        lastWirelessPort = trimmedPort
+        prefs.edit()
+            .putString(PrefsKeys.LAST_WIRELESS_HOST, trimmedHost)
+            .putString(PrefsKeys.LAST_WIRELESS_PORT, trimmedPort)
+            .apply()
+    }
+
+    fun rememberCurrentWirelessEndpoint() {
+        val parsed = runCatching { normalizeConnectionEndpoint(endpointText) }.getOrNull()
+        rememberWirelessEndpoint(
+            wirelessHost = parsed?.host ?: host,
+            wirelessPort = parsed?.port ?: port
+        )
+    }
+
+    fun saveSettings() {
+        if (host.trim() != Defaults.USB_SSH_HOST) {
+            rememberWirelessEndpoint(host, port)
+        }
+        prefs.edit()
+            .putString(PrefsKeys.SSH_HOST, host.trim())
+            .putString(PrefsKeys.SSH_PORT, port.trim())
+            .putString(PrefsKeys.SSH_USER, user.trim())
+            .putString(PrefsKeys.SSH_KEY_PATH, keyPath.trim())
+            .putString(PrefsKeys.SSH_PASSWORD, password)
+            .putString(PrefsKeys.PROJECT_PATH, projectPath.trim())
+            .putString(PrefsKeys.SHOGUN_SESSION, shogunSession.trim())
+            .putString(PrefsKeys.AGENTS_SESSION, agentsSession.trim())
+            .apply()
+        saved = true
+    }
+
+    fun validateEndpointInput(commit: Boolean): Boolean {
+        val raw = endpointText.trim()
+        if (raw.isBlank()) {
+            endpointError = "接続先を入力してください"
+            endpointPreview = ""
+            return false
+        }
+        val parsed = runCatching { normalizeConnectionEndpoint(raw) }
+            .onFailure {
+                endpointError = it.message ?: "接続先を確認してください"
+                endpointPreview = ""
+            }
+            .getOrNull() ?: return false
+        val effectivePort = (parsed.port ?: port).trim()
+        if (effectivePort.toIntOrNull() == null) {
+            endpointError = "ポートを確認してください"
+            endpointPreview = ""
+            return false
+        }
+        endpointError = null
+        endpointPreview = "${parsed.host}:$effectivePort"
+        if (commit) {
+            host = parsed.host
+            port = effectivePort
+            if (parsed.host != Defaults.USB_SSH_HOST) {
+                rememberWirelessEndpoint(parsed.host, effectivePort)
+            }
+            saved = false
+        }
+        return true
+    }
+
+    LaunchedEffect(endpointText, port) {
+        validateEndpointInput(commit = false)
+    }
+
+    fun connectWithCurrentEndpoint() {
+        if (!validateEndpointInput(commit = true)) return
+        saveSettings()
+        settingsViewModel.testConnection(
+            host = host,
+            portText = port,
+            user = user,
+            keyPath = keyPath,
+            password = password,
+            projectPath = projectPath,
+            shogunTargetInput = shogunSession,
+            agentsTargetInput = agentsSession
+        )
+    }
+
+    fun selectUsbEndpoint() {
+        rememberCurrentWirelessEndpoint()
+        endpointText = Defaults.USB_SSH_HOST
+        host = Defaults.USB_SSH_HOST
+        port = Defaults.USB_SSH_PORT_STR
+        saved = false
+    }
+
+    fun selectWirelessEndpoint() {
+        endpointText = lastWirelessHost
+        host = lastWirelessHost
+        port = lastWirelessPort.takeIf { it.isNotBlank() } ?: Defaults.WIRELESS_SSH_PORT_STR
+        saved = false
+    }
+
+    val pickSshKeyLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+
+        runCatching { copySshKeyToAppStorage(context, uri) }
+            .onSuccess { importedPath ->
+                keyPath = importedPath
+                saved = false
+                Toast.makeText(context, "秘密鍵をアプリ領域へコピーしたでござる", Toast.LENGTH_SHORT).show()
+            }
+            .onFailure { error ->
+                Toast.makeText(context, "秘密鍵取込失敗: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+    }
 
     // Debug log dialog
     if (showDebugLog) {
         DebugLogDialog(onDismiss = { showDebugLog = false })
-    }
-
-    val saveSettings = {
-        prefs.edit()
-            .putString(PrefsKeys.SSH_HOST, host)
-            .putString(PrefsKeys.SSH_PORT, port)
-            .putString(PrefsKeys.SSH_USER, user)
-            .putString(PrefsKeys.SSH_KEY_PATH, keyPath)
-            .putString(PrefsKeys.SSH_PASSWORD, password)
-            .putString(PrefsKeys.PROJECT_PATH, projectPath)
-            .putString(PrefsKeys.SHOGUN_SESSION, shogunSession)
-            .putString(PrefsKeys.AGENTS_SESSION, agentsSession)
-            .apply()
-        saved = true
     }
 
     Column(
@@ -79,7 +210,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            "SSH設定",
+            "接続設定",
             style = MaterialTheme.typography.titleLarge,
             color = Kinpaku,
             modifier = Modifier.clickable {
@@ -91,100 +222,107 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             }
         )
 
-        OutlinedTextField(
-            value = host,
-            onValueChange = { host = it },
-            label = { Text("SSHホスト") },
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        Text(
-            "初期値は空欄です。実際に使う SSH 接続先の IP またはホスト名だけを入力してください。",
-            color = Color(0xFFAABBCC),
-            fontSize = 12.sp
-        )
+            colors = CardDefaults.cardColors(containerColor = Sumi),
+            shape = RoundedCornerShape(6.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("ワンタッチ接続", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+                OutlinedTextField(
+                    value = endpointText,
+                    onValueChange = {
+                        endpointText = it
+                        saved = false
+                    },
+                    label = { Text("接続先（DNS / URL / Tailscale IP / LAN IP）") },
+                    placeholder = { Text("例: pc.tailnet.ts.net / 100.x.x.x / https://example.com:2223") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    isError = endpointError != null,
+                    supportingText = {
+                        Text(
+                            endpointError ?: if (endpointPreview.isNotBlank()) "接続先: $endpointPreview" else ""
+                        )
+                    }
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { selectUsbEndpoint() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text("USB")
+                    }
+                    OutlinedButton(
+                        onClick = { selectWirelessEndpoint() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text("無線")
+                    }
+                }
+                Button(
+                    onClick = { connectWithCurrentEndpoint() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !connectionTest.running,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Shuaka,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(if (connectionTest.running) "接続中..." else "接続")
+                }
+                if (connectionTest.message.isNotBlank()) {
+                    Text(
+                        text = connectionTest.message,
+                        color = if (connectionTest.success) Color(0xFF9CCC65) else Color(0xFFFFB74D),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
 
-        OutlinedTextField(
-            value = port,
-            onValueChange = { port = it },
-            label = { Text("SSHポート") },
+        OutlinedButton(
+            onClick = { showManualMode = !showManualMode },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            placeholder = { Text("22") }
-        )
+            shape = RoundedCornerShape(4.dp)
+        ) {
+            Text(if (showManualMode) "マニュアルモードを閉じる" else "マニュアルモード")
+        }
 
-        OutlinedTextField(
-            value = user,
-            onValueChange = { user = it },
-            label = { Text("SSHユーザー") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("your_username") }
-        )
-
-        OutlinedTextField(
-            value = keyPath,
-            onValueChange = { keyPath = it },
-            label = { Text("SSH秘密鍵パス") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("/data/data/.../id_ed25519") }
-        )
-        Text(
-            "通常は空欄のまま。鍵認証に失敗した場合でも、パスワードが入っていれば自動で再試行します。",
-            color = Color(0xFFAABBCC),
-            fontSize = 12.sp
-        )
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("SSHパスワード（鍵なし時に使用）") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
-        )
-
-        Divider()
-
-        Text("プロジェクト設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
-
-        OutlinedTextField(
-            value = projectPath,
-            onValueChange = { projectPath = it },
-            label = { Text("プロジェクトパス（サーバー側）") },
-            placeholder = { Text("/path/to/multi-agent-shognate") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        Text(
-            "初期値は空欄です。サーバー上の実際のプロジェクトパスだけを入力してください。",
-            color = Color(0xFFAABBCC),
-            fontSize = 12.sp
-        )
-
-        Divider()
-
-        Text("セッション設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
-
-        OutlinedTextField(
-            value = shogunSession,
-            onValueChange = { shogunSession = it },
-            label = { Text("将軍セッション名") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("shogun") }
-        )
-
-        OutlinedTextField(
-            value = agentsSession,
-            onValueChange = { agentsSession = it },
-            label = { Text("エージェントセッション名") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("multiagent") }
-        )
+        if (showManualMode) {
+            ManualConnectionSettings(
+                host = host,
+                onHostChange = { host = it },
+                port = port,
+                onPortChange = { port = it },
+                user = user,
+                onUserChange = { user = it },
+                keyPath = keyPath,
+                onKeyPathChange = {
+                    keyPath = it
+                    saved = false
+                },
+                password = password,
+                onPasswordChange = { password = it },
+                projectPath = projectPath,
+                onProjectPathChange = { projectPath = it },
+                shogunSession = shogunSession,
+                onShogunSessionChange = { shogunSession = it },
+                agentsSession = agentsSession,
+                onAgentsSessionChange = { agentsSession = it },
+                onPickSshKey = { pickSshKeyLauncher.launch(arrayOf("*/*")) }
+            )
+        }
 
         Divider()
 
@@ -193,7 +331,9 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         Divider()
 
         Button(
-            onClick = saveSettings,
+            onClick = {
+                saveSettings()
+            },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Shuaka,
@@ -210,97 +350,153 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 color = MaterialTheme.colorScheme.primary
             )
         }
-
-        Divider()
-
-        HostUpdateSection(
-            updateLoading = updateLoading,
-            updateResult = updateResult,
-            onStatus = {
-                saveSettings()
-                settingsViewModel.checkHostUpdateStatus()
-            },
-            onPreview = {
-                saveSettings()
-                settingsViewModel.previewUpstreamSync()
-            },
-            onReleaseUpdate = {
-                saveSettings()
-                settingsViewModel.stopAndApplyReleaseUpdate()
-            },
-            onUpstreamUpdate = {
-                saveSettings()
-                settingsViewModel.stopAndApplyUpstreamUpdate()
-            }
-        )
     }
 }
 
 @Composable
-private fun HostUpdateSection(
-    updateLoading: Boolean,
-    updateResult: String,
-    onStatus: () -> Unit,
-    onPreview: () -> Unit,
-    onReleaseUpdate: () -> Unit,
-    onUpstreamUpdate: () -> Unit
+private fun ManualConnectionSettings(
+    host: String,
+    onHostChange: (String) -> Unit,
+    port: String,
+    onPortChange: (String) -> Unit,
+    user: String,
+    onUserChange: (String) -> Unit,
+    keyPath: String,
+    onKeyPathChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    projectPath: String,
+    onProjectPathChange: (String) -> Unit,
+    shogunSession: String,
+    onShogunSessionChange: (String) -> Unit,
+    agentsSession: String,
+    onAgentsSessionChange: (String) -> Unit,
+    onPickSshKey: () -> Unit
 ) {
-    Text("本体更新", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
-    Text(
-        "APK 自体ではなく、SSH 先の Shogunate 本体を更新します。live 更新はせず、停止してから適用します。",
-        color = Color(0xFFAABBCC),
-        fontSize = 12.sp
-    )
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Divider()
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        OutlinedButton(onClick = onStatus, modifier = Modifier.weight(1f), enabled = !updateLoading) {
-            Text("状態確認")
-        }
-        OutlinedButton(onClick = onPreview, modifier = Modifier.weight(1f), enabled = !updateLoading) {
-            Text("差分確認")
-        }
-    }
+        Text("SSH詳細", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Button(
-            onClick = onReleaseUpdate,
-            modifier = Modifier.weight(1f),
-            enabled = !updateLoading,
-            colors = ButtonDefaults.buttonColors(containerColor = Shuaka, contentColor = Color.White)
-        ) {
-            Text("停止してRelease更新")
-        }
-        Button(
-            onClick = onUpstreamUpdate,
-            modifier = Modifier.weight(1f),
-            enabled = !updateLoading,
-            colors = ButtonDefaults.buttonColors(containerColor = Tetsukon, contentColor = Color.White)
-        ) {
-            Text("停止してUpstream取込")
-        }
-    }
-
-    if (updateLoading) {
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-    }
-
-    if (updateResult.isNotBlank()) {
         OutlinedTextField(
-            value = updateResult,
-            onValueChange = {},
-            label = { Text("更新ログ") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 120.dp),
-            readOnly = true
+            value = host,
+            onValueChange = onHostChange,
+            label = { Text("SSHホスト") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = port,
+            onValueChange = onPortChange,
+            label = { Text("SSHポート") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+
+        OutlinedTextField(
+            value = user,
+            onValueChange = onUserChange,
+            label = { Text("SSHユーザー") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = keyPath,
+                onValueChange = onKeyPathChange,
+                label = { Text("SSH秘密鍵パス") },
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+
+            OutlinedButton(
+                onClick = onPickSshKey,
+                modifier = Modifier.defaultMinSize(minHeight = 56.dp),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text("ファイルを選択")
+            }
+        }
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = onPasswordChange,
+            label = { Text("SSHパスワード（鍵なし時に使用）") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation()
+        )
+
+        Divider()
+
+        Text("プロジェクト設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+
+        OutlinedTextField(
+            value = projectPath,
+            onValueChange = onProjectPathChange,
+            label = { Text("プロジェクトパス（サーバー側）") },
+            placeholder = { Text("/mnt/d/git_workspace/multi-agent-shognate/multi-agent-shognate") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        Divider()
+
+        Text("セッション設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+
+        OutlinedTextField(
+            value = shogunSession,
+            onValueChange = onShogunSessionChange,
+            label = { Text("将軍 tmux target") },
+            supportingText = { Text("標準: agent:shogun。@agent_id=shogun の pane を自動検出します。session名だけなら shogun:main として扱います。") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = agentsSession,
+            onValueChange = onAgentsSessionChange,
+            label = { Text("エージェント tmux target") },
+            supportingText = { Text("標準: shogunate:goza。session名だけなら multiagent:0 として扱います。") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
     }
+}
+
+private fun copySshKeyToAppStorage(context: Context, uri: Uri): String {
+    val resolver = context.contentResolver
+    val displayName = resolver.query(
+        uri,
+        arrayOf(OpenableColumns.DISPLAY_NAME),
+        null,
+        null,
+        null
+    )?.use { cursor ->
+        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+    }
+    val sanitizedName = (displayName ?: "ssh_key.pem").replace(Regex("[^A-Za-z0-9._-]"), "_")
+    val keyDir = File(context.filesDir, "ssh_keys")
+    if (!keyDir.exists() && !keyDir.mkdirs()) {
+        error("鍵保存先を作成できませぬ")
+    }
+    val targetFile = File(keyDir, "${System.currentTimeMillis()}_$sanitizedName")
+
+    resolver.openInputStream(uri)?.use { input ->
+        targetFile.outputStream().use { output ->
+            input.copyTo(output)
+        }
+    } ?: error("鍵ファイルを開けませぬ")
+
+    return targetFile.absolutePath
 }
 
 @Composable

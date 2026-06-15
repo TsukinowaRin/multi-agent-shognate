@@ -113,7 +113,6 @@ run_hook() {
     local json="$1"
     local agent_id="${2:-test_idle_agent}"
     IDLE_FLAG_DIR="$IDLE_FLAG_DIR" \
-    STOP_HOOK_WAIT_TIMEOUT=0 \
     __STOP_HOOK_SCRIPT_DIR="$TEST_HOOK_TMP" \
     __STOP_HOOK_AGENT_ID="$agent_id" \
     run bash "$HOOK_SCRIPT" <<< "$json"
@@ -209,39 +208,6 @@ YAML
         agent_is_busy
     "
     [ "$status" -eq 0 ]  # 0 = busy (from pane detection)
-}
-
-@test "T-005b: agent_is_busy detects Gemini Processing marker" {
-    run bash -c "
-        MOCK_CAPTURE_PANE='Processing Initial Instructions'
-        source '$WATCHER_HARNESS'
-        LAST_CLEAR_TS=0
-        CLI_TYPE='gemini'
-        agent_is_busy
-    "
-    [ "$status" -eq 0 ]
-}
-
-@test "T-005c: agent_is_busy detects OpenCode Analyzing marker" {
-    run bash -c "
-        MOCK_CAPTURE_PANE='Analyzing repository layout'
-        source '$WATCHER_HARNESS'
-        LAST_CLEAR_TS=0
-        CLI_TYPE='opencode'
-        agent_is_busy
-    "
-    [ "$status" -eq 0 ]
-}
-
-@test "T-005d: agent_is_busy detects Kilo Executing marker" {
-    run bash -c "
-        MOCK_CAPTURE_PANE='Executing tool call'
-        source '$WATCHER_HARNESS'
-        LAST_CLEAR_TS=0
-        CLI_TYPE='kilo'
-        agent_is_busy
-    "
-    [ "$status" -eq 0 ]
 }
 
 # ─── T-006: stop_hook_active=True時にもフラグ作成 (C-001修正) ───

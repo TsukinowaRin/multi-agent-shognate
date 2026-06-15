@@ -1,470 +1,282 @@
 <div align="center">
 
-# multi-agent-shognate
+# Shogunate
 
-**A portable `multi-agent-shogun` fork focused on tmux operations and Android remote control.**
+**Package-installable multi-agent runtime for AI coding CLIs.**
 
-[![GitHub Stars](https://img.shields.io/github/stars/TsukinowaRin/multi-agent-shognate?style=social)](https://github.com/TsukinowaRin/multi-agent-shognate)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Shell](https://img.shields.io/badge/Shell%2FBash-100%25-green)]()
+Run a Shogun, Karo managers, Ashigaru workers, Gunshi strategist, and Gunkan auditor in visible `tmux` panes, backed by plain YAML queues and release-packaged installers.
+
+[![Release](https://img.shields.io/badge/release-v5.2.0.3-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.3)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](README.md) | [日本語](README_ja.md)
 
 </div>
 
-<p align="center">
-  <img src="images/screenshots/hero/latest-translucent-20260210-190453.png" alt="Controlling multiple agents from the Shogun pane" width="940">
-</p>
+## Install With cURL
 
-## What This Repository Is
+Copy this command to install the current fixed release:
 
-`multi-agent-shognate` is a fork of [`multi-agent-shogun`](https://github.com/yohey-w/multi-agent-shogun). It keeps the upstream idea, but changes the operational defaults for this repository.
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3
+```
 
-This fork prioritizes:
+Then start Shogunate:
 
-- `tmux`-centered runtime operation
-- portable installation into any folder
-- Android remote control via the fork APK
-- broader multi-CLI support than upstream
-- conservative defaults: every role uses `codex`, `model: auto`, and the initial active ashigaru are only `ashigaru1` and `ashigaru2`
+```bash
+shogunate
+```
 
-In practice, the intended flow is:
+The installer expands the runtime to `~/.shogunate/shogunate` and registers `~/.local/bin/shogunate`.
 
-- put the system in the workspace where you want to use it
-- start it with `shutsujin_departure.sh`
-- give the Shogun natural-language instructions
-- let the Karo infer staffing and parallelism from the intent
+If the command is not found, reload your shell or add this to your shell profile:
 
-## How This Fork Differs From Upstream
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
 
-| Area | upstream | this fork |
-|---|---|---|
-| runtime layout | split tmux sessions are primary | `goza-no-ma:overview` is the runtime source of truth; `shogun` / `gunshi` / `multiagent` remain as Android-compatible proxy sessions |
-| initial ashigaru roster | historical docs often imply a larger force | the default active ashigaru are only `ashigaru1` and `ashigaru2` |
-| default CLI | upstream defaults | all roles default to `codex` with `model: auto` |
-| CLI coverage | core upstream CLIs | adds `Gemini CLI`, `OpenCode`, `Kilo`, `localapi`, and local-provider bridges such as `Ollama` / `LM Studio` |
-| Android distribution | upstream Android app / APK | the fork APK in this repo's Releases is the supported distribution |
-| Windows installer | repo-oriented setup flow | Release installer `multi-agent-shognate-installer-<version>.bat` installs portably into the folder where you place it |
-| Karo behavior | splits work when instructed | explicitly allows Karo to infer staffing, routing, and parallelism from the task intent |
+## Requirements
 
-## Core Model
+- Linux, macOS, or Windows with WSL2
+- `bash`, `curl`, `tar`, `tmux`, `python3`
+- At least one supported AI coding CLI:
+  - OpenAI Codex
+  - Claude Code
+  - GitHub Copilot CLI
+  - OpenCode
+  - Kimi Code
+  - Cursor
+  - Antigravity (`agy`)
 
-The command chain is still the Shogun model:
+Authenticate the CLI in your normal shell before assigning it to a role:
+
+```bash
+codex
+claude
+opencode
+agy
+```
+
+You only need to authenticate the CLIs you actually use.
+
+## Common Commands
+
+```bash
+shogunate                 # start runtime
+shogunate clean           # clean start
+shogunate resume          # resume previous runtime state
+shogunate attach          # attach to tmux session shogunate
+shogunate configure       # choose CLI per role
+shogunate status          # show package/update metadata
+shogunate aliases         # print shell alias source command
+shogunate help            # show command help
+```
+
+Useful view aliases after sourcing the alias file:
+
+```bash
+source ~/.shogunate/shogunate/scripts/shell_aliases.sh
+
+cgo   # Goza overview
+csg   # Shogun
+cgn   # Gunkan auditor
+csk   # Karo
+csa   # Ashigaru
+cma   # multi-agent view
+```
+
+## Install Options
+
+Install into explicit directories:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3 \
+      --prefix "$HOME/.shogunate/shogunate" \
+      --bin-dir "$HOME/.local/bin"
+```
+
+Update or unpack without running setup:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
+  | bash -s -- --version v5.2.0.3 --no-setup
+```
+
+Use the same installed bootstrap later:
+
+```bash
+shogunate install --version v5.2.0.3 --no-setup
+```
+
+After this branch is published on `main`, the moving latest channel is:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+```
+
+The npm wrapper calls the same bootstrap:
+
+```bash
+npx @tsukinowarin/shogunate install -- --version v5.2.0.3
+```
+
+## What Shogunate Runs
+
+Shogunate launches a visible `tmux` runtime:
 
 ```text
 You
- -> Shogun
- -> Karo
- -> Ashigaru / Gunshi
+  |
+  v
+Shogun     command intake and delegation
+  |
+  v
+Karo       planning, splitting, integration
+  |
+  +-- Ashigaru workers
+  +-- Gunshi strategist / high-level review
+  +-- Gunkan independent auditor
 ```
 
-What matters in this fork:
+Agents communicate through files under `queue/`, `dashboard.md`, and runtime metadata. The coordination layer is local shell + `tmux`; model calls are made only by the CLI agents doing the work.
 
-- the current active force is defined by `topology.active_ashigaru`
-- historical references to `ashigaru1..8` are not treated as proof that all eight are active
-- Karo adapts staffing from the active roster and the task intent
+## Role Configuration
 
-## Supported CLIs And Vendors
-
-This fork is not tied to a single vendor.
-
-### Supported agent CLI types
-
-| CLI type | Expected vendor / backend | Notes |
-|---|---|---|
-| `codex` | OpenAI Codex CLI | the default in this fork |
-| `claude` | Anthropic Claude Code | supported as in upstream |
-| `copilot` | GitHub Copilot CLI | supported as in upstream |
-| `kimi` | Kimi Code | supported as in upstream |
-| `gemini` | Gemini CLI | explicitly supported in this fork |
-| `opencode` | OpenCode CLI | added in this fork |
-| `kilo` | Kilo CLI | added in this fork |
-| `localapi` | OpenAI-compatible local endpoint | for `Ollama`, `LM Studio`, llama.cpp server, and similar backends |
-
-### Default permission / approval stance
-
-In this fork, every agent defaults to an unattended, no-approval-by-default mode.
-
-| CLI type | Default unattended behavior |
-|---|---|
-| `claude` | `--dangerously-skip-permissions` |
-| `codex` | `--dangerously-bypass-approvals-and-sandbox` |
-| `copilot` | `--yolo` |
-| `kimi` | `--yolo` |
-| `gemini` | `--yolo` |
-| `opencode` | generated `opencode.json` sets `permission: allow` |
-| `kilo` | generated `opencode.json` sets `permission: allow` |
-| `localapi` | launches the local REPL directly without a separate approval layer |
-
-For Codex specifically, each role launches with its own repo-local `CODEX_HOME`. That keeps Shogun-side model or `reasoning_effort` choices from leaking into VSCode Codex or unrelated Codex CLI sessions.
-
-### Local-provider support
-
-`localapi` is the bridge for local or self-hosted providers. Typical targets include:
-
-- `Ollama`
-- `LM Studio`
-- llama.cpp server
-- any OpenAI-compatible local endpoint
-
-If your primary goal is to run arbitrary local models, use `localapi` first.
-It talks to the OpenAI-compatible endpoint directly and is the main path in this fork for:
-
-- custom LM Studio model IDs
-- Ollama-hosted local models
-- llama.cpp or similar local inference servers
-- other self-hosted backends that do not match OpenCode / Kilo's built-in provider registry
-
-`opencode` and `kilo` are still supported agent CLIs in this fork, but local-provider use should be treated as best-effort. Their own provider/model registry may reject model IDs that the backend itself would otherwise serve.
-
-### Per-role CLI and model settings
-
-Use this when you want different CLIs or models per role:
+Open the role/CLI selector:
 
 ```bash
-bash scripts/configure_agents.sh
+shogunate configure
 ```
 
-It can configure:
+Typical setup:
 
-- CLI type per role
-- model per role
-- Codex `reasoning_effort`
-- Gemini `thinking_level` / `thinking_budget`
-- OpenCode / Kilo provider settings
-- active ashigaru count
+```text
+shogun   codex
+karo     codex
+gunshi   codex
+gunkan   codex
+ashigaru opencode / codex / claude / agy
+```
 
-## Installation
+Shogunate keeps role-local CLI state where needed while reusing your host authentication, so each role can have its own runtime settings without forcing repeated login.
 
-### Recommended: Windows portable installer
+## Gunkan Audit Role
 
-If you want to place the system directly into any folder, this is the supported path.
+`gunkan` is an independent audit role under Shogun, parallel to Karo. It checks requirements, reports, dashboard state, task completion, risky changes, and release coherence.
 
-1. Open this repo's **GitHub Releases**
-2. Download `multi-agent-shognate-installer-<version>.bat`
-3. Put it into the folder where you want the system installed
-4. Run it
+Gunkan does not assign normal work to Ashigaru and does not replace Karo. It writes audit output to:
 
-Important behavior:
+```text
+queue/reports/gunkan_report.yaml
+```
 
-- the installer downloads the source for the **same Release tag** it was downloaded from
-- it installs into the **same folder where the installer itself is placed**
-- if that folder already contains a portable Release install, it switches to in-place update mode
-- in update mode, it preserves local state and personal files, then applies the newer Release snapshot
-- it checks WSL2 / Ubuntu and, when possible, runs `first_setup.sh` automatically
-- it initializes local update metadata for that portable install
+Focus the Gunkan pane:
 
-This is the standard Windows install path for this fork.
+```bash
+cgn
+```
 
-### Manual install from clone or ZIP
+## Android Companion
 
-If you want to manage the repo directly:
+The release page includes an Android APK when published:
+
+```text
+shogunate-android-v5.2.0.3.apk
+```
+
+The Android app connects to the host runtime over SSH and targets the Shogun pane by default. First-time setup uses Shogunate Pair: the app keeps its private key, and the PC registers only the approved public key.
+
+```bash
+shogunate pair        # USB auto + Tailscale / LAN
+```
+
+Then open the Android app, choose USB or enter the Tailscale/LAN IP, and press Connect. The PC terminal shows the device name; approve it by entering the local Pair Password prompt. After pairing succeeds, Shogunate starts in resume mode and later connections use the saved SSH key without re-pairing.
+
+For source checkout compatibility helpers:
+
+```bash
+bash android/tools/setup_android_ssh.sh --pair-usb
+bash android/tools/setup_android_ssh.sh --pair-wireless
+```
+
+Runtime package archives intentionally do not include Android source; the APK is distributed as a release asset.
+
+## Development Checkout
+
+Use source checkout only when developing Shogunate itself:
 
 ```bash
 git clone https://github.com/TsukinowaRin/multi-agent-shognate
 cd multi-agent-shognate
 bash first_setup.sh
-```
-
-The same applies if you unpack a ZIP and run from the repo root.
-
-## Updating
-
-This fork supports two update channels.
-
-### 1. Git `main` install
-
-If you run the repo directly from a `git clone` on `main`, startup treats that as the rolling channel.
-
-- `shutsujin_departure.sh` checks for a fast-forward update before boot
-- if the worktree is clean, it pulls latest `origin/main`
-- if tracked local edits or local commits would collide, it does **not** destroy them
-- instead it writes merge candidates into `.shogunate/merge-candidates/` and notifies Karo after startup
-
-This is the "always follow latest code" path.
-
-If you also want to import the latest content from the original upstream repository and let Shogunate review collisions, run:
-
-```bash
-bash scripts/upstream_sync.sh
-```
-
-If you want to inspect what would change before touching the tree, use:
-
-```bash
-bash scripts/upstream_sync.sh --dry-run
-```
-
-That flow:
-
-- fetches `upstream/main`
-- imports the upstream snapshot without deleting local customizations
-- stores incoming conflicting files under `.shogunate/merge-candidates/`
-- appends a pending command to `queue/shogun_to_karo.yaml`
-- lets Karo coordinate the merge work after startup
-
-`--dry-run` prints the planned adds / updates / removals / conflicts as JSON and does not modify the worktree.
-
-### 2. Release installer / portable install
-
-If you installed the system with `multi-agent-shognate-installer-<version>.bat`, that is the stable release channel.
-
-Release tags use the format `android-v4.2.0.x`.
-The first three numbers track the upstream Shogun version.
-The fourth number is this fork's packaging/release revision.
-Installer asset names use only the version part, for example `v4.2.0.1`.
-
-Use the Windows installer like this:
-
-- `multi-agent-shognate-installer-<version>.bat`
-  - first-time install into the folder where you place the installer
-  - if an older portable Release install already exists there, it updates that copy in place
-  - otherwise it performs a fresh install
-  - downloads the matching Release snapshot
-  - runs `first_setup.sh`
-  - initializes Shogunate as a Release install
-
-- install is pinned to the Release tag you downloaded
-- rerunning a newer installer in the same folder updates that portable install while preserving local state
-- that release install keeps using its own release metadata even if the folder lives inside another Git working tree
-
-### Uninstalling a portable install
-
-Portable installs include `Shogunate-Uninstaller.bat` inside the installed folder itself.
-
-- run `Shogunate-Uninstaller.bat` from the installed folder
-- it stops Shogunate tmux sessions if WSL is available
-- it asks whether to preserve personal data outside the install folder or delete everything in the install
-- it removes only Shogunate-managed files inside that folder
-- unrelated files in the same folder are kept
-- it keeps the parent folder itself
-- after uninstall, you can clean-install again into the same folder
-
-If you are connected from the Android app, the app can also trigger **host-side** updates over SSH. That does not update the APK itself. It updates the installed Shogunate copy on the host.
-
-### What gets preserved
-
-Updates keep local state and user-specific assets such as:
-
-- `config/settings.yaml`
-- `.codex/`
-- `.claude/`
-- `projects/`
-- `context/local/`
-- `instructions/local/`
-- `skills/local/`
-- runtime state under `queue/`, `logs/`, and `dashboard.md`
-
-If an incoming tracked file collides with local edits, the installer/update flow keeps the local file in place and stores the incoming version under:
-
-- `.shogunate/merge-candidates/<batch>/incoming/...`
-
-After startup, Karo is nudged to handle the merge work.
-
-### What `first_setup.sh` does
-
-`first_setup.sh` is responsible for local bootstrap. It typically:
-
-- creates local config files such as `config/settings.yaml`
-- checks dependencies
-- helps bootstrap CLIs
-- prepares the tmux runtime
-
-In this fork, `config/settings.yaml` is local-only and is not part of the published Git tree.
-
-## First Launch
-
-After installation:
-
-```bash
 bash shutsujin_departure.sh
 ```
 
-Useful commands after startup:
+Run the main checks before shipping:
 
 ```bash
-bash scripts/goza_no_ma.sh
-bash scripts/focus_agent_pane.sh shogun
-bash scripts/focus_agent_pane.sh karo
-bash scripts/focus_agent_pane.sh gunshi
+bash -n scripts/shogunate_package_bootstrap.sh shutsujin_departure.sh
+python3 -m unittest tests.unit.test_package_distribution
+git diff --check
 ```
 
-### Runtime source of truth and compatibility sessions
-
-This matters for Android connectivity.
-
-| session | role |
-|---|---|
-| `goza-no-ma:overview` | runtime source of truth in this fork |
-| `shogun:main` | Android-compatible Shogun target |
-| `gunshi:main` | Android-compatible Gunshi target |
-| `multiagent:agents` | Android-compatible Karo / Ashigaru target |
-
-## Android App And APK
-
-This repo ships a **fork Android app**.
-
-Do not use the upstream APK here.
-
-### Which APK to use
-
-Download it from this repo's **GitHub Releases**.
-
-The asset name looks like:
-
-- `multi-agent-shognate-android-*.apk`
-
-That APK is the supported Android distribution for this fork.
-
-### What the Android app does
-
-The APK is a remote control and monitoring client.
-
-It connects to the host over SSH and interacts with:
-
-- the `shogun` tmux session
-- the `multiagent` tmux session
-- `dashboard.md`
-
-It can also send commands into the Shogun pane when needed.
-
-The fork APK can also manage **host-side Shogunate updates** over SSH:
-
-- check update status
-- preview upstream import with `--dry-run`
-- stop Shogunate and apply a Release update
-- stop Shogunate and apply an upstream import
-
-The APK does **not** self-update. Android app updates still come from GitHub Releases.
-
-### Android connection model
-
-The app is SSH-based. No specific VPN product is required. The only requirement is that the phone can reach the host over SSH.
-
-Required settings:
-
-- a reachable SSH hostname or IP
-- SSH port
-- Linux username on the host
-- password or key for that Linux user
-- project path on the host
-- tmux session names
-
-Typical values in this fork:
-
-| Item | Value |
-|---|---|
-| Shogun session | `shogun` |
-| Agents session | `multiagent` |
-| project path | the repo root on the host |
-
-Notes:
-
-- Android connection defaults are blank or non-identifying placeholders
-- no personal hostnames, IPs, or topics are baked into the app
-- the APK also has an `ntfy` topic field for app-side notification subscription
-- host updates from the APK are applied only after Shogunate is stopped; they are not hot-applied into a running tmux runtime
-
-## Notifications (`ntfy`)
-
-`ntfy` is supported, but it is safer to think of server-side and Android-side usage separately.
-
-- server-side Shogunate notifications use local config such as `config/settings.yaml`
-- the Android app can subscribe to an `ntfy` topic itself
-
-Local values such as `ntfy_topic` are treated as private and are not published in the repo tree.
-
-## Portable Use In Another Workspace
-
-This system can be used portably.
-
-If you want it in a different workspace, the intended flow is:
-
-- create or choose the target folder
-- place `multi-agent-shognate-installer-<version>.bat` there
-- run it in place
-- let it install the Shogunate into that folder
-
-That keeps the following scoped to that workspace:
-
-- `queue/`
-- `logs/`
-- `dashboard.md`
-- `config/settings.yaml`
-- tmux runtime state
-
-## Defaults In This Fork
-
-Current defaults:
-
-- all roles use `codex`
-- `model: auto`
-- initial active ashigaru are `ashigaru1` and `ashigaru2`
-- Karo is expected to infer staffing from the task intent
-
-If you want more ashigaru, change the active topology instead of relying on historical 1-8 references.
-
-## Common Commands
+Android build check:
 
 ```bash
-bash first_setup.sh
-bash shutsujin_departure.sh
-bash scripts/configure_agents.sh
-bash scripts/goza_no_ma.sh
-bash scripts/focus_agent_pane.sh shogun
-bash scripts/focus_agent_pane.sh karo
-bash scripts/prepublish_check.sh
+cd android
+./gradlew --no-daemon testDebugUnitTest assembleDebug
 ```
 
-## Repository Layout
+## Troubleshooting
+
+`shogunate: command not found`
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+No TUI color:
+
+```bash
+echo "TERM=$TERM"
+tput colors
+printf '\033[31mRED\033[0m \033[32mGREEN\033[0m \033[34mBLUE\033[0m\n'
+```
+
+If `tput colors` is less than `256`, use a 256-color terminal or tmux profile.
+
+Antigravity (`agy`) asks for login repeatedly:
+
+```bash
+bash ~/.shogunate/shogunate/scripts/ensure_antigravity_keyring.sh
+```
+
+Generated instruction warning after package install:
+
+```bash
+bash ~/.shogunate/shogunate/scripts/ensure_generated_instructions.sh
+```
+
+## Release Versioning
+
+Shogunate release tags use normal version tags such as:
 
 ```text
-multi-agent-shognate/
-├── android/                   # fork Android app
-├── config/                    # local/runtime config templates
-├── docs/                      # requirements, plans, publishing policy
-├── instructions/              # shared and generated CLI instructions
-├── lib/                       # shell helper library
-├── scripts/                   # runtime, bootstrap, bridge, watcher
-├── tests/                     # unit and smoke tests
-├── install.bat                # Windows installer / bootstrap entry
-├── updater.bat                # Legacy Windows updater script kept for compatibility
-├── Shogunate-Uninstaller.bat  # Windows uninstaller included in installed copies
-├── first_setup.sh             # first-time setup
-└── shutsujin_departure.sh     # runtime startup
+v5.0.0.0
+v5.0.0.12
+v5.2.0.1
+v5.2.0.2
+v5.2.0.3
 ```
 
-## Publishing Hygiene
+Each release may include:
 
-This fork treats the following as local-only:
+- `multi-agent-shognate-package.tar.gz`
+- `multi-agent-shognate-package.zip`
+- `shogunate-android-<version>.apk`
 
-- `config/settings.yaml`
-- runtime queue state
-- local logs
-- private notification topics
-- personal hostnames, paths, and IPs
+## License
 
-Before publishing:
-
-```bash
-bash scripts/prepublish_check.sh
-```
-
-## Who This Fork Is For
-
-This fork is a better fit if you want:
-
-- portable installation into any folder
-- the fork APK from GitHub Releases
-- broader CLI support including Gemini / OpenCode / Kilo / localapi
-- `goza-no-ma` as the runtime source of truth
-- conservative defaults for stable operation
-
-If you want upstream defaults and upstream distribution as-is, upstream is the more natural choice.
-
-## Related Docs
-
-- `android/README.md` - Android app details
-- `docs/REQS.md` - normalized current requirements
-- `docs/PUBLISHING.md` - privacy / cleanup policy before publication
-- `docs/philosophy.md` - design philosophy
+MIT. See [LICENSE](LICENSE).

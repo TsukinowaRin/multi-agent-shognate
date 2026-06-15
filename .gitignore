@@ -31,6 +31,7 @@
 !instructions/karo.md
 !instructions/ashigaru.md
 !instructions/gunshi.md
+!instructions/gunkan.md
 
 # Multi-CLI: CLI-specific tool descriptions
 !instructions/cli_specific/
@@ -38,10 +39,11 @@
 !instructions/cli_specific/codex_tools.md
 !instructions/cli_specific/copilot_tools.md
 !instructions/cli_specific/kimi_tools.md
-!instructions/cli_specific/gemini_tools.md
+!instructions/cli_specific/antigravity_tools.md
 !instructions/cli_specific/localapi_tools.md
 !instructions/cli_specific/opencode_tools.md
 !instructions/cli_specific/kilo_tools.md
+!instructions/cli_specific/cursor_tools.md
 
 # Multi-CLI: Build template parts (roles, common sections)
 !instructions/roles/
@@ -53,10 +55,23 @@
 !instructions/generated/
 !instructions/generated/*.md
 
+# Multi-CLI: OpenCode agent files
+!.opencode/
+!.opencode/agents/
+!.opencode/agents/*.md
+.opencode/agents/*-runtime.md
+!.opencode/tools/
+!.opencode/tools/mark-as-read.ts
+!.cursor/
+!.cursor/skills/
+!.cursor/skills/inbox-write/
+!.cursor/skills/inbox-write/SKILL.md
+
 # Multi-CLI: CLI adapter library + ntfy auth
 !lib/
 !lib/agent_status.sh
 !lib/cli_adapter.sh
+!lib/file_watch.sh
 !lib/inbox_path.sh
 !lib/ntfy_auth.sh
 !lib/topology_adapter.sh
@@ -68,17 +83,31 @@
 !shutsujin_departure.sh
 !first_setup.sh
 !setup.sh
-!install.bat
 !updater.bat
-!Shogunate-Uninstaller.bat
+!Shutsujin.bat
+!Shutsujin-Clean.bat
+!Shutsujin-Resume.bat
+!Shutsujin.sh
+!Shogunate-Runtime.bat
+!Shogunate-Runtime.sh
+!Shogunate-Runtime.command
+!Shogunate-Configure-Roles.bat
+!Shogunate-Configure-Roles.sh
+!Shogunate-Configure-Roles.command
 !scripts/stop_and_apply_update.sh
 
 # Development tooling
 !Makefile
+!package.json
+!package-lock.json
+!bin/
+!bin/shogunate.js
 
 # Config (sample files only, no secrets)
 !config/
 !config/ntfy_auth.env.sample
+!config/opencode-tui.json
+!config/opencode-permissions.yaml
 
 # Templates
 !templates/
@@ -98,23 +127,39 @@
 !scripts/
 !scripts/inbox_write.sh
 !scripts/inbox_watcher.sh
+!scripts/session_start_hook.sh
+!scripts/dashboard-viewer.py
 !scripts/watcher_supervisor.sh
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh
 !scripts/build_instructions.sh
+!scripts/ensure_antigravity_keyring.sh
 !scripts/localapi_repl.py
 !scripts/configure_agents.sh
+!scripts/configure_runtime_roles.py
 !scripts/goza_no_ma.sh
-!scripts/android_tmux_proxy.py
-!scripts/sync_gemini_settings.py
+!scripts/focus_agent_pane.sh
 !scripts/sync_opencode_config.py
 !scripts/sync_runtime_cli_preferences.py
 !scripts/runtime_cli_pref_daemon.sh
 !scripts/goza_layout_autosave.sh
 !scripts/shogun_to_karo_bridge.py
 !scripts/shogun_to_karo_bridge_daemon.sh
+
+# GitHub metadata
+!.github/
+!.github/FUNDING.yml
+
+# Memory template
+!memory/
+!memory/MEMORY.md.sample
 !scripts/karo_done_to_shogun_bridge.py
 !scripts/karo_done_to_shogun_bridge_daemon.sh
+!scripts/gunkan_event_log.py
+!scripts/gunkan_codd_audit.py
+!scripts/gunkan_light_watch.py
+!scripts/gunkan_emergency_stop.sh
+!scripts/codd_check.sh
 !scripts/history_book.sh
 !scripts/mux_parity_smoke.sh
 !scripts/seo_qc.sh
@@ -123,8 +168,21 @@
 !scripts/slim_yaml.py
 !scripts/ensure_generated_instructions.sh
 !scripts/prepublish_check.sh
+!scripts/shogunate_package_bootstrap.sh
+!scripts/shogunate_pair_server.py
 !scripts/upstream_sync.sh
 !scripts/update_manager.py
+!scripts/shell_aliases.sh
+!scripts/install_shell_aliases.sh
+!scripts/mcp_health_check.sh
+
+# Runtime validation sandboxes are disposable local artifacts.
+runtime_sandboxes/**
+.codd/
+!.codd/
+!.codd/codd.yaml
+.shogunate/codd-venv/
+queue/runtime/codd/
 
 
 # SayTask (sample template only, not actual data)
@@ -171,6 +229,18 @@
 !.github/copilot-instructions.md
 !.github/workflows/
 !.github/workflows/*.yml
+!android/
+!android/**
+.claude/settings.local.json
+android/.android-user-home/
+android/.android-home/
+android/.android-prefs/
+android/.gradle-home/
+android/.gradle-user-home/
+android/.home/
+android/.android-sdk/
+android/.android-sdk-tmp/
+dist/
 
 # queue は実行時データを基本的に追跡しない
 !queue/
@@ -180,6 +250,7 @@ queue/**
 Waste/
 _trash/
 .shogunate/
+runtime_sandboxes/
 
 # Upstream参照用のローカルcloneは追跡しない
 _upstream_reference/

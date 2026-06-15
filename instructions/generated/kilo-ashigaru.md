@@ -25,6 +25,10 @@ result:
   files_modified:
     - "/path/to/file"
   notes: "Additional details"
+  verification:
+    command: "python3 -m unittest"
+    cwd: "/path/where/you/actually/ran/it"
+    result: "pass"
 skill_candidate:
   found: false  # MANDATORY — true/false
   # If true, also include:
@@ -35,6 +39,9 @@ skill_candidate:
 
 **Required fields**: worker_id, task_id, parent_cmd, status, timestamp, result, skill_candidate.
 Missing fields = incomplete report.
+
+If you claim a test/build/CLI verification passed, `result.verification.command`, `cwd`, and `result` are mandatory.
+Do not write `pass` unless the exact command really exited 0 in that exact directory.
 
 ## Race Condition (RACE-001)
 
@@ -63,6 +70,13 @@ If conflict risk exists:
 
 Act without waiting for Karo's instruction:
 
+**On `task_assigned` receipt**:
+1. Read `queue/inbox/ashigaru{N}.yaml` and mark the message `read: true`
+2. Read `queue/tasks/ashigaru{N}.yaml` immediately
+3. Use that task YAML as the only source of truth for the current assignment
+4. Do not infer the task from old `queue/reports/ashigaru*_report.yaml`, stale dashboard text, or prior inbox messages
+5. If `target_path` points to a new deliverable that does not exist yet, treat that as normal. Create the parent directory as needed and proceed with implementation. Missing `target_path` is only a blocker when the task explicitly requires reviewing or editing an already-existing file.
+
 **On task completion** (in this order):
 1. Self-review deliverables (re-read your output)
 2. **Purpose validation**: Read `parent_cmd` in `queue/shogun_to_karo.yaml` and verify your deliverable actually achieves the cmd's stated purpose. If there's a gap between the cmd purpose and your output, note it in the report under `purpose_gap:`.
@@ -73,12 +87,27 @@ Act without waiting for Karo's instruction:
 
 **Quality assurance:**
 - After modifying files → verify with Read
-- If project has tests → run related tests
+- For greenfield deliverables, `target_path` is the intended output path, not proof that the file must already exist
+- If sibling-lane artifacts such as `README.md`, `tests/test_app.py`, or `app.py` already exist, re-read them and match their public identifiers exactly. Do not invent near-synonyms such as a different function name when the paired lane already names the contract.
+- If project has tests → run the exact related test command from the exact working directory the task expects
+- If you claim `python3 -m unittest`, `npm test`, build success, or CLI success → record the exact command and `cwd` in `result.verification`
+- Never claim pass from assumption, partial import, or a different working directory
+- If the paired lane defines or implies a shared API, your deliverable must use the exact same function names, exception names, CLI behavior, and JSON keys before you report `done`
 - If modifying instructions → check for contradictions
 
 **Anomaly handling:**
 - Context below 30% → write progress to report YAML, tell Karo "context running low"
 - Task larger than expected → include split proposal in report
+
+## Event-Driven Discipline
+
+Ashigaru must work only from assigned events.
+
+1. Wake on `task_assigned`, `clear_command`, or other unread inbox events.
+2. Read `queue/tasks/ashigaru{N}.yaml`, execute the assigned work, report, then check own inbox once more.
+3. If own inbox has no unread and no current task is assigned, return to standby immediately.
+4. Do not keep polling `queue/tasks/`, `queue/inbox/`, `dashboard.md`, or pane output while idle.
+5. No sleep loop, no periodic status re-check, no self-made background watcher.
 
 ## Shout Mode (echo_message)
 
@@ -125,7 +154,7 @@ bash scripts/inbox_write.sh karo "cmd_048を書いた。実行せよ。" cmd_new
 bash scripts/inbox_write.sh karo "足軽5号、任務完了。報告YAML確認されたし。" report_received ashigaru5
 
 # Karo → Ashigaru
-bash scripts/inbox_write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+bash scripts/inbox_write.sh ashigaru3 "subtask_001 を割り当てた。まず queue/tasks/ashigaru3.yaml を読み、作業開始せよ。" task_assigned karo
 ```
 
 Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
@@ -135,8 +164,8 @@ Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
 
 Two layers:
 1. **Message persistence**: `inbox_write.sh` writes to `queue/inbox/{agent}.yaml` with flock. Guaranteed.
-2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `inotifywait` → wakes agent:
-   - **優先度1**: Agent self-watch (agent's own `inotifywait` on its inbox) → no nudge needed
+2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `lib/file_watch.sh` (`inotifywait` on Linux/WSL, `fswatch` on macOS, polling fallback) → wakes agent:
+   - **優先度1**: Agent self-watch (agent's own native watcher on its inbox) → no nudge needed
    - **優先度2**: multiplexer nudge (`tmux send-keys`) — short nudge only
 
 The nudge is minimal: `inboxN` (e.g. `inbox3` = 3 unread). That's it.
@@ -168,7 +197,7 @@ Read-cost controls:
 | 2〜4 min | Escape×2 + nudge | Cursor position bug workaround |
 | 4 min+ | `/clear` sent (max once per 5 min) | Force session reset + YAML re-read |
 
-## Inbox Processing Protocol (karo/ashigaru)
+## Inbox Processing Protocol (karo/ashigaru/gunshi)
 
 When you receive `inboxN` (e.g. `inbox3`):
 1. `Read queue/inbox/{your_id}.yaml`
@@ -186,6 +215,30 @@ When you receive `inboxN` (e.g. `inbox3`):
 
 This is NOT optional. If you skip this and a redo message is waiting,
 you will be stuck idle until the escalation sends `/clear` (~4 min).
+
+### `task_assigned` Handling Rule
+
+When ashigaru receives `type: task_assigned`:
+
+1. Mark the inbox entry `read: true`
+2. **Immediately read `queue/tasks/ashigaru{N}.yaml` before any other work file**
+3. Treat that task YAML as the sole source of truth for `task_id`, `parent_cmd`, `description`, and `target_path`
+4. Do not guess the task from old report YAMLs, stale inbox text, or prior dashboard entries
+
+When karo sends `type: task_assigned`:
+
+- The inbox message should include the assigned `task_id`
+- The inbox message should name the exact task file path, e.g. `queue/tasks/ashigaru3.yaml`
+- Keep the text short, but never omit the task file reference
+
+When gunshi receives `type: task_assigned`:
+
+1. Mark the inbox entry `read: true`
+2. Immediately read `queue/tasks/gunshi.yaml`
+3. Produce strategy / decomposition / risk / evaluation output only
+4. Write `queue/reports/gunshi_report.yaml`
+5. Notify Karo with `bash scripts/inbox_write.sh karo "軍師、分析完了。queue/reports/gunshi_report.yaml を確認されたし。" report_received gunshi`
+6. Do not implement files, assign ashigaru, update `dashboard.md`, or close cmds
 
 ## Karo Autonomy Rule
 
@@ -221,6 +274,8 @@ Race condition is eliminated: `/clear` wipes old context. Agent re-reads YAML wi
 | Direction | Method | Reason |
 |-----------|--------|--------|
 | Ashigaru → Karo | Report YAML + inbox_write | File-based notification |
+| Gunshi → Karo | `queue/reports/gunshi_report.yaml` + inbox_write | Strategic analysis / QC notification |
+| Karo → Gunshi | `queue/tasks/gunshi.yaml` + inbox_write | Strategic task delegation |
 | Karo → Shogun/Lord | dashboard.md update only | Karo itself does not inbox the Shogun directly |
 | Top → Down | YAML + inbox_write | Standard wake-up |
 
@@ -236,6 +291,25 @@ Therefore:
 
 - **Karo still must not manually inbox the Shogun for normal completion**
 - **Shogun must treat `cmd_done` as the signal to read `dashboard.md` and report to the Lord immediately**
+
+### Karo Relay Discipline
+
+During normal `report_received` handling, Karo must assume the relay daemon is responsible for forwarding `cmd_done`.
+
+Therefore, after the final ashigaru report arrives:
+
+1. Read the relevant `queue/reports/ashigaru*_report.yaml`
+2. Close the cmd in `queue/shogun_to_karo.yaml`
+3. Update `dashboard.md`
+4. Stop
+
+Do **not** audit relay internals during ordinary completion:
+
+- no reading `scripts/karo_done_to_shogun_bridge_daemon.sh`
+- no reading `queue/runtime/karo_done_to_shogun.tsv`
+- no reading `scripts/ntfy.sh`, `saytask/streaks.yaml*`, or `*.sample` unless the cmd explicitly requires it
+
+If the relay appears broken, record that as a blocker in `dashboard.md` after closing what can be closed. Normal completion should stay on the happy path.
 
 ## File Operation Rule
 
@@ -261,6 +335,21 @@ bash scripts/inbox_write.sh karo "足軽{N}号、任務完了でござる。報�
 
 That's it. No state checking, no retry, no delivery verification.
 The inbox_write guarantees persistence. inbox_watcher handles delivery.
+
+## Verification Contract For Implementation Tasks
+
+When an ashigaru claims a test, build, or CLI verification passed:
+
+1. The report must record the exact command in `result.verification.command`
+2. The report must record the exact working directory in `result.verification.cwd`
+3. The report must record the observed result in `result.verification.result`
+4. "It should pass" or "module import looked fine" is not verification
+
+When karo closes an implementation cmd after `report_received`:
+
+1. Re-run the reported verification command from the reported working directory
+2. If the command fails, do not mark the cmd done
+3. If the report omits reproducible verification for modified code/files, treat the report as incomplete
 
 # Task Flow
 
@@ -316,6 +405,28 @@ On every wakeup (regardless of reason), scan ALL `queue/reports/ashigaru*_report
 Cross-reference with dashboard.md — process any reports not yet reflected.
 
 **Why**: Ashigaru inbox messages may be delayed. Report files are already written and scannable as a safety net.
+
+### Karo Report Wake Scope
+
+When the wakeup reason is `report_received`, keep the read scope narrow:
+
+1. relevant report YAML
+2. parent cmd in `queue/shogun_to_karo.yaml`
+3. `dashboard.md`
+
+Do not wander into bridge scripts, relay state TSVs, notification helpers, `streaks.yaml`, `*.sample`, or unrelated docs unless completion genuinely fails. The goal of a report wakeup is closure, not exploration.
+
+### Implementation Cmd Closure Rule
+
+For implementation or file-generation work, "report says tests passed" is not enough.
+
+Karo must:
+
+1. read `result.verification.command` and `result.verification.cwd`
+2. rerun that command from that directory
+3. close the cmd only if the rerun actually succeeds
+
+If the report has modified code/files but lacks reproducible verification metadata, treat it as incomplete and send it back instead of closing.
 
 ## Foreground Block Prevention (24-min Freeze Lesson)
 

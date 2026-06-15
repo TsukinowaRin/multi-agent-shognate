@@ -185,15 +185,15 @@ class UpdateManagerPendingUpdateTests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_queue_update_request_writes_pending_file(self):
-        payload = update_manager.queue_update_request("manual", "android")
+        payload = update_manager.queue_update_request("manual", "cli")
 
         self.assertEqual(payload["action"], "manual")
-        self.assertEqual(payload["requested_by"], "android")
+        self.assertEqual(payload["requested_by"], "cli")
         stored = json.loads(update_manager.PENDING_UPDATE_PATH.read_text(encoding="utf-8"))
         self.assertEqual(stored["status"], "queued")
 
     def test_apply_pending_dispatches_manual_update(self):
-        update_manager.queue_update_request("manual", "android")
+        update_manager.queue_update_request("manual", "cli")
         original_run_update = update_manager.run_update
 
         def fake_run_update(mode):
@@ -211,7 +211,7 @@ class UpdateManagerPendingUpdateTests(unittest.TestCase):
         self.assertFalse(update_manager.PENDING_UPDATE_PATH.exists())
 
     def test_apply_pending_dispatches_upstream_sync(self):
-        update_manager.queue_update_request("upstream-sync", "android")
+        update_manager.queue_update_request("upstream-sync", "cli")
         original_upstream_sync = update_manager.upstream_sync
 
         def fake_upstream_sync(dry_run=False):
@@ -232,7 +232,7 @@ class UpdateManagerPendingUpdateTests(unittest.TestCase):
         update_manager.ensure_state_dir()
         update_manager.write_json(
             update_manager.PENDING_UPDATE_PATH,
-            {"action": "bad-action", "requested_by": "android", "status": "queued"},
+            {"action": "bad-action", "requested_by": "cli", "status": "queued"},
         )
 
         applied, _ = update_manager.apply_pending_update_request()
@@ -274,6 +274,24 @@ class UpdateManagerInstallModeDetectionTests(unittest.TestCase):
             update_manager.git = original_git
 
         self.assertEqual(mode, "release")
+
+
+class UpdateManagerIntegratedToolsTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix="mas-integrated-tools-test-")
+        self.root = Path(self.temp_dir.name) / "repo"
+        self.root.mkdir(parents=True)
+        self.original_root = update_manager.ROOT
+        update_manager.ROOT = self.root
+
+    def tearDown(self):
+        update_manager.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def test_update_integrated_tools_is_noop_extension_point(self):
+        update_manager.update_integrated_tools()
+
+        self.assertFalse((self.root / ".shogunate").exists())
 
 
 class UpdateManagerSpecificReleaseApplyTests(unittest.TestCase):
@@ -330,20 +348,20 @@ class UpdateManagerSpecificReleaseApplyTests(unittest.TestCase):
 
         applied, version = update_manager.apply_specific_release_snapshot(
             source_root=source_root,
-            ref="android-v4.2.0.9",
+            ref="v5.0.0.12",
             ref_kind="tags",
-            version_label="android-v4.2.0.9",
+            version_label="v5.0.0.12",
         )
 
         self.assertTrue(applied)
-        self.assertEqual(version, "android-v4.2.0.9")
+        self.assertEqual(version, "v5.0.0.12")
         self.assertEqual((self.root / "README.md").read_text(encoding="utf-8"), "new\n")
         settings = yaml.safe_load((self.root / "config/settings.yaml").read_text(encoding="utf-8"))
         self.assertEqual(settings["language"], "ja")
         self.assertIn("update", settings)
         state = json.loads(update_manager.STATE_PATH.read_text(encoding="utf-8"))
         self.assertEqual(state["install_mode"], "release")
-        self.assertEqual(state["version_label"], "android-v4.2.0.9")
+        self.assertEqual(state["version_label"], "v5.0.0.12")
 
 
 if __name__ == "__main__":

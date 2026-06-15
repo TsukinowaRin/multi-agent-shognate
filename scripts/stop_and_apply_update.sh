@@ -50,7 +50,7 @@ done
 echo "[stop_and_apply_update] queue update: action=${ACTION} requested_by=${REQUESTED_BY}"
 python3 scripts/update_manager.py queue-update "$ACTION" --requested-by "$REQUESTED_BY"
 
-for session in goza-no-ma shogun gunshi multiagent; do
+for session in "${SHOGUNATE_SESSION_NAME:-shogunate}" "${LEGACY_GOZA_SESSION_NAME:-goza-no-ma}" shogun gunshi multiagent; do
     if tmux has-session -t "$session" 2>/dev/null; then
         echo "[stop_and_apply_update] stop tmux session: $session"
         tmux kill-session -t "$session"

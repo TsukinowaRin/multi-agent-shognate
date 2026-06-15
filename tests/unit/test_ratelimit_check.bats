@@ -5,20 +5,17 @@ setup() {
     export SCRIPT="$PROJECT_ROOT/scripts/ratelimit_check.sh"
     export TEST_TMP="$(mktemp -d "$BATS_TMPDIR/ratelimit_check.XXXXXX")"
     export HOME="$TEST_TMP/home"
-    mkdir -p "$HOME/.gemini" "$HOME/.config/opencode" "$HOME/.config/kilo" "$TEST_TMP/bin"
+    mkdir -p "$HOME/.gemini/antigravity-cli" "$HOME/.config/opencode" "$HOME/.config/kilo" "$TEST_TMP/bin"
 
-    cat > "$HOME/.gemini/settings.json" <<'JSON'
+    cat > "$HOME/.gemini/antigravity-cli/settings.json" <<'JSON'
 {"model":{"name":"gemini-3.1-pro-preview"}}
-JSON
-    cat > "$HOME/.gemini/projects.json" <<'JSON'
-{"projects":{}}
 JSON
 
     cat > "$TEST_TMP/settings.yaml" <<'YAML'
 cli:
   agents:
     shogun:
-      type: gemini
+      type: antigravity
       model: gemini-3.1-pro-preview
     karo:
       type: opencode
@@ -43,7 +40,7 @@ OUT
   exit 0
 fi
 if [[ "$*" == *"display-message -t shogun:main -p #{@agent_cli}"* ]]; then
-  printf 'gemini\n'
+  printf 'antigravity\n'
   exit 0
 fi
 if [[ "$*" == *"display-message -t shogun:main -p #{@model_name}"* ]]; then
@@ -84,12 +81,12 @@ teardown() {
     rm -rf "$TEST_TMP"
 }
 
-@test "ratelimit_check: Gemini/OpenCode/Kilo を専用セクションで表示する" {
+@test "ratelimit_check: Antigravity/OpenCode/Kilo を専用セクションで表示する" {
     run bash "$SCRIPT" --lang en
     [ "$status" -eq 0 ]
 
-    [[ "$output" == *"── Gemini CLI"* ]]
-    [[ "$output" == *"Workspace state: detected (~/.gemini)"* ]]
+    [[ "$output" == *"── Antigravity CLI"* ]]
+    [[ "$output" == *"Workspace state: detected (~/.gemini/antigravity-cli)"* ]]
     [[ "$output" == *"Quota: unavailable"* ]]
     [[ "$output" == *"── OpenCode"* ]]
     [[ "$output" == *"Workspace state: detected (~/.config/opencode)"* ]]

@@ -27,3 +27,8 @@ teardown() {
   [ -f "$PROJECT_ROOT/daemon_once_ran.txt" ]
   rm -f "$PROJECT_ROOT/daemon_once_ran.txt"
 }
+
+@test "runtime_cli_pref_daemon は /tmp 共有ログを使わない" {
+  run grep -n "/tmp/mas_runtime_cli_sync" "$PROJECT_ROOT/scripts/runtime_cli_pref_daemon.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+  [ "$status" -ne 0 ]
+}

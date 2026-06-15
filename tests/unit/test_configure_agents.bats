@@ -18,18 +18,18 @@ topology:
   active_ashigaru:
     - ashigaru1
 cli:
-  default: gemini
+  default: antigravity
   agents:
     shogun:
       type: codex
     gunshi:
-      type: gemini
+      type: antigravity
     karo:
       type: codex
     ashigaru1:
-      type: gemini
+      type: antigravity
   commands:
-    gemini: "gemini --yolo"
+    antigravity: "agy --dangerously-skip-permissions"
     localapi: "python3 scripts/localapi_repl.py"
     opencode: "opencode"
     kilo: "kilo"
@@ -40,7 +40,7 @@ teardown() {
   rm -rf "$TEST_TMP"
 }
 
-@test "configure_agents: opencode_like設定とGemini thinking_levelを正しく保存する" {
+@test "configure_agents: opencode_like設定とAntigravity modelを正しく保存する" {
   run bash -lc "cd '$TEST_TMP' && printf '%s\n' \
     'tmux' \
     'opencode' \
@@ -52,9 +52,8 @@ teardown() {
     'codex' \
     'auto' \
     'auto' \
-    'gemini' \
+    'antigravity' \
     'gemini-3-flash-preview' \
-    'minimal' \
     'yes' \
     'openai-compatible' \
     'http://127.0.0.1:1234/v1' \
@@ -67,9 +66,9 @@ import sys, yaml
 with open(sys.argv[1], encoding='utf-8') as fh:
     cfg = yaml.safe_load(fh)
 ashigaru = cfg["cli"]["agents"]["ashigaru1"]
-assert ashigaru["type"] == "gemini"
+assert ashigaru["type"] == "antigravity"
 assert ashigaru["model"] == "gemini-3-flash-preview"
-assert ashigaru["thinking_level"] == "minimal"
+assert "thinking_level" not in ashigaru
 assert "reasoning_effort" not in ashigaru
 shared = cfg["cli"]["opencode_like"]
 assert shared["provider"] == "openai-compatible"

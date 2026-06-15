@@ -14,13 +14,12 @@
 
 setup_file() {
     export PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
-    if [ -x "$PROJECT_ROOT/.venv/bin/python3" ]; then
+    if [ -x "$PROJECT_ROOT/.venv/bin/python3" ] && "$PROJECT_ROOT/.venv/bin/python3" -c "import yaml" >/dev/null 2>&1; then
         export TEST_PYTHON="$PROJECT_ROOT/.venv/bin/python3"
     elif python3 -c "import yaml" >/dev/null 2>&1; then
         export TEST_PYTHON="$(command -v python3)"
     else
-        echo "PyYAML-capable python3 is unavailable; noop pass fallback will use system python3 path" >&2
-        export TEST_PYTHON="python3"
+        skip "PyYAML-capable python3 is unavailable"
     fi
 }
 
@@ -200,14 +199,17 @@ JSON
     cat > "$MOCK_CURL_OUTPUT" << 'JSON'
 {"event":"message","id":"msg007","time":1234567890,"message":"should not ack","tags":[]}
 JSON
-    # Make queue directory read-only to force mkstemp/flock failure
-    chmod 555 "$MOCK_PROJECT/queue"
+    # Force append_ntfy_inbox failure in a UID-independent way.
+    # chmod-based write denial does not fail when the suite runs as root.
+    rm "$MOCK_PROJECT/queue/ntfy_inbox.yaml"
+    mkdir "$MOCK_PROJECT/queue/ntfy_inbox.yaml"
     run_listener
     # Both ACK and inbox_write should be skipped (L159 continue)
     [ ! -s "$ACK_LOG" ]
     [ ! -s "$INBOX_LOG" ]
     # Restore for teardown
-    chmod 755 "$MOCK_PROJECT/queue"
+    rmdir "$MOCK_PROJECT/queue/ntfy_inbox.yaml"
+    echo "inbox:" > "$MOCK_PROJECT/queue/ntfy_inbox.yaml"
 }
 
 # ═══════════════════════════════════════════════════════════════

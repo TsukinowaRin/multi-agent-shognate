@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ============================================================
 # first_setup.sh - multi-agent-shogun 初回セットアップスクリプト
 # Ubuntu / WSL / Mac 用環境構築ツール
@@ -66,7 +66,12 @@ echo ""
 log_step "STEP 1: システム環境チェック"
 
 # OS情報を取得
-if [ -f /etc/os-release ]; then
+UNAME_S="$(uname -s)"
+if [ "$UNAME_S" = "Darwin" ]; then
+    OS_NAME="macOS"
+    OS_VERSION="$(sw_vers -productVersion 2>/dev/null || echo 'unknown')"
+    log_info "OS: $OS_NAME $OS_VERSION"
+elif [ -f /etc/os-release ]; then
     . /etc/os-release
     OS_NAME=$NAME
     OS_VERSION=$VERSION_ID
@@ -77,12 +82,14 @@ else
 fi
 
 # WSL チェック
+IS_WSL=false
 if grep -qi microsoft /proc/version 2>/dev/null; then
     log_info "環境: WSL (Windows Subsystem for Linux)"
     IS_WSL=true
+elif [ "$UNAME_S" = "Darwin" ]; then
+    log_info "環境: macOS"
 else
     log_info "環境: Native Linux"
-    IS_WSL=false
 fi
 
 RESULTS+=("システム環境: OK")
@@ -175,16 +182,6 @@ fi
 RESULTS+=("tmux マウス設定: OK")
 
 # ============================================================
-# STEP 3.5: 本フォークの方針
-# ============================================================
-log_step "STEP 3.5: 本フォークの方針"
-
-log_info "このフォークは upstream の tmux 本線を基準にしています"
-log_info "独自差分は Gemini / OpenCode / Kilo / localapi / local provider 対応です"
-log_info "旧 zellij 実装と旧 goza 資産は Waste/ に退避済みです"
-RESULTS+=("strategy: upstream tmux base + cli extensions")
-
-# ============================================================
 # STEP 4: Node.js チェック
 # ============================================================
 log_step "STEP 4: Node.js チェック"
@@ -257,9 +254,12 @@ else
 fi
 
 # ============================================================
-# STEP 4.5: Python3 / PyYAML / inotify-tools チェック
+# STEP 4.5: Python3 / venv / flock / file-watcher チェック
 # ============================================================
-log_step "STEP 4.5: Python3 / PyYAML / inotify-tools チェック"
+log_step "STEP 4.5: Python3 / venv / flock / file-watcher チェック"
+
+# Detect OS
+SETUP_OS="$(uname -s)"
 
 # --- python3 ---
 if command -v python3 &> /dev/null; then
@@ -280,56 +280,138 @@ else
             RESULTS+=("python3: インストール失敗")
             HAS_ERROR=true
         fi
+    elif [ "$SETUP_OS" = "Darwin" ]; then
+        log_error "python3 がインストールされていません"
+        echo "  macOS: brew install python3 または https://www.python.org/ からインストール"
+        RESULTS+=("python3: 未インストール (手動インストール必要)")
+        HAS_ERROR=true
     else
-        log_error "apt-get が見つかりません。手動で python3 をインストールしてください"
+        log_error "手動で python3 をインストールしてください"
         RESULTS+=("python3: 未インストール (手動インストール必要)")
         HAS_ERROR=true
     fi
 fi
 
-# --- PyYAML (python3-yaml) ---
-if python3 -c "import yaml" 2>/dev/null; then
-    log_success "PyYAML がインストール済みです"
-    RESULTS+=("PyYAML: OK")
+# --- Python venv + PyYAML (via requirements.txt) ---
+VENV_DIR="$SCRIPT_DIR/.venv"
+if [ -f "$VENV_DIR/bin/python3" ] && "$VENV_DIR/bin/python3" -c "import yaml" 2>/dev/null; then
+    log_success "Python venv + PyYAML がセットアップ済みです"
+    RESULTS+=("venv + PyYAML: OK")
 else
-    log_warn "PyYAML がインストールされていません"
-    if command -v apt-get &> /dev/null; then
-        log_info "python3-yaml をインストール中..."
-        if sudo apt-get install -y python3-yaml 2>/dev/null; then
-            log_success "python3-yaml インストール完了"
-            RESULTS+=("PyYAML: インストール完了")
+    log_info "Python venv をセットアップ中..."
+    if command -v python3 &> /dev/null; then
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update -qq 2>/dev/null
+            sudo apt-get install -y python3-venv 2>/dev/null
+        fi
+        if python3 -m venv "$VENV_DIR" 2>/dev/null; then
+            log_success "venv 作成完了: $VENV_DIR"
+            if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
+                if "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt" 2>/dev/null; then
+                    log_success "PyYAML インストール完了 (venv)"
+                    RESULTS+=("venv + PyYAML: セットアップ完了")
+                else
+                    log_error "pip install に失敗しました"
+                    RESULTS+=("venv + PyYAML: pip失敗")
+                    HAS_ERROR=true
+                fi
+            else
+                log_warn "requirements.txt が見つかりません"
+                RESULTS+=("venv + PyYAML: requirements.txt不在")
+                HAS_ERROR=true
+            fi
         else
-            log_error "python3-yaml のインストールに失敗しました"
-            RESULTS+=("PyYAML: インストール失敗")
+            log_error "python3 -m venv に失敗しました"
+            echo "  python3-venv パッケージが必要かもしれません:"
+            echo "    Ubuntu/Debian: sudo apt-get install python3-venv"
+            RESULTS+=("venv: 作成失敗")
             HAS_ERROR=true
         fi
     else
-        log_error "apt-get が見つかりません。手動で python3-yaml をインストールしてください"
-        RESULTS+=("PyYAML: 未インストール (手動インストール必要)")
+        log_error "python3 が必要です（上のステップでインストールしてください）"
+        RESULTS+=("venv: python3不在のためスキップ")
         HAS_ERROR=true
     fi
 fi
 
-# --- inotify-tools (inotifywait) ---
-if command -v inotifywait &> /dev/null; then
-    log_success "inotify-tools がインストール済みです"
-    RESULTS+=("inotify-tools: OK")
+# --- flock ---
+if command -v flock &> /dev/null; then
+    log_success "flock がインストール済みです"
+    RESULTS+=("flock: OK")
 else
-    log_warn "inotify-tools がインストールされていません"
-    if command -v apt-get &> /dev/null; then
-        log_info "inotify-tools をインストール中..."
-        if sudo apt-get install -y inotify-tools 2>/dev/null; then
-            log_success "inotify-tools インストール完了"
-            RESULTS+=("inotify-tools: インストール完了")
+    log_warn "flock がインストールされていません"
+    if [ "$SETUP_OS" = "Darwin" ]; then
+        echo "  macOS: brew install flock"
+        RESULTS+=("flock: 未インストール (brew install flock)")
+    elif command -v apt-get &> /dev/null; then
+        log_info "util-linux (flock含む) は通常プリインストールです"
+        echo "  sudo apt-get install util-linux"
+        RESULTS+=("flock: 未インストール (apt-get install util-linux)")
+    else
+        echo "  手動でインストールしてください"
+        RESULTS+=("flock: 未インストール")
+    fi
+    HAS_ERROR=true
+fi
+
+# --- Bash version check (macOS ships with bash 3.2) ---
+if [ "$SETUP_OS" = "Darwin" ]; then
+    if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+        log_warn "bash 3.2 detected (macOS default)."
+        log_warn "This tool requires bash 4.0+."
+        log_warn "Install: brew install bash"
+        log_warn "Then reopen terminal and retry."
+        HAS_ERROR=true
+    else
+        log_success "bash ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]} detected"
+    fi
+fi
+
+# --- coreutils (recommended for macOS) ---
+if [ "$SETUP_OS" = "Darwin" ]; then
+    if ! command -v gtimeout &>/dev/null; then
+        log_warn "GNU coreutils not found. inbox_watcher will use bash fallback for timeout."
+        log_warn "Recommended: brew install coreutils"
+        RESULTS+=("coreutils: 未インストール (brew install coreutils)")
+    else
+        log_success "GNU coreutils detected (gtimeout available)"
+    fi
+fi
+
+# --- File watcher (inotifywait / fswatch) ---
+if [ "$SETUP_OS" = "Darwin" ]; then
+    # macOS: fswatch
+    if command -v fswatch &> /dev/null; then
+        log_success "fswatch がインストール済みです (macOS file watcher)"
+        RESULTS+=("file-watcher: OK (fswatch)")
+    else
+        log_warn "fswatch がインストールされていません"
+        echo "  macOS: brew install fswatch"
+        RESULTS+=("file-watcher: 未インストール (brew install fswatch)")
+        HAS_ERROR=true
+    fi
+else
+    # Linux: inotifywait
+    if command -v inotifywait &> /dev/null; then
+        log_success "inotify-tools がインストール済みです"
+        RESULTS+=("file-watcher: OK (inotifywait)")
+    else
+        log_warn "inotify-tools がインストールされていません"
+        if command -v apt-get &> /dev/null; then
+            log_info "inotify-tools をインストール中..."
+            if sudo apt-get install -y inotify-tools 2>/dev/null; then
+                log_success "inotify-tools インストール完了"
+                RESULTS+=("file-watcher: インストール完了 (inotifywait)")
+            else
+                log_error "inotify-tools のインストールに失敗しました"
+                RESULTS+=("file-watcher: インストール失敗")
+                HAS_ERROR=true
+            fi
         else
-            log_error "inotify-tools のインストールに失敗しました"
-            RESULTS+=("inotify-tools: インストール失敗")
+            log_error "手動で inotify-tools をインストールしてください"
+            RESULTS+=("file-watcher: 未インストール")
             HAS_ERROR=true
         fi
-    else
-        log_error "apt-get が見つかりません。手動で inotify-tools をインストールしてください"
-        RESULTS+=("inotify-tools: 未インストール (手動インストール必要)")
-        HAS_ERROR=true
     fi
 fi
 
@@ -451,66 +533,6 @@ if [ "$NEED_CLAUDE_INSTALL" = true ]; then
 fi
 
 # ============================================================
-# STEP 5.5: 追加CLIチェック（Codex / Gemini / OpenCode / Kilo）
-# ============================================================
-log_step "STEP 5.5: 追加CLIチェック"
-
-if command -v codex &> /dev/null; then
-    CODEX_VERSION=$(codex --version 2>/dev/null || echo "unknown")
-    log_success "Codex CLI がインストール済みです ($CODEX_VERSION)"
-    RESULTS+=("Codex CLI: OK ($CODEX_VERSION)")
-else
-    log_info "Codex CLI は未インストールです（必要時のみ導入）"
-    log_info "  例: npm install -g @openai/codex"
-    RESULTS+=("Codex CLI: optional (not installed)")
-fi
-
-if command -v gemini &> /dev/null || command -v gemini-cli &> /dev/null; then
-    GEMINI_BIN="$(command -v gemini 2>/dev/null || command -v gemini-cli 2>/dev/null)"
-    GEMINI_VERSION="$("$GEMINI_BIN" --version 2>/dev/null || echo "unknown")"
-    log_success "Gemini CLI がインストール済みです ($GEMINI_VERSION)"
-    RESULTS+=("Gemini CLI: OK ($GEMINI_VERSION)")
-else
-    log_info "Gemini CLI は未インストールです（Gemini運用時のみ導入）"
-    log_info "  Gemini CLI を導入し、'gemini' または 'gemini-cli' を PATH に通してください"
-    RESULTS+=("Gemini CLI: optional (not installed)")
-fi
-
-if command -v opencode &> /dev/null; then
-    OPENCODE_VERSION=$(opencode --version 2>/dev/null || echo "unknown")
-    log_success "OpenCode CLI がインストール済みです ($OPENCODE_VERSION)"
-    RESULTS+=("OpenCode CLI: OK ($OPENCODE_VERSION)")
-else
-    log_info "OpenCode CLI は未インストールです（OpenCode運用時のみ導入）"
-    log_info "  例: npm install -g opencode-ai"
-    RESULTS+=("OpenCode CLI: optional (not installed)")
-fi
-
-if command -v kilo &> /dev/null; then
-    KILO_VERSION=$(kilo --version 2>/dev/null || echo "unknown")
-    log_success "Kilo CLI がインストール済みです ($KILO_VERSION)"
-    RESULTS+=("Kilo CLI: OK ($KILO_VERSION)")
-else
-    log_info "Kilo CLI は未インストールです（Kilo運用時のみ導入）"
-    log_info "  例: npm install -g @kilocode/cli"
-    RESULTS+=("Kilo CLI: optional (not installed)")
-fi
-
-if command -v ollama &> /dev/null; then
-    OLLAMA_VERSION=$(ollama --version 2>/dev/null || echo "unknown")
-    log_success "Ollama がインストール済みです ($OLLAMA_VERSION)"
-    RESULTS+=("Ollama: OK ($OLLAMA_VERSION)")
-else
-    log_info "Ollama は未インストールです（local provider に Ollama を使う場合のみ導入）"
-    log_info "  例: curl -fsSL https://ollama.com/install.sh | sh"
-    RESULTS+=("Ollama: optional (not installed)")
-fi
-
-log_info "LM Studio は GUI アプリのため自動検出しません"
-log_info "  LM Studio を使う場合は Local Server を有効化し、既定の http://127.0.0.1:1234/v1 を利用してください"
-RESULTS+=("LM Studio: optional (manual local server check)")
-
-# ============================================================
 # STEP 6: ディレクトリ構造作成
 # ============================================================
 log_step "STEP 6: ディレクトリ構造作成"
@@ -551,6 +573,45 @@ fi
 RESULTS+=("ディレクトリ構造: OK (作成:$CREATED_COUNT, 既存:$EXISTED_COUNT)")
 
 # ============================================================
+# STEP 6.5: OSSスキルインストール
+# ============================================================
+log_step "STEP 6.5: OSSスキルインストール"
+
+CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
+mkdir -p "$CLAUDE_SKILLS_DIR"
+
+INSTALLED_SKILLS=0
+SKIPPED_SKILLS=0
+FOUND_SKILLS=0
+
+shopt -s nullglob
+for skill_dir in "$SCRIPT_DIR/skills"/*/; do
+    [ -d "$skill_dir" ] || continue
+
+    FOUND_SKILLS=$((FOUND_SKILLS + 1))
+    skill_name=$(basename "$skill_dir")
+    target="$CLAUDE_SKILLS_DIR/$skill_name"
+
+    if [ -d "$target" ]; then
+        log_info "スキル $skill_name は既に存在します（スキップ）"
+        SKIPPED_SKILLS=$((SKIPPED_SKILLS + 1))
+    else
+        cp -r "$skill_dir" "$target"
+        log_success "スキルをインストールしました: $skill_name"
+        INSTALLED_SKILLS=$((INSTALLED_SKILLS + 1))
+    fi
+done
+shopt -u nullglob
+
+if [ "$FOUND_SKILLS" -eq 0 ]; then
+    log_warn "インストール可能なスキルが見つかりませんでした"
+    RESULTS+=("OSSスキル: スキップ (skills/ 未検出)")
+else
+    log_info "/shogun-model-switch などのスキルが使用可能になりました"
+    RESULTS+=("OSSスキル: OK (新規:$INSTALLED_SKILLS, 既存:$SKIPPED_SKILLS)")
+fi
+
+# ============================================================
 # STEP 7: 設定ファイル初期化
 # ============================================================
 log_step "STEP 7: 設定ファイル確認"
@@ -572,18 +633,6 @@ language: ja
 # zsh: zsh用プロンプト
 shell: bash
 
-# マルチプレクサ設定
-# tmux: 現行の唯一サポート対象
-multiplexer:
-  default: tmux
-
-# 起動トポロジ設定
-topology:
-  # デフォルトは足軽2名を起動（必要時に追加）
-  active_ashigaru:
-    - ashigaru1
-    - ashigaru2
-
 # スキル設定
 skill:
   # スキル保存先（スキル名に shogun- プレフィックスを付けて保存）
@@ -596,50 +645,6 @@ skill:
 logging:
   level: info  # debug | info | warn | error
   path: "$SCRIPT_DIR/logs/"
-
-# アップデート設定（local-only）
-update:
-  # 起動時に更新確認を行うか
-  startup_check: true
-  # Release install のみ対象。true にすると起動時に最新 Release へ自動更新
-  auto_apply_release: false
-  # 常に残すローカル資産
-  preserve_paths:
-    - ".codex/"
-    - ".claude/"
-    - "projects/"
-    - "context/local/"
-    - "instructions/local/"
-    - "skills/local/"
-    - "memory/global_context.md"
-
-# Multi-CLI設定
-cli:
-  default: codex
-  agents:
-    shogun:
-      type: codex
-      model: auto
-      reasoning_effort: auto
-    gunshi:
-      type: codex
-      model: auto
-      reasoning_effort: auto
-    karo:
-      type: codex
-      model: auto
-      reasoning_effort: auto
-    ashigaru1:
-      type: codex
-      model: auto
-      reasoning_effort: auto
-    ashigaru2:
-      type: codex
-      model: auto
-      reasoning_effort: auto
-  commands:
-    gemini: "gemini --yolo"
-    localapi: "python3 scripts/localapi_repl.py"
 EOF
     log_success "settings.yaml を作成しました"
 else
@@ -662,6 +667,16 @@ EOF
     log_success "projects.yaml を作成しました"
 else
     log_info "config/projects.yaml は既に存在します"
+fi
+
+# memory/MEMORY.md（Shogun 永続メモリ — 既存ファイルは上書きしない）
+if [ ! -f "$SCRIPT_DIR/memory/MEMORY.md" ]; then
+    log_info "memory/MEMORY.md を作成中..."
+    cp "$SCRIPT_DIR/memory/MEMORY.md.sample" "$SCRIPT_DIR/memory/MEMORY.md"
+    log_success "memory/MEMORY.md を作成しました（MEMORY.md.sample からコピー）"
+    log_info "memory/MEMORY.md を編集して、あなたの情報を記入してください"
+else
+    log_info "memory/MEMORY.md は既に存在します（スキップ）"
 fi
 
 # memory/global_context.md（システム全体のコンテキスト）
@@ -692,8 +707,29 @@ RESULTS+=("設定ファイル: OK")
 # ============================================================
 log_step "STEP 8: キューファイル初期化"
 
+# 足軽数を settings.yaml から動的に取得（設定がなければデフォルト7）
+_SETUP_VENV_PYTHON="$SCRIPT_DIR/.venv/bin/python3"
+_SETUP_ASHIGARU_COUNT=$(
+    if [[ -x "$_SETUP_VENV_PYTHON" ]]; then
+        "$_SETUP_VENV_PYTHON" -c "
+import yaml
+try:
+    with open('$SCRIPT_DIR/config/settings.yaml') as f:
+        cfg = yaml.safe_load(f) or {}
+    agents = cfg.get('cli', {}).get('agents', {})
+    count = len([k for k in agents if k.startswith('ashigaru')])
+    print(count if count > 0 else 7)
+except Exception:
+    print(7)
+" 2>/dev/null
+    else
+        echo 7
+    fi
+)
+_SETUP_ASHIGARU_COUNT=${_SETUP_ASHIGARU_COUNT:-7}
+
 # 足軽用タスクファイル作成
-for i in {1..8}; do
+for i in $(seq 1 "$_SETUP_ASHIGARU_COUNT"); do
     TASK_FILE="$SCRIPT_DIR/queue/tasks/ashigaru${i}.yaml"
     if [ ! -f "$TASK_FILE" ]; then
         cat > "$TASK_FILE" << EOF
@@ -708,10 +744,10 @@ task:
 EOF
     fi
 done
-log_info "足軽タスクファイル (1-8) を確認/作成しました"
+log_info "足軽タスクファイル (1-${_SETUP_ASHIGARU_COUNT}) を確認/作成しました"
 
 # 足軽用レポートファイル作成
-for i in {1..8}; do
+for i in $(seq 1 "$_SETUP_ASHIGARU_COUNT"); do
     REPORT_FILE="$SCRIPT_DIR/queue/reports/ashigaru${i}_report.yaml"
     if [ ! -f "$REPORT_FILE" ]; then
         cat > "$REPORT_FILE" << EOF
@@ -723,7 +759,7 @@ result: null
 EOF
     fi
 done
-log_info "足軽レポートファイル (1-8) を確認/作成しました"
+log_info "足軽レポートファイル (1-${_SETUP_ASHIGARU_COUNT}) を確認/作成しました"
 
 RESULTS+=("キューファイル: OK")
 
@@ -736,15 +772,23 @@ SCRIPTS=(
     "setup.sh"
     "shutsujin_departure.sh"
     "first_setup.sh"
-    "scripts/goza_no_ma.sh"
 )
+
+TARGETS=()
 
 for script in "${SCRIPTS[@]}"; do
     if [ -f "$SCRIPT_DIR/$script" ]; then
-        chmod +x "$SCRIPT_DIR/$script"
-        log_info "$script に実行権限を付与しました"
+        TARGETS+=("$SCRIPT_DIR/$script")
     fi
 done
+
+if [ "${#TARGETS[@]}" -ne 0 ]; then
+    chmod +x "${TARGETS[@]}"
+
+    for target in "${TARGETS[@]}"; do
+        log_info "$(basename "$target") に実行権限を付与しました"
+    done
+fi
 
 RESULTS+=("実行権限: OK")
 
@@ -756,103 +800,82 @@ log_step "STEP 10: alias設定"
 # alias追加対象ファイル
 BASHRC_FILE="$HOME/.bashrc"
 
-# aliasが既に存在するかチェックし、なければ追加
+# css/csm を関数として定義（destroy-unattached で自動掃除）
+# - 複数端末から接続しても画面サイズが干渉しない
+# - SSH切断・アプリ終了時に一時セッションが自動消滅
+# - 本体セッション (shogun/multiagent) は絶対に消えない
+CSS_FUNC='css() { local s="shogun-$$"; local cols=$(tput cols 2>/dev/null || echo 80); tmux new-session -d -t shogun -s "$s" 2>/dev/null && tmux set-option -t "$s" destroy-unattached on 2>/dev/null; if [ "$cols" -lt 80 ]; then tmux new-window -t "$s" -n mobile 2>/dev/null; tmux attach-session -t "$s:mobile" 2>/dev/null || tmux attach-session -t shogun; else tmux attach-session -t "$s" 2>/dev/null || tmux attach-session -t shogun; fi; }'
+CSM_FUNC='csm() { local s="multi-$$"; local cols=$(tput cols 2>/dev/null || echo 80); tmux new-session -d -t multiagent -s "$s" 2>/dev/null && tmux set-option -t "$s" destroy-unattached on 2>/dev/null; if [ "$cols" -lt 80 ]; then tmux new-window -t "$s" -n mobile 2>/dev/null; tmux attach-session -t "$s:mobile" 2>/dev/null || tmux attach-session -t multiagent; else tmux attach-session -t "$s" 2>/dev/null || tmux attach-session -t multiagent; fi; }'
+DASH_FUNC="dash() { python3 \"$SCRIPT_DIR/scripts/dashboard-viewer.py\" \"\$@\"; }"
+
 ALIAS_ADDED=false
 
-# css alias (将軍 pane に移動)
 if [ -f "$BASHRC_FILE" ]; then
-    EXPECTED_CSS="alias css='bash $SCRIPT_DIR/scripts/focus_agent_pane.sh shogun'"
-    if ! grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
-        # alias が存在しない → 新規追加
-        echo "" >> "$BASHRC_FILE"
-        echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        echo "$EXPECTED_CSS" >> "$BASHRC_FILE"
-        log_info "alias css を追加しました（将軍 pane へ移動）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSS" "$BASHRC_FILE" 2>/dev/null; then
-        # alias は存在するがパスが異なる → 更新
-        if sed -i "s|alias css=.*|$EXPECTED_CSS|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias css を更新しました（パス変更検出）"
-        else
-            log_warn "alias css の更新に失敗しました"
-        fi
-        ALIAS_ADDED=true
-    else
-        log_info "alias css は既に正しく設定されています"
+    # 古い alias 形式を削除（存在する場合）
+    if grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
+        sed -i '/alias css=/d' "$BASHRC_FILE"
+        log_info "旧 alias css を削除しました"
+    fi
+    if grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
+        sed -i '/alias csm=/d' "$BASHRC_FILE"
+        log_info "旧 alias csm を削除しました"
     fi
 
-    # csg alias (軍師 pane に移動)
-    EXPECTED_CSG="alias csg='bash $SCRIPT_DIR/scripts/focus_agent_pane.sh gunshi'"
-    if ! grep -q "alias csg=" "$BASHRC_FILE" 2>/dev/null; then
-        if [ "$ALIAS_ADDED" = false ]; then
+    # css 関数
+    if ! grep -q "^css()" "$BASHRC_FILE" 2>/dev/null; then
+        if ! grep -q "multi-agent-shogun aliases" "$BASHRC_FILE" 2>/dev/null; then
             echo "" >> "$BASHRC_FILE"
             echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
         fi
-        echo "$EXPECTED_CSG" >> "$BASHRC_FILE"
-        log_info "alias csg を追加しました（軍師 pane へ移動）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSG" "$BASHRC_FILE" 2>/dev/null; then
-        if sed -i "s|alias csg=.*|$EXPECTED_CSG|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias csg を更新しました（パス変更検出）"
-        else
-            log_warn "alias csg の更新に失敗しました"
-        fi
+        echo "$CSS_FUNC" >> "$BASHRC_FILE"
+        log_info "css 関数を追加しました（将軍ウィンドウ — 自動掃除付き）"
         ALIAS_ADDED=true
     else
-        log_info "alias csg は既に正しく設定されています"
+        # 関数は存在する → 最新版に更新
+        sed -i '/^css()/d' "$BASHRC_FILE"
+        echo "$CSS_FUNC" >> "$BASHRC_FILE"
+        log_info "css 関数を更新しました"
+        ALIAS_ADDED=true
     fi
 
-    # csm alias (家老 pane に移動)
-    EXPECTED_CSM="alias csm='bash $SCRIPT_DIR/scripts/focus_agent_pane.sh karo'"
-    if ! grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
-        if [ "$ALIAS_ADDED" = false ]; then
-            echo "" >> "$BASHRC_FILE"
-            echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        fi
-        echo "$EXPECTED_CSM" >> "$BASHRC_FILE"
-        log_info "alias csm を追加しました（家老 pane へ移動）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSM" "$BASHRC_FILE" 2>/dev/null; then
-        if sed -i "s|alias csm=.*|$EXPECTED_CSM|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias csm を更新しました（パス変更検出）"
-        else
-            log_warn "alias csm の更新に失敗しました"
-        fi
+    # csm 関数
+    if ! grep -q "^csm()" "$BASHRC_FILE" 2>/dev/null; then
+        echo "$CSM_FUNC" >> "$BASHRC_FILE"
+        log_info "csm 関数を追加しました（家老・足軽ウィンドウ — 自動掃除付き）"
         ALIAS_ADDED=true
     else
-        log_info "alias csm は既に正しく設定されています"
+        sed -i '/^csm()/d' "$BASHRC_FILE"
+        echo "$CSM_FUNC" >> "$BASHRC_FILE"
+        log_info "csm 関数を更新しました"
+        ALIAS_ADDED=true
     fi
 
-    # cgo alias (御座の間)
-    EXPECTED_CGO="alias cgo='bash $SCRIPT_DIR/scripts/goza_no_ma.sh'"
-    if ! grep -q "alias cgo=" "$BASHRC_FILE" 2>/dev/null; then
-        if [ "$ALIAS_ADDED" = false ]; then
-            echo "" >> "$BASHRC_FILE"
-            echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        fi
-        echo "$EXPECTED_CGO" >> "$BASHRC_FILE"
-        log_info "alias cgo を追加しました（既存セッションを使う御座の間）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CGO" "$BASHRC_FILE" 2>/dev/null; then
-        if sed -i "s|alias cgo=.*|$EXPECTED_CGO|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias cgo を更新しました（パス変更検出）"
-        else
-            log_warn "alias cgo の更新に失敗しました"
-        fi
+    # dash 関数
+    if ! grep -q "^dash()" "$BASHRC_FILE" 2>/dev/null; then
+        echo "$DASH_FUNC" >> "$BASHRC_FILE"
+        log_info "dash 関数を追加しました（ダッシュボードビューア）"
         ALIAS_ADDED=true
     else
-        log_info "alias cgo は既に正しく設定されています"
+        sed -i '/^dash()/d' "$BASHRC_FILE"
+        echo "$DASH_FUNC" >> "$BASHRC_FILE"
+        log_info "dash 関数を更新しました"
+        ALIAS_ADDED=true
     fi
 else
     log_warn "$BASHRC_FILE が見つかりません"
 fi
 
 if [ "$ALIAS_ADDED" = true ]; then
-    log_success "alias設定を追加しました"
+    log_success "alias設定を追加しました（destroy-unattached 方式）"
     log_warn "alias を反映するには、以下のいずれかを実行してください："
     log_info "  1. source ~/.bashrc"
     log_info "  2. PowerShell で 'wsl --shutdown' してからターミナルを開き直す"
     log_info "  ※ ウィンドウを閉じるだけでは WSL が終了しないため反映されません"
+fi
+
+if [ -f "$SCRIPT_DIR/scripts/install_shell_aliases.sh" ]; then
+    bash "$SCRIPT_DIR/scripts/install_shell_aliases.sh" "$BASHRC_FILE"
+    log_success "Shogunate view aliases を同期しました（cgo/csa/csg/csk/ckr/csm/cma）"
 fi
 
 RESULTS+=("alias設定: OK")

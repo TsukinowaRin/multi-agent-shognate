@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 # ntfy Input Listener
 # Streams messages from ntfy topic, writes to inbox YAML, wakes shogun.
@@ -38,11 +38,11 @@ done < <(ntfy_get_auth_args "$SCRIPT_DIR/config/ntfy_auth.env")
 
 # JSON field extractor (python3 — jq not available)
 parse_json() {
-    python3 -c "import sys,json; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null
+    "$SCRIPT_DIR/.venv/bin/python3" -c "import sys,json; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null
 }
 
 parse_tags() {
-    python3 -c "import sys,json; print(','.join(json.load(sys.stdin).get('tags',[])))" 2>/dev/null
+    "$SCRIPT_DIR/.venv/bin/python3" -c "import sys,json; print(','.join(json.load(sys.stdin).get('tags',[])))" 2>/dev/null
 }
 
 append_ntfy_inbox() {
@@ -51,13 +51,19 @@ append_ntfy_inbox() {
     local msg="$3"
 
     (
-        flock -w 5 200 || exit 1
+        if command -v flock &>/dev/null; then
+            flock -w 5 200 || exit 1
+        else
+            _ld="${LOCKFILE}.d"; _i=0
+            while ! mkdir "$_ld" 2>/dev/null; do sleep 0.1; _i=$((_i+1)); [ $_i -ge 50 ] && exit 1; done
+            trap "rmdir '$_ld' 2>/dev/null" EXIT
+        fi
         NTFY_INBOX_PATH="$INBOX" \
         NTFY_CORRUPT_DIR="$CORRUPT_DIR" \
         MSG_ID="$msg_id" \
         MSG_TS="$ts" \
         MSG_TEXT="$msg" \
-        python3 - << 'PY'
+        "$SCRIPT_DIR/.venv/bin/python3" - << 'PY'
 import datetime
 import os
 import shutil
@@ -159,7 +165,9 @@ while true; do
             continue
         fi
 
-        # Wake shogun via inbox
+        # Auto-reply removed — shogun replies directly after processing.
+
+        # Wake shogun via inbox (ntfy処理は将軍が直接受信)
         bash "$SCRIPT_DIR/scripts/inbox_write.sh" shogun \
             "ntfyから新しいメッセージ受信。queue/ntfy_inbox.yaml を確認し処理せよ。" \
             ntfy_received ntfy_listener

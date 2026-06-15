@@ -1,0 +1,100 @@
+name: Package Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub Release tag (format: v<upstream-version>.<fork-revision>, e.g. v5.0.0.0)"
+        required: true
+        type: string
+      release_name:
+        description: "Release title"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as prerelease"
+        required: true
+        default: true
+        type: boolean
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Run prepublish check
+        run: |
+          bash scripts/prepublish_check.sh
+
+      - name: Validate release tag format
+        run: |
+          TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          if ! printf '%s\n' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9._-]+)?$'; then
+            echo "Invalid release tag format: $TAG"
+            echo "Expected format: v<upstream-version>.<fork-revision> (example: v5.0.0.0)"
+            exit 1
+          fi
+
+      - name: Prepare release packages
+        id: asset
+        run: |
+          TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${TAG}"
+          PACKAGE_TGZ_ASSET="multi-agent-shognate-package.tar.gz"
+          PACKAGE_ZIP_ASSET="multi-agent-shognate-package.zip"
+          VERSIONED_PACKAGE_TGZ_ASSET="multi-agent-shognate-package-${VERSION}.tar.gz"
+          VERSIONED_PACKAGE_ZIP_ASSET="multi-agent-shognate-package-${VERSION}.zip"
+          mkdir -p dist
+          git fetch --force --tags origin "+refs/tags/*:refs/tags/*"
+          git archive --format=tar.gz --prefix=multi-agent-shognate/ "$TAG" -o "dist/${PACKAGE_TGZ_ASSET}"
+          git archive --format=zip --prefix=multi-agent-shognate/ "$TAG" -o "dist/${PACKAGE_ZIP_ASSET}"
+          cp "dist/${PACKAGE_TGZ_ASSET}" "dist/${VERSIONED_PACKAGE_TGZ_ASSET}"
+          cp "dist/${PACKAGE_ZIP_ASSET}" "dist/${VERSIONED_PACKAGE_ZIP_ASSET}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "package_tgz_asset=${PACKAGE_TGZ_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "package_zip_asset=${PACKAGE_ZIP_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "versioned_package_tgz_asset=${VERSIONED_PACKAGE_TGZ_ASSET}" >> "$GITHUB_OUTPUT"
+          echo "versioned_package_zip_asset=${VERSIONED_PACKAGE_ZIP_ASSET}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-release-assets
+          path: |
+            dist/${{ steps.asset.outputs.package_tgz_asset }}
+            dist/${{ steps.asset.outputs.package_zip_asset }}
+            dist/${{ steps.asset.outputs.versioned_package_tgz_asset }}
+            dist/${{ steps.asset.outputs.versioned_package_zip_asset }}
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.asset.outputs.tag }}
+          name: ${{ github.event.inputs.release_name || format('multi-agent-shognate {0}', steps.asset.outputs.version) }}
+          files: |
+            dist/${{ steps.asset.outputs.package_tgz_asset }}
+            dist/${{ steps.asset.outputs.package_zip_asset }}
+            dist/${{ steps.asset.outputs.versioned_package_tgz_asset }}
+            dist/${{ steps.asset.outputs.versioned_package_zip_asset }}
+          generate_release_notes: true
+          prerelease: ${{ github.event.inputs.prerelease == true }}
+          target_commitish: ${{ github.sha }}

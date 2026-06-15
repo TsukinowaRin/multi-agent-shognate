@@ -2,8 +2,6 @@
 
 Companion app for [multi-agent-shogun](https://github.com/yohey-w/multi-agent-shogun) — monitor and control your AI agent army from your phone.
 
-This fork keeps the upstream UI/UX, but adjusts the connection behavior for this repository's tmux and Android workflow.
-
 <p align="center">
   <img src="screenshots/01_shogun_terminal.png" alt="Shogun Terminal" width="230">
   <img src="screenshots/02_agents_grid.png" alt="Agents Grid" width="230">
@@ -16,19 +14,21 @@ This fork keeps the upstream UI/UX, but adjusts the connection behavior for this
 
 | Tab | Function |
 |-----|----------|
-| **Shogun** | Live SSH terminal to the Shogun pane. Send text/voice commands, view ANSI-colored output with special key bar (Enter, C-c, C-b, arrows, Tab, ESC, etc.) |
+| **Shogun** | Conversation view and RAW log view for the Shogun pane. Send text/voice commands with a special key bar (Enter, C-c, C-b, arrows, Tab, ESC, etc.). |
 | **Agents** | 9-pane grid view (Karo + 7 Ashigaru + Gunshi). Tap to expand fullscreen. Send commands to individual agents. |
 | **Dashboard** | Renders `dashboard.md` as HTML with full table text selection and copy support. |
-| **Settings** | SSH connection config (host, port, user, key/password), project path, tmux session names. |
+| **Settings** | One-touch USB/Tailscale/LAN connection setup. Detailed SSH fields remain available in Manual Mode. |
 
 ### Key Features
 
 - **Voice Input** — Japanese speech recognition with continuous listening mode. Dictate commands hands-free.
+- **Send Guard** — While the Shogun CLI is `Working`, sending is disabled. If the Shogun pane has unsent composer text, the app cancels that draft before sending the Android-side input.
+- **Draft Persistence** — Text being typed in the Shogun tab survives tab changes and display-mode switches.
 - **BGM** — 3 built-in Sengoku-themed tracks (shogun / shogun-reiwa / shogun-ashigirls). Tap to cycle through tracks. Auto-ducks during voice input.
 - **Rate Limit Monitor** — Tap the FAB button on the Agents tab to check Claude Max usage (5h/7d windows, Sonnet/Opus breakdown, session/message counts) with visual progress bars.
 - **Screenshot Sharing** — Share screenshots from other apps directly to Shogun via Android share sheet. Files are SFTP-transferred to the server.
 - **ANSI Color Support** — Terminal output rendered with 256-color ANSI escape code parsing.
-- **Special Keys Bar** — Quick access to Enter, C-c, C-b, arrows, Tab, ESC, C-o, C-d for tmux/Claude Code workflow.
+- **Input Controls** — Expand/send buttons stay on the same row as the input field. Enter, C-c, C-b, arrows, Tab, ESC, C-o, C-d remain available from the special key bar.
 - **Auto-Refresh** — Shogun pane (3s), Agents grid (5s) with batched SSH for efficiency.
 - **Text Selection** — Long-press to select and copy text in all screens.
 
@@ -48,50 +48,51 @@ This fork keeps the upstream UI/UX, but adjusts the connection behavior for this
 
 ## Install
 
-Download the pre-built APK from this repository's **GitHub Releases**. Use the asset named `multi-agent-shognate-android-*.apk`.
+Download the latest APK from the GitHub Releases page and sideload it.
 
 Or build from source:
 
 ```bash
 ./gradlew assembleDebug
 # APK: app/build/outputs/apk/debug/app-debug.apk
-# Release APK: app/build/outputs/apk/release/app-release.apk
 ```
 
-The fork APK is intentionally distinct from the upstream `multi-agent-shogun.apk`. In this repository, the fork APK is the supported distribution.
+## Versioning
+
+The Android APK follows the Shogunate release version plus a fork/app revision. For example, Shogunate `5.2.0` with the first Android-specific revision is `5.2.0.1`.
 
 ## Setup
 
 1. Launch the app → **Settings** tab
-2. Enter SSH connection info:
-   - **Host**: Your server's reachable IP address or hostname
-   - **Port**: 2222
+2. On the host, run one of:
+   - Installed package, USB auto + Tailscale/LAN: `shogunate pair`
+   - Source checkout helper: `bash android/tools/setup_android_ssh.sh --pair` (`--pair-usb` remains a compatibility alias)
+   - Source checkout Tailscale/LAN helper: `bash android/tools/setup_android_ssh.sh --pair-wireless`
+   - USB manual value push: `bash android/tools/setup_android_ssh.sh --usb`
+   - Wireless candidate display: `bash android/tools/setup_android_ssh.sh --wireless`
+   - Windows/WSL: double-click `android/tools/setup_android_ssh.bat`, or run the `.sh` from WSL
+3. Shogunate Pair makes the Android app generate its own SSH key in app private storage. The PC receives only the public key and adds it to `authorized_keys` after you confirm the displayed device name and enter the local Pair Password prompt; the private key never leaves the phone.
+4. `shogunate pair` tries USB `adb reverse` and keeps Tailscale/LAN listening at the same time. USB pairing uses Android `127.0.0.1:8765` → pairing server and `127.0.0.1:2222` → host SSH. Tailscale/LAN pairing listens on port `8765`; enter a reachable host IP/DNS in the app and tap **接続**.
+5. The **接続先** field validates DNS names, URLs, Tailscale IPs, and LAN IPs while you type, then normalizes them to the SSH host/port. URL path/query text is ignored; only host and port are used for SSH.
+6. **USB** selects `127.0.0.1:2222`. **無線** restores the previous wireless destination, so enter any reachable Tailscale/LAN/DNS address and tap **接続**. Connecting saves the settings, and the app keeps retrying the same host/port until you change them.
+7. Open **マニュアルモード** only when you need to edit detailed values:
+   - **Host**: USB uses `127.0.0.1`; wireless uses your Tailscale/LAN IP
+   - **Port**: USB uses `2222`; wireless uses the SSH port printed by `setup_android_ssh.sh --wireless` (`22` by default, or another port such as `2223` when WSL is configured that way)
    - **User**: Your SSH username
-   - **Key Path** or **Password**: Authentication method. In this fork, password auth is the default and key path can stay blank
-   - **Project Path**: Server-side path to the project
-   - **Session Names**: tmux session names for Shogun and Agents
-3. Tap **Save** → switch to **Shogun** tab → auto-connects
-
-### Input examples
-
-- **SSH Port**: `2222`
-- **Shogun session**: `shogun`
-- **Agents session**: `multiagent`
-- **Project Path**: `/path/to/multi-agent-shognate`
-
-All connection fields now start empty so no personal or environment-specific values are prefilled.
-
-### Authentication behavior
-
-- If **Key Path is blank**, the app uses `keyboard-interactive,password`.
-- If **Key Path is set**, the app tries public key auth first.
-- In this fork, if public key auth fails and a password is present, the app automatically retries with password auth.
+   - **Key Path** or **Password**: Authentication method
+   - **Project Path**: Server-side path to multi-agent-shogun (e.g., `/mnt/c/tools/multi-agent-shogun`)
+   - **Shogun target**: default is `agent:shogun`, which auto-detects the pane with `@agent_id=shogun`
+   - **Agents target**: default is `shogunate:goza`
+8. Tap **接続**. If SSH is not configured yet, the app sends a pairing request to the PC, saves the returned SSH settings after approval, then retries SSH.
+9. Once the check passes, switch to the **Shogun** tab → auto-connects to the Shogun pane only. Later connections use the saved SSH key without re-running Shogunate Pair.
 
 ### Prerequisites
 
 - SSH server running on the host machine
 - tmux sessions already launched via `shutsujin_departure.sh`
-- Network connectivity between phone and server over any reachable SSH path
+- Network connectivity between phone and server: USB debugging + `adb reverse`, LAN, or Tailscale
+- `adb` for USB setup
+- One-touch key pairing prefers the release-compatible app-side key provider. Older debug APKs without that provider fall back to `run-as`.
 
 ## Architecture
 

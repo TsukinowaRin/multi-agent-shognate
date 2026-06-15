@@ -998,7 +998,13 @@ SH
 exit 0
 SH
     chmod +x "${TEST_TMP}/home/.nvm/versions/node/v22.22.0/bin/node"
-    sed -i "s#/tmp/test-home#${TEST_TMP}/home#g" "${TEST_TMP}/settings_opencode_global_bin.yaml"
+    python3 - "${TEST_TMP}/settings_opencode_global_bin.yaml" "${TEST_TMP}/home" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+path.write_text(path.read_text().replace("/tmp/test-home", sys.argv[2]))
+PY
     result=$(build_cli_command "ashigaru1")
     assert_cli_state_isolated "$result" "opencode" "ashigaru1"
     [[ "$result" == *"AGENT_ID=ashigaru1 OPENCODE_AGENT_ID=ashigaru1 OPENCODE_TUI_CONFIG="*"/config/opencode-tui.json"* ]]

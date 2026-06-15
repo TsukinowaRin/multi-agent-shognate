@@ -17,6 +17,8 @@ awk -v begin="$BEGIN_MARK" -v end="$END_MARK" '
   $0 == begin { skip = 1; next }
   $0 == end { skip = 0; next }
   $0 ~ /^alias (cgo|css|cgn|csg|csk|ckr|csm|csst|csa|cma|CGO|CSS|CGN|CSG|CSK|CKR|CSM|CSST|CSA|CMA)=/ { next }
+  $0 ~ /^(cgo|css|cgn|csg|csk|ckr|csm|csst|csa|cma|CGO|CSS|CGN|CSG|CSK|CKR|CSM|CSST|CSA|CMA)\(\)[[:space:]]*\{/ { next }
+  $0 == "# multi-agent-shogun aliases (added by first_setup.sh)" { next }
   !skip { print }
 ' "$TARGET_RC" > "$tmp_file"
 

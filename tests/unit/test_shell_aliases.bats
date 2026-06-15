@@ -43,6 +43,27 @@ EOF
     ! grep -qF 'Human-Emulator/scripts/goza_no_ma.sh' "$rc_file"
 }
 
+@test "install_shell_aliases は stale function alias を削除する" {
+    rc_file="$BATS_TEST_TMPDIR/bashrc"
+    cat > "$rc_file" <<'EOF'
+alias css='bash /opt/old/scripts/focus_agent_pane.sh shogun'
+# multi-agent-shogun aliases (added by first_setup.sh)
+css() { local s="shogun-$$"; tmux attach-session -t "$s"; }
+csm() { local s="multi-$$"; tmux attach-session -t "$s"; }
+export SAMPLE_FLAG=1
+EOF
+
+    run bash "$PROJECT_ROOT/scripts/install_shell_aliases.sh" "$rc_file"
+    [ "$status" -eq 0 ]
+
+    grep -qF "source \"$PROJECT_ROOT/scripts/shell_aliases.sh\"" "$rc_file"
+    grep -qF 'export SAMPLE_FLAG=1' "$rc_file"
+    ! grep -qF 'alias css=' "$rc_file"
+    ! grep -qF 'css()' "$rc_file"
+    ! grep -qF 'csm()' "$rc_file"
+    bash -n "$rc_file"
+}
+
 @test "install_shell_aliases は idempotent に managed block を 1 つだけ保つ" {
     rc_file="$BATS_TEST_TMPDIR/bashrc"
     printf 'export SAMPLE_FLAG=1\n' > "$rc_file"

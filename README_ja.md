@@ -6,7 +6,7 @@
 
 将軍、家老、足軽、軍師、軍監を `tmux` 上に並べ、YAML queue と release package で運用します。
 
-[![Release](https://img.shields.io/badge/release-v5.2.0.3-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.3)
+[![Release](https://img.shields.io/badge/release-v5.2.0.4-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.4)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](README.md) | [日本語](README_ja.md)
@@ -31,7 +31,7 @@ Shogunate は次のような用途に向いています。
 現在の固定 release は cURL でインストールできます。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4
 ```
 
 その後、起動します。
@@ -103,19 +103,19 @@ cma   # multi-agent view
 導入先を明示する場合:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3 --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4 --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
 ```
 
 runtime の展開・更新だけ行い、初回 setup を走らせない場合:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.3 --no-setup
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4 --no-setup
 ```
 
 インストール済み bootstrap から再実行する場合:
 
 ```bash
-shogunate install --version v5.2.0.3 --no-setup
+shogunate install --version v5.2.0.4 --no-setup
 ```
 
 moving latest channel:
@@ -127,7 +127,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 npm wrapper は同じ cURL bootstrap を呼ぶ薄い補助です。
 
 ```bash
-npx @tsukinowarin/shogunate install -- --version v5.2.0.3
+npx @tsukinowarin/shogunate install -- --version v5.2.0.4
 ```
 
 ## Shogunate が動かすもの
@@ -191,7 +191,7 @@ cgn
 release page には公開時に APK を置きます。
 
 ```text
-shogunate-android-v5.2.0.3.apk
+shogunate-android-<version>.apk
 ```
 
 Android app は SSH で host runtime へ接続し、既定では将軍 pane を対象にします。初回セットアップは Shogunate Pair を使います。秘密鍵はスマホ app 内に残し、PC 側は承認した公開鍵だけを登録します。
@@ -277,6 +277,7 @@ v5.0.0.12
 v5.2.0.1
 v5.2.0.2
 v5.2.0.3
+v5.2.0.4
 ```
 
 各 release には必要に応じて以下を置きます。

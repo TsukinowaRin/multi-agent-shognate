@@ -800,82 +800,15 @@ log_step "STEP 10: alias設定"
 # alias追加対象ファイル
 BASHRC_FILE="$HOME/.bashrc"
 
-# css/csm を関数として定義（destroy-unattached で自動掃除）
-# - 複数端末から接続しても画面サイズが干渉しない
-# - SSH切断・アプリ終了時に一時セッションが自動消滅
-# - 本体セッション (shogun/multiagent) は絶対に消えない
-CSS_FUNC='css() { local s="shogun-$$"; local cols=$(tput cols 2>/dev/null || echo 80); tmux new-session -d -t shogun -s "$s" 2>/dev/null && tmux set-option -t "$s" destroy-unattached on 2>/dev/null; if [ "$cols" -lt 80 ]; then tmux new-window -t "$s" -n mobile 2>/dev/null; tmux attach-session -t "$s:mobile" 2>/dev/null || tmux attach-session -t shogun; else tmux attach-session -t "$s" 2>/dev/null || tmux attach-session -t shogun; fi; }'
-CSM_FUNC='csm() { local s="multi-$$"; local cols=$(tput cols 2>/dev/null || echo 80); tmux new-session -d -t multiagent -s "$s" 2>/dev/null && tmux set-option -t "$s" destroy-unattached on 2>/dev/null; if [ "$cols" -lt 80 ]; then tmux new-window -t "$s" -n mobile 2>/dev/null; tmux attach-session -t "$s:mobile" 2>/dev/null || tmux attach-session -t multiagent; else tmux attach-session -t "$s" 2>/dev/null || tmux attach-session -t multiagent; fi; }'
-DASH_FUNC="dash() { python3 \"$SCRIPT_DIR/scripts/dashboard-viewer.py\" \"\$@\"; }"
-
-ALIAS_ADDED=false
-
-if [ -f "$BASHRC_FILE" ]; then
-    # 古い alias 形式を削除（存在する場合）
-    if grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
-        sed -i '/alias css=/d' "$BASHRC_FILE"
-        log_info "旧 alias css を削除しました"
-    fi
-    if grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
-        sed -i '/alias csm=/d' "$BASHRC_FILE"
-        log_info "旧 alias csm を削除しました"
-    fi
-
-    # css 関数
-    if ! grep -q "^css()" "$BASHRC_FILE" 2>/dev/null; then
-        if ! grep -q "multi-agent-shogun aliases" "$BASHRC_FILE" 2>/dev/null; then
-            echo "" >> "$BASHRC_FILE"
-            echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        fi
-        echo "$CSS_FUNC" >> "$BASHRC_FILE"
-        log_info "css 関数を追加しました（将軍ウィンドウ — 自動掃除付き）"
-        ALIAS_ADDED=true
-    else
-        # 関数は存在する → 最新版に更新
-        sed -i '/^css()/d' "$BASHRC_FILE"
-        echo "$CSS_FUNC" >> "$BASHRC_FILE"
-        log_info "css 関数を更新しました"
-        ALIAS_ADDED=true
-    fi
-
-    # csm 関数
-    if ! grep -q "^csm()" "$BASHRC_FILE" 2>/dev/null; then
-        echo "$CSM_FUNC" >> "$BASHRC_FILE"
-        log_info "csm 関数を追加しました（家老・足軽ウィンドウ — 自動掃除付き）"
-        ALIAS_ADDED=true
-    else
-        sed -i '/^csm()/d' "$BASHRC_FILE"
-        echo "$CSM_FUNC" >> "$BASHRC_FILE"
-        log_info "csm 関数を更新しました"
-        ALIAS_ADDED=true
-    fi
-
-    # dash 関数
-    if ! grep -q "^dash()" "$BASHRC_FILE" 2>/dev/null; then
-        echo "$DASH_FUNC" >> "$BASHRC_FILE"
-        log_info "dash 関数を追加しました（ダッシュボードビューア）"
-        ALIAS_ADDED=true
-    else
-        sed -i '/^dash()/d' "$BASHRC_FILE"
-        echo "$DASH_FUNC" >> "$BASHRC_FILE"
-        log_info "dash 関数を更新しました"
-        ALIAS_ADDED=true
-    fi
-else
-    log_warn "$BASHRC_FILE が見つかりません"
-fi
-
-if [ "$ALIAS_ADDED" = true ]; then
-    log_success "alias設定を追加しました（destroy-unattached 方式）"
+if [ -f "$SCRIPT_DIR/scripts/install_shell_aliases.sh" ]; then
+    bash "$SCRIPT_DIR/scripts/install_shell_aliases.sh" "$BASHRC_FILE"
+    log_success "Shogunate view aliases を同期しました（cgo/csa/csg/csk/ckr/csm/cma）"
     log_warn "alias を反映するには、以下のいずれかを実行してください："
     log_info "  1. source ~/.bashrc"
     log_info "  2. PowerShell で 'wsl --shutdown' してからターミナルを開き直す"
     log_info "  ※ ウィンドウを閉じるだけでは WSL が終了しないため反映されません"
-fi
-
-if [ -f "$SCRIPT_DIR/scripts/install_shell_aliases.sh" ]; then
-    bash "$SCRIPT_DIR/scripts/install_shell_aliases.sh" "$BASHRC_FILE"
-    log_success "Shogunate view aliases を同期しました（cgo/csa/csg/csk/ckr/csm/cma）"
+else
+    log_warn "scripts/install_shell_aliases.sh が見つからないため alias 同期をスキップしました"
 fi
 
 RESULTS+=("alias設定: OK")
@@ -1001,37 +934,43 @@ echo "  ┌───────────────────────
 echo "  │  📜 次のステップ                                             │"
 echo "  └──────────────────────────────────────────────────────────────┘"
 echo ""
-echo "  ⚠️  初回のみ: 以下を手動で実行してください"
+echo "  初回のみ: 以下を確認してください"
 echo ""
 echo "  STEP 0: PATHの反映（このシェルにインストール結果を反映）"
 echo "     source ~/.bashrc"
+echo "     ※ shogunate が見つからない場合: export PATH=\"\$HOME/.local/bin:\$PATH\""
 echo ""
-echo "  STEP A: OAuth認証 + Bypass Permissions の承認（1コマンドで完了）"
-echo "     claude --dangerously-skip-permissions"
+echo "  STEP 1: 使う AI coding CLI の認証"
+echo "     codex      # OpenAI Codex を使う場合"
+echo "     claude     # Claude Code を使う場合"
+echo "     opencode   # OpenCode を使う場合"
+echo "     agy        # Antigravity を使う場合"
 echo ""
-echo "     1. ブラウザが開く → Anthropicアカウントでログイン → CLIに戻る"
-echo "        ※ WSLでブラウザが開かない場合は、表示されるURLをWindows側の"
-echo "          ブラウザに手動で貼り付けてください"
-echo "     2. Bypass Permissions の承認画面が表示される"
-echo "        → 「Yes, I accept」を選択（↓キーで2を選んでEnter）"
-echo "     3. /exit で退出"
+echo "     実際に割り当てる CLI だけ認証すれば十分です。"
+echo "     WSL でブラウザが開かない場合は、表示された URL を Windows 側ブラウザへ貼り付けてください。"
 echo ""
-echo "     ※ 一度承認すれば ~/.claude/ に保存され、以降は不要です"
+echo "  STEP 2: 役職ごとの CLI を選択"
+echo "     shogunate configure"
 echo ""
 echo "  ────────────────────────────────────────────────────────────────"
 echo ""
-echo "  出陣（全エージェント起動）:"
-echo "     ./shutsujin_departure.sh"
+echo "  Shogunate runtime:"
+echo "     shogunate           # 起動"
+echo "     shogunate clean     # clean start"
+echo "     shogunate resume    # 前回状態から resume"
+echo "     shogunate attach    # tmux session に attach"
 echo ""
-echo "  オプション:"
-echo "     ./shutsujin_departure.sh -s            # セットアップのみ（Claude手動起動）"
-echo "     ./shutsujin_departure.sh -t            # Windows Terminalタブ展開"
-echo "     ./shutsujin_departure.sh -shell bash   # bash用プロンプトで起動"
-echo "     ./shutsujin_departure.sh -shell zsh    # zsh用プロンプトで起動"
+echo "  Android / mobile pairing:"
+echo "     shogunate pair      # USB / wireless pairing 待機"
 echo ""
-echo "  ※ シェル設定は config/settings.yaml の shell: でも変更可能です"
+echo "  View shortcuts:"
+echo "     cgo / CGO           # Goza overview"
+echo "     csg / CSS           # Shogun"
+echo "     cgn / CGN           # Gunkan auditor"
+echo "     csk / CKR           # Karo"
+echo "     csa / CSA           # Ashigaru"
 echo ""
-echo "  詳細は README.md を参照してください。"
+echo "  詳細は README.md / README_ja.md を参照してください。"
 echo ""
 echo "  ════════════════════════════════════════════════════════════════"
 echo "   天下布武！ (Tenka Fubu!)"

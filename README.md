@@ -6,7 +6,7 @@
 
 Run a Shogun, Karo managers, Ashigaru workers, Gunshi strategist, and Gunkan auditor in visible `tmux` panes, backed by plain YAML queues and release-packaged installers.
 
-[![Release](https://img.shields.io/badge/release-v5.2.0.4-ff6600?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/tag/v5.2.0.4)
+[![Release](https://img.shields.io/github/v/release/TsukinowaRin/multi-agent-shognate?style=flat-square)](https://github.com/TsukinowaRin/multi-agent-shognate/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](README.md) | [日本語](README_ja.md)
@@ -28,10 +28,10 @@ Shogunate is designed for developers who want:
 
 ## Installation
 
-Install the current fixed release with cURL:
+Install the latest release channel with cURL:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
 ```
 
 Then start Shogunate:
@@ -40,12 +40,19 @@ Then start Shogunate:
 shogunate
 ```
 
-The installer expands the runtime to `~/.shogunate/shogunate` and registers `~/.local/bin/shogunate`.
+The installer downloads the latest GitHub Release package, expands the runtime to `~/.shogunate/shogunate`, and registers `~/.local/bin/shogunate`.
 
 If the command is not found, reload your shell or add this to your shell profile:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
+```
+
+If an older install left stale `css()` / `csm()` functions in `~/.bashrc`, rerun the latest release channel and then reload your shell:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+source ~/.bashrc
 ```
 
 ## Requirements
@@ -103,31 +110,31 @@ cma   # multi-agent view
 Install into explicit directories:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4 --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash -s -- --prefix "$HOME/.shogunate/shogunate" --bin-dir "$HOME/.local/bin"
 ```
 
 Update or unpack without running setup:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4 --no-setup
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash -s -- --no-setup
+```
+
+Pin an exact release only when you need reproducible installs:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.4/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4
 ```
 
 Use the same installed bootstrap later:
 
 ```bash
-shogunate install --version v5.2.0.4 --no-setup
-```
-
-The moving latest channel is:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
+shogunate install --no-setup
 ```
 
 The npm wrapper calls the same bootstrap:
 
 ```bash
-npx @tsukinowarin/shogunate install -- --version v5.2.0.4
+npx @tsukinowarin/shogunate install
 ```
 
 ## What Shogunate Runs

@@ -13,9 +13,22 @@
 
 </div>
 
-## cURLでインストール
+## 概要
 
-まず、このコマンドをコピーして現在の固定 release を入れます。
+Shogunate は、AI コーディング CLI 向けの local-first な multi-agent runtime です。1 つのリポジトリ workspace を `tmux` 上の見える司令室にし、将軍が依頼を受け、家老が計画と統合を行い、足軽が実作業を進め、軍師が戦略を見直し、軍監が完了状態を監査します。
+
+このリポジトリには、その runtime を動かすための package、役職別 instruction、shell orchestration、queue ベースの agent message、Android pairing support、release installer が含まれています。Linux、macOS、Windows の WSL2 で動かす前提です。
+
+Shogunate は次のような用途に向いています。
+
+- hosted control plane なしで multi-agent coding workflow を使う
+- `queue/`、`dashboard.md`、runtime metadata という plain file で状態を追う
+- Codex、Claude Code、Copilot CLI、OpenCode、Kimi、Cursor、Antigravity を役職ごとに割り当てる
+- cURL で入れられ、決まった local directory に展開・更新できる runtime として運用する
+
+## インストール
+
+現在の固定 release は cURL でインストールできます。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.3/scripts/shogunate_package_bootstrap.sh \
@@ -110,7 +123,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v
 shogunate install --version v5.2.0.3 --no-setup
 ```
 
-この branch が `main` に載った後の moving latest channel:
+moving latest channel:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash

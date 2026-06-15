@@ -54,11 +54,7 @@ jobs:
           python3 -m venv .venv
           .venv/bin/pip install --quiet pyyaml
           echo "$PWD/.venv/bin" >> $GITHUB_PATH
-          SITE_PACKAGES="$("$PWD/.venv/bin/python" - <<'PY'
-import site
-print(site.getsitepackages()[0])
-PY
-)"
+          SITE_PACKAGES="$("$PWD/.venv/bin/python" -c 'import site; print(site.getsitepackages()[0])')"
           echo "PYTHONPATH=$SITE_PACKAGES" >> $GITHUB_ENV
 
       - name: Run root-level tests (except agent_selfwatch)

@@ -83,16 +83,33 @@ def append_authorized_key(public_key: str, authorized_keys: Path) -> bool:
     return True
 
 
-def detect_ssh_port() -> int:
+def is_ssh_service(host: str, port: int, timeout: float = 0.75) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout) as sock:
+            sock.settimeout(timeout)
+            banner = sock.recv(32)
+    except OSError:
+        return False
+    return banner.startswith(b"SSH-")
+
+
+def detect_ssh_port(candidates: tuple[int, ...] = (22, 2222, 2223)) -> int:
     env_value = os.environ.get("HOST_SSH_PORT")
     if env_value and env_value.isdigit():
         return int(env_value)
-    for port in (22, 2222, 2223):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.settimeout(0.25)
-            if sock.connect_ex(("127.0.0.1", port)) == 0:
-                return port
-    return 22
+    for port in candidates:
+        if is_ssh_service("127.0.0.1", port):
+            return port
+    return candidates[0] if candidates else 22
+
+
+def env_int(name: str, default: int | None = None) -> int | None:
+    value = os.environ.get(name, "")
+    if not value:
+        return default
+    if not value.isdigit():
+        raise ValueError(f"{name} must be an integer")
+    return int(value)
 
 
 def find_adb(adb: str) -> str:
@@ -255,11 +272,21 @@ class PairingHandler(http.server.BaseHTTPRequestHandler):
         if state.start_runtime:
             runtime_started, runtime_message = start_runtime(state.project_root)
 
+        client_host = requested_host or source
+        client_port = state.port_for_client(requested_host, source)
+        print(
+            f"Paired {device_label}; returning SSH destination: "
+            f"{state.user}@{client_host}:{client_port}",
+            flush=True,
+        )
+        if runtime_message != "started":
+            print(f"Runtime start: {runtime_message}", flush=True)
+
         return {
             "ok": True,
             "message": "paired",
-            "host": requested_host or source,
-            "port": str(state.port_for_client(requested_host, source)),
+            "host": client_host,
+            "port": str(client_port),
             "user": state.user,
             "project": str(state.project_root),
             "shogun": state.shogun_target,
@@ -296,8 +323,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the Shogunate Android pairing server.")
     parser.add_argument("--host", default=os.environ.get("SHOGUNATE_PAIR_HOST", "0.0.0.0"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("SHOGUNATE_PAIR_PORT", "8765")))
-    parser.add_argument("--ssh-port", type=int, default=detect_ssh_port())
-    parser.add_argument("--client-ssh-port", type=int, default=None)
+    parser.add_argument(
+        "--ssh-port",
+        type=int,
+        default=detect_ssh_port(),
+        help="Local SSH port on this computer/WSL. Auto-detected by SSH banner unless HOST_SSH_PORT is set.",
+    )
+    parser.add_argument(
+        "--client-ssh-port",
+        type=int,
+        default=env_int("SHOGUNATE_CLIENT_SSH_PORT"),
+        help="SSH port returned to wireless clients. Defaults to --ssh-port.",
+    )
     parser.add_argument("--no-usb", action="store_true", help="Do not auto-configure adb reverse; wireless/LAN only.")
     parser.add_argument("--adb", default=os.environ.get("ADB", "adb"))
     parser.add_argument("--usb-ssh-port", type=int, default=int(os.environ.get("ANDROID_USB_PORT", "2222")))
@@ -328,7 +365,16 @@ def main(argv: list[str]) -> int:
     server = ThreadedPairingServer((state.host, state.port), PairingHandler)
     server.pairing_state = state
     print(f"Shogunate pair listening on {state.host}:{state.port}", flush=True)
-    print(f"Wireless SSH destination: {state.user}@<host>:{state.host_ssh_port}", flush=True)
+    if is_ssh_service("127.0.0.1", state.host_ssh_port):
+        print(f"Detected local SSH service: 127.0.0.1:{state.host_ssh_port}", flush=True)
+    else:
+        print(
+            f"[WARN] 127.0.0.1:{state.host_ssh_port} did not return an SSH banner. "
+            "Pair can approve the key, but Android SSH may fail until sshd/port forwarding is fixed.",
+            flush=True,
+        )
+    wireless_port = state.client_ssh_port or state.host_ssh_port
+    print(f"Wireless SSH destination: {state.user}@<host>:{wireless_port}", flush=True)
     if state.usb_ready:
         print(
             f"USB reverse: Android 127.0.0.1:{state.port} -> pair, "

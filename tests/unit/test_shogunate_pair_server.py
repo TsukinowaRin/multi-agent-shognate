@@ -1,6 +1,8 @@
 import base64
 import importlib.util
 import argparse
+import socket
+import threading
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,6 +21,40 @@ def sample_key(comment: str = "shogunate-test") -> str:
     blob = b"\x00\x00\x00\x07ssh-rsa\x00\x00\x00\x03\x01\x00\x01\x00\x00\x00\x01\x01"
     encoded = base64.b64encode(blob).decode("ascii")
     return f"ssh-rsa {encoded} {comment}"
+
+
+class OneShotServer:
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+        self.ready = threading.Event()
+        self.done = threading.Event()
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.bind(("127.0.0.1", 0))
+        self.socket.listen(1)
+        self.port = self.socket.getsockname()[1]
+        self.thread = threading.Thread(target=self._serve, daemon=True)
+
+    def __enter__(self) -> "OneShotServer":
+        self.thread.start()
+        self.ready.wait(timeout=2)
+        return self
+
+    def __exit__(self, _exc_type, _exc, _tb) -> None:
+        try:
+            self.done.wait(timeout=2)
+        finally:
+            self.socket.close()
+
+    def _serve(self) -> None:
+        self.ready.set()
+        try:
+            conn, _addr = self.socket.accept()
+            with conn:
+                if self.payload:
+                    conn.sendall(self.payload)
+        finally:
+            self.done.set()
+            self.socket.close()
 
 
 class ShogunatePairServerTests(unittest.TestCase):
@@ -72,6 +108,12 @@ class ShogunatePairServerTests(unittest.TestCase):
 
         self.assertEqual(state.port_for_client("127.0.0.1", "127.0.0.1"), 2222)
         self.assertEqual(state.port_for_client("100.71.16.5", "100.71.16.10"), 2223)
+
+    def test_detect_ssh_port_requires_ssh_banner(self):
+        with OneShotServer(b"") as stale_proxy, OneShotServer(b"SSH-2.0-shogunate-test\r\n") as ssh:
+            detected = pair_server.detect_ssh_port(candidates=(stale_proxy.port, ssh.port))
+
+        self.assertEqual(detected, ssh.port)
 
 
 if __name__ == "__main__":

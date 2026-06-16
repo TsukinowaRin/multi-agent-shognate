@@ -99,15 +99,6 @@ rm -f \
     "$PREFIX/install.command" \
     "$PREFIX/Shogunate-Uninstaller.bat"
 
-if [ "$RUN_SETUP" = "1" ]; then
-    if [ -f "$PREFIX/first_setup.sh" ]; then
-        log "run first_setup.sh"
-        (cd "$PREFIX" && bash first_setup.sh)
-    else
-        log "first_setup.sh not found; skipped"
-    fi
-fi
-
 if command -v python3 >/dev/null 2>&1 && [ -f "$PREFIX/scripts/update_manager.py" ]; then
     if python3 -c "import yaml" >/dev/null 2>&1; then
         log "initialize package update metadata"
@@ -207,6 +198,15 @@ esac
 EOF
     chmod +x "$BIN_DIR/shogunate"
     log "command installed: $BIN_DIR/shogunate"
+fi
+
+if [ "$RUN_SETUP" = "1" ]; then
+    if [ -f "$PREFIX/first_setup.sh" ]; then
+        log "run first_setup.sh"
+        (cd "$PREFIX" && bash first_setup.sh)
+    else
+        log "first_setup.sh not found; skipped"
+    fi
 fi
 
 log "done"

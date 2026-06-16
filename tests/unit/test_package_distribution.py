@@ -18,6 +18,14 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("shogunate_pair_server.py", text)
         self.assertIn("SHOGUNATE_PAIR_PASSWORD", text)
 
+    def test_curl_bootstrap_installs_command_before_first_setup(self):
+        text = (ROOT / "scripts/shogunate_package_bootstrap.sh").read_text(encoding="utf-8")
+        command_index = text.index('cat > "$BIN_DIR/shogunate"')
+        setup_index = text.index('log "run first_setup.sh"')
+        self.assertLess(command_index, setup_index)
+        self.assertIn("pair)\n        shift || true", text)
+        self.assertIn("exec python3 scripts/shogunate_pair_server.py", text)
+
     def test_npm_wrapper_points_to_curl_bootstrap(self):
         package = (ROOT / "package.json").read_text(encoding="utf-8")
         wrapper = (ROOT / "bin/shogunate.js").read_text(encoding="utf-8")

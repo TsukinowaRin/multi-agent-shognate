@@ -185,11 +185,31 @@ class PairingState:
         self.pair_password = args.pair_password
         self.prompt_lock = threading.Lock()
 
+    def client_port_candidates(self) -> list[int]:
+        candidates = [
+            self.client_ssh_port,
+            self.host_ssh_port,
+            22,
+            2222,
+            2223,
+            22220,
+        ]
+        result: list[int] = []
+        for candidate in candidates:
+            if candidate and candidate not in result:
+                result.append(candidate)
+        return result
+
     def port_for_client(self, requested_host: str, source: str) -> int:
         if self.client_ssh_port:
             return self.client_ssh_port
         if self.usb_ready and is_loopback_host(requested_host, source):
             return self.usb_ssh_port
+        normalized_host = requested_host.strip().strip("[]")
+        if normalized_host:
+            for port in self.client_port_candidates():
+                if is_ssh_service(normalized_host, port):
+                    return port
         return self.host_ssh_port
 
 
@@ -281,6 +301,12 @@ class PairingHandler(http.server.BaseHTTPRequestHandler):
         )
         if runtime_message != "started":
             print(f"Runtime start: {runtime_message}", flush=True)
+        if not is_loopback_host(client_host, source) and not is_ssh_service(client_host, client_port):
+            print(
+                f"[WARN] {client_host}:{client_port} did not return an SSH banner from this host. "
+                "If Android SSH fails, use USB/127.0.0.1 or set --client-ssh-port to a reachable forwarding port.",
+                flush=True,
+            )
 
         return {
             "ok": True,

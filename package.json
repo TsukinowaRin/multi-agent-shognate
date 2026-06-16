@@ -1,6 +1,6 @@
 {
   "name": "@tsukinowarin/shogunate",
-  "version": "5.2.0-6",
+  "version": "5.2.0-7",
   "description": "Package bootstrap wrapper for multi-agent-shognate.",
   "bin": {
     "shogunate": "bin/shogunate.js"

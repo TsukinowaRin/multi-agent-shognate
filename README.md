@@ -122,7 +122,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 Pin an exact release only when you need reproducible installs:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.6/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.6
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.7/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.7
 ```
 
 Each GitHub Release page includes the version-pinned cURL command for that tag.
@@ -291,6 +291,7 @@ v5.2.0.3
 v5.2.0.4
 v5.2.0.5
 v5.2.0.6
+v5.2.0.7
 ```
 
 Each release may include:

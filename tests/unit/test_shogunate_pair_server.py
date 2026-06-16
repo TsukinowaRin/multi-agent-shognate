@@ -109,6 +109,33 @@ class ShogunatePairServerTests(unittest.TestCase):
         self.assertEqual(state.port_for_client("127.0.0.1", "127.0.0.1"), 2222)
         self.assertEqual(state.port_for_client("100.71.16.5", "100.71.16.10"), 2223)
 
+    def test_wireless_client_port_prefers_reachable_host_banner(self):
+        state = pair_server.PairingState(
+            argparse.Namespace(
+                host="0.0.0.0",
+                port=8765,
+                ssh_port=22,
+                client_ssh_port=None,
+                usb_ready=True,
+                adb="adb",
+                usb_ssh_port=2222,
+                project_root=str(ROOT),
+                user="muro",
+                shogun_target="agent:shogun",
+                agents_target="shogunate:goza",
+                authorized_keys="/tmp/authorized_keys",
+                no_start_runtime=True,
+                pair_password="",
+            )
+        )
+        original = pair_server.is_ssh_service
+        try:
+            pair_server.is_ssh_service = lambda host, port, timeout=0.75: host == "100.71.16.5" and port == 2223
+
+            self.assertEqual(state.port_for_client("100.71.16.5", "100.113.76.83"), 2223)
+        finally:
+            pair_server.is_ssh_service = original
+
     def test_detect_ssh_port_requires_ssh_banner(self):
         with OneShotServer(b"") as stale_proxy, OneShotServer(b"SSH-2.0-shogunate-test\r\n") as ssh:
             detected = pair_server.detect_ssh_port(candidates=(stale_proxy.port, ssh.port))

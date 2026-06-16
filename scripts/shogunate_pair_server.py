@@ -183,6 +183,8 @@ class PairingState:
         self.authorized_keys = Path(args.authorized_keys).expanduser()
         self.start_runtime = not args.no_start_runtime
         self.pair_password = args.pair_password
+        self.keep_running = args.keep_running
+        self.completed = False
         self.prompt_lock = threading.Lock()
 
     def client_port_candidates(self) -> list[int]:
@@ -255,6 +257,19 @@ class PairingHandler(http.server.BaseHTTPRequestHandler):
             self.respond(500, {"ok": False, "error": str(exc)})
             return
         self.respond(200, response)
+        if response.get("ok") and not self.pairing_state.keep_running:
+            self.pairing_state.completed = True
+            print("", flush=True)
+            print("Pairing complete.", flush=True)
+            print(f"  Device: {response.get('device_label', 'Android')}", flush=True)
+            print(
+                "  Android SSH: "
+                f"{response.get('user', '')}@{response.get('host', '')}:{response.get('port', '')}",
+                flush=True,
+            )
+            print("You can now use the Android app. Shogunate Pair will stop automatically.", flush=True)
+            print("To pair another device later, run: shogunate pair", flush=True)
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
 
     def handle_pair(self, payload: dict[str, Any]) -> dict[str, Any]:
         state = self.pairing_state
@@ -319,6 +334,7 @@ class PairingHandler(http.server.BaseHTTPRequestHandler):
             "agents": state.agents_target,
             "key_path": key_path,
             "fingerprint": fingerprint,
+            "device_label": device_label,
             "already_authorized": not added,
             "runtime_started": runtime_started,
             "runtime_message": runtime_message,
@@ -371,6 +387,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--authorized-keys", default=str(Path.home() / ".ssh" / "authorized_keys"))
     parser.add_argument("--pair-password", default=os.environ.get("SHOGUNATE_PAIR_PASSWORD", ""))
     parser.add_argument("--no-start-runtime", action="store_true")
+    parser.add_argument(
+        "--keep-running",
+        action="store_true",
+        help="Keep the pairing server open after one successful device pairing.",
+    )
     return parser.parse_args(argv)
 
 
@@ -414,13 +435,16 @@ def main(argv: list[str]) -> int:
         print("Approval: fixed Shogunate Pair Password from SHOGUNATE_PAIR_PASSWORD/--pair-password.", flush=True)
     else:
         print("Approval: local Password prompt. Any non-empty input approves after checking the device name.", flush=True)
-    print("Keep this running, then press Connect in the Android app.", flush=True)
+    print("Press Connect in the Android app. This will stop automatically after one successful pair.", flush=True)
+    print("Use --keep-running only when pairing multiple devices.", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nShogunate pair stopped.", flush=True)
     finally:
         server.server_close()
+    if state.completed:
+        print("Shogunate pair stopped after successful setup.", flush=True)
     return 0
 
 

@@ -537,4 +537,5 @@
 
 1. `detect_ssh_port()` は SSH banner を返さない open port をスキップする。
 2. Pair approval 後、terminal に `returning SSH destination: user@host:port` が表示される。
-3. `python3 -m unittest tests.unit.test_shogunate_pair_server`、`python3 -m py_compile scripts/shogunate_pair_server.py`、`git diff --check` が PASS する。
+3. 無線/Tailscale/LAN では、app が入力した host に対して SSH banner を返す port を候補から選ぶ。
+4. `python3 -m unittest tests.unit.test_shogunate_pair_server`、`python3 -m py_compile scripts/shogunate_pair_server.py`、`git diff --check` が PASS する。

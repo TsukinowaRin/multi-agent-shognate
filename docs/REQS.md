@@ -508,3 +508,17 @@
 2. `shogunate-android-v5.2.0.3.apk` が GitHub Release asset としてアップロードされる。
 3. `multi-agent-shognate-package.tar.gz` / `.zip` も同じ release tag にアップロードされる。
 4. `shogunate help` に `shogunate pair [opts]` と `SHOGUNATE_PAIR_PASSWORD` が表示される。
+
+## 追補（2026-06-16: cURL install の shogunate pair shim 更新）
+
+### 要求
+
+1. cURL/package install は、`first_setup.sh` が依存不足などで non-zero 終了しても、`~/.local/bin/shogunate` の command shim を最新化する。
+2. 導入後の `shogunate pair` は `Shogunate-Runtime.sh pair` に流れず、`scripts/shogunate_pair_server.py` を直接起動する。
+3. `shogunate help` は `pair` と `SHOGUNATE_PAIR_PASSWORD` を表示する。
+
+### 受け入れ条件（観測可能）
+
+1. `scripts/shogunate_package_bootstrap.sh` は `first_setup.sh` 実行前に command shim を生成する。
+2. 生成される command shim の `pair)` branch は `python3 scripts/shogunate_pair_server.py` を実行する。
+3. `python3 -m unittest tests.unit.test_package_distribution`、`bash -n scripts/shogunate_package_bootstrap.sh`、`git diff --check` が PASS する。

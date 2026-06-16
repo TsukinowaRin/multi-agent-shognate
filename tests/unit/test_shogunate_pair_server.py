@@ -1,10 +1,12 @@
 import base64
 import importlib.util
 import argparse
+import json
 import socket
 import threading
 import tempfile
 import unittest
+import urllib.request
 from pathlib import Path
 
 
@@ -103,6 +105,7 @@ class ShogunatePairServerTests(unittest.TestCase):
                 authorized_keys="/tmp/authorized_keys",
                 no_start_runtime=True,
                 pair_password="",
+                keep_running=False,
             )
         )
 
@@ -126,6 +129,7 @@ class ShogunatePairServerTests(unittest.TestCase):
                 authorized_keys="/tmp/authorized_keys",
                 no_start_runtime=True,
                 pair_password="",
+                keep_running=False,
             )
         )
         original = pair_server.is_ssh_service
@@ -135,6 +139,85 @@ class ShogunatePairServerTests(unittest.TestCase):
             self.assertEqual(state.port_for_client("100.71.16.5", "100.113.76.83"), 2223)
         finally:
             pair_server.is_ssh_service = original
+
+    def test_pairing_state_stops_after_one_success_by_default(self):
+        state = pair_server.PairingState(
+            argparse.Namespace(
+                host="0.0.0.0",
+                port=8765,
+                ssh_port=2223,
+                client_ssh_port=None,
+                usb_ready=False,
+                adb="adb",
+                usb_ssh_port=2222,
+                project_root=str(ROOT),
+                user="muro",
+                shogun_target="agent:shogun",
+                agents_target="shogunate:goza",
+                authorized_keys="/tmp/authorized_keys",
+                no_start_runtime=True,
+                pair_password="",
+                keep_running=False,
+            )
+        )
+
+        self.assertFalse(state.keep_running)
+        self.assertFalse(state.completed)
+
+    def test_pair_server_stops_after_success_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = pair_server.PairingState(
+                argparse.Namespace(
+                    host="127.0.0.1",
+                    port=0,
+                    ssh_port=2223,
+                    client_ssh_port=2223,
+                    usb_ready=False,
+                    adb="adb",
+                    usb_ssh_port=2222,
+                    project_root=str(ROOT),
+                    user="muro",
+                    shogun_target="agent:shogun",
+                    agents_target="shogunate:goza",
+                    authorized_keys=str(Path(tmp) / ".ssh" / "authorized_keys"),
+                    no_start_runtime=True,
+                    pair_password="",
+                    keep_running=False,
+                )
+            )
+            server = pair_server.ThreadedPairingServer(("127.0.0.1", 0), pair_server.PairingHandler)
+            server.pairing_state = state
+            thread = threading.Thread(target=server.serve_forever)
+            original_getpass = pair_server.getpass.getpass
+            try:
+                pair_server.getpass.getpass = lambda _prompt: "approve"
+                thread.start()
+                body = json.dumps(
+                    {
+                        "public_key": sample_key("android-test"),
+                        "key_path": "/data/user/0/com.shogun.android/files/key.pem",
+                        "device_label": "Test Phone",
+                        "host": "127.0.0.1",
+                    }
+                ).encode("utf-8")
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{server.server_address[1]}/pair",
+                    data=body,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                thread.join(timeout=5)
+            finally:
+                pair_server.getpass.getpass = original_getpass
+                server.server_close()
+
+            self.assertTrue(payload["ok"])
+            self.assertEqual(payload["device_label"], "Test Phone")
+            self.assertTrue(state.completed)
+            self.assertFalse(thread.is_alive())
 
     def test_detect_ssh_port_requires_ssh_banner(self):
         with OneShotServer(b"") as stale_proxy, OneShotServer(b"SSH-2.0-shogunate-test\r\n") as ssh:

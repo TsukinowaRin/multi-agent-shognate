@@ -122,7 +122,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 再現性のために固定 release を入れたい場合だけ、version tag を指定します。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.7/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.7
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.8/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.8
 ```
 
 各 GitHub Release ページには、その tag 固定の cURL も載せています。
@@ -209,9 +209,11 @@ Android app は SSH で host runtime へ接続し、既定では将軍 pane を�
 shogunate pair        # USB auto + Tailscale / LAN
 ```
 
-その後、Android app で USB を選ぶか Tailscale/LAN IP を入力して、接続を押します。PC terminal に端末名が出るので、確認してから Pair Password prompt に入力すると端末が承認されます。pairing 成功後は Shogunate が resume 起動し、以後は保存済み SSH 鍵で再セットアップなしに接続できます。
+その後、Android app で USB を選ぶか Tailscale/LAN IP を入力して、接続を押します。PC terminal に端末名が出るので、確認してから Pair Password prompt に入力すると端末が承認されます。pairing 成功後は terminal に `Pairing complete` と表示され、Shogunate が resume 起動し、Pair は自動終了します。以後は保存済み SSH 鍵で再セットアップなしに接続できます。
 
 USB の場合、app の接続先は `127.0.0.1` です。`adb reverse` が Android 側 `127.0.0.1:2222` を host の SSH service へ転送します。無線/Tailscale/LAN の場合は、スマホから実際に SSH へ到達できる PC address を使います。Pair terminal には app へ返した接続先が `returning SSH destination: user@host:port` と表示されます。
+
+複数端末を続けて登録したい場合だけ、`shogunate pair --keep-running` を使います。
 
 source checkout 互換 helper:
 
@@ -292,6 +294,7 @@ v5.2.0.4
 v5.2.0.5
 v5.2.0.6
 v5.2.0.7
+v5.2.0.8
 ```
 
 各 release には必要に応じて以下を置きます。

@@ -539,3 +539,18 @@
 2. Pair approval 後、terminal に `returning SSH destination: user@host:port` が表示される。
 3. 無線/Tailscale/LAN では、app が入力した host に対して SSH banner を返す port を候補から選ぶ。
 4. `python3 -m unittest tests.unit.test_shogunate_pair_server`、`python3 -m py_compile scripts/shogunate_pair_server.py`、`git diff --check` が PASS する。
+
+## 追補（2026-06-16: Pair 完了表示と自動終了）
+
+### 要求
+
+1. `shogunate pair` は非エンジニアにも完了が分かるよう、成功時に `Pairing complete`、端末名、保存された SSH 接続先、次の操作を表示する。
+2. 既定では1台の pairing 成功後に server を自動終了する。
+3. 複数端末を連続 pairing したい場合だけ `shogunate pair --keep-running` を使う。
+4. `Ctrl-C` で中断した場合は、成功完了と誤解される表示を出さない。
+
+### 受け入れ条件（観測可能）
+
+1. Pair 成功後、terminal に `Pairing complete` と `Shogunate pair stopped after successful setup.` が表示される。
+2. `--keep-running` 指定時は成功後も server が待受を継続する。
+3. `python3 -m unittest tests.unit.test_shogunate_pair_server`、`python3 -m py_compile scripts/shogunate_pair_server.py`、`git diff --check` が PASS する。

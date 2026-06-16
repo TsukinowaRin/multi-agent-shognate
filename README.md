@@ -122,7 +122,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 Pin an exact release only when you need reproducible installs:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.7/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.7
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.8/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.8
 ```
 
 Each GitHub Release page includes the version-pinned cURL command for that tag.
@@ -209,9 +209,11 @@ The Android app connects to the host runtime over SSH and targets the Shogun pan
 shogunate pair        # USB auto + Tailscale / LAN
 ```
 
-Then open the Android app, choose USB or enter the Tailscale/LAN IP, and press Connect. The PC terminal shows the device name; approve it by entering the local Pair Password prompt. After pairing succeeds, Shogunate starts in resume mode and later connections use the saved SSH key without re-pairing.
+Then open the Android app, choose USB or enter the Tailscale/LAN IP, and press Connect. The PC terminal shows the device name; approve it by entering the local Pair Password prompt. After pairing succeeds, the terminal prints `Pairing complete`, Shogunate starts in resume mode, and Pair stops automatically. Later connections use the saved SSH key without re-pairing.
 
 For USB, the app should connect to `127.0.0.1`; `adb reverse` maps Android `127.0.0.1:2222` to the host SSH service. For wireless/Tailscale/LAN, the app should use the PC address that can actually reach SSH. The Pair terminal prints the exact returned destination as `returning SSH destination: user@host:port`.
+
+To pair several devices in one session, run `shogunate pair --keep-running`.
 
 For source checkout compatibility helpers:
 
@@ -292,6 +294,7 @@ v5.2.0.4
 v5.2.0.5
 v5.2.0.6
 v5.2.0.7
+v5.2.0.8
 ```
 
 Each release may include:

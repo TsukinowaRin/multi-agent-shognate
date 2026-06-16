@@ -522,3 +522,19 @@
 1. `scripts/shogunate_package_bootstrap.sh` は `first_setup.sh` 実行前に command shim を生成する。
 2. 生成される command shim の `pair)` branch は `python3 scripts/shogunate_pair_server.py` を実行する。
 3. `python3 -m unittest tests.unit.test_package_distribution`、`bash -n scripts/shogunate_package_bootstrap.sh`、`git diff --check` が PASS する。
+
+## 追補（2026-06-16: Pair 成功後の SSH 再接続安定化）
+
+### 要求
+
+1. `shogunate pair` は、TCP port が open しているだけの壊れた Windows portproxy / stale forwarding を SSH service と誤判定しない。
+2. SSH port 自動検出は SSH banner を確認し、実際に SSH として応答する port を app へ返す。
+3. USB 接続では Android 側 `127.0.0.1:2222` を返し、無線/Tailscale/LAN 接続では app が入力した PC address と検出済み SSH port を返す。
+4. PC terminal には、承認後に app へ返した SSH 接続先 `user@host:port` を表示する。
+5. 内部 SSH port と Android へ返す外向き port が違う構成では `--client-ssh-port` / `SHOGUNATE_CLIENT_SSH_PORT` で上書きできる。
+
+### 受け入れ条件（観測可能）
+
+1. `detect_ssh_port()` は SSH banner を返さない open port をスキップする。
+2. Pair approval 後、terminal に `returning SSH destination: user@host:port` が表示される。
+3. `python3 -m unittest tests.unit.test_shogunate_pair_server`、`python3 -m py_compile scripts/shogunate_pair_server.py`、`git diff --check` が PASS する。

@@ -2719,6 +2719,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             "first_setup.sh",
             "bin/shogunate.js",
             "scripts/shogunate_pair_server.py",
+            "shogunate_mod/README.md",
+            "shogunate_mod/manifest.yaml",
             "shogunate_mod/pair/server.py",
             "shogunate_mod/package/first_setup.sh",
             "shogunate_mod/runtime/departure.sh",

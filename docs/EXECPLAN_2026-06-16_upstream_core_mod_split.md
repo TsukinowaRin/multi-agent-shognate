@@ -195,6 +195,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] npm package / cURL release archive の root dot-directory compatibility surface（`.claude/settings.json`, `.codd/codd.yaml`, `.github/copilot-instructions.md`, `.opencode/agents/*`, `.opencode/tools/mark-as-read.ts`, `agents/default/*`）を実収録 contract で固定した。
 - [x] release archive の `export-ignore` 境界を文字列確認だけでなく `git check-attr export-ignore -- ...` の実効確認でも package distribution contract に固定した。Android app / images / reports は archive から外し、README など通常ファイルは archive 対象のままにする。
 - [x] `git archive --worktree-attributes --format=tar HEAD` の実ファイルリストを package distribution contract で直接検査し、cURL release archive に runtime 必須 entrypoint / MOD runtime source / OpenCode guard config が入り、Android / tests / runtime state / internal docs / CI metadata / MOD metadata が実際に混入しないことを固定した。
+- [x] cURL release archive にも `shogunate_mod/manifest.yaml` と `shogunate_mod/README.md` が残り、package install 後だけでなく release archive 展開後も MOD 境界情報を確認できることを package distribution contract で固定した。
 - [x] release workflow で `bash scripts/prepublish_check.sh` が tag validation / `git archive` による tar.gz・zip 作成より前に実行されることを package distribution contract で固定した。
 - [x] `memory/global_context.md` は root runtime state として package へ入れず、MOD 正本 template `shogunate_mod/package/templates/memory/global_context.md.sample` だけを package へ含め、first setup がそこから初期生成する境界を package distribution contract で固定した。
 - [x] runtime/local state の `config/projects.yaml`, `config/settings.yaml`, `dashboard.md`, `memory/MEMORY.md`, `memory/global_context.md`, `saytask/streaks.yaml`, `queue/`, `runtime_sandboxes/` が npm package に混入しないことを package distribution contract で固定した。
@@ -1252,6 +1253,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 86 tests after tying MOD README boundaries to manifest canonical paths.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after tying MOD README boundaries to manifest canonical paths.
 - PASS: `git diff --check` after tying MOD README boundaries to manifest canonical paths.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_actual_runtime_boundary` after requiring MOD manifest and MOD README in cURL release archives.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after requiring MOD manifest and MOD README in cURL release archives.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 86 tests after requiring MOD manifest and MOD README in cURL release archives.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring MOD manifest and MOD README in cURL release archives.
+- PASS: `git diff --check` after requiring MOD manifest and MOD README in cURL release archives.
 
 ## 復旧
 

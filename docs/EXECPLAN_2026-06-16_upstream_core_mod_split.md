@@ -241,6 +241,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] cURL release archive から意図的に外す MOD canonical paths は Android source、tests tree、GitHub/development metadata、package lock/workflow/archive metadata だけであることを contract で固定した。
 - [x] Python compatibility wrapper は `shogunate_mod/` 委譲 bootstrap だけに限定し、wrapper 側に関数・クラス実装や追加 import が戻らないことを AST contract で固定した。
 - [x] Shell / command / batch compatibility wrapper も薄い委譲入口として固定し、wrapper 側に shell 関数定義や batch label 実装が戻らないことを package distribution contract で固定した。
+- [x] JavaScript compatibility wrapper も MOD npm CLI への bootstrap-only 委譲に限定し、root `bin/shogunate.js` へ JS 実装が戻らないことを package distribution contract で固定した。
 
 ## 判断
 
@@ -1360,6 +1361,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after extending wrapper bootstrap-only checks.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after extending wrapper bootstrap-only checks.
 - PASS: `git diff --check` after extending wrapper bootstrap-only checks.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrappers_stay_thin` after restricting JavaScript compatibility wrappers to MOD npm CLI delegation with no local JS definitions.
 
 ## 復旧
 

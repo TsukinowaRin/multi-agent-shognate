@@ -1507,12 +1507,17 @@ class PackageDistributionContractTests(unittest.TestCase):
         invalid_python_wrappers = []
         python_wrappers_with_implementation = []
         python_wrappers_with_extra_imports = []
+        invalid_javascript_wrappers = []
+        javascript_wrappers_with_implementation = []
         shell_wrappers_with_functions = []
         batch_wrappers_with_labels = []
         remote_bootstrap_fallbacks = {"scripts/shogunate_package_bootstrap.sh"}
         allowed_python_wrapper_imports = {"__future__", "importlib.util", "pathlib", "runpy", "sys"}
         shell_wrapper_suffixes = (".sh", ".command")
         shell_function_pattern = re.compile(r"^(?:function\s+)?[A-Za-z_][A-Za-z0-9_]*\s*\(\)\s*\{?")
+        javascript_implementation_pattern = re.compile(
+            r"(?:\b(?:function|class|const|let|var|import|export)\b|=>)"
+        )
 
         for rel in manifest_list_values(manifest, "compatibility_wrappers"):
             path = ROOT / rel.rstrip("/")
@@ -1531,6 +1536,14 @@ class PackageDistributionContractTests(unittest.TestCase):
                     if isinstance(node, ast.ImportFrom) and (node.module or "") not in allowed_python_wrapper_imports:
                         python_wrappers_with_extra_imports.append(f"{rel}: {node.module or ''}")
                 continue
+            if rel.endswith(".js"):
+                if "shogunate_mod/package/npm_cli.js" not in text or ".main(" not in text:
+                    invalid_javascript_wrappers.append(rel)
+                for line in non_comment_body(text).splitlines():
+                    stripped = line.strip()
+                    if javascript_implementation_pattern.search(stripped):
+                        javascript_wrappers_with_implementation.append(f"{rel}: {stripped}")
+                continue
             if rel in remote_bootstrap_fallbacks:
                 self.assertIn("curl -fsSL", text)
                 self.assertIn("shogunate_mod/package/bootstrap.sh", text)
@@ -1548,6 +1561,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], invalid_python_wrappers)
         self.assertEqual([], python_wrappers_with_implementation)
         self.assertEqual([], python_wrappers_with_extra_imports)
+        self.assertEqual([], invalid_javascript_wrappers)
+        self.assertEqual([], javascript_wrappers_with_implementation)
         self.assertEqual([], shell_wrappers_with_functions)
         self.assertEqual([], batch_wrappers_with_labels)
         self.assertEqual([], thick_wrappers)

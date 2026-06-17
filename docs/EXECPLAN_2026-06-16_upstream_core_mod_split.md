@@ -185,6 +185,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] tracked `docs/` 全体について、cURL release archive に残せる公開 docs を `docs/philosophy.md` と `docs/codd/` だけに限定する動的 package distribution contract を追加した。新しい内部 docs が増えた場合も、`export-ignore` が無ければ test で検出する。
 - [x] 過去の VPS PR #118 検証記録 `docs/vps_pr118_verification_plan.md` を cURL release archive から除外し、`git check-attr export-ignore` の実効確認を package distribution contract に追加した。
 - [x] cURL 用 release archive から GitHub Actions workflow / Funding metadata / Git metadata / package lock / MOD package workflow metadata を `.gitattributes export-ignore` で除外し、runtime に必要な `package.json`, README, generated Copilot instructions, MOD runtime templates は残ることを contract で固定した。
+- [x] cURL 用 release archive から MOD 側の GitHub funding metadata `shogunate_mod/github/FUNDING.yml` と development submodule metadata `shogunate_mod/development/gitmodules` も除外し、runtime archive と npm package の境界を分けた。npm package には MOD 正本 metadata を残す。
 - [x] cURL 用 release archive で `first_setup.sh`, MOD first setup / requirements, Pair server, npm CLI, runtime launchers, departure entrypoint など install/runtime に必要な entrypoint が `export-ignore` されていないことを package distribution contract で固定した。
 - [x] manifest の `config/` touchpoint を、tracked root config defaults は MOD 正本の同期互換コピー、`config/settings.yaml` / `config/projects.yaml` は local runtime state、という区別へ更新した。同期対象は package distribution contract の synchronized touchpoint gate でも固定した。
 - [x] `config/projects.yaml` を `config/settings.yaml` と同じ local runtime state として `.gitignore` / MOD gitignore / prepublish forbidden tracked path gate / `git check-ignore` gate へ明示追加した。
@@ -1144,6 +1145,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 63 tests after adding `docs/INDEX.md` release archive exclusion coverage.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_docs_boundary_is_explicit` after adding the dynamic tracked-docs release archive boundary contract.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 64 tests after adding the dynamic tracked-docs release archive boundary contract.
+- PASS: targeted package distribution contract checks for cURL release archive exclusion of `shogunate_mod/github/FUNDING.yml` and `shogunate_mod/development/gitmodules`, while keeping runtime-facing `shogunate_mod/development/Makefile` unspecified.
+- PASS: `git archive --worktree-attributes --format=tar HEAD | tar -tf - | rg '^(shogunate_mod/github/FUNDING.yml|shogunate_mod/development/gitmodules)$' || true` returned no paths after excluding MOD metadata from cURL release archives.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 64 tests after adding MOD metadata release archive exclusions.
 
 ## 復旧
 

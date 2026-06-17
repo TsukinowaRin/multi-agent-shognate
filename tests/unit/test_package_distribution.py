@@ -201,6 +201,8 @@ def is_intentionally_release_archive_excluded_mod_path(rel_path: str) -> bool:
         "shogunate_mod/package/package-lock.json",
         "shogunate_mod/package/gitattributes",
         "shogunate_mod/package/gitignore",
+        "shogunate_mod/github/FUNDING.yml",
+        "shogunate_mod/development/gitmodules",
     }
     return rel_path in excluded_exact or any(rel_path.startswith(prefix) for prefix in excluded_prefixes)
 
@@ -2177,6 +2179,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn(".github/workflows/** export-ignore", attrs)
         self.assertIn(".github/FUNDING.yml export-ignore", attrs)
         self.assertIn(".gitmodules export-ignore", attrs)
+        self.assertIn("shogunate_mod/github/FUNDING.yml export-ignore", attrs)
+        self.assertIn("shogunate_mod/development/gitmodules export-ignore", attrs)
         self.assertIn(".gitignore export-ignore", attrs)
         self.assertIn(".gitattributes export-ignore", attrs)
         self.assertIn("package-lock.json export-ignore", attrs)
@@ -2211,6 +2215,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             ".github/workflows/test.yml",
             ".github/FUNDING.yml",
             ".gitmodules",
+            "shogunate_mod/github/FUNDING.yml",
+            "shogunate_mod/development/gitmodules",
             ".gitignore",
             ".gitattributes",
             "package-lock.json",
@@ -2271,6 +2277,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual("set", attrs_by_path[".github/workflows/test.yml"])
         self.assertEqual("set", attrs_by_path[".github/FUNDING.yml"])
         self.assertEqual("set", attrs_by_path[".gitmodules"])
+        self.assertEqual("set", attrs_by_path["shogunate_mod/github/FUNDING.yml"])
+        self.assertEqual("set", attrs_by_path["shogunate_mod/development/gitmodules"])
         self.assertEqual("set", attrs_by_path[".gitignore"])
         self.assertEqual("set", attrs_by_path[".gitattributes"])
         self.assertEqual("set", attrs_by_path["package-lock.json"])

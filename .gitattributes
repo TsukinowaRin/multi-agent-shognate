@@ -39,6 +39,8 @@ docs/vps_pr118_verification_plan.md export-ignore
 .github/workflows/** export-ignore
 .github/FUNDING.yml export-ignore
 .gitmodules export-ignore
+shogunate_mod/github/FUNDING.yml export-ignore
+shogunate_mod/development/gitmodules export-ignore
 .gitignore export-ignore
 .gitattributes export-ignore
 package-lock.json export-ignore

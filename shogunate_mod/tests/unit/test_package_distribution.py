@@ -1862,6 +1862,35 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], unexpected)
         self.assertEqual([], missing_freshness_targets)
 
+    def test_release_archive_root_instructions_are_mod_source_or_freshness_targets(self):
+        ensure_script = (ROOT / "shogunate_mod" / "instructions" / "ensure_generated.sh").read_text(
+            encoding="utf-8"
+        )
+        files = release_archive_files()
+        source_files = set()
+        for path in (ROOT / "instructions").rglob("*.md"):
+            rel = path.relative_to(ROOT / "instructions")
+            if "generated" in rel.parts:
+                continue
+            source_files.add(str(path.relative_to(ROOT)))
+
+        archived_instruction_files = sorted(path for path in files if path.startswith("instructions/"))
+        unexpected = []
+        missing_freshness_targets = []
+        for rel in archived_instruction_files:
+            if not rel.endswith(".md"):
+                continue
+            if rel in source_files:
+                continue
+            if rel.startswith("instructions/generated/"):
+                if f'"{rel}"' not in ensure_script:
+                    missing_freshness_targets.append(rel)
+                continue
+            unexpected.append(rel)
+
+        self.assertEqual([], unexpected)
+        self.assertEqual([], missing_freshness_targets)
+
     def test_generated_root_touchpoints_are_freshness_targets(self):
         ensure_script = (ROOT / "shogunate_mod" / "instructions" / "ensure_generated.sh").read_text(
             encoding="utf-8"

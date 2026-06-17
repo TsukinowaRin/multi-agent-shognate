@@ -170,6 +170,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] runtime npm package の root `bin/` ディレクトリ指定を廃止し、manifest の `compatibility_wrappers` に宣言された `bin/shogunate.js` だけを明示収録するようにした。実際の `npm pack --dry-run --json` 上の `bin/` と manifest wrapper が完全一致することも contract で固定した。
 - [x] cURL release archive でも root `bin/` / `lib/` / `scripts/` の実収録ファイルが manifest `compatibility_wrappers` と完全一致することを package distribution contract で固定した。これにより cURL archive 側へ root 実装が混入した場合も検出できる。
 - [x] runtime npm package に入る root `instructions/` が、MOD source の互換コピーまたは generated freshness guard 対象のどちらかで説明されることを package distribution contract に追加した。これにより漏れていた `instructions/generated/cursor-*.md` を `shogunate_mod/instructions/ensure_generated.sh` の targets に追加した。
+- [x] cURL release archive に入る root `instructions/` も、MOD source の互換コピーまたは generated freshness guard 対象のどちらかで説明されることを package distribution contract に追加した。これにより npm package と cURL archive の両方で root prompt surface が MOD 正本由来であることを固定した。
 - [x] generated OpenCode agent definitions の `Source:` コメントが root `instructions/` ではなく `shogunate_mod/instructions/source/` を指すことを package distribution contract に追加し、root generated surface が MOD 正本由来であることを固定した。
 - [x] runtime npm package の generated root directory 指定（`.opencode/agents/` と `agents/default/`）を廃止し、`ensure_generated.sh` の freshness targets に宣言された generated root files だけを明示収録するようにした。実際の `npm pack --dry-run --json` 上の generated root files と freshness targets が一致することも contract で固定した。
 - [x] runtime npm package の root OpenCode tool directory 指定（`.opencode/tools/`）を廃止し、MOD 正本と同期された `.opencode/tools/mark-as-read.ts` だけを明示収録するようにした。
@@ -1157,6 +1158,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 65 tests after adding actual release archive content checks.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_root_wrappers_match_manifest` after adding cURL release archive root wrapper surface coverage.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 66 tests after adding cURL release archive root wrapper surface coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_root_instructions_are_mod_source_or_freshness_targets` after adding cURL release archive root instruction source/freshness coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 67 tests after adding cURL release archive root instruction source/freshness coverage.
 
 ## 復旧
 

@@ -242,6 +242,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Python compatibility wrapper は `shogunate_mod/` 委譲 bootstrap だけに限定し、wrapper 側に関数・クラス実装や追加 import が戻らないことを AST contract で固定した。
 - [x] Shell / command / batch compatibility wrapper も薄い委譲入口として固定し、wrapper 側に shell 関数定義や batch label 実装が戻らないことを package distribution contract で固定した。
 - [x] JavaScript compatibility wrapper も MOD npm CLI への bootstrap-only 委譲に限定し、root `bin/shogunate.js` へ JS 実装が戻らないことを package distribution contract で固定した。
+- [x] Git 管理下の root code-like file は、`shogunate_mod/` 以外すべて manifest の current core touchpoint または compatibility wrapper で分類されることを package distribution contract で固定した。
 
 ## 判断
 
@@ -1362,6 +1363,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after extending wrapper bootstrap-only checks.
 - PASS: `git diff --check` after extending wrapper bootstrap-only checks.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrappers_stay_thin` after restricting JavaScript compatibility wrappers to MOD npm CLI delegation with no local JS definitions.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_tracked_root_code_like_files_are_classified_by_manifest` after requiring every tracked root code-like file outside `shogunate_mod/` to be manifest-classified.
 
 ## 復旧
 

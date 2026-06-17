@@ -386,6 +386,54 @@ def root_shogunate_surface_candidates() -> list[str]:
     return candidates
 
 
+def tracked_root_code_like_files() -> list[str]:
+    code_like_suffixes = {
+        ".bash",
+        ".bat",
+        ".bats",
+        ".cmd",
+        ".command",
+        ".js",
+        ".json",
+        ".jsonc",
+        ".ps1",
+        ".py",
+        ".sh",
+        ".toml",
+        ".ts",
+        ".yaml",
+        ".yml",
+    }
+    code_like_exact_names = {
+        "Makefile",
+        "package-lock.json",
+        "package.json",
+        "requirements.txt",
+    }
+    result = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise AssertionError(result.stderr)
+
+    files = []
+    for rel in sorted(path for path in result.stdout.split("\0") if path):
+        if rel.startswith("shogunate_mod/"):
+            continue
+        parts = rel.split("/")
+        if "__pycache__" in parts or rel.endswith((".pyc", ".pyo")):
+            continue
+        path = ROOT / rel
+        if path.suffix.lower() in code_like_suffixes or path.name in code_like_exact_names:
+            files.append(rel)
+
+    return files
+
+
 def wrapper_mod_delegate_paths(text: str) -> list[str]:
     normalized = text.replace("\\", "/")
     paths = set()
@@ -1253,6 +1301,20 @@ class PackageDistributionContractTests(unittest.TestCase):
         missing = [
             rel
             for rel in root_shogunate_surface_candidates()
+            if not manifest_root_paths_cover_path(root_paths, rel)
+        ]
+
+        self.assertEqual([], missing)
+
+    def test_tracked_root_code_like_files_are_classified_by_manifest(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        root_paths = manifest_core_touchpoint_paths(manifest) + manifest_list_values(
+            manifest,
+            "compatibility_wrappers",
+        )
+        missing = [
+            rel
+            for rel in tracked_root_code_like_files()
             if not manifest_root_paths_cover_path(root_paths, rel)
         ]
 

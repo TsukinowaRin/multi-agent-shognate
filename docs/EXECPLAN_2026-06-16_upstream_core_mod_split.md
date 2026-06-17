@@ -236,6 +236,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] cURL release archive には manifest `compatibility_wrappers` の全 root wrapper が実際に収録されることを package distribution contract で固定した。
 - [x] cURL release archive では root runtime state の `queue/` は除外したまま、MOD 正本 `shogunate_mod/queue/` は収録対象へ戻した。manifest canonical files は属性だけでなく実 archive に存在することも contract で固定した。
 - [x] root compatibility wrapper が参照する MOD delegate target は、manifest canonical path として分類され、cURL release archive にも実収録されることを contract で固定した。file canonical path が `file/extra` を誤って覆わないよう manifest coverage helper も厳密化した。
+- [x] npm package でも root compatibility wrapper が参照する MOD delegate target が実収録されることを contract で固定し、npm / cURL の両配布経路で wrapper だけが残る事故を検出できるようにした。
 
 ## 判断
 
@@ -1330,6 +1331,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after requiring wrapper delegate targets to be release-archive covered.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring wrapper delegate targets to be release-archive covered.
 - PASS: `git diff --check` after requiring wrapper delegate targets to be release-archive covered.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_pack_includes_manifest_wrapper_delegate_targets tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_includes_manifest_wrapper_delegate_targets tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrapper_targets_are_canonical_paths` after requiring npm package coverage for wrapper delegate targets.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 98 tests after requiring npm package coverage for wrapper delegate targets.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after requiring npm package coverage for wrapper delegate targets.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring npm package coverage for wrapper delegate targets.
+- PASS: `git diff --check` after requiring npm package coverage for wrapper delegate targets.
 
 ## 復旧
 

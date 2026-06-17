@@ -1203,6 +1203,21 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], sorted(set(missing_targets)))
 
+    def test_npm_pack_includes_manifest_wrapper_delegate_targets(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = npm_pack_files()
+        missing_targets = []
+
+        for rel in manifest_list_values(manifest, "compatibility_wrappers"):
+            path = ROOT / rel.rstrip("/")
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for mod_path in wrapper_mod_delegate_paths(text):
+                normalized = mod_path.rstrip("/")
+                if not packed_files_cover_path(files, normalized):
+                    missing_targets.append(f"{rel} -> {mod_path}")
+
+        self.assertEqual([], sorted(set(missing_targets)))
+
     def test_root_mod_delegates_are_declared_as_compatibility_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))

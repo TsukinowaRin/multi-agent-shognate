@@ -227,7 +227,15 @@ def mod_readme_boundary_paths(text: str) -> list[str]:
 
 
 def is_intentionally_unpacked_mod_path(rel_path: str) -> bool:
-    return rel_path == "shogunate_mod/tests" or rel_path.startswith("shogunate_mod/tests/")
+    excluded_prefixes = (
+        "shogunate_mod/mobile/android/",
+        "shogunate_mod/tests/",
+    )
+    excluded_exact = {
+        "shogunate_mod/mobile/android",
+        "shogunate_mod/tests",
+    }
+    return rel_path in excluded_exact or any(rel_path.startswith(prefix) for prefix in excluded_prefixes)
 
 
 def is_intentionally_release_archive_excluded_mod_path(rel_path: str) -> bool:
@@ -1752,20 +1760,18 @@ class PackageDistributionContractTests(unittest.TestCase):
         )
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = npm_pack_files()
-        excluded_prefixes = (
-            "shogunate_mod/mobile/android",
-            "shogunate_mod/tests",
-        )
 
         self.assertEqual(root_package, mod_package)
 
         missing = []
         excluded_covered = []
+        intentionally_unpacked = []
         for rel_path in manifest_mapping_values(manifest, "canonical_paths"):
             normalized = rel_path.rstrip("/")
             if not normalized.startswith("shogunate_mod/"):
                 continue
-            if any(normalized == prefix or normalized.startswith(prefix + "/") for prefix in excluded_prefixes):
+            if is_intentionally_unpacked_mod_path(normalized):
+                intentionally_unpacked.append(normalized)
                 if any(path == normalized or path.startswith(normalized + "/") for path in files):
                     excluded_covered.append(rel_path)
                 continue
@@ -1774,6 +1780,22 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], missing)
         self.assertEqual([], excluded_covered)
+        self.assertEqual(
+            [
+                "shogunate_mod/mobile/android",
+                "shogunate_mod/tests",
+                "shogunate_mod/tests/e2e",
+                "shogunate_mod/tests/e2e/fixtures",
+                "shogunate_mod/tests/e2e/helpers",
+                "shogunate_mod/tests/e2e/mock_behaviors",
+                "shogunate_mod/tests/e2e/mock_cli.sh",
+                "shogunate_mod/tests/fixtures",
+                "shogunate_mod/tests/helpers",
+                "shogunate_mod/tests/specs",
+                "shogunate_mod/tests/unit",
+            ],
+            sorted(intentionally_unpacked),
+        )
 
     def test_package_files_entries_materialize_in_npm_pack(self):
         root_package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))

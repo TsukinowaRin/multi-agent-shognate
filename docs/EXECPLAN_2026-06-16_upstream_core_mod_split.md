@@ -183,6 +183,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] runtime npm package の root `docs/codd/` ディレクトリ指定を廃止し、MOD 正本 `shogunate_mod/gunkan/docs/` と同期された root CoDD docs 4 files だけを明示収録するようにした。
 - [x] package `files` に残る positive broad entries が `shogunate_mod/` 配下だけであり、その entry で実際に `npm pack` へ入る全ファイルが manifest `canonical_paths` に覆われることを package distribution contract で固定した。
 - [x] npm package / cURL release archive の top-level runtime file surface を実収録 contract で固定し、public files と manifest `compatibility_wrappers` の launcher 以外が root 直下に混入しないようにした。
+- [x] `LICENSE` を root public metadata touchpoint として manifest に追加し、配布対象の top-level runtime file surface が manifest の `current_core_touchpoints` / `compatibility_wrappers` から導けることを package distribution contract で固定した。
 - [x] npm package / cURL release archive の root directory surface を実収録 contract で固定し、新しい root directory が配布 surface に入った場合に明示分類を要求するようにした。
 - [x] 配布対象の root directory surface が manifest の `current_core_touchpoints` / `compatibility_wrappers` / `canonical_paths` から導けることを package distribution contract で固定した。
 - [x] npm package の root `config/` surface は公開 sample の `config/ntfy_auth.env.sample` だけ、cURL release archive の root `config/` surface は runtime defaults の `config/ntfy_auth.env.sample`, `config/opencode-permissions.yaml`, `config/opencode-tui.json` だけであることを実収録 contract で固定した。
@@ -1211,6 +1212,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding manifest declaration coverage.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding manifest declaration coverage.
 - PASS: `git diff --check` after adding manifest declaration coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_package_top_level_file_surface_is_declared_by_manifest` after adding `LICENSE` as a root public metadata touchpoint and requiring top-level file surface to be manifest-declared.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 80 tests after adding top-level file manifest declaration coverage.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding top-level file manifest declaration coverage.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding top-level file manifest declaration coverage.
+- PASS: `git diff --check` after adding top-level file manifest declaration coverage.
 
 ## 復旧
 

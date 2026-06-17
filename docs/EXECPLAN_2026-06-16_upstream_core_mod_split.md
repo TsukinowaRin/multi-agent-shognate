@@ -197,6 +197,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] package bootstrap に `SHOGUNATE_PACKAGE_URL` override を追加し、GitHub release channel と同じ archive extraction path をローカル `file://` archive で smoke できるようにした。通常の latest / `--version` cURL 導線は維持する。
 - [x] ローカル release archive から package install した `shogunate` command 経由で `shogunate clean --project <project> --no-attach -s` を実行し、package install 後の cwd-first runtime setup-only 起動が MOD runtime / project runtime copy 上で成立することを確認した。
 - [x] ローカル release archive から package install した `shogunate` command 経由で `shogunate pair --project <project>` を起動し、sandbox `authorized_keys` への公開鍵登録、Pair response の runtime/target project 情報、成功後の自動停止表示が成立することを確認した。
+- [x] tmux の session target が prefix match される問題を避けるため、runtime cleanup の `has-session` / `kill-session` を `=session-name` の exact target へ統一した。これにより legacy `shogun` cleanup が `shogunate-project-*` session を誤って kill する事故を防ぐ。
+- [x] ローカル release archive から package install した `shogunate` command 経由で、2つの別 project を同時に `shogunate clean --project <project> --no-attach -s` 起動し、project ごとに独立した tmux session / runtime copy / metadata が並列成立することを確認した。
 
 ## 判断
 
@@ -1125,6 +1127,13 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: local release-channel smoke using `git archive --format=tar.gz --prefix=multi-agent-shognate/ HEAD` and `SHOGUNATE_PACKAGE_URL=file://... bash shogunate_mod/package/bootstrap.sh --version v0.0.0-local --prefix <sandbox-home>/.shogunate/shogunate --bin-dir <sandbox-home>/.local/bin --no-setup`; verified `shogunate help`, `shogunate where --project <project>`, engine/runtime `shogunate_mod/manifest.yaml`, and `queue/runtime/{target_project,engine_dir}`.
 - PASS: package-installed runtime smoke using a local release archive, isolated `HOME`, isolated `SHOGUNATE_WORKSPACE_HOME`, and unique `SHOGUNATE_SESSION_NAME`; `shogunate clean --project <project> --no-attach -s` created the project runtime tmux session through the installed command, wrote `queue/runtime/{target_project,engine_dir,session_name}`, created role panes for `shogun`, `gunkan`, `karo`, `gunshi`, and `ashigaru1`, and did not print the old `指示書再生成スクリプトが見つからない` warning.
 - PASS: package-installed Pair smoke using a local release archive, isolated `HOME`, sandbox `--authorized-keys`, fixed `--pair-password`, `--no-usb`, `--no-start-runtime`, and `--client-ssh-port 22222`; `shogunate pair --project <project>` served `/pair`, accepted an Android-style public key, wrote exactly the sandbox authorized key, returned `project` as the project runtime copy and `target_project` as the requested project, returned port `22222`, printed `Pairing complete.`, and stopped automatically after success.
+- OBSERVED: package-installed two-project runtime smoke initially showed project A session disappearing after project B startup because `tmux kill-session -t shogun` prefix-matched `shogunate-project-alpha-*`.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_runtime_cleanup_uses_exact_tmux_session_targets` after adding exact tmux cleanup target coverage.
+- PASS: `bash -n shogunate_mod/runtime/state.sh shogunate_mod/runtime/android_compat.sh` after switching runtime cleanup helpers to exact tmux targets.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 63 tests after adding exact tmux cleanup target coverage.
+- PASS: direct `diff -qr tests shogunate_mod/tests -x __pycache__ -x '*.pyc' -x '*.pyo'` confirmed root test compatibility files match MOD test sources after adding exact tmux cleanup target coverage.
+- PASS: `git diff --check` after adding exact tmux cleanup target coverage.
+- PASS: package-installed two-project runtime smoke using a local `git archive HEAD` release package, isolated `HOME`, and isolated `SHOGUNATE_WORKSPACE_HOME`; project alpha and beta produced distinct `shogunate-project-alpha-aed8c4f9` / `shogunate-project-beta-503c296b` tmux sessions concurrently, each with `shogun`, `gunkan`, `karo`, `gunshi`, and `ashigaru1` panes, and each runtime metadata pointed at its own target project.
 
 ## 復旧
 

@@ -1372,6 +1372,27 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], missing)
 
+    def test_development_branch_keeps_upstream_main_as_ancestor(self):
+        upstream = subprocess.run(
+            ["git", "rev-parse", "--verify", "upstream/main"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if upstream.returncode != 0:
+            self.skipTest("upstream/main is not available in this checkout")
+
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", "upstream/main", "HEAD"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(0, ancestor.returncode, ancestor.stderr)
+
     def test_upstream_modified_root_code_like_files_are_classified_by_manifest(self):
         upstream = subprocess.run(
             ["git", "rev-parse", "--verify", "upstream/main"],

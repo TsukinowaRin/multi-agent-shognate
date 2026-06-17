@@ -248,6 +248,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] `shogunate_mod/README.md` の ownership boundary が Git 管理下の MOD top-level source directories と一致することを package distribution contract で固定した。
 - [x] `upstream/main` が存在する開発 checkout では、upstream から変更された root code-like file も manifest の current core touchpoint または compatibility wrapper で分類されることを package distribution contract で固定した。
 - [x] npm package と cURL release archive が旧 installer surface（`install.bat` / `install.sh` / `install.command` / legacy installer assets）を収録しないことを package distribution contract で固定した。
+- [x] `upstream/main` が存在する開発 checkout では、`git merge-base --is-ancestor upstream/main HEAD` が通ることを package distribution contract で固定した。
 
 ## 判断
 
@@ -1374,6 +1375,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_readme_boundary_directories_match_tracked_mod_sources` after requiring MOD README ownership boundaries to match tracked MOD top-level source directories.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_upstream_modified_root_code_like_files_are_classified_by_manifest` after requiring upstream-modified root code-like files to be manifest-classified when `upstream/main` is available.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_pack_excludes_legacy_installer_surface tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_excludes_legacy_installer_surface` after requiring npm package and cURL release archive to exclude legacy installer surfaces.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_development_branch_keeps_upstream_main_as_ancestor` after requiring development checkouts with `upstream/main` to retain upstream ancestry.
 
 ## 復旧
 

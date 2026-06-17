@@ -1433,6 +1433,18 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual(declared_bin_files, packaged_bin_files)
 
+    def test_npm_pack_top_level_launchers_match_manifest_wrappers(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = npm_pack_files()
+        top_level_wrappers = sorted(
+            rel
+            for rel in manifest_list_values(manifest, "compatibility_wrappers")
+            if "/" not in rel
+        )
+        packaged_top_level_wrappers = sorted(rel for rel in top_level_wrappers if rel in files)
+
+        self.assertEqual(top_level_wrappers, packaged_top_level_wrappers)
+
     def test_npm_pack_generated_root_files_are_freshness_targets(self):
         files = npm_pack_files()
         packaged_generated_root_files = sorted(

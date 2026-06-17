@@ -408,6 +408,24 @@ def generated_root_touchpoint_files() -> list[str]:
     return sorted(candidates)
 
 
+def ensure_generated_targets(text: str) -> list[str]:
+    targets = []
+    in_targets = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped == "targets=(":
+            in_targets = True
+            continue
+        if in_targets and stripped == ")":
+            break
+        if not in_targets:
+            continue
+        match = re.search(r'"([^"]+)"', stripped)
+        if match:
+            targets.append(match.group(1))
+    return targets
+
+
 def root_dot_compatibility_surface_files(files: set[str]) -> list[str]:
     prefixes = (
         ".claude/",
@@ -2390,6 +2408,24 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("  - path: .opencode/agents/", manifest)
         for rel in generated_root_touchpoint_files():
             self.assertIn(f'"{rel}"', ensure_script, f"missing generated freshness target: {rel}")
+
+    def test_generated_freshness_targets_are_manifest_classified(self):
+        ensure_script = (ROOT / "shogunate_mod" / "instructions" / "ensure_generated.sh").read_text(
+            encoding="utf-8"
+        )
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        root_paths = manifest_core_touchpoint_paths(manifest)
+        missing_manifest_classification = []
+        missing_files = []
+
+        for rel in ensure_generated_targets(ensure_script):
+            if not (ROOT / rel).is_file():
+                missing_files.append(rel)
+            if not manifest_root_paths_cover_path(root_paths, rel):
+                missing_manifest_classification.append(rel)
+
+        self.assertEqual([], missing_files)
+        self.assertEqual([], missing_manifest_classification)
 
     def test_generated_opencode_agents_identify_mod_instruction_sources(self):
         build_script = (ROOT / "shogunate_mod" / "instructions" / "build.sh").read_text(encoding="utf-8")

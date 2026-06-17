@@ -873,6 +873,14 @@ class PackageDistributionContractTests(unittest.TestCase):
             path = ROOT / rel.rstrip("/")
             self.assertTrue(path.exists(), f"missing current core touchpoint declared in manifest: {rel}")
 
+    def test_manifest_canonical_paths_are_mod_scoped(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+
+        self.assertEqual(
+            [],
+            sorted(rel for rel in manifest_mapping_values(manifest, "canonical_paths") if not rel.startswith("shogunate_mod/")),
+        )
+
     def test_manifest_core_touchpoints_are_actionable_and_not_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))

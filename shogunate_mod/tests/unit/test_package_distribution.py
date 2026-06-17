@@ -1187,6 +1187,27 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], missing)
 
+    def test_mod_readme_boundary_directories_match_tracked_mod_sources(self):
+        readme = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")
+        result = subprocess.run(
+            ["git", "ls-files", "-z", "shogunate_mod"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        tracked_dirs = sorted(
+            {
+                rel.split("/")[1]
+                for rel in result.stdout.split("\0")
+                if rel.startswith("shogunate_mod/") and len(rel.split("/")) > 2
+            }
+        )
+        readme_dirs = sorted({path.split("/")[0] for path in mod_readme_boundary_paths(readme)})
+
+        self.assertEqual(tracked_dirs, readme_dirs)
+
     def test_mod_readme_boundary_paths_are_manifest_canonical(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         readme = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")

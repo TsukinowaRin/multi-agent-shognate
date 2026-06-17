@@ -1,3 +1,4 @@
+import ast
 import json
 import fnmatch
 import os
@@ -1504,7 +1505,10 @@ class PackageDistributionContractTests(unittest.TestCase):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         thick_wrappers = []
         invalid_python_wrappers = []
+        python_wrappers_with_implementation = []
+        python_wrappers_with_extra_imports = []
         remote_bootstrap_fallbacks = {"scripts/shogunate_package_bootstrap.sh"}
+        allowed_python_wrapper_imports = {"__future__", "importlib.util", "pathlib", "runpy", "sys"}
 
         for rel in manifest_list_values(manifest, "compatibility_wrappers"):
             path = ROOT / rel.rstrip("/")
@@ -1512,6 +1516,16 @@ class PackageDistributionContractTests(unittest.TestCase):
             if rel.endswith(".py"):
                 if "shogunate_mod" not in text or ("runpy" not in text and "importlib.util" not in text):
                     invalid_python_wrappers.append(rel)
+                tree = ast.parse(text)
+                for node in tree.body:
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                        python_wrappers_with_implementation.append(f"{rel}: {node.name}")
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            if alias.name not in allowed_python_wrapper_imports:
+                                python_wrappers_with_extra_imports.append(f"{rel}: {alias.name}")
+                    if isinstance(node, ast.ImportFrom) and (node.module or "") not in allowed_python_wrapper_imports:
+                        python_wrappers_with_extra_imports.append(f"{rel}: {node.module or ''}")
                 continue
             if rel in remote_bootstrap_fallbacks:
                 self.assertIn("curl -fsSL", text)
@@ -1521,6 +1535,8 @@ class PackageDistributionContractTests(unittest.TestCase):
                 thick_wrappers.append(rel)
 
         self.assertEqual([], invalid_python_wrappers)
+        self.assertEqual([], python_wrappers_with_implementation)
+        self.assertEqual([], python_wrappers_with_extra_imports)
         self.assertEqual([], thick_wrappers)
 
     def test_npm_wrapper_points_to_curl_bootstrap(self):

@@ -2169,6 +2169,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("memory/global_context.md export-ignore", attrs)
         self.assertIn("saytask/streaks.yaml export-ignore", attrs)
         self.assertIn("docs/REQS.md export-ignore", attrs)
+        self.assertIn("docs/INDEX.md export-ignore", attrs)
         self.assertIn("docs/WORKLOG.md export-ignore", attrs)
         self.assertIn("docs/EXECPLAN_* export-ignore", attrs)
         self.assertIn("docs/vps_pr118_verification_plan.md export-ignore", attrs)
@@ -2202,6 +2203,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             "memory/global_context.md",
             "saytask/streaks.yaml",
             "docs/REQS.md",
+            "docs/INDEX.md",
             "docs/WORKLOG.md",
             "docs/EXECPLAN_2026-06-16_upstream_core_mod_split.md",
             "docs/vps_pr118_verification_plan.md",
@@ -2261,6 +2263,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual("set", attrs_by_path["memory/global_context.md"])
         self.assertEqual("set", attrs_by_path["saytask/streaks.yaml"])
         self.assertEqual("set", attrs_by_path["docs/REQS.md"])
+        self.assertEqual("set", attrs_by_path["docs/INDEX.md"])
         self.assertEqual("set", attrs_by_path["docs/WORKLOG.md"])
         self.assertEqual("set", attrs_by_path["docs/EXECPLAN_2026-06-16_upstream_core_mod_split.md"])
         self.assertEqual("set", attrs_by_path["docs/vps_pr118_verification_plan.md"])

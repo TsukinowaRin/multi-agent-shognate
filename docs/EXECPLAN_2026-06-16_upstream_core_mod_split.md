@@ -181,6 +181,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] `memory/global_context.md` は root runtime state として package へ入れず、MOD 正本 template `shogunate_mod/package/templates/memory/global_context.md.sample` だけを package へ含め、first setup がそこから初期生成する境界を package distribution contract で固定した。
 - [x] runtime/local state の `config/projects.yaml`, `config/settings.yaml`, `dashboard.md`, `memory/MEMORY.md`, `memory/global_context.md`, `saytask/streaks.yaml`, `queue/`, `runtime_sandboxes/` が npm package に混入しないことを package distribution contract で固定した。
 - [x] cURL 用 release archive でも test tree、runtime/local state、作業計画 docs を `.gitattributes export-ignore` で除外し、`git check-attr export-ignore` の実効確認を package distribution contract に追加した。
+- [x] 内部作業 docs index `docs/INDEX.md` も cURL release archive から除外し、公開 package / release に内部進行メモが混ざらない境界を `git check-attr export-ignore` contract で固定した。`docs/philosophy.md` と `docs/codd/` はユーザー向け/設計資料として archive に残す。
 - [x] 過去の VPS PR #118 検証記録 `docs/vps_pr118_verification_plan.md` を cURL release archive から除外し、`git check-attr export-ignore` の実効確認を package distribution contract に追加した。
 - [x] cURL 用 release archive から GitHub Actions workflow / Funding metadata / Git metadata / package lock / MOD package workflow metadata を `.gitattributes export-ignore` で除外し、runtime に必要な `package.json`, README, generated Copilot instructions, MOD runtime templates は残ることを contract で固定した。
 - [x] cURL 用 release archive で `first_setup.sh`, MOD first setup / requirements, Pair server, npm CLI, runtime launchers, departure entrypoint など install/runtime に必要な entrypoint が `export-ignore` されていないことを package distribution contract で固定した。
@@ -1138,6 +1139,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: package-installed two-project runtime smoke using a local `git archive HEAD` release package, isolated `HOME`, and isolated `SHOGUNATE_WORKSPACE_HOME`; project alpha and beta produced distinct `shogunate-project-alpha-aed8c4f9` / `shogunate-project-beta-503c296b` tmux sessions concurrently, each with `shogun`, `gunkan`, `karo`, `gunshi`, and `ashigaru1` panes, and each runtime metadata pointed at its own target project.
 - PASS: targeted package distribution contract checks for MOD philosophy sync, runtime npm package boundary, release archive export-ignore, and MOD canonical source archive inclusion after moving `docs/philosophy.md` to MOD ownership and excluding `docs/vps_pr118_verification_plan.md` from cURL release archives.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 63 tests after adding MOD philosophy ownership and VPS verification-log release archive exclusion.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_package_archive_excludes_android_app` after excluding `docs/INDEX.md` from cURL release archives.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 63 tests after adding `docs/INDEX.md` release archive exclusion coverage.
 
 ## 復旧
 

@@ -29,6 +29,7 @@ memory/MEMORY.md export-ignore
 memory/global_context.md export-ignore
 saytask/streaks.yaml export-ignore
 docs/REQS.md export-ignore
+docs/INDEX.md export-ignore
 docs/WORKLOG.md export-ignore
 docs/EXECPLAN_* export-ignore
 docs/HANDOVER_* export-ignore

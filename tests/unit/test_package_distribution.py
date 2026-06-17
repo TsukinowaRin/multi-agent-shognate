@@ -443,6 +443,17 @@ def manifest_declared_root_directories(manifest: str) -> list[str]:
     return sorted(roots)
 
 
+def manifest_current_directory_touchpoint_roots(manifest: str) -> list[str]:
+    roots = set()
+    for rel in manifest_core_touchpoint_paths(manifest):
+        normalized = rel.rstrip("/")
+        if not normalized:
+            continue
+        if rel.endswith("/") or (ROOT / normalized).is_dir():
+            roots.add(normalized.split("/", 1)[0])
+    return sorted(roots)
+
+
 def manifest_declared_root_files(manifest: str) -> list[str]:
     files = set()
     for rel in (
@@ -1599,6 +1610,17 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual(
             [],
             sorted(set(expected_root_runtime_directory_surface()) - set(manifest_declared_root_directories(manifest))),
+        )
+
+    def test_manifest_directory_touchpoints_excluded_from_package_surface_are_explicit(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+
+        self.assertEqual(
+            ["android", "images", "reports", "tests"],
+            sorted(
+                set(manifest_current_directory_touchpoint_roots(manifest))
+                - set(expected_root_runtime_directory_surface())
+            ),
         )
 
     def test_npm_pack_root_config_surface_is_only_public_auth_sample(self):

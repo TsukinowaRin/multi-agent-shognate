@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# ═══════════════════════════════════════════════════════════════════════════════
-# setup.sh - 互換性のためのラッパースクリプト
-# ═══════════════════════════════════════════════════════════════════════════════
-# このスクリプトは shutsujin_departure.sh に統合されました。
-# 互換性のため、全ての引数を shutsujin_departure.sh に転送します。
-#
-# 推奨: 直接 ./shutsujin_departure.sh を使用してください。
-# ═══════════════════════════════════════════════════════════════════════════════
-
+set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "$SCRIPT_DIR/shutsujin_departure.sh" "$@"
+exec bash "$SCRIPT_DIR/shogunate_mod/runtime/setup_compat.sh" "$@"

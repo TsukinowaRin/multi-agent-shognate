@@ -1,7 +1,63 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-25
+最終更新: 2026-06-17
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
+
+## 追補（2026-06-16: cwd-first project runtime / parallel Shogunate）
+
+### 要求
+
+1. Codex / opencode と同じように、ユーザーが作業したいディレクトリへ `cd` してから `shogunate` を実行できるようにする。
+2. package install された Shogunate 本体は engine として `~/.shogunate/shogunate` に残し、実行対象 project と runtime state を分離する。
+3. `shogunate`, `shogunate clean`, `shogunate resume`, `shogunate attach`, `shogunate configure`, `shogunate pair` は既定で呼び出し元 cwd を project として扱う。
+4. 複数 project で同時に Shogunate を起動しても、tmux session、queue、logs、dashboard、runtime metadata が混ざらないようにする。
+5. `shogunate --project /path/to/project ...` または command 後の `--project /path/to/project` で対象 project を明示できる。
+6. Android Pair は USB / wireless とも、呼び出し元 project に対応する runtime へ接続できるようにする。
+7. 既存の source checkout 開発導線は壊さず、package 導線を cwd-first の正本にする。
+8. 非エンジニアでも現在の project / runtime / engine / tmux session を確認できる導線を用意する。
+9. Android app は Pair 後に project 固有の tmux target を保存し、並列 Shogunate の別 project へ誤接続しない。
+10. スモークだけでなく、可能な範囲で実機 runtime / Android build / 接続系の動作確認を行う。
+
+### 制約
+
+1. `main` / `master` へ直接 push しない。
+2. Shogunate 本体更新と project runtime の状態を混ぜない。
+3. secrets、SSH 秘密鍵、認証 token の内容は読まない・出力しない。
+4. 既存の Android app は `project` response を `dashboard.md` / screenshot upload 用に使うため、Pair response の互換性を維持する。
+
+### 受け入れ条件（観測可能）
+
+1. `cd /path/to/project && shogunate` は `/path/to/project` を target project として表示し、project 固有の runtime copy / tmux session 名を使う。
+2. 異なる 2 つの project から起動した場合、session 名が衝突せず、`queue/runtime` も別々になる。
+3. `shogunate attach` は同じ project から実行すると、その project の session へ attach する。
+4. `shogunate pair` は同じ project の runtime を起動し、Android app には runtime root を `project` として返しつつ、target project 情報も response に含める。
+5. `shogunate where` は project、runtime、engine、session を表示する。
+6. Android app は Pair response の `shogun` / `agents` を保存し、Pair response の `target_project` を接続結果に表示できる。
+7. `bash -n`、関連 Python unit tests、package distribution tests、runtime launcher tests、Android unit/build check が PASS する。
+
+## 追補（2026-06-16: upstream core + Shogunate MOD 構造化）
+
+### 要求
+
+1. この repo を「本家 Shogun core + Shogunate MOD」という構造へ段階的に作り直す。
+2. 本家由来 runtime core は可能な限り upstream 追従しやすく保ち、Shogunate 独自機能は `shogunate_mod/` を canonical source とする。
+3. 既存の cURL URL、`scripts/*` path、Android app、package install、cwd-first、Gunkan、追加 CLI、update manager 等の現行体験は壊さない。
+4. 互換 path は残すが、Shogunate-only 実装は MOD 側へ移し、wrapper で呼び出す。
+5. 本家更新時にどこが core touchpoint か追える manifest / docs を用意する。
+
+### 制約
+
+1. 一度に巨大 runtime core を全面置換して機能退行させない。
+2. 既存ユーザー向けの `scripts/shogunate_package_bootstrap.sh` と `scripts/shogunate_pair_server.py` は互換入口として残す。
+3. Android app と release package / npm package に `shogunate_mod/` が含まれること。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate_mod/manifest.yaml` が MOD canonical paths と core touchpoints を示す。
+2. `scripts/shogunate_package_bootstrap.sh`, `scripts/shogunate_pair_server.py`, `scripts/shell_aliases.sh` は互換 wrapper として MOD 実装へ委譲する。
+3. MOD 側正本の package bootstrap / package first setup / npm package CLI / package prepublish check / Pair server / CLI adapter / Antigravity keyring preflight / LocalAPI REPL / interactive agent configurator / runtime role configurator and OS launchers / OpenCode-Kilo project config sync / live CLI switch command / generated instruction build and freshness guard / queue YAML slimming / queue history book generation / Claude Code SessionStart persona injection / Stop hook inbox delivery and idle flag publication / branch policy, deploy verification, branch maintenance, and cron setup / update manager and update shell commands / ntfy auth/send/listener / agent status helper and command / rate-limit status command / agent registry / topology adapter / inbox path normalization / inbox writer policy / inbox watcher / file-watch helpers / watcher supervisor / Gunkan helpers and CoDD check command / runtime helper / runtime shell launchers / runtime launcher shared setup / runtime departure entrypoint / Android compatibility sessions / runtime daemon / watcher-bridge startup orchestration / runtime bridge scripts and daemons / live CLI preference sync and daemon / runtime role directives / runtime topology resolution / Goza tmux session construction / Goza layout and pane helpers / view attach-focus-autosave helpers and dashboard viewer / queue-dashboard-runtime state helpers / startup banner・startup-time ASCII banner・runtime CLI metadata helpers / runtime options/help / agent CLI launch flow / runtime lifecycle setup / runtime MCP health check and mux parity smoke / startup-window helpers / startup lock/update/logging helpers / startup bootstrap delivery helpers and delivery flow / runtime blocked relay and dashboard notice helper / completion summary and Windows Terminal tabs / runtime prompt handling / macOS and Windows runtime launchers / shell aliases and shell rc installer に既存機能が残る。
+4. npm package `files` に `shogunate_mod/` の正本ファイルが含まれ、生成物は混ざらない。
+5. 既存 unit / package / Android / runtime smoke が PASS する。
 
 ## 追補（2026-05-22: upstream latest base rebuild）
 

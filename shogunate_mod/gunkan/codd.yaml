@@ -1,0 +1,48 @@
+version: "0.1.0"
+codd_required_version: ">=1.34.0"
+codd_required_version_strict: false
+
+project:
+  name: "multi-agent-shognate"
+  language: "python"
+  project_type: "cli"
+  frameworks:
+    - "bash"
+    - "tmux"
+    - "python"
+
+scan:
+  source_dirs:
+    - "scripts/"
+    - "lib/"
+  test_dirs:
+    - "tests/"
+  doc_dirs:
+    - "docs/codd/"
+  config_files:
+    - "AGENTS.md"
+    - "CLAUDE.md"
+    - "KILO.md"
+    - "OPENCODE.md"
+    - "ANTIGRAVITY.md"
+    - "config/settings.yaml"
+  exclude:
+    - "**/.git/**"
+    - "**/.venv/**"
+    - "**/.shogunate/**"
+    - "**/__pycache__/**"
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/.gradle/**"
+    - "**/queue/**"
+    - "**/runtime_sandboxes/**"
+
+graph:
+  store: "jsonl"
+  path: ".codd/scan"
+
+verify:
+  typecheck_command: "bash -n shutsujin_departure.sh scripts/*.sh lib/*.sh"
+  test_command: "bats tests/unit/test_gunkan_audit.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_mux_parity.bats"
+  report_output: ".codd/verify_report.md"

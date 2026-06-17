@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-06-13
+最終更新: 2026-06-18
 
 ## Must-read
 
@@ -12,6 +12,8 @@
 - `docs/EXECPLAN_2026-06-10_upstream_v5_2_test_runtime.md` - 本家 `upstream/main` v5.2.0 反映と `Shogunate-test` 再起動計画。
 - `docs/EXECPLAN_2026-06-10_android_release_local_install.md` - Android APK release とこのPCへの release package install 計画。
 - `docs/EXECPLAN_2026-06-15_android_wireless_pair.md` - Android app から PC 側 `shogunate pair` へ USB/Tailscale/LAN 共通の初回 pairing を行う計画。
+- `docs/EXECPLAN_2026-06-16_cwd_project_runtime.md` - `cd project && shogunate` と project ごとの並列 runtime / Pair 統合計画。
+- `docs/EXECPLAN_2026-06-16_upstream_core_mod_split.md` - 本家 Shogun core + Shogunate MOD 構造へ移行する計画。
 - `docs/EXECPLAN_2026-05-30_android_setup.md` - Android app の SSH / tmux target 設定改善計画。
 - `docs/EXECPLAN_2026-05-31_android_host_setup.md` - Android app の USB/無線 SSH セットアップと将軍単体表示計画。
 
@@ -29,6 +31,6 @@
 - Android app の将軍タブ既定 target は `agent:shogun`。これは実 tmux target ではなく、`@agent_id=shogun` の pane を自動検出する仮想 target。設定画面の通常導線は `ワンタッチ接続` で、従来の SSH 詳細入力は `マニュアルモード` 配下。通常画面の `接続先` 欄は DNS 名、URL、Tailscale IP、LAN IP を入力中に SSH 用 host/port へ正規化し、URL path/query/fragment は無視する。通常導線は `USB` / `無線` / `接続` に絞り、接続設定リンク貼付、接続診断、接続先反映、標準に戻すボタンは表示しない。USB 接続は `127.0.0.1:2222`、無線接続は前回の無線 host/port を復元し、入力された到達可能な DNS/IP/URL を使う。`shogunate pair` は USB reverse を自動試行しつつ Tailscale/LAN でも待ち受け、端末名確認後の Pair Password prompt 承認で Android app 内生成鍵の公開鍵だけを PC へ登録する。source checkout helper の `--pair-usb` は互換 alias として統合 Pair を起動する。
 - Android APK の `versionName` は Shogunate 本体バージョン + fork/app 改訂番号にする。例: 本体 `5.2.0` の Android 側1回目の改訂は `5.2.0.1`。`versionCode` は同じ更新順に単調増加させる。
 - npm package の `version` は semver 制約に従うため、同じ意味の改訂番号は `5.2.0-1` のように表す。
-- cURL package installer は既定で runtime を `~/.shogunate/shogunate` に展開し、`~/.local/bin/shogunate` を登録する。`first_setup.sh` より先に command shim を更新するため、依存不足で setup が途中停止しても `shogunate pair` / `shogunate help` は最新化される。PATH に `~/.local/bin` が入っていれば `shogunate` だけで起動できる。package 展開後の helper scripts は executable bit が無くても `bash` 経由で使える前提にする。
+- cURL package installer は既定で engine を `~/.shogunate/shogunate` に展開し、`~/.local/bin/shogunate` を登録する。`cd <project> && shogunate` が正本導線で、project ごとの runtime copy は `~/.shogunate/workspaces/<slug>-<hash>/` に作る。`first_setup.sh` より先に command shim を更新するため、依存不足で setup が途中停止しても `shogunate pair` / `shogunate help` は最新化される。PATH に `~/.local/bin` が入っていれば `shogunate` だけで起動できる。package 展開後の helper scripts は executable bit が無くても `bash` 経由で使える前提にする。
 - README / README_ja は package install 前提の導入正本。固定導入例は最新 release tag の cURL command を使い、通常 release tag は `v5.2.0.1`, `v5.2.0.2`, `v5.2.0.3` のように `-preview` なしで進める。
-- `shogunate pair` は Android app の初回 setup 用。既定で USB reverse を自動試行しつつ Tailscale/LAN でも待ち受ける。`shogunate pair --usb` は廃止し、package command は `shogunate pair` に統一する。Android app は app 内秘密鍵を保持し、PC 側は端末名確認後の Pair Password prompt 承認で公開鍵だけを `~/.ssh/authorized_keys` へ追加する。成功後は PC 側が best-effort で Shogunate runtime を起動し、以後は登録済み SSH 鍵で直接接続する。既定では1台成功後に `Pairing complete` を表示して自動終了し、複数端末を続けて登録する場合だけ `--keep-running` を使う。SSH port は TCP open だけでなく SSH banner で検出し、壊れた Windows portproxy / stale forwarding を避ける。USB は `127.0.0.1`、無線は app が入力した PC address に対して SSH banner を返す port を選び、Pair terminal は app へ返した `user@host:port` を表示する。
+- `shogunate pair` は Android app の初回 setup 用。既定で呼び出し元 cwd の project runtime を対象にし、USB reverse を自動試行しつつ Tailscale/LAN でも待ち受ける。`shogunate pair --usb` は廃止し、package command は `shogunate pair` に統一する。Android app は app 内秘密鍵を保持し、PC 側は端末名確認後の Pair Password prompt 承認で公開鍵だけを `~/.ssh/authorized_keys` へ追加する。成功後は PC 側が best-effort でその project の Shogunate runtime を起動し、以後は登録済み SSH 鍵で直接接続する。Pair response の `project` は Android dashboard 用の runtime root、`target_project` は実作業 directory。既定では1台成功後に `Pairing complete` を表示して自動終了し、複数端末を続けて登録する場合だけ `--keep-running` を使う。SSH port は TCP open だけでなく SSH banner で検出し、壊れた Windows portproxy / stale forwarding を避ける。USB は `127.0.0.1`、無線は app が入力した PC address に対して SSH banner を返す port を選び、Pair terminal は app へ返した `user@host:port` を表示する。

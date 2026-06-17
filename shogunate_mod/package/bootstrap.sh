@@ -20,6 +20,9 @@ Options:
   --bin-dir DIR    Install the shogunate command here. Defaults to ~/.local/bin.
   --no-setup       Extract package but do not run first_setup.sh.
   -h, --help       Show this help.
+
+Environment:
+  SHOGUNATE_PACKAGE_URL  Override package URL for release-channel smoke tests.
 EOF
 }
 
@@ -76,6 +79,7 @@ else
     PACKAGE_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${VERSION}/${REPO_NAME}-package.tar.gz"
     VERSION_LABEL="$VERSION"
 fi
+PACKAGE_URL="${SHOGUNATE_PACKAGE_URL:-$PACKAGE_URL}"
 
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/${REPO_NAME}-package.XXXXXX")"
 cleanup() {

@@ -351,6 +351,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         text = BOOTSTRAP.read_text(encoding="utf-8")
         self.assertIn("releases/latest/download/${REPO_NAME}-package.tar.gz", text)
         self.assertIn("releases/download/${VERSION}/${REPO_NAME}-package.tar.gz", text)
+        self.assertIn('PACKAGE_URL="${SHOGUNATE_PACKAGE_URL:-$PACKAGE_URL}"', text)
+        self.assertIn("SHOGUNATE_PACKAGE_URL  Override package URL", text)
         self.assertIn("--strip-components=1", text)
         self.assertIn("first_setup.sh", text)
         self.assertIn("shogunate_mod/package/first_setup.sh", text)

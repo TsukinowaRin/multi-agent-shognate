@@ -197,6 +197,17 @@ def prepublish_sync_pairs(text: str) -> list[tuple[str, str]]:
     return pairs
 
 
+def mod_readme_boundary_paths(text: str) -> list[str]:
+    paths = []
+    for line in text.splitlines():
+        if not line.startswith("- ") or not re.search(r"\bowns\b", line):
+            continue
+        code_paths = re.findall(r"`([^`]+)`", re.split(r"\s+owns\b", line, 1)[0])
+        if code_paths:
+            paths.append(code_paths[-1].rstrip("/"))
+    return sorted(paths)
+
+
 def is_intentionally_unpacked_mod_path(rel_path: str) -> bool:
     return rel_path == "shogunate_mod/tests" or rel_path.startswith("shogunate_mod/tests/")
 
@@ -977,6 +988,43 @@ class PackageDistributionContractTests(unittest.TestCase):
                 missing.append(directory.name)
 
         self.assertEqual([], missing)
+
+    def test_mod_readme_boundary_paths_are_manifest_canonical(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        readme = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")
+        canonical_paths = manifest_mapping_values(manifest, "canonical_paths")
+        missing = []
+
+        for rel in mod_readme_boundary_paths(readme):
+            mod_rel = f"shogunate_mod/{rel}"
+            if not any(
+                canonical_path.rstrip("/") == mod_rel
+                or canonical_path.rstrip("/").startswith(mod_rel + "/")
+                for canonical_path in canonical_paths
+            ):
+                missing.append(rel)
+
+        self.assertEqual([], missing)
+
+    def test_manifest_canonical_directories_have_mod_readme_boundaries(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        readme = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")
+        boundary_paths = mod_readme_boundary_paths(readme)
+        missing = set()
+
+        for rel in manifest_mapping_values(manifest, "canonical_paths"):
+            normalized = rel.rstrip("/")
+            prefix = "shogunate_mod/"
+            if not normalized.startswith(prefix):
+                continue
+            mod_rel = normalized.removeprefix(prefix)
+            if "/" not in mod_rel:
+                continue
+            root_dir = mod_rel.split("/", 1)[0]
+            if not any(path == root_dir or path.startswith(root_dir + "/") for path in boundary_paths):
+                missing.add(root_dir)
+
+        self.assertEqual([], sorted(missing))
 
     def test_manifest_compatibility_wrappers_are_mod_delegates_and_packaged(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")

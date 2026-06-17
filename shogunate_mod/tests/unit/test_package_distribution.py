@@ -430,6 +430,19 @@ def expected_root_runtime_directory_surface() -> list[str]:
     )
 
 
+def manifest_declared_root_directories(manifest: str) -> list[str]:
+    roots = set()
+    for rel in (
+        manifest_core_touchpoint_paths(manifest)
+        + manifest_list_values(manifest, "compatibility_wrappers")
+        + manifest_mapping_values(manifest, "canonical_paths")
+    ):
+        normalized = rel.rstrip("/")
+        if normalized:
+            roots.add(normalized.split("/", 1)[0])
+    return sorted(roots)
+
+
 def expected_top_level_runtime_file_surface(manifest: str) -> list[str]:
     public_files = {
         ".gitleaks.toml",
@@ -1559,6 +1572,14 @@ class PackageDistributionContractTests(unittest.TestCase):
         files = npm_pack_files()
 
         self.assertEqual(expected_root_runtime_directory_surface(), root_runtime_directory_surface(files))
+
+    def test_package_root_directory_surface_is_declared_by_manifest(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+
+        self.assertEqual(
+            [],
+            sorted(set(expected_root_runtime_directory_surface()) - set(manifest_declared_root_directories(manifest))),
+        )
 
     def test_npm_pack_root_config_surface_is_only_public_auth_sample(self):
         files = npm_pack_files()

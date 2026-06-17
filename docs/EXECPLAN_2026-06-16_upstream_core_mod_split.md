@@ -184,6 +184,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] package `files` に残る positive broad entries が `shogunate_mod/` 配下だけであり、その entry で実際に `npm pack` へ入る全ファイルが manifest `canonical_paths` に覆われることを package distribution contract で固定した。
 - [x] npm package / cURL release archive の top-level runtime file surface を実収録 contract で固定し、public files と manifest `compatibility_wrappers` の launcher 以外が root 直下に混入しないようにした。
 - [x] npm package / cURL release archive の root directory surface を実収録 contract で固定し、新しい root directory が配布 surface に入った場合に明示分類を要求するようにした。
+- [x] 配布対象の root directory surface が manifest の `current_core_touchpoints` / `compatibility_wrappers` / `canonical_paths` から導けることを package distribution contract で固定した。
 - [x] npm package の root `config/` surface は公開 sample の `config/ntfy_auth.env.sample` だけ、cURL release archive の root `config/` surface は runtime defaults の `config/ntfy_auth.env.sample`, `config/opencode-permissions.yaml`, `config/opencode-tui.json` だけであることを実収録 contract で固定した。
 - [x] npm package / cURL release archive の root dot-directory compatibility surface（`.claude/settings.json`, `.codd/codd.yaml`, `.github/copilot-instructions.md`, `.opencode/agents/*`, `.opencode/tools/mark-as-read.ts`, `agents/default/*`）を実収録 contract で固定した。
 - [x] release archive の `export-ignore` 境界を文字列確認だけでなく `git check-attr export-ignore -- ...` の実効確認でも package distribution contract に固定した。Android app / images / reports は archive から外し、README など通常ファイルは archive 対象のままにする。
@@ -1205,6 +1206,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding root directory surface coverage.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding root directory surface coverage.
 - PASS: `git diff --check` after adding root directory surface coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_package_root_directory_surface_is_declared_by_manifest` after requiring root directory surface to be declared by manifest.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 79 tests after requiring manifest declaration for root directory surface.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding manifest declaration coverage.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding manifest declaration coverage.
+- PASS: `git diff --check` after adding manifest declaration coverage.
 
 ## 復旧
 

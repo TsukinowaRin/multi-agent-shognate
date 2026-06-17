@@ -449,7 +449,7 @@ def manifest_current_directory_touchpoint_roots(manifest: str) -> list[str]:
         normalized = rel.rstrip("/")
         if not normalized:
             continue
-        if rel.endswith("/") or (ROOT / normalized).is_dir():
+        if "/" in normalized or rel.endswith("/") or (ROOT / normalized).is_dir():
             roots.add(normalized.split("/", 1)[0])
     return sorted(roots)
 

@@ -188,6 +188,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] cURL 用 release archive から MOD 側の GitHub funding metadata `shogunate_mod/github/FUNDING.yml` と development submodule metadata `shogunate_mod/development/gitmodules` も除外し、runtime archive と npm package の境界を分けた。npm package には MOD 正本 metadata を残す。
 - [x] cURL 用 release archive で `first_setup.sh`, MOD first setup / requirements, Pair server, npm CLI, runtime launchers, departure entrypoint など install/runtime に必要な entrypoint が `export-ignore` されていないことを package distribution contract で固定した。
 - [x] manifest の `config/` touchpoint を、tracked root config defaults は MOD 正本の同期互換コピー、`config/settings.yaml` / `config/projects.yaml` は local runtime state、という区別へ更新した。同期対象は package distribution contract の synchronized touchpoint gate でも固定した。
+- [x] cURL release archive では root `config/opencode-permissions.yaml` / `config/opencode-tui.json` を残すことを package distribution contract に追加した。これらは generated OpenCode agent definitions の deny-list / compatibility guard path として存在が必要で、実行時 CLI adapter は MOD 正本 `shogunate_mod/configure/opencode-tui.json` を参照する。
 - [x] `config/projects.yaml` を `config/settings.yaml` と同じ local runtime state として `.gitignore` / MOD gitignore / prepublish forbidden tracked path gate / `git check-ignore` gate へ明示追加した。
 - [x] release 前の `prepublish_check.sh` に `require_manifest_mod_sources_in_head` gate を追加し、manifest `canonical_paths` 配下の MOD 正本ファイルが checked `HEAD` に存在しない場合に release を止めるようにした。これにより `git archive HEAD` が未コミット MOD 正本を落とす事故を防ぐ。
 - [x] package release workflow の archive 対象を tag 名から checked-out `HEAD` へ変更し、archive 作成前に `TAG_COMMIT` と `HEAD_COMMIT` の一致を検証するようにした。これにより prepublish 済み tree と cURL release archive tree のズレを防ぐ。
@@ -1148,6 +1149,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: targeted package distribution contract checks for cURL release archive exclusion of `shogunate_mod/github/FUNDING.yml` and `shogunate_mod/development/gitmodules`, while keeping runtime-facing `shogunate_mod/development/Makefile` unspecified.
 - PASS: `git archive --worktree-attributes --format=tar HEAD | tar -tf - | rg '^(shogunate_mod/github/FUNDING.yml|shogunate_mod/development/gitmodules)$' || true` returned no paths after excluding MOD metadata from cURL release archives.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 64 tests after adding MOD metadata release archive exclusions.
+- PASS: `git archive --worktree-attributes --format=tar HEAD | tar -tf - | rg '^config/(opencode-permissions.yaml|opencode-tui.json)$'` confirmed cURL release archives retain the root OpenCode guard config compatibility files.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 64 tests after adding positive release archive coverage for root OpenCode guard config files.
 
 ## 復旧
 

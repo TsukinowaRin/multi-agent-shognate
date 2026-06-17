@@ -2227,6 +2227,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             "README.md",
             "package.json",
             ".github/copilot-instructions.md",
+            "config/opencode-permissions.yaml",
+            "config/opencode-tui.json",
             "first_setup.sh",
             "shogunate_mod/package/first_setup.sh",
             "shogunate_mod/package/requirements.txt",
@@ -2289,6 +2291,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual("unspecified", attrs_by_path["README.md"])
         self.assertEqual("unspecified", attrs_by_path["package.json"])
         self.assertEqual("unspecified", attrs_by_path[".github/copilot-instructions.md"])
+        self.assertEqual("unspecified", attrs_by_path["config/opencode-permissions.yaml"])
+        self.assertEqual("unspecified", attrs_by_path["config/opencode-tui.json"])
         self.assertEqual("unspecified", attrs_by_path["first_setup.sh"])
         self.assertEqual("unspecified", attrs_by_path["shogunate_mod/package/first_setup.sh"])
         self.assertEqual("unspecified", attrs_by_path["shogunate_mod/package/requirements.txt"])

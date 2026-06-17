@@ -151,6 +151,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] root の主要 launcher / `bin/` / `lib/` / `scripts/` 配下で `shogunate_mod` へ委譲するファイルが、manifest の `compatibility_wrappers` から漏れた場合に package distribution contract が失敗するようにした。生成物の `__pycache__` / `.pyc` は対象外にした。
 - [x] Git 管理下の root wrapper surface（top-level launchers と `bin/` / `lib/` / `scripts/`）が manifest `compatibility_wrappers` と完全一致することを package distribution contract で固定し、package/release 指定の前段で root 実装混入を検出できるようにした。
 - [x] package prepublish の root/MOD 同期対象が manifest でも追跡されることを package distribution contract で固定した。root 側は `current_core_touchpoints` または `compatibility_wrappers`、MOD 側は `canonical_paths` で覆われていることを検査する。
+- [x] package prepublish の同期 pair が root 互換コピーから `shogunate_mod/` MOD 正本へ向くことを package distribution contract で固定し、同期方向の逆転や root-to-root 同期を検出できるようにした。
 - [x] package prepublish の MOD 同期正本が、runtime package から意図的に外す `shogunate_mod/tests/` 以外では npm package `files` に収録されることを package distribution contract で固定した。
 - [x] root `compatibility_wrappers` 内で参照される `shogunate_mod/...` 委譲先が、manifest の `canonical_paths` に覆われていることを package distribution contract で固定した。shell / bat の直書き path と Python の `Path(...) / "shogunate_mod" / ...` 形式を検出する。
 - [x] root `compatibility_wrappers` が単に `shogunate_mod` 文字列を含むだけでなく、検出可能な明示的 MOD 委譲先 path を持つことを package distribution contract で固定した。
@@ -1264,6 +1265,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 87 tests after requiring tracked root wrapper surface to match manifest compatibility wrappers.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring tracked root wrapper surface to match manifest compatibility wrappers.
 - PASS: `git diff --check` after requiring tracked root wrapper surface to match manifest compatibility wrappers.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_prepublish_sync_pairs_flow_from_root_compatibility_to_mod_source` after requiring prepublish sync pairs to flow from root compatibility paths to MOD canonical source paths.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after requiring prepublish sync direction.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 88 tests after requiring prepublish sync direction.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring prepublish sync direction.
+- PASS: `git diff --check` after requiring prepublish sync direction.
 
 ## 復旧
 

@@ -1139,6 +1139,16 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], sorted(set(missing_root_tracking)))
         self.assertEqual([], sorted(set(missing_mod_tracking)))
 
+    def test_prepublish_sync_pairs_flow_from_root_compatibility_to_mod_source(self):
+        prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
+        reversed_or_unscoped = []
+
+        for root_rel, mod_rel in prepublish_sync_pairs(prepublish):
+            if root_rel.startswith("shogunate_mod/") or not mod_rel.startswith("shogunate_mod/"):
+                reversed_or_unscoped.append(f"{root_rel} -> {mod_rel}")
+
+        self.assertEqual([], sorted(reversed_or_unscoped))
+
     def test_prepublish_requires_manifest_mod_sources_in_head(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
 

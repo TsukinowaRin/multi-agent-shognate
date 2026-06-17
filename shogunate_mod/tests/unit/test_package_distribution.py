@@ -395,6 +395,41 @@ def top_level_runtime_file_surface(files: set[str]) -> list[str]:
     return sorted(rel for rel in files if "/" not in rel and (ROOT / rel).is_file())
 
 
+def root_runtime_directory_surface(files: set[str]) -> list[str]:
+    directories = set()
+    for rel in files:
+        if "/" in rel:
+            directories.add(rel.split("/", 1)[0])
+        elif (ROOT / rel).is_dir():
+            directories.add(rel)
+    return sorted(directories)
+
+
+def expected_root_runtime_directory_surface() -> list[str]:
+    return sorted(
+        {
+            ".claude",
+            ".codd",
+            ".cursor",
+            ".github",
+            ".opencode",
+            "agents",
+            "bin",
+            "config",
+            "context",
+            "docs",
+            "instructions",
+            "lib",
+            "memory",
+            "saytask",
+            "scripts",
+            "shogunate_mod",
+            "skills",
+            "templates",
+        }
+    )
+
+
 def expected_top_level_runtime_file_surface(manifest: str) -> list[str]:
     public_files = {
         ".gitleaks.toml",
@@ -1520,6 +1555,11 @@ class PackageDistributionContractTests(unittest.TestCase):
             top_level_runtime_file_surface(files),
         )
 
+    def test_npm_pack_root_directory_surface_is_explicit(self):
+        files = npm_pack_files()
+
+        self.assertEqual(expected_root_runtime_directory_surface(), root_runtime_directory_surface(files))
+
     def test_npm_pack_root_config_surface_is_only_public_auth_sample(self):
         files = npm_pack_files()
         packaged_config_files = sorted(path for path in files if path.startswith("config/"))
@@ -2629,6 +2669,11 @@ class PackageDistributionContractTests(unittest.TestCase):
             expected_top_level_runtime_file_surface(manifest),
             top_level_runtime_file_surface(files),
         )
+
+    def test_release_archive_root_directory_surface_is_explicit(self):
+        files = release_archive_files()
+
+        self.assertEqual(expected_root_runtime_directory_surface(), root_runtime_directory_surface(files))
 
     def test_release_archive_root_config_surface_is_runtime_defaults_only(self):
         files = release_archive_files()

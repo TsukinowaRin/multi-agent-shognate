@@ -656,6 +656,15 @@ def is_top_level_launcher_wrapper(rel_path: str) -> bool:
     )
 
 
+def legacy_installer_surface_files() -> set[str]:
+    return {
+        "install.bat",
+        "install.command",
+        "install.sh",
+        "Shogunate-Uninstaller.bat",
+    }
+
+
 class PackageDistributionContractTests(unittest.TestCase):
     def test_curl_bootstrap_is_release_package_aware(self):
         text = BOOTSTRAP.read_text(encoding="utf-8")
@@ -2042,6 +2051,15 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual(root_package, mod_package)
         self.assertEqual([], missing)
 
+    def test_npm_pack_excludes_legacy_installer_surface(self):
+        files = npm_pack_files()
+
+        self.assertEqual([], sorted(files & legacy_installer_surface_files()))
+        self.assertFalse(
+            any(path.startswith("multi-agent-shognate-installer-") for path in files),
+            "npm package must not ship legacy installer assets",
+        )
+
     def test_package_files_do_not_use_broad_root_runtime_state_directories(self):
         root_package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
         mod_package = json.loads(
@@ -3338,6 +3356,15 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual(
             expected_top_level_runtime_file_surface(manifest),
             top_level_runtime_file_surface(files),
+        )
+
+    def test_release_archive_excludes_legacy_installer_surface(self):
+        files = release_archive_files()
+
+        self.assertEqual([], sorted(files & legacy_installer_surface_files()))
+        self.assertFalse(
+            any(path.startswith("multi-agent-shognate-installer-") for path in files),
+            "cURL release archive must not ship legacy installer assets",
         )
 
     def test_release_archive_root_directory_surface_is_explicit(self):

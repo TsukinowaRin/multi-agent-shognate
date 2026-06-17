@@ -177,6 +177,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] runtime npm package の root `docs/codd/` ディレクトリ指定を廃止し、MOD 正本 `shogunate_mod/gunkan/docs/` と同期された root CoDD docs 4 files だけを明示収録するようにした。
 - [x] package `files` に残る positive broad entries が `shogunate_mod/` 配下だけであり、その entry で実際に `npm pack` へ入る全ファイルが manifest `canonical_paths` に覆われることを package distribution contract で固定した。
 - [x] release archive の `export-ignore` 境界を文字列確認だけでなく `git check-attr export-ignore -- ...` の実効確認でも package distribution contract に固定した。Android app / images / reports は archive から外し、README など通常ファイルは archive 対象のままにする。
+- [x] `git archive --worktree-attributes --format=tar HEAD` の実ファイルリストを package distribution contract で直接検査し、cURL release archive に runtime 必須 entrypoint / MOD runtime source / OpenCode guard config が入り、Android / tests / runtime state / internal docs / CI metadata / MOD metadata が実際に混入しないことを固定した。
 - [x] release workflow で `bash scripts/prepublish_check.sh` が tag validation / `git archive` による tar.gz・zip 作成より前に実行されることを package distribution contract で固定した。
 - [x] `memory/global_context.md` は root runtime state として package へ入れず、MOD 正本 template `shogunate_mod/package/templates/memory/global_context.md.sample` だけを package へ含め、first setup がそこから初期生成する境界を package distribution contract で固定した。
 - [x] runtime/local state の `config/projects.yaml`, `config/settings.yaml`, `dashboard.md`, `memory/MEMORY.md`, `memory/global_context.md`, `saytask/streaks.yaml`, `queue/`, `runtime_sandboxes/` が npm package に混入しないことを package distribution contract で固定した。
@@ -1151,6 +1152,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 64 tests after adding MOD metadata release archive exclusions.
 - PASS: `git archive --worktree-attributes --format=tar HEAD | tar -tf - | rg '^config/(opencode-permissions.yaml|opencode-tui.json)$'` confirmed cURL release archives retain the root OpenCode guard config compatibility files.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 64 tests after adding positive release archive coverage for root OpenCode guard config files.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_actual_runtime_boundary` after adding actual `git archive --worktree-attributes` content checks for cURL release archives.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 65 tests after adding actual release archive content checks.
 
 ## 復旧
 

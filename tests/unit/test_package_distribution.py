@@ -105,6 +105,19 @@ def npm_pack_files() -> set[str]:
     return set(_NPM_PACK_FILES_CACHE)
 
 
+def release_archive_files() -> set[str]:
+    result = subprocess.run(
+        ["bash", "-lc", "git archive --worktree-attributes --format=tar HEAD | tar -tf -"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise AssertionError(f"git archive listing failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
+    return {line.rstrip("/") for line in result.stdout.splitlines() if line.strip()}
+
+
 def packed_files_cover_path(files: set[str], rel_path: str) -> bool:
     normalized = rel_path.rstrip("/")
     return any(path == normalized or path.startswith(normalized + "/") for path in files)
@@ -2370,6 +2383,71 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], missing_exclusion)
         self.assertEqual([], unexpected_exclusion)
+
+    def test_release_archive_actual_runtime_boundary(self):
+        files = release_archive_files()
+        required = {
+            "README.md",
+            "README_ja.md",
+            "package.json",
+            "first_setup.sh",
+            "bin/shogunate.js",
+            "scripts/shogunate_pair_server.py",
+            "shogunate_mod/pair/server.py",
+            "shogunate_mod/package/first_setup.sh",
+            "shogunate_mod/runtime/departure.sh",
+            "config/opencode-permissions.yaml",
+            "config/opencode-tui.json",
+            "docs/philosophy.md",
+            "docs/codd/gunkan_tests.md",
+        }
+        forbidden_prefixes = (
+            "android/",
+            "shogunate_mod/mobile/android/",
+            "images/",
+            "reports/",
+            "tests/",
+            "shogunate_mod/tests/",
+            "queue/",
+            "runtime_sandboxes/",
+            ".github/workflows/",
+            "shogunate_mod/package/workflows/",
+        )
+        forbidden_exact = {
+            ".github/FUNDING.yml",
+            ".gitmodules",
+            ".gitignore",
+            ".gitattributes",
+            "package-lock.json",
+            "dashboard.md",
+            "config/settings.yaml",
+            "config/projects.yaml",
+            "memory/MEMORY.md",
+            "memory/global_context.md",
+            "saytask/streaks.yaml",
+            "docs/REQS.md",
+            "docs/INDEX.md",
+            "docs/WORKLOG.md",
+            "docs/vps_pr118_verification_plan.md",
+            "shogunate_mod/github/FUNDING.yml",
+            "shogunate_mod/development/gitmodules",
+            "shogunate_mod/package/package-lock.json",
+            "shogunate_mod/package/gitattributes",
+            "shogunate_mod/package/gitignore",
+        }
+        missing = sorted(required - files)
+        forbidden = sorted(
+            rel
+            for rel in files
+            if rel in forbidden_exact
+            or rel.startswith("docs/EXECPLAN_")
+            or rel.startswith("docs/HANDOVER_")
+            or rel.startswith("docs/UPSTREAM_SYNC_")
+            or any(rel.startswith(prefix) for prefix in forbidden_prefixes)
+        )
+
+        self.assertEqual([], missing)
+        self.assertEqual([], forbidden)
 
     def test_release_archive_includes_runtime_mod_canonical_sources(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")

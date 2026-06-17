@@ -908,6 +908,27 @@ class PackageDistributionContractTests(unittest.TestCase):
             prepublish.index('dirty="$(git status --short || true)"'),
         )
 
+    def test_runtime_cleanup_uses_exact_tmux_session_targets(self):
+        state = (ROOT / "shogunate_mod" / "runtime" / "state.sh").read_text(encoding="utf-8")
+        android_compat = (ROOT / "shogunate_mod" / "runtime" / "android_compat.sh").read_text(encoding="utf-8")
+
+        self.assertIn('tmux has-session -t "=$1"', state)
+        self.assertIn('tmux kill-session -t "=$1"', state)
+        self.assertIn("tmux_has_session_exact shogun", state)
+        self.assertIn("tmux_kill_session_exact shogun", state)
+        self.assertIn("tmux_kill_session_exact multiagent", state)
+        self.assertIn("tmux kill-session -t '=shogun'", android_compat)
+        self.assertIn("tmux kill-session -t '=multiagent'", android_compat)
+        for unsafe in (
+            "tmux kill-session -t shogun",
+            "tmux kill-session -t gunkan",
+            "tmux kill-session -t gunshi",
+            "tmux kill-session -t multiagent",
+            "tmux has-session -t shogun",
+        ):
+            self.assertNotIn(unsafe, state)
+            self.assertNotIn(unsafe, android_compat)
+
     def test_synchronized_core_touchpoints_have_prepublish_gates(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")

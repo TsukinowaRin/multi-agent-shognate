@@ -28,10 +28,10 @@ create_android_compat_sessions() {
         return 0
     fi
 
-    tmux kill-session -t shogun 2>/dev/null || true
-    tmux kill-session -t gunkan 2>/dev/null || true
-    tmux kill-session -t gunshi 2>/dev/null || true
-    tmux kill-session -t multiagent 2>/dev/null || true
+    tmux kill-session -t '=shogun' 2>/dev/null || true
+    tmux kill-session -t '=gunkan' 2>/dev/null || true
+    tmux kill-session -t '=gunshi' 2>/dev/null || true
+    tmux kill-session -t '=multiagent' 2>/dev/null || true
 
     tmux new-session -d -s shogun -n main "$(android_proxy_command shogun)"
     tmux set-option -p -t shogun:main @agent_id "shogun"

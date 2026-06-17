@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 
+tmux_has_session_exact() {
+    tmux has-session -t "=$1" 2>/dev/null
+}
+
+tmux_kill_session_exact() {
+    tmux kill-session -t "=$1" 2>/dev/null
+}
+
 cleanup_existing_runtime_sessions() {
     log_info "🧹 既存の陣を撤収中..."
     if [ -f "$SCRIPT_DIR/shogunate_mod/runtime/sync_cli_preferences.py" ]; then
-        if tmux has-session -t "$GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t "$LEGACY_GOZA_SESSION_NAME" 2>/dev/null || tmux has-session -t shogun 2>/dev/null || tmux has-session -t gunkan 2>/dev/null || tmux has-session -t gunshi 2>/dev/null || tmux has-session -t multiagent 2>/dev/null; then
+        if tmux_has_session_exact "$GOZA_SESSION_NAME" || tmux_has_session_exact "$LEGACY_GOZA_SESSION_NAME" || tmux_has_session_exact shogun || tmux_has_session_exact gunkan || tmux_has_session_exact gunshi || tmux_has_session_exact multiagent; then
             log_info "💾 前回CLI設定を同期中..."
             _runtime_sync_once_log="$SCRIPT_DIR/queue/runtime/runtime_cli_pref_sync_once.log"
             mkdir -p "$SCRIPT_DIR/queue/runtime"
@@ -18,11 +26,11 @@ cleanup_existing_runtime_sessions() {
     save_goza_layout "$GOZA_SESSION_NAME"
     pkill -f "$SCRIPT_DIR/scripts/goza_layout_autosave.sh ${GOZA_SESSION_NAME} " >/dev/null 2>&1 || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/view/goza_layout_autosave.sh ${GOZA_SESSION_NAME} " >/dev/null 2>&1 || true
-    tmux kill-session -t "$GOZA_SESSION_NAME" 2>/dev/null && log_info "  └─ Shogunate本陣、撤収完了" || log_info "  └─ Shogunate本陣は存在せず"
+    tmux_kill_session_exact "$GOZA_SESSION_NAME" && log_info "  └─ Shogunate本陣、撤収完了" || log_info "  └─ Shogunate本陣は存在せず"
     if [ "$LEGACY_GOZA_SESSION_NAME" != "$GOZA_SESSION_NAME" ]; then
-        tmux kill-session -t "$LEGACY_GOZA_SESSION_NAME" 2>/dev/null && log_info "  └─ 旧御座の間 session、撤収完了" || true
+        tmux_kill_session_exact "$LEGACY_GOZA_SESSION_NAME" && log_info "  └─ 旧御座の間 session、撤収完了" || true
     fi
-    tmux kill-session -t "$RUNTIME_DAEMON_SESSION" 2>/dev/null && log_info "  └─ runtime監視陣、撤収完了" || log_info "  └─ runtime監視陣は存在せず"
+    tmux_kill_session_exact "$RUNTIME_DAEMON_SESSION" && log_info "  └─ runtime監視陣、撤収完了" || log_info "  └─ runtime監視陣は存在せず"
     pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh " 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/watcher_supervisor.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
@@ -32,10 +40,10 @@ cleanup_existing_runtime_sessions() {
     pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/cli_pref_daemon.sh" 2>/dev/null || true
     pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
-    tmux kill-session -t multiagent 2>/dev/null && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
-    tmux kill-session -t shogun 2>/dev/null && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
-    tmux kill-session -t gunkan 2>/dev/null && log_info "  └─ gunkan監査陣、撤収完了" || log_info "  └─ gunkan監査陣は存在せず"
-    tmux kill-session -t gunshi 2>/dev/null && log_info "  └─ gunshi陣、撤収完了" || log_info "  └─ gunshi陣は存在せず"
+    tmux_kill_session_exact multiagent && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
+    tmux_kill_session_exact shogun && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"
+    tmux_kill_session_exact gunkan && log_info "  └─ gunkan監査陣、撤収完了" || log_info "  └─ gunkan監査陣は存在せず"
+    tmux_kill_session_exact gunshi && log_info "  └─ gunshi陣、撤収完了" || log_info "  └─ gunshi陣は存在せず"
 }
 
 backup_previous_records_if_clean() {

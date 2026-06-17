@@ -361,6 +361,36 @@ def generated_root_touchpoint_files() -> list[str]:
     return sorted(candidates)
 
 
+def root_dot_compatibility_surface_files(files: set[str]) -> list[str]:
+    prefixes = (
+        ".claude/",
+        ".codd/",
+        ".github/",
+        ".opencode/",
+        "agents/default/",
+    )
+    return sorted(
+        rel
+        for rel in files
+        if rel.startswith(prefixes) and (ROOT / rel).is_file()
+    )
+
+
+def expected_root_dot_compatibility_surface_files() -> list[str]:
+    return sorted(
+        [
+            ".claude/settings.json",
+            ".codd/codd.yaml",
+            ".opencode/tools/mark-as-read.ts",
+            *[
+                rel
+                for rel in generated_root_touchpoint_files()
+                if rel.startswith((".github/", ".opencode/agents/", "agents/default/"))
+            ],
+        ]
+    )
+
+
 def is_top_level_launcher_wrapper(rel_path: str) -> bool:
     return "/" not in rel_path and (
         rel_path in {"first_setup.sh", "setup.sh", "shutsujin_departure.sh"}
@@ -1460,6 +1490,14 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual(["config/ntfy_auth.env.sample"], packaged_config_files)
 
+    def test_npm_pack_root_dot_compatibility_surface_is_explicit(self):
+        files = npm_pack_files()
+
+        self.assertEqual(
+            expected_root_dot_compatibility_surface_files(),
+            root_dot_compatibility_surface_files(files),
+        )
+
     def test_npm_pack_generated_root_files_are_freshness_targets(self):
         files = npm_pack_files()
         packaged_generated_root_files = sorted(
@@ -2557,6 +2595,14 @@ class PackageDistributionContractTests(unittest.TestCase):
         ]
 
         self.assertEqual(expected, archived_config_files)
+
+    def test_release_archive_root_dot_compatibility_surface_is_explicit(self):
+        files = release_archive_files()
+
+        self.assertEqual(
+            expected_root_dot_compatibility_surface_files(),
+            root_dot_compatibility_surface_files(files),
+        )
 
     def test_release_archive_includes_runtime_mod_canonical_sources(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")

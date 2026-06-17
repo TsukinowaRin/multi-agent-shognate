@@ -153,7 +153,9 @@ def manifest_canonical_paths_cover_path(canonical_paths: list[str], rel_path: st
     rel_path = rel_path.rstrip("/")
     for canonical_path in canonical_paths:
         normalized = canonical_path.rstrip("/")
-        if rel_path == normalized or rel_path.startswith(normalized + "/"):
+        if rel_path == normalized:
+            return True
+        if (canonical_path.endswith("/") or (ROOT / normalized).is_dir()) and rel_path.startswith(normalized + "/"):
             return True
     return False
 
@@ -162,7 +164,9 @@ def manifest_root_paths_cover_path(root_paths: list[str], rel_path: str) -> bool
     rel_path = rel_path.rstrip("/")
     for root_path in root_paths:
         normalized = root_path.rstrip("/")
-        if rel_path == normalized or rel_path.startswith(normalized + "/"):
+        if rel_path == normalized:
+            return True
+        if (root_path.endswith("/") or (ROOT / normalized).is_dir()) and rel_path.startswith(normalized + "/"):
             return True
     return False
 
@@ -387,7 +391,11 @@ def wrapper_mod_delegate_paths(text: str) -> list[str]:
         if "shogunate_mod" not in parts:
             continue
         index = parts.index("shogunate_mod")
-        delegate_parts = parts[index:]
+        delegate_parts = []
+        for part in parts[index:]:
+            if part == "__main__":
+                break
+            delegate_parts.append(part)
         if len(delegate_parts) > 1:
             paths.add("/".join(delegate_parts))
 
@@ -1176,6 +1184,21 @@ class PackageDistributionContractTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8", errors="ignore")
             for mod_path in wrapper_mod_delegate_paths(text):
                 if not manifest_canonical_paths_cover_path(canonical_paths, mod_path):
+                    missing_targets.append(f"{rel} -> {mod_path}")
+
+        self.assertEqual([], sorted(set(missing_targets)))
+
+    def test_release_archive_includes_manifest_wrapper_delegate_targets(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = release_archive_files()
+        missing_targets = []
+
+        for rel in manifest_list_values(manifest, "compatibility_wrappers"):
+            path = ROOT / rel.rstrip("/")
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for mod_path in wrapper_mod_delegate_paths(text):
+                normalized = mod_path.rstrip("/")
+                if not packed_files_cover_path(files, normalized):
                     missing_targets.append(f"{rel} -> {mod_path}")
 
         self.assertEqual([], sorted(set(missing_targets)))

@@ -1507,8 +1507,12 @@ class PackageDistributionContractTests(unittest.TestCase):
         invalid_python_wrappers = []
         python_wrappers_with_implementation = []
         python_wrappers_with_extra_imports = []
+        shell_wrappers_with_functions = []
+        batch_wrappers_with_labels = []
         remote_bootstrap_fallbacks = {"scripts/shogunate_package_bootstrap.sh"}
         allowed_python_wrapper_imports = {"__future__", "importlib.util", "pathlib", "runpy", "sys"}
+        shell_wrapper_suffixes = (".sh", ".command")
+        shell_function_pattern = re.compile(r"^(?:function\s+)?[A-Za-z_][A-Za-z0-9_]*\s*\(\)\s*\{?")
 
         for rel in manifest_list_values(manifest, "compatibility_wrappers"):
             path = ROOT / rel.rstrip("/")
@@ -1531,12 +1535,21 @@ class PackageDistributionContractTests(unittest.TestCase):
                 self.assertIn("curl -fsSL", text)
                 self.assertIn("shogunate_mod/package/bootstrap.sh", text)
                 continue
-            if len(non_comment_body(text).splitlines()) > 10:
+            body_lines = non_comment_body(text).splitlines()
+            if len(body_lines) > 10:
                 thick_wrappers.append(rel)
+            for line in body_lines:
+                stripped = line.strip()
+                if rel.endswith(shell_wrapper_suffixes) and shell_function_pattern.search(stripped):
+                    shell_wrappers_with_functions.append(f"{rel}: {stripped}")
+                if rel.lower().endswith((".bat", ".cmd")) and stripped.startswith(":"):
+                    batch_wrappers_with_labels.append(f"{rel}: {stripped}")
 
         self.assertEqual([], invalid_python_wrappers)
         self.assertEqual([], python_wrappers_with_implementation)
         self.assertEqual([], python_wrappers_with_extra_imports)
+        self.assertEqual([], shell_wrappers_with_functions)
+        self.assertEqual([], batch_wrappers_with_labels)
         self.assertEqual([], thick_wrappers)
 
     def test_npm_wrapper_points_to_curl_bootstrap(self):

@@ -240,6 +240,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] npm package から意図的に外す MOD canonical paths は Android source と tests tree だけであることを contract で固定した。これにより新しい MOD 正本が npm package に入らない場合は明示分類が必要になる。
 - [x] cURL release archive から意図的に外す MOD canonical paths は Android source、tests tree、GitHub/development metadata、package lock/workflow/archive metadata だけであることを contract で固定した。
 - [x] Python compatibility wrapper は `shogunate_mod/` 委譲 bootstrap だけに限定し、wrapper 側に関数・クラス実装や追加 import が戻らないことを AST contract で固定した。
+- [x] Shell / command / batch compatibility wrapper も薄い委譲入口として固定し、wrapper 側に shell 関数定義や batch label 実装が戻らないことを package distribution contract で固定した。
 
 ## 判断
 
@@ -1354,6 +1355,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after restricting Python compatibility wrappers to bootstrap-only imports and no local definitions.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after restricting Python compatibility wrappers to bootstrap-only imports and no local definitions.
 - PASS: `git diff --check` after restricting Python compatibility wrappers to bootstrap-only imports and no local definitions.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrappers_stay_thin` after extending wrapper bootstrap-only checks to shell function definitions and batch labels.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 98 tests after extending wrapper bootstrap-only checks to shell function definitions and batch labels.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after extending wrapper bootstrap-only checks.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after extending wrapper bootstrap-only checks.
+- PASS: `git diff --check` after extending wrapper bootstrap-only checks.
 
 ## 復旧
 

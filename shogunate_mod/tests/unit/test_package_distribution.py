@@ -2314,6 +2314,51 @@ class PackageDistributionContractTests(unittest.TestCase):
         )
         self.assertIn("not part of the runtime package surface", manifest)
 
+    def test_release_archive_docs_boundary_is_explicit(self):
+        result = subprocess.run(
+            ["git", "ls-files", "docs"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        docs = sorted(path for path in result.stdout.splitlines() if path)
+
+        attr_result = subprocess.run(
+            ["git", "check-attr", "export-ignore", "--", *docs],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, attr_result.returncode, attr_result.stderr)
+
+        attrs_by_path = {}
+        for line in attr_result.stdout.splitlines():
+            path, _, value = line.rpartition(": export-ignore: ")
+            attrs_by_path[path] = value
+
+        public_docs = {
+            rel
+            for rel in docs
+            if rel == "docs/philosophy.md" or rel.startswith("docs/codd/")
+        }
+        internal_docs = set(docs) - public_docs
+        missing_exclusion = sorted(
+            rel
+            for rel in internal_docs
+            if attrs_by_path.get(rel) != "set"
+        )
+        unexpected_exclusion = sorted(
+            rel
+            for rel in public_docs
+            if attrs_by_path.get(rel) == "set"
+        )
+
+        self.assertEqual([], missing_exclusion)
+        self.assertEqual([], unexpected_exclusion)
+
     def test_release_archive_includes_runtime_mod_canonical_sources(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         canonical_files = []

@@ -182,6 +182,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] runtime/local state の `config/projects.yaml`, `config/settings.yaml`, `dashboard.md`, `memory/MEMORY.md`, `memory/global_context.md`, `saytask/streaks.yaml`, `queue/`, `runtime_sandboxes/` が npm package に混入しないことを package distribution contract で固定した。
 - [x] cURL 用 release archive でも test tree、runtime/local state、作業計画 docs を `.gitattributes export-ignore` で除外し、`git check-attr export-ignore` の実効確認を package distribution contract に追加した。
 - [x] 内部作業 docs index `docs/INDEX.md` も cURL release archive から除外し、公開 package / release に内部進行メモが混ざらない境界を `git check-attr export-ignore` contract で固定した。`docs/philosophy.md` と `docs/codd/` はユーザー向け/設計資料として archive に残す。
+- [x] tracked `docs/` 全体について、cURL release archive に残せる公開 docs を `docs/philosophy.md` と `docs/codd/` だけに限定する動的 package distribution contract を追加した。新しい内部 docs が増えた場合も、`export-ignore` が無ければ test で検出する。
 - [x] 過去の VPS PR #118 検証記録 `docs/vps_pr118_verification_plan.md` を cURL release archive から除外し、`git check-attr export-ignore` の実効確認を package distribution contract に追加した。
 - [x] cURL 用 release archive から GitHub Actions workflow / Funding metadata / Git metadata / package lock / MOD package workflow metadata を `.gitattributes export-ignore` で除外し、runtime に必要な `package.json`, README, generated Copilot instructions, MOD runtime templates は残ることを contract で固定した。
 - [x] cURL 用 release archive で `first_setup.sh`, MOD first setup / requirements, Pair server, npm CLI, runtime launchers, departure entrypoint など install/runtime に必要な entrypoint が `export-ignore` されていないことを package distribution contract で固定した。
@@ -1141,6 +1142,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 63 tests after adding MOD philosophy ownership and VPS verification-log release archive exclusion.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_package_archive_excludes_android_app` after excluding `docs/INDEX.md` from cURL release archives.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 63 tests after adding `docs/INDEX.md` release archive exclusion coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_docs_boundary_is_explicit` after adding the dynamic tracked-docs release archive boundary contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 64 tests after adding the dynamic tracked-docs release archive boundary contract.
 
 ## 復旧
 

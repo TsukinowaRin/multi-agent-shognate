@@ -466,6 +466,14 @@ def manifest_declared_root_files(manifest: str) -> list[str]:
     return sorted(files)
 
 
+def manifest_current_top_level_file_touchpoints(manifest: str) -> list[str]:
+    return sorted(
+        normalized
+        for rel in manifest_core_touchpoint_paths(manifest)
+        if (normalized := rel.rstrip("/")) and "/" not in normalized and (ROOT / normalized).is_file()
+    )
+
+
 def expected_top_level_runtime_file_surface(manifest: str) -> list[str]:
     public_files = {
         ".gitleaks.toml",
@@ -1597,6 +1605,17 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual(
             [],
             sorted(set(expected_top_level_runtime_file_surface(manifest)) - set(manifest_declared_root_files(manifest))),
+        )
+
+    def test_manifest_top_level_file_touchpoints_excluded_from_package_surface_are_explicit(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+
+        self.assertEqual(
+            [".gitattributes", ".gitignore", ".gitmodules", "package-lock.json"],
+            sorted(
+                set(manifest_current_top_level_file_touchpoints(manifest))
+                - set(expected_top_level_runtime_file_surface(manifest))
+            ),
         )
 
     def test_npm_pack_root_directory_surface_is_explicit(self):

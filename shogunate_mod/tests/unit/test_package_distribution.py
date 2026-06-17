@@ -46,6 +46,20 @@ def manifest_mapping_values(text: str, name: str) -> list[str]:
     return values
 
 
+def manifest_mapping_keys(text: str, name: str) -> list[str]:
+    keys = []
+    for line in manifest_section(text, name):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("-"):
+            continue
+        if ":" not in stripped:
+            continue
+        key, _ = stripped.split(":", 1)
+        if key:
+            keys.append(key)
+    return keys
+
+
 def manifest_list_values(text: str, name: str) -> list[str]:
     values = []
     for line in manifest_section(text, name):
@@ -905,6 +919,22 @@ class PackageDistributionContractTests(unittest.TestCase):
         for rel in manifest_core_touchpoint_paths(manifest):
             path = ROOT / rel.rstrip("/")
             self.assertTrue(path.exists(), f"missing current core touchpoint declared in manifest: {rel}")
+
+    def test_manifest_sections_do_not_repeat_entries(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        sections = {
+            "canonical_paths keys": manifest_mapping_keys(manifest, "canonical_paths"),
+            "canonical_paths values": manifest_mapping_values(manifest, "canonical_paths"),
+            "compatibility_wrappers": manifest_list_values(manifest, "compatibility_wrappers"),
+            "current_core_touchpoints": manifest_core_touchpoint_paths(manifest),
+        }
+        duplicates = []
+
+        for name, values in sections.items():
+            repeated = sorted({value for value in values if values.count(value) > 1})
+            duplicates.extend(f"{name}: {value}" for value in repeated)
+
+        self.assertEqual([], duplicates)
 
     def test_manifest_canonical_paths_are_mod_scoped(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")

@@ -1107,6 +1107,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 62 tests after fixing GitHub Release `target_commitish` to the validated release tag output.
 - PASS: direct `diff -qr tests shogunate_mod/tests -x __pycache__ -x '*.pyc' -x '*.pyo'` confirmed root test compatibility files match MOD test sources after fixing GitHub Release `target_commitish`.
 - PASS: `git diff --check` after fixing GitHub Release `target_commitish`. Git warned that touched `.bat` files will be normalized to CRLF when Git next touches them, but the check exited 0.
+- CHECKPOINT: commit `23bcb29` (`Split Shogunate mod sources from root wrappers`) added the MOD canonical source tree to `HEAD`.
+- PASS: `bash shogunate_mod/package/prepublish_check.sh` after checkpoint commit `23bcb29`; the full release prepublish gate ran package distribution contract tests, verified generated instructions, and passed.
 
 ## 復旧
 

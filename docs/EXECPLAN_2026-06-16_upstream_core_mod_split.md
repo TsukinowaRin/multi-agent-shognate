@@ -243,6 +243,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Shell / command / batch compatibility wrapper も薄い委譲入口として固定し、wrapper 側に shell 関数定義や batch label 実装が戻らないことを package distribution contract で固定した。
 - [x] JavaScript compatibility wrapper も MOD npm CLI への bootstrap-only 委譲に限定し、root `bin/shogunate.js` へ JS 実装が戻らないことを package distribution contract で固定した。
 - [x] Git 管理下の root code-like file は、`shogunate_mod/` 以外すべて manifest の current core touchpoint または compatibility wrapper で分類されることを package distribution contract で固定した。
+- [x] 非 wrapper の root code-like touchpoint は、prepublish sync gate または generated instruction freshness guard のどちらかで守られることを package distribution contract で固定した。
 
 ## 判断
 
@@ -1364,6 +1365,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `git diff --check` after extending wrapper bootstrap-only checks.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrappers_stay_thin` after restricting JavaScript compatibility wrappers to MOD npm CLI delegation with no local JS definitions.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_tracked_root_code_like_files_are_classified_by_manifest` after requiring every tracked root code-like file outside `shogunate_mod/` to be manifest-classified.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_tracked_root_code_like_touchpoints_have_sync_or_generation_gate` after requiring non-wrapper root code-like touchpoints to be covered by prepublish sync or generated freshness gates.
 
 ## 復旧
 

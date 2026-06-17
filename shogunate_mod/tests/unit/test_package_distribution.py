@@ -1454,6 +1454,12 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual(top_level_wrappers, packaged_top_level_wrappers)
 
+    def test_npm_pack_root_config_surface_is_only_public_auth_sample(self):
+        files = npm_pack_files()
+        packaged_config_files = sorted(path for path in files if path.startswith("config/"))
+
+        self.assertEqual(["config/ntfy_auth.env.sample"], packaged_config_files)
+
     def test_npm_pack_generated_root_files_are_freshness_targets(self):
         files = npm_pack_files()
         packaged_generated_root_files = sorted(
@@ -2540,6 +2546,17 @@ class PackageDistributionContractTests(unittest.TestCase):
         )
 
         self.assertEqual(top_level_wrappers, archived_top_level_wrappers)
+
+    def test_release_archive_root_config_surface_is_runtime_defaults_only(self):
+        files = release_archive_files()
+        archived_config_files = sorted(path for path in files if path.startswith("config/"))
+        expected = [
+            "config/ntfy_auth.env.sample",
+            "config/opencode-permissions.yaml",
+            "config/opencode-tui.json",
+        ]
+
+        self.assertEqual(expected, archived_config_files)
 
     def test_release_archive_includes_runtime_mod_canonical_sources(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")

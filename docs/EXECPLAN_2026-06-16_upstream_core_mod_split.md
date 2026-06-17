@@ -122,6 +122,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Release archive attribute rules を `shogunate_mod/package/gitattributes` へ MOD 正本として追加し、root `.gitattributes` は git archive が読む互換コピーとして同期テストと prepublish gate で固定した。
 - [x] Public README source を `shogunate_mod/docs/README.md` / `README_ja.md` へ MOD 正本として追加し、root `README.md` / `README_ja.md` は GitHub/npm 表示用の互換コピーとして同期テストと prepublish gate で固定した。npm package には root 互換 README と MOD README の両方を含めた。
 - [x] Public community docs を `shogunate_mod/docs/CHANGELOG.md` / `CONTRIBUTING.md` / `SECURITY.md` へ MOD 正本として追加し、root community docs は GitHub/npm 表示用の互換コピーとして同期テストと prepublish gate で固定した。npm package には root 互換 community docs と MOD community docs の両方を含めた。
+- [x] Shogunate philosophy doc を `shogunate_mod/docs/philosophy.md` へ MOD 正本として追加し、root `docs/philosophy.md` は互換コピーとして prepublish gate で同期固定した。runtime npm package は MOD 正本だけを含め、root docs の broad package 収録は避ける。
 - [x] GitHub funding metadata と development submodule metadata を `shogunate_mod/github/FUNDING.yml` / `shogunate_mod/development/gitmodules` へ MOD 正本として追加し、root `.github/FUNDING.yml` / `.gitmodules` は GitHub/Git が読む互換コピーとして同期テストと prepublish gate で固定した。npm package には MOD 正本 metadata を含めた。
 - [x] Gunkan/CoDD design docs を `shogunate_mod/gunkan/docs/` へ MOD 正本として追加し、root `docs/codd/` は reader / CoDD graph tooling 用の互換コピーとして同期テストと prepublish gate で固定した。npm package には root 互換 docs と MOD docs の両方を含めた。
 - [x] Shogunate test tree を `shogunate_mod/tests/` へ MOD 正本として追加し、root `tests/` は既存 test runner が読む互換コピーとして同期テストと prepublish gate で固定した。runtime npm package からは `shogunate_mod/tests/` を除外する方針を維持した。
@@ -180,6 +181,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] `memory/global_context.md` は root runtime state として package へ入れず、MOD 正本 template `shogunate_mod/package/templates/memory/global_context.md.sample` だけを package へ含め、first setup がそこから初期生成する境界を package distribution contract で固定した。
 - [x] runtime/local state の `config/projects.yaml`, `config/settings.yaml`, `dashboard.md`, `memory/MEMORY.md`, `memory/global_context.md`, `saytask/streaks.yaml`, `queue/`, `runtime_sandboxes/` が npm package に混入しないことを package distribution contract で固定した。
 - [x] cURL 用 release archive でも test tree、runtime/local state、作業計画 docs を `.gitattributes export-ignore` で除外し、`git check-attr export-ignore` の実効確認を package distribution contract に追加した。
+- [x] 過去の VPS PR #118 検証記録 `docs/vps_pr118_verification_plan.md` を cURL release archive から除外し、`git check-attr export-ignore` の実効確認を package distribution contract に追加した。
 - [x] cURL 用 release archive から GitHub Actions workflow / Funding metadata / Git metadata / package lock / MOD package workflow metadata を `.gitattributes export-ignore` で除外し、runtime に必要な `package.json`, README, generated Copilot instructions, MOD runtime templates は残ることを contract で固定した。
 - [x] cURL 用 release archive で `first_setup.sh`, MOD first setup / requirements, Pair server, npm CLI, runtime launchers, departure entrypoint など install/runtime に必要な entrypoint が `export-ignore` されていないことを package distribution contract で固定した。
 - [x] manifest の `config/` touchpoint を、tracked root config defaults は MOD 正本の同期互換コピー、`config/settings.yaml` / `config/projects.yaml` は local runtime state、という区別へ更新した。同期対象は package distribution contract の synchronized touchpoint gate でも固定した。
@@ -1134,6 +1136,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -qr tests shogunate_mod/tests -x __pycache__ -x '*.pyc' -x '*.pyo'` confirmed root test compatibility files match MOD test sources after adding exact tmux cleanup target coverage.
 - PASS: `git diff --check` after adding exact tmux cleanup target coverage.
 - PASS: package-installed two-project runtime smoke using a local `git archive HEAD` release package, isolated `HOME`, and isolated `SHOGUNATE_WORKSPACE_HOME`; project alpha and beta produced distinct `shogunate-project-alpha-aed8c4f9` / `shogunate-project-beta-503c296b` tmux sessions concurrently, each with `shogun`, `gunkan`, `karo`, `gunshi`, and `ashigaru1` panes, and each runtime metadata pointed at its own target project.
+- PASS: targeted package distribution contract checks for MOD philosophy sync, runtime npm package boundary, release archive export-ignore, and MOD canonical source archive inclusion after moving `docs/philosophy.md` to MOD ownership and excluding `docs/vps_pr118_verification_plan.md` from cURL release archives.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 63 tests after adding MOD philosophy ownership and VPS verification-log release archive exclusion.
 
 ## 復旧
 

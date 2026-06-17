@@ -289,6 +289,7 @@ require_same_file README_ja.md shogunate_mod/docs/README_ja.md
 require_same_file CHANGELOG.md shogunate_mod/docs/CHANGELOG.md
 require_same_file CONTRIBUTING.md shogunate_mod/docs/CONTRIBUTING.md
 require_same_file SECURITY.md shogunate_mod/docs/SECURITY.md
+require_same_file docs/philosophy.md shogunate_mod/docs/philosophy.md
 require_same_file .gitleaks.toml shogunate_mod/security/gitleaks.toml
 require_same_file .claude/settings.json shogunate_mod/hooks/claude_settings.json
 require_same_file context/README.md shogunate_mod/context/README.md

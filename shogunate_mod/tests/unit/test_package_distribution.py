@@ -948,6 +948,7 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "shogunate_mod/docs/CONTRIBUTING.md",
                 "shogunate_mod/docs/SECURITY.md",
             ],
+            "docs/philosophy.md": ["docs/philosophy.md", "shogunate_mod/docs/philosophy.md"],
             "CLAUDE.md": ["CLAUDE.md", "shogunate_mod/instructions/autoload/CLAUDE.md"],
             ".claude/settings.json": [".claude/settings.json", "shogunate_mod/hooks/claude_settings.json"],
             "android/": ["require_android_sources_synced"],
@@ -1112,6 +1113,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("!shogunate_mod/development/gitmodules", gitignore)
         self.assertIn("!shogunate_mod/docs/CHANGELOG.md", gitignore)
         self.assertIn("!shogunate_mod/docs/CONTRIBUTING.md", gitignore)
+        self.assertIn("!shogunate_mod/docs/philosophy.md", gitignore)
         self.assertIn("!shogunate_mod/docs/README.md", gitignore)
         self.assertIn("!shogunate_mod/docs/README_ja.md", gitignore)
         self.assertIn("!shogunate_mod/docs/SECURITY.md", gitignore)
@@ -1240,6 +1242,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("development_gitmodules: shogunate_mod/development/gitmodules", manifest)
         self.assertIn("docs_changelog: shogunate_mod/docs/CHANGELOG.md", manifest)
         self.assertIn("docs_contributing: shogunate_mod/docs/CONTRIBUTING.md", manifest)
+        self.assertIn("docs_philosophy: shogunate_mod/docs/philosophy.md", manifest)
         self.assertIn("docs_readme: shogunate_mod/docs/README.md", manifest)
         self.assertIn("docs_readme_ja: shogunate_mod/docs/README_ja.md", manifest)
         self.assertIn("docs_security: shogunate_mod/docs/SECURITY.md", manifest)
@@ -1503,6 +1506,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/hooks/claude_settings.json",
             "shogunate_mod/security/gitleaks.toml",
             "shogunate_mod/development/Makefile",
+            "shogunate_mod/docs/philosophy.md",
             "shogunate_mod/templates/context_template.md",
         }
         forbidden_prefixes = (
@@ -1526,6 +1530,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             "config/projects.yaml",
             "config/settings.yaml",
             "dashboard.md",
+            "docs/philosophy.md",
             "memory/MEMORY.md",
             "memory/global_context.md",
             "package-lock.json",
@@ -1537,6 +1542,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             for rel in files
             if rel in forbidden_exact
             or rel in {"docs/INDEX.md", "docs/REQS.md", "docs/WORKLOG.md"}
+            or rel == "docs/vps_pr118_verification_plan.md"
             or (rel.startswith("context/") and rel != "context/README.md")
             or rel.startswith("docs/EXECPLAN_")
             or rel.startswith("docs/HANDOVER_")
@@ -1606,6 +1612,10 @@ class PackageDistributionContractTests(unittest.TestCase):
         )
         self.assertIn(
             "require_same_file README_ja.md shogunate_mod/docs/README_ja.md",
+            prepublish,
+        )
+        self.assertIn(
+            "require_same_file docs/philosophy.md shogunate_mod/docs/philosophy.md",
             prepublish,
         )
 
@@ -2161,6 +2171,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("docs/REQS.md export-ignore", attrs)
         self.assertIn("docs/WORKLOG.md export-ignore", attrs)
         self.assertIn("docs/EXECPLAN_* export-ignore", attrs)
+        self.assertIn("docs/vps_pr118_verification_plan.md export-ignore", attrs)
         self.assertIn(".github/workflows export-ignore", attrs)
         self.assertIn(".github/workflows/** export-ignore", attrs)
         self.assertIn(".github/FUNDING.yml export-ignore", attrs)
@@ -2193,6 +2204,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             "docs/REQS.md",
             "docs/WORKLOG.md",
             "docs/EXECPLAN_2026-06-16_upstream_core_mod_split.md",
+            "docs/vps_pr118_verification_plan.md",
             ".github/workflows/package-release.yml",
             ".github/workflows/test.yml",
             ".github/FUNDING.yml",
@@ -2251,6 +2263,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual("set", attrs_by_path["docs/REQS.md"])
         self.assertEqual("set", attrs_by_path["docs/WORKLOG.md"])
         self.assertEqual("set", attrs_by_path["docs/EXECPLAN_2026-06-16_upstream_core_mod_split.md"])
+        self.assertEqual("set", attrs_by_path["docs/vps_pr118_verification_plan.md"])
         self.assertEqual("set", attrs_by_path[".github/workflows/package-release.yml"])
         self.assertEqual("set", attrs_by_path[".github/workflows/test.yml"])
         self.assertEqual("set", attrs_by_path[".github/FUNDING.yml"])

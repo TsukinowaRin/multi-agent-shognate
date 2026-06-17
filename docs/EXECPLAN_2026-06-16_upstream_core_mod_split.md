@@ -246,6 +246,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] 非 wrapper の root code-like touchpoint は、prepublish sync gate または generated instruction freshness guard のどちらかで守られることを package distribution contract で固定した。
 - [x] npm package が MOD canonical source を file-level で収録し、Android/tests 以外の MOD 正本ファイルが npm package から欠落しないことを package distribution contract で固定した。
 - [x] `shogunate_mod/README.md` の ownership boundary が Git 管理下の MOD top-level source directories と一致することを package distribution contract で固定した。
+- [x] `upstream/main` が存在する開発 checkout では、upstream から変更された root code-like file も manifest の current core touchpoint または compatibility wrapper で分類されることを package distribution contract で固定した。
 
 ## 判断
 
@@ -1370,6 +1371,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_tracked_root_code_like_touchpoints_have_sync_or_generation_gate` after requiring non-wrapper root code-like touchpoints to be covered by prepublish sync or generated freshness gates.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_pack_covers_runtime_mod_manifest_source_files` after requiring npm package file-level coverage for MOD canonical sources except Android/tests.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_readme_boundary_directories_match_tracked_mod_sources` after requiring MOD README ownership boundaries to match tracked MOD top-level source directories.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_upstream_modified_root_code_like_files_are_classified_by_manifest` after requiring upstream-modified root code-like files to be manifest-classified when `upstream/main` is available.
 
 ## 復旧
 

@@ -1363,6 +1363,39 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], missing)
 
+    def test_upstream_modified_root_code_like_files_are_classified_by_manifest(self):
+        upstream = subprocess.run(
+            ["git", "rev-parse", "--verify", "upstream/main"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if upstream.returncode != 0:
+            self.skipTest("upstream/main is not available in this checkout")
+
+        changed = subprocess.run(
+            ["git", "diff", "--name-only", "--diff-filter=ACMRT", "upstream/main...HEAD"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, changed.returncode, changed.stderr)
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        root_paths = manifest_core_touchpoint_paths(manifest) + manifest_list_values(
+            manifest,
+            "compatibility_wrappers",
+        )
+        changed_root_code_like = sorted(set(changed.stdout.splitlines()) & set(tracked_root_code_like_files()))
+        missing = [
+            rel
+            for rel in changed_root_code_like
+            if not manifest_root_paths_cover_path(root_paths, rel)
+        ]
+
+        self.assertEqual([], missing)
+
     def test_tracked_root_code_like_touchpoints_have_sync_or_generation_gate(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")

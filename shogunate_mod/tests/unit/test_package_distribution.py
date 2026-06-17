@@ -1201,6 +1201,24 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], sorted(reversed_or_unscoped))
 
+    def test_prepublish_sync_pairs_do_not_duplicate_nested_roots(self):
+        prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
+        pairs = prepublish_sync_pairs(prepublish)
+        nested = []
+
+        for root_rel, mod_rel in pairs:
+            root_norm = root_rel.rstrip("/")
+            mod_norm = mod_rel.rstrip("/")
+            for parent_root, parent_mod in pairs:
+                parent_root_norm = parent_root.rstrip("/")
+                parent_mod_norm = parent_mod.rstrip("/")
+                if root_norm == parent_root_norm:
+                    continue
+                if root_norm.startswith(parent_root_norm + "/") and mod_norm.startswith(parent_mod_norm + "/"):
+                    nested.append(f"{root_rel} -> {mod_rel} duplicates {parent_root} -> {parent_mod}")
+
+        self.assertEqual([], sorted(nested))
+
     def test_prepublish_requires_manifest_mod_sources_in_head(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
 
@@ -2416,9 +2434,6 @@ class PackageDistributionContractTests(unittest.TestCase):
                 self.assertEqual(root_path.read_bytes(), mod_path.read_bytes(), f"test support differs: {rel}")
 
         self.assertIn("require_directory_files_synced tests shogunate_mod/tests", prepublish)
-        self.assertIn("require_directory_files_synced tests/specs shogunate_mod/tests/specs", prepublish)
-        self.assertIn("require_directory_files_synced tests/fixtures shogunate_mod/tests/fixtures", prepublish)
-        self.assertIn("require_directory_files_synced tests/helpers shogunate_mod/tests/helpers", prepublish)
 
     def test_unit_test_cases_have_mod_canonical_copy(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
@@ -2435,7 +2450,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             self.assertTrue(mod_path.exists(), f"missing MOD unit test case: {mod_path}")
             self.assertEqual(root_path.read_bytes(), mod_path.read_bytes(), f"unit test case differs: {rel}")
 
-        self.assertIn("require_directory_files_synced tests/unit shogunate_mod/tests/unit", prepublish)
+        self.assertIn("require_directory_files_synced tests shogunate_mod/tests", prepublish)
 
     def test_e2e_support_files_have_mod_canonical_copy(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
@@ -2469,14 +2484,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         mod_mock_cli = ROOT / "shogunate_mod" / "tests" / "e2e" / "mock_cli.sh"
         self.assertEqual(root_mock_cli.read_bytes(), mod_mock_cli.read_bytes())
         self.assertIn("MOCK_CLI_TYPE", mod_mock_cli.read_text(encoding="utf-8"))
-        self.assertIn("require_directory_files_synced tests/e2e shogunate_mod/tests/e2e", prepublish)
-        self.assertIn("require_directory_files_synced tests/e2e/fixtures shogunate_mod/tests/e2e/fixtures", prepublish)
-        self.assertIn("require_directory_files_synced tests/e2e/helpers shogunate_mod/tests/e2e/helpers", prepublish)
-        self.assertIn(
-            "require_directory_files_synced tests/e2e/mock_behaviors shogunate_mod/tests/e2e/mock_behaviors",
-            prepublish,
-        )
-        self.assertIn("require_same_file tests/e2e/mock_cli.sh shogunate_mod/tests/e2e/mock_cli.sh", prepublish)
+        self.assertIn("require_directory_files_synced tests shogunate_mod/tests", prepublish)
         self.assertIn(
             "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution",
             prepublish,

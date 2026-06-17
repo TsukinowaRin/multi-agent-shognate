@@ -229,6 +229,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] ローカル release archive から package install した `shogunate` command 経由で `shogunate pair --project <project>` を起動し、sandbox `authorized_keys` への公開鍵登録、Pair response の runtime/target project 情報、成功後の自動停止表示が成立することを確認した。
 - [x] tmux の session target が prefix match される問題を避けるため、runtime cleanup の `has-session` / `kill-session` を `=session-name` の exact target へ統一した。これにより legacy `shogun` cleanup が `shogunate-project-*` session を誤って kill する事故を防ぐ。
 - [x] ローカル release archive から package install した `shogunate` command 経由で、2つの別 project を同時に `shogunate clean --project <project> --no-attach -s` 起動し、project ごとに独立した tmux session / runtime copy / metadata が並列成立することを確認した。
+- [x] package prepublish の root/MOD sync gate は、親 directory sync が同じ subtree を覆う場合に nested sync を重複宣言しない contract で固定した。`tests/` tree は `tests -> shogunate_mod/tests` の1本へ集約した。
 
 ## 判断
 
@@ -1288,6 +1289,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 91 tests after requiring normalized manifest path forms.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring normalized manifest path forms.
 - PASS: `git diff --check` after requiring normalized manifest path forms.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_prepublish_sync_pairs_do_not_duplicate_nested_roots tests.unit.test_package_distribution.PackageDistributionContractTests.test_prepublish_sync_targets_are_tracked_by_manifest tests.unit.test_package_distribution.PackageDistributionContractTests.test_synchronized_core_touchpoints_have_prepublish_gates` after collapsing redundant `tests/` prepublish sync gates.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 92 tests after collapsing redundant `tests/` prepublish sync gates.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after collapsing redundant `tests/` prepublish sync gates.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after collapsing redundant `tests/` prepublish sync gates.
+- PASS: `git diff --check` after collapsing redundant `tests/` prepublish sync gates.
 
 ## 復旧
 

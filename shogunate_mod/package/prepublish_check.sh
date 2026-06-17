@@ -310,15 +310,6 @@ require_directory_files_synced templates shogunate_mod/templates
 require_directory_files_synced docs/codd shogunate_mod/gunkan/docs
 require_android_sources_synced
 require_directory_files_synced tests shogunate_mod/tests
-require_directory_files_synced tests/specs shogunate_mod/tests/specs
-require_directory_files_synced tests/fixtures shogunate_mod/tests/fixtures
-require_directory_files_synced tests/helpers shogunate_mod/tests/helpers
-require_directory_files_synced tests/unit shogunate_mod/tests/unit
-require_directory_files_synced tests/e2e shogunate_mod/tests/e2e
-require_directory_files_synced tests/e2e/fixtures shogunate_mod/tests/e2e/fixtures
-require_directory_files_synced tests/e2e/helpers shogunate_mod/tests/e2e/helpers
-require_directory_files_synced tests/e2e/mock_behaviors shogunate_mod/tests/e2e/mock_behaviors
-require_same_file tests/e2e/mock_cli.sh shogunate_mod/tests/e2e/mock_cli.sh
 require_manifest_mod_sources_in_head
 printf '[INFO] package distribution contract tests\n'
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution

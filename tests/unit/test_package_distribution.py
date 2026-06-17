@@ -2728,6 +2728,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("shogunate_mod/tests/** export-ignore", attrs)
         self.assertIn("queue export-ignore", attrs)
         self.assertIn("queue/** export-ignore", attrs)
+        self.assertIn("shogunate_mod/queue -export-ignore", attrs)
+        self.assertIn("shogunate_mod/queue/** -export-ignore", attrs)
         self.assertIn("runtime_sandboxes export-ignore", attrs)
         self.assertIn("runtime_sandboxes/** export-ignore", attrs)
         self.assertIn("dashboard.md export-ignore", attrs)
@@ -2765,6 +2767,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             "tests/unit/test_package_distribution.py",
             "shogunate_mod/tests/unit/test_package_distribution.py",
             "queue/runtime/session_name",
+            "shogunate_mod/queue/history_book.sh",
             "runtime_sandboxes/example",
             "dashboard.md",
             "config/settings.yaml",
@@ -2829,6 +2832,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual("set", attrs_by_path["tests/unit/test_package_distribution.py"])
         self.assertEqual("set", attrs_by_path["shogunate_mod/tests/unit/test_package_distribution.py"])
         self.assertEqual("set", attrs_by_path["queue/runtime/session_name"])
+        self.assertEqual("unset", attrs_by_path["shogunate_mod/queue/history_book.sh"])
         self.assertEqual("set", attrs_by_path["runtime_sandboxes/example"])
         self.assertEqual("set", attrs_by_path["dashboard.md"])
         self.assertEqual("set", attrs_by_path["config/settings.yaml"])
@@ -2870,6 +2874,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual("unspecified", attrs_by_path["shutsujin_departure.sh"])
         self.assertEqual("unspecified", attrs_by_path["shogunate_mod/runtime/runtime_launcher.sh"])
         self.assertEqual("unspecified", attrs_by_path["shogunate_mod/runtime/departure.sh"])
+        self.assertEqual("unset", attrs_by_path["shogunate_mod/queue/history_book.sh"])
         self.assertEqual(
             "unspecified",
             attrs_by_path["shogunate_mod/package/templates/memory/global_context.md.sample"],
@@ -3101,6 +3106,9 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         unexpected_excluded = []
         missing_exclusion = []
+        archive_files = release_archive_files()
+        missing_archive_files = []
+        unexpected_archive_files = []
         for line in attr_result.stdout.splitlines():
             path, _, value = line.rpartition(": export-ignore: ")
             intentionally_excluded = is_intentionally_release_archive_excluded_mod_path(path)
@@ -3108,9 +3116,15 @@ class PackageDistributionContractTests(unittest.TestCase):
                 missing_exclusion.append(path)
             if not intentionally_excluded and value == "set":
                 unexpected_excluded.append(path)
+            if intentionally_excluded and path in archive_files:
+                unexpected_archive_files.append(path)
+            if not intentionally_excluded and path not in archive_files:
+                missing_archive_files.append(path)
 
         self.assertEqual([], sorted(set(unexpected_excluded)))
         self.assertEqual([], sorted(set(missing_exclusion)))
+        self.assertEqual([], sorted(set(missing_archive_files)))
+        self.assertEqual([], sorted(set(unexpected_archive_files)))
 
     def test_android_source_has_mod_canonical_copy(self):
         root_android = ROOT / "android"

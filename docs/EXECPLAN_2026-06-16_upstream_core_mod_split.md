@@ -234,6 +234,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] manifest `current_core_touchpoints` の `next_step` が root/MOD 同期を約束している場合、その root path が prepublish の sync pair または専用 sync function で実際に覆われることを動的 contract で固定した。
 - [x] generated instruction freshness targets は、実ファイルとして存在し、manifest `current_core_touchpoints` の generated/root surface に分類されていることを contract で固定した。
 - [x] cURL release archive には manifest `compatibility_wrappers` の全 root wrapper が実際に収録されることを package distribution contract で固定した。
+- [x] cURL release archive では root runtime state の `queue/` は除外したまま、MOD 正本 `shogunate_mod/queue/` は収録対象へ戻した。manifest canonical files は属性だけでなく実 archive に存在することも contract で固定した。
 
 ## 判断
 
@@ -1318,6 +1319,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after requiring release archives to include every manifest compatibility wrapper.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring release archives to include every manifest compatibility wrapper.
 - PASS: `git diff --check` after requiring release archives to include every manifest compatibility wrapper.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_package_archive_excludes_android_app tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_includes_runtime_mod_canonical_sources` after restoring `shogunate_mod/queue/` to cURL release archives.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 96 tests after restoring `shogunate_mod/queue/` to cURL release archives.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after restoring `shogunate_mod/queue/` to cURL release archives.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after restoring `shogunate_mod/queue/` to cURL release archives.
+- PASS: `git diff --check` after restoring `shogunate_mod/queue/` to cURL release archives.
 
 ## 復旧
 

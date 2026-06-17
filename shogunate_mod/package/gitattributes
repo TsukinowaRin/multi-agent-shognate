@@ -20,6 +20,8 @@ shogunate_mod/tests export-ignore
 shogunate_mod/tests/** export-ignore
 queue export-ignore
 queue/** export-ignore
+shogunate_mod/queue -export-ignore
+shogunate_mod/queue/** -export-ignore
 runtime_sandboxes export-ignore
 runtime_sandboxes/** export-ignore
 dashboard.md export-ignore

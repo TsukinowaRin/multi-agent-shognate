@@ -2449,6 +2449,24 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], missing)
         self.assertEqual([], forbidden)
 
+    def test_release_archive_root_wrappers_match_manifest(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = release_archive_files()
+        wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))
+
+        for root_dir in ("bin/", "lib/", "scripts/"):
+            archived_files = sorted(
+                rel
+                for rel in files
+                if rel.startswith(root_dir) and (ROOT / rel).is_file()
+            )
+            declared_files = sorted(
+                rel
+                for rel in wrappers
+                if rel.startswith(root_dir)
+            )
+            self.assertEqual(declared_files, archived_files)
+
     def test_release_archive_includes_runtime_mod_canonical_sources(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         canonical_files = []

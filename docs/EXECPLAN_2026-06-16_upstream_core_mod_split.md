@@ -192,6 +192,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] full `prepublish_check.sh` を実測し、root `skills/.system/` が誤って MOD skill 同期対象になっていた問題を修正した。`require_directory_files_synced` は `*/.system/*` を除外し、system-managed skills を Shogunate MOD 正本に混ぜない。
 - [x] full `prepublish_check.sh` の Android source sync が root Android build/cache 配下を `rglob` で列挙して遅くなる問題を修正した。`require_android_sources_synced` は `os.walk` で excluded dirs を traversal 前に prune する。
 - [x] `require_manifest_mod_sources_in_head` も重複 canonical directory を再走査しないよう `expanded_dirs` で親ディレクトリ優先にした。
+- [x] 一時 worktree `runtime_sandboxes/mod-smoke` で `shutsujin_departure.sh -s -c` を検証し、MOD runtime loader 経由の setup-only tmux runtime が一意 session で起動し、role pane metadata と queue 初期化が成立することを確認した。
+- [x] USB 接続 Android 端末 `OnePlus9Pro` 上で `connectedDebugAndroidTest` を実行し、MOD 正本と同期された root Android app の connected debug test が通ることを確認した。
 
 ## 判断
 
@@ -1109,6 +1111,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `git diff --check` after fixing GitHub Release `target_commitish`. Git warned that touched `.bat` files will be normalized to CRLF when Git next touches them, but the check exited 0.
 - CHECKPOINT: commit `23bcb29` (`Split Shogunate mod sources from root wrappers`) added the MOD canonical source tree to `HEAD`.
 - PASS: `bash shogunate_mod/package/prepublish_check.sh` after checkpoint commit `23bcb29`; the full release prepublish gate ran package distribution contract tests, verified generated instructions, and passed.
+- PASS: isolated runtime smoke in temporary worktree `runtime_sandboxes/mod-smoke` with `SHOGUNATE_SESSION_NAME=mod-smoke-<timestamp>`, `LEGACY_GOZA_SESSION_NAME=mod-smoke-<timestamp>-legacy`, and `bash shutsujin_departure.sh -s -c`; tmux created the `goza` window with `shogun`, `gunkan`, `karo`, `gunshi`, and `ashigaru1` panes, wrote runtime queue files, and the temporary sessions/worktree were removed afterward.
+- PASS: `./gradlew testDebugUnitTest assembleDebug` in `android/` on the synced root Android working tree.
+- PASS: `./gradlew connectedDebugAndroidTest` in `android/` with connected device `661ecd40` (`OnePlus9Pro`).
 
 ## 復旧
 

@@ -194,6 +194,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] `require_manifest_mod_sources_in_head` も重複 canonical directory を再走査しないよう `expanded_dirs` で親ディレクトリ優先にした。
 - [x] 一時 worktree `runtime_sandboxes/mod-smoke` で `shutsujin_departure.sh -s -c` を検証し、MOD runtime loader 経由の setup-only tmux runtime が一意 session で起動し、role pane metadata と queue 初期化が成立することを確認した。
 - [x] USB 接続 Android 端末 `OnePlus9Pro` 上で `connectedDebugAndroidTest` を実行し、MOD 正本と同期された root Android app の connected debug test が通ることを確認した。
+- [x] package bootstrap に `SHOGUNATE_PACKAGE_URL` override を追加し、GitHub release channel と同じ archive extraction path をローカル `file://` archive で smoke できるようにした。通常の latest / `--version` cURL 導線は維持する。
 
 ## 判断
 
@@ -1114,6 +1115,12 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: isolated runtime smoke in temporary worktree `runtime_sandboxes/mod-smoke` with `SHOGUNATE_SESSION_NAME=mod-smoke-<timestamp>`, `LEGACY_GOZA_SESSION_NAME=mod-smoke-<timestamp>-legacy`, and `bash shutsujin_departure.sh -s -c`; tmux created the `goza` window with `shogun`, `gunkan`, `karo`, `gunshi`, and `ashigaru1` panes, wrote runtime queue files, and the temporary sessions/worktree were removed afterward.
 - PASS: `./gradlew testDebugUnitTest assembleDebug` in `android/` on the synced root Android working tree.
 - PASS: `./gradlew connectedDebugAndroidTest` in `android/` with connected device `661ecd40` (`OnePlus9Pro`).
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_curl_bootstrap_is_release_package_aware` after adding the package URL override.
+- PASS: `bash -n shogunate_mod/package/bootstrap.sh scripts/shogunate_package_bootstrap.sh` after adding the package URL override.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 62 tests after adding the package URL override.
+- PASS: direct `diff -qr tests shogunate_mod/tests -x __pycache__ -x '*.pyc' -x '*.pyo'` confirmed root test compatibility files match MOD test sources after adding the package URL override.
+- PASS: `git diff --check` after adding the package URL override.
+- PASS: local release-channel smoke using `git archive --format=tar.gz --prefix=multi-agent-shognate/ HEAD` and `SHOGUNATE_PACKAGE_URL=file://... bash shogunate_mod/package/bootstrap.sh --version v0.0.0-local --prefix <sandbox-home>/.shogunate/shogunate --bin-dir <sandbox-home>/.local/bin --no-setup`; verified `shogunate help`, `shogunate where --project <project>`, engine/runtime `shogunate_mod/manifest.yaml`, and `queue/runtime/{target_project,engine_dir}`.
 
 ## 復旧
 

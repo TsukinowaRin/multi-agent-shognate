@@ -138,6 +138,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] MOD 境界説明の `shogunate_mod/README.md` を manifest canonical path に追加し、package 収録と `.gitignore` whitelist を contract test で固定した。
 - [x] `shogunate_mod/manifest.yaml` 自身を canonical path に追加し、`shogunate_mod/` 配下の正本ファイルがすべて manifest `canonical_paths` で覆われることを package distribution contract で固定した。
 - [x] manifest `canonical_paths` が root 互換コピーではなく `shogunate_mod/` 配下の MOD 正本だけを指すことを package distribution contract で固定した。
+- [x] manifest `current_core_touchpoints` が MOD 正本ではなく root/core 互換面だけを指すことを package distribution contract で固定した。
 - [x] `shogunate_mod/README.md` が正本ファイルを持つ top-level MOD ディレクトリをすべて境界説明していることを package distribution contract で固定した。
 - [x] package distribution contract test を `shogunate_mod/package/prepublish_check.sh` から実行し、manifest/package 境界の退行を release 前 gate で検出できるようにした。
 - [x] package distribution contract test が generated instruction freshness guard と dirty-worktree gate より前に実行されることを contract test で固定した。
@@ -1240,6 +1241,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 83 tests after adding the MOD-scoped canonical path contract.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding the MOD-scoped canonical path contract.
 - PASS: `git diff --check` after adding the MOD-scoped canonical path contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_current_core_touchpoints_stay_on_root_surface` after adding the root-surface current core touchpoint contract.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding the root-surface current core touchpoint contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 84 tests after adding the root-surface current core touchpoint contract.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding the root-surface current core touchpoint contract.
+- PASS: `git diff --check` after adding the root-surface current core touchpoint contract.
 
 ## 復旧
 

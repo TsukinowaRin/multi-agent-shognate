@@ -881,6 +881,14 @@ class PackageDistributionContractTests(unittest.TestCase):
             sorted(rel for rel in manifest_mapping_values(manifest, "canonical_paths") if not rel.startswith("shogunate_mod/")),
         )
 
+    def test_manifest_current_core_touchpoints_stay_on_root_surface(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+
+        self.assertEqual(
+            [],
+            sorted(rel for rel in manifest_core_touchpoint_paths(manifest) if rel.startswith("shogunate_mod/")),
+        )
+
     def test_manifest_core_touchpoints_are_actionable_and_not_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))

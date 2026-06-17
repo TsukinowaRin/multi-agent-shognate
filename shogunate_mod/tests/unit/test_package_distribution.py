@@ -2506,6 +2506,18 @@ class PackageDistributionContractTests(unittest.TestCase):
             )
             self.assertEqual(declared_files, archived_files)
 
+    def test_release_archive_top_level_launchers_match_manifest_wrappers(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = release_archive_files()
+        top_level_wrappers = sorted(
+            rel
+            for rel in manifest_list_values(manifest, "compatibility_wrappers")
+            if "/" not in rel
+        )
+        archived_top_level_wrappers = sorted(rel for rel in top_level_wrappers if rel in files)
+
+        self.assertEqual(top_level_wrappers, archived_top_level_wrappers)
+
     def test_release_archive_includes_runtime_mod_canonical_sources(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         canonical_files = []

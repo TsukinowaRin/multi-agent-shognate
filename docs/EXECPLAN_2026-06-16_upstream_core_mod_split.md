@@ -231,6 +231,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] ローカル release archive から package install した `shogunate` command 経由で、2つの別 project を同時に `shogunate clean --project <project> --no-attach -s` 起動し、project ごとに独立した tmux session / runtime copy / metadata が並列成立することを確認した。
 - [x] package prepublish の root/MOD sync gate は、親 directory sync が同じ subtree を覆う場合に nested sync を重複宣言しない contract で固定した。`tests/` tree は `tests -> shogunate_mod/tests` の1本へ集約した。
 - [x] manifest `canonical_paths` の親子重複は `shogunate_mod/tests/` 配下の named test subsection だけに限定する contract を追加した。これにより新しい MOD 正本 directory を親子で曖昧に重複宣言する事故を検出する。
+- [x] manifest `current_core_touchpoints` の `next_step` が root/MOD 同期を約束している場合、その root path が prepublish の sync pair または専用 sync function で実際に覆われることを動的 contract で固定した。
 
 ## 判断
 
@@ -1300,6 +1301,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after limiting nested manifest canonical paths to test subsections.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after limiting nested manifest canonical paths to test subsections.
 - PASS: `git diff --check` after limiting nested manifest canonical paths to test subsections.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_synchronized_core_touchpoints_are_covered_by_prepublish_sync tests.unit.test_package_distribution.PackageDistributionContractTests.test_synchronized_core_touchpoints_have_prepublish_gates tests.unit.test_package_distribution.PackageDistributionContractTests.test_non_synchronized_core_touchpoints_are_explicitly_classified` after adding dynamic prepublish coverage for synchronized manifest touchpoints.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 94 tests after adding dynamic prepublish coverage for synchronized manifest touchpoints.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding dynamic prepublish coverage for synchronized manifest touchpoints.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding dynamic prepublish coverage for synchronized manifest touchpoints.
+- PASS: `git diff --check` after adding dynamic prepublish coverage for synchronized manifest touchpoints.
 
 ## 復旧
 

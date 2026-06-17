@@ -1364,6 +1364,40 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], sorted(stale_expectation))
         self.assertEqual([], sorted(missing_gate_tokens))
 
+    def test_synchronized_core_touchpoints_are_covered_by_prepublish_sync(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
+        sync_pairs = prepublish_sync_pairs(prepublish)
+        missing = []
+
+        special_sync_tokens = {
+            "android/": "require_android_sources_synced",
+        }
+
+        def root_path_covered(root_path: str) -> bool:
+            normalized = root_path.rstrip("/")
+            special_token = special_sync_tokens.get(root_path)
+            if special_token and special_token in prepublish:
+                return True
+            for pair_root, _ in sync_pairs:
+                pair_root_normalized = pair_root.rstrip("/")
+                if (
+                    normalized == pair_root_normalized
+                    or normalized.startswith(pair_root_normalized + "/")
+                    or pair_root_normalized.startswith(normalized + "/")
+                ):
+                    return True
+            return False
+
+        for item in manifest_core_touchpoints(manifest):
+            if "synchronized" not in item.get("next_step", ""):
+                continue
+            for root_path in manifest_core_touchpoint_paths(f"current_core_touchpoints:\n  - path: {item['path']}"):
+                if not root_path_covered(root_path):
+                    missing.append(root_path)
+
+        self.assertEqual([], sorted(set(missing)))
+
     def test_non_synchronized_core_touchpoints_are_explicitly_classified(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         non_synchronized = {

@@ -153,6 +153,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] GitHub Actions workflow の root 互換コピー `.github/workflows/package-release.yml` / `test.yml` と MOD 正本 `shogunate_mod/package/workflows/` の同期を package prepublish gate でも検査するようにした。
 - [x] Android app の root 互換 working tree `android/` と MOD 正本 `shogunate_mod/mobile/android/` の source 同期を package prepublish gate でも検査するようにした。Android SDK/cache/build/local/apk 生成物は除外し、runtime package から Android app を除外する方針は維持した。
 - [x] generated root touchpoints の `.github/copilot-instructions.md`、`.opencode/agents/`、`agents/default/` を npm package `files` に追加し、package install 後も Copilot / OpenCode / Kimi auto-load surface が欠けないようにした。
+- [x] cURL release archive に入る generated root touchpoints（`AGENTS.md`, `.github/copilot-instructions.md`, `agents/default/*`, `.opencode/agents/*`）も `shogunate_mod/instructions/ensure_generated.sh` の freshness target と一致することを package distribution contract に追加した。
 - [x] manifest `canonical_paths` 配下の MOD 正本ファイルが `.gitignore` で隠れないことを package distribution contract に追加した。Android の build/cache/local settings と Python 生成物だけは意図的な ignored artifact として除外する。
 - [x] manifest `current_core_touchpoints` の `next_step` で `synchronized` と宣言した root 互換面が、`shogunate_mod/package/prepublish_check.sh` の同期 gate に紐づいていることを package distribution contract に追加した。
 - [x] root auto-load / tool compatibility surface の `CLAUDE.md` と `.codd/codd.yaml` を npm package `files` に追加し、package install 後も root 互換パスが欠けないようにした。
@@ -1160,6 +1161,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 66 tests after adding cURL release archive root wrapper surface coverage.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_root_instructions_are_mod_source_or_freshness_targets` after adding cURL release archive root instruction source/freshness coverage.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 67 tests after adding cURL release archive root instruction source/freshness coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_generated_root_files_are_freshness_targets` after adding cURL release archive generated root touchpoint freshness coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 68 tests after adding cURL release archive generated root touchpoint freshness coverage.
 
 ## 復旧
 

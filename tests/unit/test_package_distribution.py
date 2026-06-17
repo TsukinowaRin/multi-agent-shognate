@@ -1448,6 +1448,16 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual(expected, packaged_generated_root_files)
 
+    def test_release_archive_generated_root_files_are_freshness_targets(self):
+        files = release_archive_files()
+        archived_generated_root_files = sorted(
+            rel
+            for rel in generated_root_touchpoint_files()
+            if rel in files
+        )
+
+        self.assertEqual(generated_root_touchpoint_files(), archived_generated_root_files)
+
     def test_npm_pack_root_skills_and_templates_are_mod_sync_targets(self):
         files = npm_pack_files()
         expected_skill_files = []

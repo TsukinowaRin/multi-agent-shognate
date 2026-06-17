@@ -271,6 +271,28 @@ def root_mod_delegate_candidates() -> list[str]:
     return sorted(set(candidates))
 
 
+def tracked_root_wrapper_surface_files() -> list[str]:
+    result = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise AssertionError(result.stderr)
+
+    files = []
+    for rel in result.stdout.split("\0"):
+        if not rel:
+            continue
+        if "__pycache__" in rel.split("/") or rel.endswith((".pyc", ".pyo")):
+            continue
+        if rel.startswith(("bin/", "lib/", "scripts/")) or is_top_level_launcher_wrapper(rel):
+            files.append(rel)
+    return sorted(files)
+
+
 def root_shogunate_surface_candidates() -> list[str]:
     markers = (
         "shogunate_mod",
@@ -1075,6 +1097,16 @@ class PackageDistributionContractTests(unittest.TestCase):
         missing = [rel for rel in root_mod_delegate_candidates() if rel not in wrappers]
 
         self.assertEqual([], missing)
+
+    def test_tracked_root_wrapper_surface_matches_manifest(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        wrappers = sorted(
+            rel
+            for rel in manifest_list_values(manifest, "compatibility_wrappers")
+            if rel.startswith(("bin/", "lib/", "scripts/")) or is_top_level_launcher_wrapper(rel)
+        )
+
+        self.assertEqual(wrappers, tracked_root_wrapper_surface_files())
 
     def test_root_shogunate_surfaces_are_classified_by_manifest(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")

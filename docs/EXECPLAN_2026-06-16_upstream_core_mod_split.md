@@ -233,6 +233,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] manifest `canonical_paths` の親子重複は `shogunate_mod/tests/` 配下の named test subsection だけに限定する contract を追加した。これにより新しい MOD 正本 directory を親子で曖昧に重複宣言する事故を検出する。
 - [x] manifest `current_core_touchpoints` の `next_step` が root/MOD 同期を約束している場合、その root path が prepublish の sync pair または専用 sync function で実際に覆われることを動的 contract で固定した。
 - [x] generated instruction freshness targets は、実ファイルとして存在し、manifest `current_core_touchpoints` の generated/root surface に分類されていることを contract で固定した。
+- [x] cURL release archive には manifest `compatibility_wrappers` の全 root wrapper が実際に収録されることを package distribution contract で固定した。
 
 ## 判断
 
@@ -1312,6 +1313,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after requiring generated freshness targets to be manifest-classified.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring generated freshness targets to be manifest-classified.
 - PASS: `git diff --check` after requiring generated freshness targets to be manifest-classified.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_includes_all_manifest_compatibility_wrappers tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_actual_runtime_boundary` after requiring release archives to include every manifest compatibility wrapper.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 96 tests after requiring release archives to include every manifest compatibility wrapper.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after requiring release archives to include every manifest compatibility wrapper.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring release archives to include every manifest compatibility wrapper.
+- PASS: `git diff --check` after requiring release archives to include every manifest compatibility wrapper.
 
 ## 復旧
 

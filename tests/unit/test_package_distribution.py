@@ -1862,6 +1862,17 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual(top_level_wrappers, packaged_top_level_wrappers)
 
+    def test_release_archive_includes_all_manifest_compatibility_wrappers(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = release_archive_files()
+        missing = [
+            rel
+            for rel in manifest_list_values(manifest, "compatibility_wrappers")
+            if rel.rstrip("/") not in files
+        ]
+
+        self.assertEqual([], missing)
+
     def test_npm_pack_top_level_file_surface_is_explicit(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = npm_pack_files()

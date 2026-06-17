@@ -133,6 +133,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Shogunate E2E test cases を `shogunate_mod/tests/e2e/*.bats` へ MOD 正本として追加し、root `tests/e2e/*.bats` は既存 E2E suite が読む互換コピーとして同期テストと prepublish gate で固定した。runtime npm package からは `shogunate_mod/tests/` を除外する方針を維持した。
 - [x] `shogunate_mod/manifest.yaml` の `canonical_paths` と `compatibility_wrappers` が実在パスだけを指すことを package distribution contract で固定した。
 - [x] `shogunate_mod/manifest.yaml` の `canonical_paths` key/value、`compatibility_wrappers`、`current_core_touchpoints` が重複 entry を持たないことを package distribution contract で固定した。
+- [x] `shogunate_mod/manifest.yaml` の path 宣言が正規化された相対 path であり、directory は末尾 `/`、file は末尾 `/` なしで表すことを package distribution contract で固定した。
 - [x] npm package `files` と MOD manifest `canonical_paths` の境界を contract test で固定し、runtime package に含めるべき MOD 正本と除外する `shogunate_mod/mobile/android/` / `shogunate_mod/tests/` を機械的に確認した。
 - [x] `current_core_touchpoints` の root 互換 / generated / runtime-state surface が実在することを package distribution contract で固定した。
 - [x] manifest の全 `compatibility_wrappers` が `shogunate_mod` へ委譲し、npm package `files` に収録されることを package distribution contract で固定した。
@@ -1282,6 +1283,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 90 tests after requiring manifest duplicate-free sections.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring manifest duplicate-free sections.
 - PASS: `git diff --check` after requiring manifest duplicate-free sections.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_paths_use_normalized_relative_forms` after requiring normalized relative manifest paths and trailing slash conventions.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after requiring normalized manifest path forms.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 91 tests after requiring normalized manifest path forms.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring normalized manifest path forms.
+- PASS: `git diff --check` after requiring normalized manifest path forms.
 
 ## 復旧
 

@@ -936,6 +936,28 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], duplicates)
 
+    def test_manifest_paths_use_normalized_relative_forms(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        paths = (
+            manifest_mapping_values(manifest, "canonical_paths")
+            + manifest_list_values(manifest, "compatibility_wrappers")
+            + manifest_core_touchpoint_paths(manifest)
+        )
+        invalid = []
+
+        for rel in paths:
+            normalized = rel.rstrip("/")
+            path = ROOT / normalized
+            if rel != rel.strip() or rel.startswith(("/", "./")) or "//" in rel:
+                invalid.append(rel)
+                continue
+            if path.is_dir() and not rel.endswith("/"):
+                invalid.append(f"{rel} (directory path must end with /)")
+            if path.is_file() and rel.endswith("/"):
+                invalid.append(f"{rel} (file path must not end with /)")
+
+        self.assertEqual([], invalid)
+
     def test_manifest_canonical_paths_are_mod_scoped(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
 

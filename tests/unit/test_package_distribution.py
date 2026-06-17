@@ -361,6 +361,13 @@ def generated_root_touchpoint_files() -> list[str]:
     return sorted(candidates)
 
 
+def is_top_level_launcher_wrapper(rel_path: str) -> bool:
+    return "/" not in rel_path and (
+        rel_path in {"first_setup.sh", "setup.sh", "shutsujin_departure.sh"}
+        or rel_path.startswith(("Shogunate-", "Shutsujin"))
+    )
+
+
 class PackageDistributionContractTests(unittest.TestCase):
     def test_curl_bootstrap_is_release_package_aware(self):
         text = BOOTSTRAP.read_text(encoding="utf-8")
@@ -1439,9 +1446,11 @@ class PackageDistributionContractTests(unittest.TestCase):
         top_level_wrappers = sorted(
             rel
             for rel in manifest_list_values(manifest, "compatibility_wrappers")
-            if "/" not in rel
+            if is_top_level_launcher_wrapper(rel)
         )
-        packaged_top_level_wrappers = sorted(rel for rel in top_level_wrappers if rel in files)
+        packaged_top_level_wrappers = sorted(
+            rel for rel in files if is_top_level_launcher_wrapper(rel)
+        )
 
         self.assertEqual(top_level_wrappers, packaged_top_level_wrappers)
 
@@ -2524,9 +2533,11 @@ class PackageDistributionContractTests(unittest.TestCase):
         top_level_wrappers = sorted(
             rel
             for rel in manifest_list_values(manifest, "compatibility_wrappers")
-            if "/" not in rel
+            if is_top_level_launcher_wrapper(rel)
         )
-        archived_top_level_wrappers = sorted(rel for rel in top_level_wrappers if rel in files)
+        archived_top_level_wrappers = sorted(
+            rel for rel in files if is_top_level_launcher_wrapper(rel)
+        )
 
         self.assertEqual(top_level_wrappers, archived_top_level_wrappers)
 

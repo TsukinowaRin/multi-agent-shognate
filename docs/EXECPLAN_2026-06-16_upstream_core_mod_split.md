@@ -172,6 +172,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] runtime npm package に入る top-level launcher wrappers（`first_setup.sh`, `setup.sh`, `Shogunate-*`, `Shutsujin*`, `shutsujin_departure.sh`）も manifest `compatibility_wrappers` と一致することを package distribution contract で固定した。
 - [x] cURL release archive でも root `bin/` / `lib/` / `scripts/` の実収録ファイルが manifest `compatibility_wrappers` と完全一致することを package distribution contract で固定した。これにより cURL archive 側へ root 実装が混入した場合も検出できる。
 - [x] cURL release archive に入る top-level launcher wrappers（`first_setup.sh`, `setup.sh`, `Shogunate-*`, `Shutsujin*`, `shutsujin_departure.sh`）も manifest `compatibility_wrappers` と一致することを package distribution contract で固定した。
+- [x] npm package / cURL release archive の top-level launcher wrapper contract を実収録ファイル一覧起点へ強化し、将来 `Shogunate-*` / `Shutsujin*` などの root launcher が増えた場合も manifest 未分類なら検出できるようにした。
 - [x] runtime npm package に入る root `instructions/` が、MOD source の互換コピーまたは generated freshness guard 対象のどちらかで説明されることを package distribution contract に追加した。これにより漏れていた `instructions/generated/cursor-*.md` を `shogunate_mod/instructions/ensure_generated.sh` の targets に追加した。
 - [x] cURL release archive に入る root `instructions/` も、MOD source の互換コピーまたは generated freshness guard 対象のどちらかで説明されることを package distribution contract に追加した。これにより npm package と cURL archive の両方で root prompt surface が MOD 正本由来であることを固定した。
 - [x] generated OpenCode agent definitions の `Source:` コメントが root `instructions/` ではなく `shogunate_mod/instructions/source/` を指すことを package distribution contract に追加し、root generated surface が MOD 正本由来であることを固定した。
@@ -1175,6 +1176,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding npm top-level launcher wrapper coverage.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding npm top-level launcher wrapper coverage.
 - PASS: `git diff --check` after adding npm top-level launcher wrapper coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_pack_top_level_launchers_match_manifest_wrappers tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_top_level_launchers_match_manifest_wrappers` after strengthening top-level launcher wrapper coverage to compare from actual npm/cURL archive contents.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 70 tests after strengthening top-level launcher wrapper coverage.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after strengthening launcher wrapper coverage.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after strengthening launcher wrapper coverage.
+- PASS: `git diff --check` after strengthening launcher wrapper coverage.
 
 ## 復旧
 

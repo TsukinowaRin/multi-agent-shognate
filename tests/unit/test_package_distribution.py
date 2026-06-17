@@ -258,6 +258,28 @@ def is_intentionally_release_archive_excluded_mod_path(rel_path: str) -> bool:
     return rel_path in excluded_exact or any(rel_path.startswith(prefix) for prefix in excluded_prefixes)
 
 
+def manifest_canonical_mod_source_files(manifest: str) -> list[str]:
+    files = []
+    for rel_path in manifest_mapping_values(manifest, "canonical_paths"):
+        normalized = rel_path.rstrip("/")
+        if not normalized.startswith("shogunate_mod/"):
+            continue
+        path = ROOT / normalized
+        if path.is_file():
+            files.append(normalized)
+            continue
+        if path.is_dir():
+            for child in sorted(path.rglob("*")):
+                if not child.is_file():
+                    continue
+                rel = str(child.relative_to(ROOT))
+                if allowed_ignored_mod_artifact(rel):
+                    continue
+                files.append(rel)
+
+    return sorted(set(files))
+
+
 def root_mod_delegate_candidates() -> list[str]:
     candidates = []
     root_launcher_files = [
@@ -1934,6 +1956,22 @@ class PackageDistributionContractTests(unittest.TestCase):
             ],
             sorted(intentionally_unpacked),
         )
+
+    def test_npm_pack_covers_runtime_mod_manifest_source_files(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = npm_pack_files()
+        missing = []
+        unexpected = []
+
+        for rel in manifest_canonical_mod_source_files(manifest):
+            intentionally_unpacked = is_intentionally_unpacked_mod_path(rel)
+            if intentionally_unpacked and rel in files:
+                unexpected.append(rel)
+            if not intentionally_unpacked and rel not in files:
+                missing.append(rel)
+
+        self.assertEqual([], missing)
+        self.assertEqual([], unexpected)
 
     def test_package_files_entries_materialize_in_npm_pack(self):
         root_package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))

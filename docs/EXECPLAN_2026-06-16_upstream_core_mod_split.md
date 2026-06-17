@@ -196,6 +196,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] USB 接続 Android 端末 `OnePlus9Pro` 上で `connectedDebugAndroidTest` を実行し、MOD 正本と同期された root Android app の connected debug test が通ることを確認した。
 - [x] package bootstrap に `SHOGUNATE_PACKAGE_URL` override を追加し、GitHub release channel と同じ archive extraction path をローカル `file://` archive で smoke できるようにした。通常の latest / `--version` cURL 導線は維持する。
 - [x] ローカル release archive から package install した `shogunate` command 経由で `shogunate clean --project <project> --no-attach -s` を実行し、package install 後の cwd-first runtime setup-only 起動が MOD runtime / project runtime copy 上で成立することを確認した。
+- [x] ローカル release archive から package install した `shogunate` command 経由で `shogunate pair --project <project>` を起動し、sandbox `authorized_keys` への公開鍵登録、Pair response の runtime/target project 情報、成功後の自動停止表示が成立することを確認した。
 
 ## 判断
 
@@ -1123,6 +1124,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `git diff --check` after adding the package URL override.
 - PASS: local release-channel smoke using `git archive --format=tar.gz --prefix=multi-agent-shognate/ HEAD` and `SHOGUNATE_PACKAGE_URL=file://... bash shogunate_mod/package/bootstrap.sh --version v0.0.0-local --prefix <sandbox-home>/.shogunate/shogunate --bin-dir <sandbox-home>/.local/bin --no-setup`; verified `shogunate help`, `shogunate where --project <project>`, engine/runtime `shogunate_mod/manifest.yaml`, and `queue/runtime/{target_project,engine_dir}`.
 - PASS: package-installed runtime smoke using a local release archive, isolated `HOME`, isolated `SHOGUNATE_WORKSPACE_HOME`, and unique `SHOGUNATE_SESSION_NAME`; `shogunate clean --project <project> --no-attach -s` created the project runtime tmux session through the installed command, wrote `queue/runtime/{target_project,engine_dir,session_name}`, created role panes for `shogun`, `gunkan`, `karo`, `gunshi`, and `ashigaru1`, and did not print the old `指示書再生成スクリプトが見つからない` warning.
+- PASS: package-installed Pair smoke using a local release archive, isolated `HOME`, sandbox `--authorized-keys`, fixed `--pair-password`, `--no-usb`, `--no-start-runtime`, and `--client-ssh-port 22222`; `shogunate pair --project <project>` served `/pair`, accepted an Android-style public key, wrote exactly the sandbox authorized key, returned `project` as the project runtime copy and `target_project` as the requested project, returned port `22222`, printed `Pairing complete.`, and stopped automatically after success.
 
 ## 復旧
 

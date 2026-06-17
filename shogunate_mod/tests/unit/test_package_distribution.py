@@ -966,6 +966,25 @@ class PackageDistributionContractTests(unittest.TestCase):
             sorted(rel for rel in manifest_mapping_values(manifest, "canonical_paths") if not rel.startswith("shogunate_mod/")),
         )
 
+    def test_manifest_nested_canonical_paths_are_limited_to_test_subsections(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        paths = manifest_mapping_values(manifest, "canonical_paths")
+        unexpected_nested = []
+
+        for rel in paths:
+            normalized = rel.rstrip("/")
+            for parent in paths:
+                parent_normalized = parent.rstrip("/")
+                if normalized == parent_normalized:
+                    continue
+                if not normalized.startswith(parent_normalized + "/"):
+                    continue
+                if normalized.startswith("shogunate_mod/tests/") and parent_normalized.startswith("shogunate_mod/tests"):
+                    continue
+                unexpected_nested.append(f"{rel} is nested under {parent}")
+
+        self.assertEqual([], sorted(unexpected_nested))
+
     def test_manifest_current_core_touchpoints_stay_on_root_surface(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
 

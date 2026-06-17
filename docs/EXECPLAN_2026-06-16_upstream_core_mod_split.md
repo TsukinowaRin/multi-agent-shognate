@@ -230,6 +230,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] tmux の session target が prefix match される問題を避けるため、runtime cleanup の `has-session` / `kill-session` を `=session-name` の exact target へ統一した。これにより legacy `shogun` cleanup が `shogunate-project-*` session を誤って kill する事故を防ぐ。
 - [x] ローカル release archive から package install した `shogunate` command 経由で、2つの別 project を同時に `shogunate clean --project <project> --no-attach -s` 起動し、project ごとに独立した tmux session / runtime copy / metadata が並列成立することを確認した。
 - [x] package prepublish の root/MOD sync gate は、親 directory sync が同じ subtree を覆う場合に nested sync を重複宣言しない contract で固定した。`tests/` tree は `tests -> shogunate_mod/tests` の1本へ集約した。
+- [x] manifest `canonical_paths` の親子重複は `shogunate_mod/tests/` 配下の named test subsection だけに限定する contract を追加した。これにより新しい MOD 正本 directory を親子で曖昧に重複宣言する事故を検出する。
 
 ## 判断
 
@@ -1294,6 +1295,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after collapsing redundant `tests/` prepublish sync gates.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after collapsing redundant `tests/` prepublish sync gates.
 - PASS: `git diff --check` after collapsing redundant `tests/` prepublish sync gates.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_nested_canonical_paths_are_limited_to_test_subsections tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_sections_do_not_repeat_entries tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_paths_use_normalized_relative_forms` after limiting nested manifest canonical paths to test subsections.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 93 tests after limiting nested manifest canonical paths to test subsections.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after limiting nested manifest canonical paths to test subsections.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after limiting nested manifest canonical paths to test subsections.
+- PASS: `git diff --check` after limiting nested manifest canonical paths to test subsections.
 
 ## 復旧
 

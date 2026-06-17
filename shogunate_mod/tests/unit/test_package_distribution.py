@@ -1275,6 +1275,31 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], sorted(stale_expectation))
         self.assertEqual([], sorted(missing_gate_tokens))
 
+    def test_non_synchronized_core_touchpoints_are_explicitly_classified(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        non_synchronized = {
+            item["path"]: item.get("next_step", "")
+            for item in manifest_core_touchpoints(manifest)
+            if "synchronized" not in item.get("next_step", "")
+        }
+        expected = {
+            "instructions/": "generated/compatibility outputs",
+            ".opencode/agents/": "generated outputs",
+            "AGENTS.md": "generated output",
+            "LICENSE": "root public metadata",
+            ".github/copilot-instructions.md": "generated output",
+            "agents/default/": "generated output",
+            "images/ and reports/": "out of release archives",
+        }
+        missing_marker = [
+            f"{path}: {marker}"
+            for path, marker in expected.items()
+            if marker not in non_synchronized.get(path, "")
+        ]
+
+        self.assertEqual(sorted(expected), sorted(non_synchronized))
+        self.assertEqual([], missing_marker)
+
     def test_prepublish_mod_sync_targets_are_packaged_unless_intentionally_excluded(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
         files = npm_pack_files()

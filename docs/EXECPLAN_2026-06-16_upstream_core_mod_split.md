@@ -141,6 +141,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] manifest `current_core_touchpoints` が MOD 正本ではなく root/core 互換面だけを指すことを package distribution contract で固定した。
 - [x] `shogunate_mod/README.md` が正本ファイルを持つ top-level MOD ディレクトリをすべて境界説明していることを package distribution contract で固定した。
 - [x] `shogunate_mod/README.md` の `Boundaries` で ownership を宣言した MOD path が manifest `canonical_paths` に覆われ、manifest の canonical directory も README boundary で説明されることを package distribution contract で固定した。
+- [x] manifest `current_core_touchpoints` のうち prepublish 同期対象ではない root 接点が、生成物・root public metadata・release archive 除外のいずれかとして明示分類されることを package distribution contract で固定した。
 - [x] package distribution contract test を `shogunate_mod/package/prepublish_check.sh` から実行し、manifest/package 境界の退行を release 前 gate で検出できるようにした。
 - [x] package distribution contract test が generated instruction freshness guard と dirty-worktree gate より前に実行されることを contract test で固定した。
 - [x] manifest の `current_core_touchpoints` が reason / next_step を持ち、`compatibility_wrappers` と重複しないことを package distribution contract で固定した。
@@ -1270,6 +1271,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 88 tests after requiring prepublish sync direction.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring prepublish sync direction.
 - PASS: `git diff --check` after requiring prepublish sync direction.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_non_synchronized_core_touchpoints_are_explicitly_classified` after requiring non-synchronized current core touchpoints to be classified as generated output, root public metadata, or release-archive excluded.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after requiring non-synchronized touchpoint classification.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 89 tests after requiring non-synchronized touchpoint classification.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after requiring non-synchronized touchpoint classification.
+- PASS: `git diff --check` after requiring non-synchronized touchpoint classification.
 
 ## 復旧
 

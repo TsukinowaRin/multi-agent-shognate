@@ -238,6 +238,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] root compatibility wrapper が参照する MOD delegate target は、manifest canonical path として分類され、cURL release archive にも実収録されることを contract で固定した。file canonical path が `file/extra` を誤って覆わないよう manifest coverage helper も厳密化した。
 - [x] npm package でも root compatibility wrapper が参照する MOD delegate target が実収録されることを contract で固定し、npm / cURL の両配布経路で wrapper だけが残る事故を検出できるようにした。
 - [x] npm package から意図的に外す MOD canonical paths は Android source と tests tree だけであることを contract で固定した。これにより新しい MOD 正本が npm package に入らない場合は明示分類が必要になる。
+- [x] cURL release archive から意図的に外す MOD canonical paths は Android source、tests tree、GitHub/development metadata、package lock/workflow/archive metadata だけであることを contract で固定した。
 
 ## 判断
 
@@ -1342,6 +1343,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after classifying intentionally unpacked npm MOD canonical paths.
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after classifying intentionally unpacked npm MOD canonical paths.
 - PASS: `git diff --check` after classifying intentionally unpacked npm MOD canonical paths.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_includes_runtime_mod_canonical_sources tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_actual_runtime_boundary` after classifying intentionally excluded cURL release archive MOD canonical paths.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 98 tests after classifying intentionally excluded cURL release archive MOD canonical paths.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after classifying intentionally excluded cURL release archive MOD canonical paths.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after classifying intentionally excluded cURL release archive MOD canonical paths.
+- PASS: `git diff --check` after classifying intentionally excluded cURL release archive MOD canonical paths.
 
 ## 復旧
 

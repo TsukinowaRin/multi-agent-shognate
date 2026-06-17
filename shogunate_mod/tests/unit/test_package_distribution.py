@@ -3137,11 +3137,13 @@ class PackageDistributionContractTests(unittest.TestCase):
     def test_release_archive_includes_runtime_mod_canonical_sources(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         canonical_files = []
+        canonical_paths = [
+            rel_path.rstrip("/")
+            for rel_path in manifest_mapping_values(manifest, "canonical_paths")
+            if rel_path.rstrip("/").startswith("shogunate_mod/")
+        ]
 
-        for rel_path in manifest_mapping_values(manifest, "canonical_paths"):
-            normalized = rel_path.rstrip("/")
-            if not normalized.startswith("shogunate_mod/"):
-                continue
+        for normalized in canonical_paths:
             path = ROOT / normalized
             if path.is_file():
                 canonical_files.append(normalized)
@@ -3169,6 +3171,9 @@ class PackageDistributionContractTests(unittest.TestCase):
         archive_files = release_archive_files()
         missing_archive_files = []
         unexpected_archive_files = []
+        intentionally_excluded_paths = [
+            path for path in canonical_paths if is_intentionally_release_archive_excluded_mod_path(path)
+        ]
         for line in attr_result.stdout.splitlines():
             path, _, value = line.rpartition(": export-ignore: ")
             intentionally_excluded = is_intentionally_release_archive_excluded_mod_path(path)
@@ -3185,6 +3190,29 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], sorted(set(missing_exclusion)))
         self.assertEqual([], sorted(set(missing_archive_files)))
         self.assertEqual([], sorted(set(unexpected_archive_files)))
+        self.assertEqual(
+            [
+                "shogunate_mod/development/gitmodules",
+                "shogunate_mod/github/FUNDING.yml",
+                "shogunate_mod/mobile/android",
+                "shogunate_mod/package/gitattributes",
+                "shogunate_mod/package/gitignore",
+                "shogunate_mod/package/package-lock.json",
+                "shogunate_mod/package/workflows/package-release.yml",
+                "shogunate_mod/package/workflows/test.yml",
+                "shogunate_mod/tests",
+                "shogunate_mod/tests/e2e",
+                "shogunate_mod/tests/e2e/fixtures",
+                "shogunate_mod/tests/e2e/helpers",
+                "shogunate_mod/tests/e2e/mock_behaviors",
+                "shogunate_mod/tests/e2e/mock_cli.sh",
+                "shogunate_mod/tests/fixtures",
+                "shogunate_mod/tests/helpers",
+                "shogunate_mod/tests/specs",
+                "shogunate_mod/tests/unit",
+            ],
+            sorted(set(intentionally_excluded_paths)),
+        )
 
     def test_android_source_has_mod_canonical_copy(self):
         root_android = ROOT / "android"

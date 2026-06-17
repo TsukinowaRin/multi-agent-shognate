@@ -391,6 +391,33 @@ def expected_root_dot_compatibility_surface_files() -> list[str]:
     )
 
 
+def top_level_runtime_file_surface(files: set[str]) -> list[str]:
+    return sorted(rel for rel in files if "/" not in rel and (ROOT / rel).is_file())
+
+
+def expected_top_level_runtime_file_surface(manifest: str) -> list[str]:
+    public_files = {
+        ".gitleaks.toml",
+        "AGENTS.md",
+        "CHANGELOG.md",
+        "CLAUDE.md",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "Makefile",
+        "README.md",
+        "README_ja.md",
+        "SECURITY.md",
+        "package.json",
+        "requirements.txt",
+    }
+    wrapper_files = {
+        rel
+        for rel in manifest_list_values(manifest, "compatibility_wrappers")
+        if is_top_level_launcher_wrapper(rel)
+    }
+    return sorted(public_files | wrapper_files)
+
+
 def is_top_level_launcher_wrapper(rel_path: str) -> bool:
     return "/" not in rel_path and (
         rel_path in {"first_setup.sh", "setup.sh", "shutsujin_departure.sh"}
@@ -1483,6 +1510,15 @@ class PackageDistributionContractTests(unittest.TestCase):
         )
 
         self.assertEqual(top_level_wrappers, packaged_top_level_wrappers)
+
+    def test_npm_pack_top_level_file_surface_is_explicit(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = npm_pack_files()
+
+        self.assertEqual(
+            expected_top_level_runtime_file_surface(manifest),
+            top_level_runtime_file_surface(files),
+        )
 
     def test_npm_pack_root_config_surface_is_only_public_auth_sample(self):
         files = npm_pack_files()
@@ -2584,6 +2620,15 @@ class PackageDistributionContractTests(unittest.TestCase):
         )
 
         self.assertEqual(top_level_wrappers, archived_top_level_wrappers)
+
+    def test_release_archive_top_level_file_surface_is_explicit(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = release_archive_files()
+
+        self.assertEqual(
+            expected_top_level_runtime_file_surface(manifest),
+            top_level_runtime_file_surface(files),
+        )
 
     def test_release_archive_root_config_surface_is_runtime_defaults_only(self):
         files = release_archive_files()

@@ -276,6 +276,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] root に残る Shogunate-specific text surface が manifest で分類されるだけでなく、compatibility wrapper / generated target / prepublish sync / instruction source sync のいずれかの gate で守られることを package distribution contract で固定した。
 - [x] root Shogunate-specific text surface の検出対象に公開/設計 docs を追加し、内部作業 docs を除外したうえで `docs/philosophy.md` / `docs/codd/` も MOD 正本同期 gate で守られることを package distribution contract で固定した。
 - [x] 現HEADの一時 source checkout worktree で `shutsujin_departure.sh -s -c` を再スモークし、MOD runtime loader 経由の setup-only 起動、5 role pane、queue/runtime、dashboard、tmux project/runtime metadata が成立することを確認した。
+- [x] manifest `current_core_touchpoints.next_step` が、同期 / 生成物 / root public metadata / archive 除外 / local runtime state のような操作可能な分類に落ちることを contract で固定した。曖昧な `where possible` 型の移行メモへ戻る場合は package distribution contract が検出する。
 
 ## 判断
 
@@ -1441,6 +1442,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_e2e_support_files_have_mod_canonical_copy tests.unit.test_shogunate_pair_server tests.unit.test_runtime_blocker_notice tests.unit.test_update_manager` after adding MOD behavior unit tests to package prepublish.
 - PASS: tracked source syntax checks (`bash -n` for `*.sh` / `*.command`, `compile(..., "exec")` for `*.py` without bytecode generation, `node --check` for `*.js`) and `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_e2e_support_files_have_mod_canonical_copy` after adding syntax checks to package prepublish.
 - PASS: `make package-check` ran source syntax checks, 120 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and the dirty-worktree gate after adding the syntax checks to package prepublish.
+- PASS: `python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_core_touchpoint_next_steps_use_operational_classes tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_core_touchpoints_are_actionable_and_not_wrappers tests.unit.test_package_distribution.PackageDistributionContractTests.test_synchronized_core_touchpoints_have_prepublish_gates tests.unit.test_package_distribution.PackageDistributionContractTests.test_non_synchronized_core_touchpoints_are_explicitly_classified` after requiring manifest core touchpoint `next_step` values to use operational classes.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 121 package distribution contract tests after adding the manifest `next_step` operational-class contract.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding the manifest `next_step` operational-class contract.
+- PASS: `git diff --check` after adding the manifest `next_step` operational-class contract.
+- PASS: `make package-check` ran source syntax checks, 121 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and the clean-worktree dirty gate after adding the manifest `next_step` operational-class contract.
 
 ## 復旧
 

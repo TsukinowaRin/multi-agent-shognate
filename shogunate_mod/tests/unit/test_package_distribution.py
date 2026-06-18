@@ -1144,6 +1144,33 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], missing_metadata)
         self.assertEqual([], sorted(set(wrapper_overlap)))
 
+    def test_manifest_core_touchpoint_next_steps_use_operational_classes(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        allowed_markers = (
+            "synchronized",
+            "generated output",
+            "generated outputs",
+            "generated/compatibility outputs",
+            "root public metadata",
+            "out of release archives",
+            "local/runtime",
+        )
+        vague_markers = ("where possible", "maybe", "eventually", "later", "todo", "tbd")
+        unclassified = []
+        vague = []
+
+        for item in manifest_core_touchpoints(manifest):
+            path = item.get("path", "")
+            next_step = item.get("next_step", "")
+            next_step_lower = next_step.lower()
+            if not any(marker in next_step for marker in allowed_markers):
+                unclassified.append(f"{path}: {next_step}")
+            if any(marker in next_step_lower for marker in vague_markers):
+                vague.append(f"{path}: {next_step}")
+
+        self.assertEqual([], unclassified)
+        self.assertEqual([], vague)
+
     def test_manifest_covers_all_mod_source_files(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         canonical_paths = manifest_mapping_values(manifest, "canonical_paths")

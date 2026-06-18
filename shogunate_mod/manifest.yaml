@@ -217,7 +217,7 @@ compatibility_wrappers:
 current_core_touchpoints:
   - path: instructions/
     reason: "Generated prompt outputs and root compatibility copies remain at historical paths consumed by CLI adapters and docs."
-    next_step: "Keep Shogunate prompt source ownership in shogunate_mod/instructions/source and reduce root instructions to generated/compatibility outputs where possible."
+    next_step: "Keep Shogunate prompt source ownership in shogunate_mod/instructions/source and keep root instructions limited to generated/compatibility outputs."
   - path: .opencode/agents/
     reason: "OpenCode agent definitions are generated root files consumed directly by OpenCode."
     next_step: "Keep generated outputs at the OpenCode-required root path while retaining source templates, generation rules, and freshness checks in shogunate_mod/instructions."

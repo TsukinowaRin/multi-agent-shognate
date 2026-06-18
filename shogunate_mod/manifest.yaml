@@ -103,6 +103,7 @@ canonical_paths:
   runtime_shogun_to_karo_bridge_daemon: shogunate_mod/runtime/shogun_to_karo_bridge_daemon.sh
   runtime_shutsujin_launcher: shogunate_mod/runtime/shutsujin_launcher.sh
   runtime_setup_compat: shogunate_mod/runtime/setup_compat.sh
+  runtime_source_smoke: shogunate_mod/runtime/source_smoke.sh
   runtime_startup: shogunate_mod/runtime/startup.sh
   runtime_state: shogunate_mod/runtime/state.sh
   runtime_summary: shogunate_mod/runtime/summary.sh

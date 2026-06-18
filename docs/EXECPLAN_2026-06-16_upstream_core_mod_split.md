@@ -264,6 +264,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] MOD-owned development command surface に `make package-check` を追加し、package prepublish gate を root/MOD 同期済み Makefile から再実行できるようにした。
 - [x] MOD-owned development command surface に `make mod-check` を追加し、package prepublish gate / detached source runtime smoke / Android Gradle check を一括で再実行できるようにした。
 - [x] MOD-owned development command surface に `make android-check` を追加し、root Android Gradle working tree から `testDebugUnitTest assembleDebug` を再実行できるようにした。
+- [x] GitHub Actions `mod-check` job で `upstream/main` を fetch し、上流 ancestry / upstream-modified root surface contract が CI でも skip されず実行されるようにした。
 - [x] Pair server unit test の import 対象を root wrapper から `shogunate_mod/pair/server.py` へ切り替え、Android Pair の主要挙動を MOD 正本で直接検証するようにした。
 - [x] runtime / Pair / update unit tests が root wrapper ではなく MOD 正本を import することを package distribution contract で固定した。
 - [x] package prepublish gate に MOD behavior unit tests（Pair server / runtime blocker notice / update manager）を追加し、package surface だけでなく主要 MOD 正本の挙動も release 前に検証するようにした。
@@ -1467,6 +1468,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrapper_targets_have_readme_boundaries tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrapper_targets_are_canonical_paths tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrappers_have_explicit_delegate_targets tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_readme_boundary_paths_are_manifest_canonical` after requiring wrapper delegate targets to have MOD README boundary ownership.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding wrapper delegate ownership coverage.
 - PASS: `git diff --check` after adding wrapper delegate ownership coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_workflow_has_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_development_branch_keeps_upstream_main_as_ancestor tests.unit.test_package_distribution.PackageDistributionContractTests.test_upstream_modified_root_code_like_files_are_classified_by_manifest` after adding upstream fetch to the CI `mod-check` job.
+- PASS: YAML parse for `.github/workflows/test.yml` and `shogunate_mod/package/workflows/test.yml` after adding upstream fetch to the CI `mod-check` job.
+- PASS: direct `diff -q .github/workflows/test.yml shogunate_mod/package/workflows/test.yml` and `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding upstream fetch to the CI `mod-check` job.
+- PASS: `git diff --check` after adding upstream fetch to the CI `mod-check` job.
 
 ## 復旧
 

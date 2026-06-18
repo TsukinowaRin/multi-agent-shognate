@@ -3408,6 +3408,10 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("MOD Package, Runtime, and Android Check", mod_workflow)
         self.assertIn("actions/setup-java@v4", mod_workflow)
         self.assertIn("sudo apt-get install -y tmux python3-venv ripgrep", mod_workflow)
+        self.assertIn("Fetch upstream main", mod_workflow)
+        self.assertIn("git remote add upstream https://github.com/yohey-w/multi-agent-shogun.git", mod_workflow)
+        self.assertIn("git fetch --no-tags upstream main:refs/remotes/upstream/main", mod_workflow)
+        self.assertLess(mod_workflow.index("Fetch upstream main"), mod_workflow.index("Run MOD verification"))
         self.assertIn("SHOGUNATE_SOURCE_SMOKE_RUN_ID: source-runtime-smoke-ci-", mod_workflow)
         self.assertIn("make mod-check", mod_workflow)
 

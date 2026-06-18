@@ -1267,6 +1267,26 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], sorted(missing))
 
+    def test_packaged_mod_directories_have_readme_boundaries(self):
+        readme = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")
+        boundary_dirs = {path.split("/", 1)[0] for path in mod_readme_boundary_paths(readme)}
+        missing = {}
+
+        for package_name, files in (
+            ("npm", npm_pack_files()),
+            ("release_archive", release_archive_files()),
+        ):
+            packaged_dirs = {
+                rel.removeprefix("shogunate_mod/").split("/", 1)[0]
+                for rel in files
+                if rel.startswith("shogunate_mod/") and "/" in rel.removeprefix("shogunate_mod/")
+            }
+            undocumented = sorted(packaged_dirs - boundary_dirs)
+            if undocumented:
+                missing[package_name] = undocumented
+
+        self.assertEqual({}, missing)
+
     def test_manifest_compatibility_wrappers_are_mod_delegates_and_packaged(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = npm_pack_files()

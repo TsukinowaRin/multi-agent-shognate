@@ -264,6 +264,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] npm package と cURL release archive の `shogunate_mod/` file surface の差分が、npm だけに残す GitHub/development/package metadata 7 files だけであることを package distribution contract で固定した。これにより両配布経路の MOD file 差分が意図なく広がる事故を検出できる。
 - [x] npm package と cURL release archive の root compatibility surface の差分が、cURL だけに残す runtime default config / public philosophy doc 3 files だけであることを package distribution contract で固定した。これにより root 側互換面の配布差分が意図なく広がる事故を検出できる。
 - [x] root に残る Shogunate-specific text surface が manifest で分類されるだけでなく、compatibility wrapper / generated target / prepublish sync / instruction source sync のいずれかの gate で守られることを package distribution contract で固定した。
+- [x] root Shogunate-specific text surface の検出対象に公開/設計 docs を追加し、内部作業 docs を除外したうえで `docs/philosophy.md` / `docs/codd/` も MOD 正本同期 gate で守られることを package distribution contract で固定した。
 
 ## 判断
 
@@ -1410,6 +1411,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash shogunate_mod/package/prepublish_check.sh` ran 118 package distribution contract tests, confirmed generated instruction files are up to date, and passed after requiring the npm/cURL root compatibility surface difference to stay explicit.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_root_shogunate_text_surfaces_have_sync_or_generation_gate tests.unit.test_package_distribution.PackageDistributionContractTests.test_root_shogunate_surfaces_are_classified_by_manifest tests.unit.test_package_distribution.PackageDistributionContractTests.test_instruction_sources_have_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_support_files_have_mod_canonical_copy` after requiring root Shogunate text surfaces to have a wrapper, generated, prepublish sync, or instruction source sync gate.
 - PASS: `bash shogunate_mod/package/prepublish_check.sh` ran 119 package distribution contract tests, confirmed generated instruction files are up to date, and passed after requiring root Shogunate text surfaces to have a wrapper, generated, prepublish sync, or instruction source sync gate.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_root_shogunate_text_surfaces_have_sync_or_generation_gate tests.unit.test_package_distribution.PackageDistributionContractTests.test_root_shogunate_surfaces_are_classified_by_manifest tests.unit.test_package_distribution.PackageDistributionContractTests.test_codd_docs_have_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_support_files_have_mod_canonical_copy` after adding public/design docs to the root Shogunate text surface scan.
 
 ## 復旧
 

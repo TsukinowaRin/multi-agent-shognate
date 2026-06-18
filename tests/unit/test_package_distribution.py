@@ -369,6 +369,7 @@ def root_shogunate_surface_candidates() -> list[str]:
         "bin",
         "config",
         "context",
+        "docs",
         "instructions",
         "lib",
         "memory",
@@ -402,6 +403,12 @@ def root_shogunate_surface_candidates() -> list[str]:
     for rel in sorted(path for path in result.stdout.split("\0") if path):
         parts = rel.split("/")
         if len(parts) > 1 and parts[0] not in surface_dirs:
+            continue
+        if (
+            rel.startswith("docs/EXECPLAN_")
+            or rel.startswith("docs/HANDOFF_")
+            or rel in {"docs/INDEX.md", "docs/REQS.md", "docs/WORKLOG.md"}
+        ):
             continue
         if "__pycache__" in parts:
             continue

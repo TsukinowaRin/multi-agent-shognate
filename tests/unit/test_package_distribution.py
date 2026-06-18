@@ -3172,8 +3172,16 @@ class PackageDistributionContractTests(unittest.TestCase):
             "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution",
             prepublish,
         )
+        self.assertIn("printf '[INFO] MOD behavior unit tests\\n'", prepublish)
+        self.assertIn("tests.unit.test_shogunate_pair_server", prepublish)
+        self.assertIn("tests.unit.test_runtime_blocker_notice", prepublish)
+        self.assertIn("tests.unit.test_update_manager", prepublish)
         self.assertLess(
             prepublish.index("PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution"),
+            prepublish.index("printf '[INFO] MOD behavior unit tests\\n'"),
+        )
+        self.assertLess(
+            prepublish.index("printf '[INFO] MOD behavior unit tests\\n'"),
             prepublish.index("bash shogunate_mod/instructions/ensure_generated.sh"),
         )
         self.assertLess(

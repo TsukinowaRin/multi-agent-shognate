@@ -1482,6 +1482,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 126 package distribution contract tests after tying prepublish behavior units to direct MOD canonical imports.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after tightening the MOD behavior unit import contract.
 - PASS: `git diff --check` after tightening the MOD behavior unit import contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrappers_have_single_delegate_target` after requiring each compatibility wrapper to delegate to exactly one MOD target.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 127 package distribution contract tests after adding the single-delegate wrapper contract.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the single-delegate wrapper contract.
+- PASS: `git diff --check` after adding the single-delegate wrapper contract.
 
 ## 復旧
 

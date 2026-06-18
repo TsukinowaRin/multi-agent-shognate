@@ -1472,6 +1472,19 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], missing_targets)
 
+    def test_manifest_compatibility_wrappers_have_single_delegate_target(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        multi_target_wrappers = []
+
+        for rel in manifest_list_values(manifest, "compatibility_wrappers"):
+            path = ROOT / rel.rstrip("/")
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            delegate_paths = wrapper_mod_delegate_paths(text)
+            if len(delegate_paths) != 1:
+                multi_target_wrappers.append(f"{rel}: {delegate_paths}")
+
+        self.assertEqual([], multi_target_wrappers)
+
     def test_manifest_compatibility_wrapper_targets_are_canonical_paths(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         canonical_paths = manifest_mapping_values(manifest, "canonical_paths")

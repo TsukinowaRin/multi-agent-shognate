@@ -262,6 +262,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] `shogunate_mod/README.md` の Boundaries に書いた MOD path が npm package / cURL release archive に実収録されるか、意図的除外として分類されることを package distribution contract で固定した。これにより README の ownership 説明と配布境界のズレを検出できる。
 - [x] npm package と cURL release archive の `shogunate_mod/` top-level directory surface の差分が、npm だけに残す GitHub metadata 用 `github/` だけであることを package distribution contract で固定した。これにより両配布経路の MOD directory 差分が意図なく広がる事故を検出できる。
 - [x] npm package と cURL release archive の `shogunate_mod/` file surface の差分が、npm だけに残す GitHub/development/package metadata 7 files だけであることを package distribution contract で固定した。これにより両配布経路の MOD file 差分が意図なく広がる事故を検出できる。
+- [x] npm package と cURL release archive の root compatibility surface の差分が、cURL だけに残す runtime default config / public philosophy doc 3 files だけであることを package distribution contract で固定した。これにより root 側互換面の配布差分が意図なく広がる事故を検出できる。
 
 ## 判断
 
@@ -1404,6 +1405,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_and_release_mod_directory_surface_diff_is_explicit tests.unit.test_package_distribution.PackageDistributionContractTests.test_packaged_mod_directories_have_readme_boundaries tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_readme_boundaries_are_packaged_or_intentionally_excluded tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_support_files_have_mod_canonical_copy` after requiring the npm/cURL MOD directory surface difference to stay explicit.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_and_release_mod_file_surface_diff_is_explicit tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_and_release_mod_directory_surface_diff_is_explicit tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_readme_boundaries_are_packaged_or_intentionally_excluded tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_support_files_have_mod_canonical_copy` after requiring the npm/cURL MOD file surface difference to stay explicit.
 - PASS: `bash shogunate_mod/package/prepublish_check.sh` ran 116 package distribution contract tests, confirmed generated instruction files are up to date, and passed after requiring the npm/cURL MOD file surface difference to stay explicit.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_and_release_root_directory_surface_matches tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_and_release_root_file_surface_diff_is_explicit tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_support_files_have_mod_canonical_copy` after requiring the npm/cURL root compatibility surface difference to stay explicit.
 
 ## 復旧
 

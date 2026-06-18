@@ -1346,6 +1346,35 @@ class PackageDistributionContractTests(unittest.TestCase):
         )
         self.assertEqual([], sorted(release_files - npm_files))
 
+    def test_npm_and_release_root_directory_surface_matches(self):
+        npm_dirs = set(root_runtime_directory_surface(npm_pack_files()))
+        release_dirs = set(root_runtime_directory_surface(release_archive_files()))
+
+        self.assertEqual([], sorted(npm_dirs - release_dirs))
+        self.assertEqual([], sorted(release_dirs - npm_dirs))
+
+    def test_npm_and_release_root_file_surface_diff_is_explicit(self):
+        npm_files = {
+            rel
+            for rel in npm_pack_files()
+            if not rel.startswith("shogunate_mod/") and (ROOT / rel).is_file()
+        }
+        release_files = {
+            rel
+            for rel in release_archive_files()
+            if not rel.startswith("shogunate_mod/") and (ROOT / rel).is_file()
+        }
+
+        self.assertEqual([], sorted(npm_files - release_files))
+        self.assertEqual(
+            [
+                "config/opencode-permissions.yaml",
+                "config/opencode-tui.json",
+                "docs/philosophy.md",
+            ],
+            sorted(release_files - npm_files),
+        )
+
     def test_manifest_compatibility_wrappers_are_mod_delegates_and_packaged(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = npm_pack_files()

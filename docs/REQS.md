@@ -481,6 +481,7 @@
 7. package release workflow の tar.gz / zip は、package distribution test と同じ `git archive --worktree-attributes` 境界で作成する。
 8. package distribution contract は release tar archive と zip archive の実ファイル一覧が一致することを検査する。
 9. package release workflow のバージョン付き package asset は、通常名 package asset から `cp` で作成し、同一内容として公開する。
+10. GitHub Release notes には固定 release 用 cURL と latest channel 用 cURL を明示し、固定 release 用 cURL は tag と `--version` の両方に同じ `${TAG}` を使う。
 
 ## 追補（2026-06-11: README package install 導線）
 

@@ -763,6 +763,10 @@ class PackageDistributionContractTests(unittest.TestCase):
     def test_representative_compatibility_wrappers_execute_mod_sources(self):
         cases = [
             (
+                ["node", "bin/shogunate.js", "--help"],
+                "The npm package is a thin wrapper.",
+            ),
+            (
                 ["python3", "scripts/shogunate_pair_server.py", "--help"],
                 "Run the Shogunate Android pairing server.",
             ),
@@ -803,6 +807,10 @@ class PackageDistributionContractTests(unittest.TestCase):
                 f"STDERR:\n{result.stderr.decode('utf-8', errors='replace')}"
             )
         cases = [
+            (
+                ["node", "bin/shogunate.js", "--help"],
+                "The npm package is a thin wrapper.",
+            ),
             (
                 ["python3", "scripts/shogunate_pair_server.py", "--help"],
                 "Run the Shogunate Android pairing server.",
@@ -846,6 +854,10 @@ class PackageDistributionContractTests(unittest.TestCase):
 
     def test_npm_package_representative_wrappers_execute_mod_sources(self):
         cases = [
+            (
+                ["node", "bin/shogunate.js", "--help"],
+                "The npm package is a thin wrapper.",
+            ),
             (
                 ["python3", "scripts/shogunate_pair_server.py", "--help"],
                 "Run the Shogunate Android pairing server.",

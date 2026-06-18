@@ -1287,6 +1287,25 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual({}, missing)
 
+    def test_mod_readme_boundaries_are_packaged_or_intentionally_excluded(self):
+        readme = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")
+        boundary_paths = [f"shogunate_mod/{path}".rstrip("/") for path in mod_readme_boundary_paths(readme)]
+        missing = {}
+
+        for package_name, files, is_intentionally_excluded in (
+            ("npm", npm_pack_files(), is_intentionally_unpacked_mod_path),
+            ("release_archive", release_archive_files(), is_intentionally_release_archive_excluded_mod_path),
+        ):
+            unclassified = []
+            for rel in boundary_paths:
+                packaged = any(path == rel or path.startswith(rel + "/") for path in files)
+                if not packaged and not is_intentionally_excluded(rel):
+                    unclassified.append(rel)
+            if unclassified:
+                missing[package_name] = sorted(unclassified)
+
+        self.assertEqual({}, missing)
+
     def test_manifest_compatibility_wrappers_are_mod_delegates_and_packaged(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = npm_pack_files()

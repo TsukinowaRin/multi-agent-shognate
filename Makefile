@@ -1,4 +1,4 @@
-.PHONY: test build lint check mod-check package-check source-smoke android-check help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
+.PHONY: test build lint check mod-check package-check package-curl-smoke source-smoke android-check help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
 
 # Default target
 help:
@@ -10,8 +10,9 @@ help:
 	@echo "  make build         - Run build_instructions.sh"
 	@echo "  make lint          - Run shellcheck on lib/ and scripts/"
 	@echo "  make check         - Run build + diff check (CI equivalent)"
-	@echo "  make mod-check     - Run package checks + source smoke + Android check"
+	@echo "  make mod-check     - Run package checks + cURL smoke + source smoke + Android check"
 	@echo "  make package-check - Run package prepublish checks"
+	@echo "  make package-curl-smoke - Install release package through cURL in a temp HOME"
 	@echo "  make source-smoke  - Run detached source checkout runtime smoke"
 	@echo "  make android-check - Run Android unit tests + debug build"
 	@echo "  make codd          - Run CoDD validate"
@@ -96,7 +97,35 @@ check: build
 		echo "Skipping diff check (Phase 2 feature)"; \
 	fi
 
-mod-check: package-check source-smoke android-check
+mod-check: package-check package-curl-smoke source-smoke android-check
+
+package-curl-smoke:
+	bash -euo pipefail -c '\
+		root="$$(pwd -P)"; \
+		run_id="$${SHOGUNATE_PACKAGE_CURL_SMOKE_RUN_ID:-package-curl-smoke-$$(date +%Y%m%d%H%M%S)}"; \
+		work="$$root/runtime_sandboxes/$$run_id"; \
+		home="$$work/home"; \
+		prefix="$$home/.shogunate/shogunate"; \
+		bin="$$home/.local/bin"; \
+		project="$$work/project"; \
+		tmp="$$work/tmp"; \
+		package="$$work/multi-agent-shognate-package.tar.gz"; \
+		mkdir -p "$$home" "$$bin" "$$project" "$$tmp"; \
+		trap '\''rm -rf "$$work"'\'' EXIT; \
+		git archive --worktree-attributes --format=tar.gz --prefix=multi-agent-shognate/ HEAD -o "$$package"; \
+		SHOGUNATE_PACKAGE_URL="file://$$package" HOME="$$home" TMPDIR="$$tmp" \
+			curl -fsSL "file://$$root/shogunate_mod/package/bootstrap.sh" \
+			| SHOGUNATE_PACKAGE_URL="file://$$package" HOME="$$home" TMPDIR="$$tmp" \
+				bash -s -- --prefix "$$prefix" --bin-dir "$$bin" --no-setup; \
+		test -x "$$bin/shogunate"; \
+		test -f "$$prefix/shogunate_mod/manifest.yaml"; \
+		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" help >/dev/null; \
+		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" where > "$$work/where.txt"; \
+		grep -F "Project:  $$(cd "$$project" && pwd -P)" "$$work/where.txt" >/dev/null; \
+		test -f "$$home/.shogunate/workspaces/"*/queue/runtime/target_project; \
+		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" pair --help >/dev/null; \
+		echo "[PASS] package cURL smoke passed"; \
+	'
 
 source-smoke:
 	bash shogunate_mod/runtime/source_smoke.sh

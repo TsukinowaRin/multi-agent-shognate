@@ -1,4 +1,4 @@
-.PHONY: test build lint check mod-check package-check source-smoke help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
+.PHONY: test build lint check mod-check package-check source-smoke android-check help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
 
 # Default target
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  make mod-check     - Run package checks + source runtime smoke"
 	@echo "  make package-check - Run package prepublish checks"
 	@echo "  make source-smoke  - Run detached source checkout runtime smoke"
+	@echo "  make android-check - Run Android unit tests + debug build"
 	@echo "  make codd          - Run CoDD validate"
 	@echo "  make codd-gunkan   - Run Gunkan CoDD audit wrapper"
 	@echo "  make install-deps  - Install test dependencies (bats, helpers)"
@@ -99,6 +100,9 @@ mod-check: package-check source-smoke
 
 source-smoke:
 	bash shogunate_mod/runtime/source_smoke.sh
+
+android-check:
+	cd android && ./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process -Pkotlin.compiler.execution.strategy=in-process testDebugUnitTest assembleDebug
 
 package-check:
 	bash shogunate_mod/package/prepublish_check.sh

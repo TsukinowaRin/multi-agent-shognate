@@ -2668,6 +2668,9 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("bash shogunate_mod/package/prepublish_check.sh", text)
         self.assertIn("source-smoke", text)
         self.assertIn("bash shogunate_mod/runtime/source_smoke.sh", text)
+        self.assertIn("android-check", text)
+        self.assertIn("cd android && ./gradlew --no-daemon", text)
+        self.assertIn("testDebugUnitTest assembleDebug", text)
         self.assertIn("test-int", text)
         self.assertIn(
             "require_same_file Makefile shogunate_mod/development/Makefile",

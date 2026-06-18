@@ -3124,6 +3124,17 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertIn("require_directory_files_synced tests shogunate_mod/tests", prepublish)
 
+    def test_unit_tests_import_mod_canonical_runtime_sources(self):
+        expected_imports = {
+            "test_shogunate_pair_server.py": 'ROOT / "shogunate_mod" / "pair" / "server.py"',
+            "test_runtime_blocker_notice.py": 'ROOT / "shogunate_mod" / "runtime" / "blocker_notice.py"',
+            "test_update_manager.py": 'ROOT / "shogunate_mod" / "update" / "manager.py"',
+        }
+        for filename, expected in expected_imports.items():
+            text = (ROOT / "tests" / "unit" / filename).read_text(encoding="utf-8")
+            self.assertIn(expected, text, f"{filename} should import the MOD canonical source")
+            self.assertNotIn('ROOT / "scripts"', text, f"{filename} should not import root scripts wrappers")
+
     def test_e2e_support_files_have_mod_canonical_copy(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
 

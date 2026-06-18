@@ -260,6 +260,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] npm package に入る root code-like file も manifest `current_core_touchpoints` または `compatibility_wrappers` で説明できることを package distribution contract で固定した。これにより npm package へ未分類の root code surface が混入した場合も検出できる。
 - [x] source checkout runtime smoke を `shogunate_mod/runtime/source_smoke.sh` へ MOD 正本として追加し、detached worktree で root entrypoint から MOD runtime loader まで通るかを再現可能にした。
 - [x] MOD-owned development command surface に `make source-smoke` を追加し、source checkout runtime smoke を root/MOD 同期済み Makefile から再実行できるようにした。
+- [x] MOD-owned development command surface に `make package-check` を追加し、package prepublish gate を root/MOD 同期済み Makefile から再実行できるようにした。
 - [x] npm package / cURL release archive に入る `shogunate_mod/` top-level directory が `shogunate_mod/README.md` の Boundaries で説明されることを package distribution contract で固定した。これにより配布物へ新しい MOD directory を入れるとき、ownership 説明漏れを検出できる。
 - [x] `shogunate_mod/README.md` の Boundaries に書いた MOD path が npm package / cURL release archive に実収録されるか、意図的除外として分類されることを package distribution contract で固定した。これにより README の ownership 説明と配布境界のズレを検出できる。
 - [x] npm package と cURL release archive の `shogunate_mod/` top-level directory surface の差分が、npm だけに残す GitHub metadata 用 `github/` だけであることを package distribution contract で固定した。これにより両配布経路の MOD directory 差分が意図なく広がる事故を検出できる。
@@ -1421,6 +1422,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `SHOGUNATE_SOURCE_SMOKE_RUN_ID=source-runtime-smoke-script-20260618192701 bash shogunate_mod/runtime/source_smoke.sh`; verified detached source checkout setup-only runtime, exact tmux/project metadata, 5 role panes, `agent_cli.tsv`, dashboard, Gunkan inbox/report files, and smoke-owned cleanup.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_makefile_has_mod_canonical_copy` after adding `make source-smoke` to the MOD-owned development Makefile and synchronized root Makefile.
 - PASS: `SHOGUNATE_SOURCE_SMOKE_RUN_ID=source-runtime-smoke-make-20260618193849 make source-smoke`; verified the Makefile target invokes the MOD-owned source runtime smoke and performs smoke-owned cleanup after detached runtime verification.
+- PASS: `make -n package-check` and `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_makefile_has_mod_canonical_copy` after adding `make package-check` to the MOD-owned development Makefile and synchronized root Makefile.
 
 ## 復旧
 

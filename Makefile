@@ -1,4 +1,4 @@
-.PHONY: test build lint check source-smoke help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
+.PHONY: test build lint check package-check source-smoke help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
 
 # Default target
 help:
@@ -10,6 +10,7 @@ help:
 	@echo "  make build         - Run build_instructions.sh"
 	@echo "  make lint          - Run shellcheck on lib/ and scripts/"
 	@echo "  make check         - Run build + diff check (CI equivalent)"
+	@echo "  make package-check - Run package prepublish checks"
 	@echo "  make source-smoke  - Run detached source checkout runtime smoke"
 	@echo "  make codd          - Run CoDD validate"
 	@echo "  make codd-gunkan   - Run Gunkan CoDD audit wrapper"
@@ -95,6 +96,9 @@ check: build
 
 source-smoke:
 	bash shogunate_mod/runtime/source_smoke.sh
+
+package-check:
+	bash shogunate_mod/package/prepublish_check.sh
 
 codd:
 	bash scripts/codd_check.sh validate

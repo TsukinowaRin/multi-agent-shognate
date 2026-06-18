@@ -234,6 +234,18 @@ def mod_readme_boundary_paths(text: str) -> list[str]:
     return sorted(paths)
 
 
+def markdown_list_section_values(text: str, heading: str) -> list[str]:
+    lines = text.splitlines()
+    start = lines.index(f"## {heading}") + 1
+    values = []
+    for line in lines[start:]:
+        if line.startswith("## "):
+            break
+        if line.startswith("- "):
+            values.append(line[2:].strip())
+    return values
+
+
 def is_intentionally_unpacked_mod_path(rel_path: str) -> bool:
     excluded_prefixes = (
         "shogunate_mod/mobile/android/",
@@ -1188,8 +1200,10 @@ class PackageDistributionContractTests(unittest.TestCase):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         readme = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")
 
-        for direction in manifest_list_values(manifest, "target_direction"):
-            self.assertIn(f"- {direction}", readme)
+        self.assertEqual(
+            manifest_list_values(manifest, "target_direction"),
+            markdown_list_section_values(readme, "Direction"),
+        )
 
     def test_manifest_covers_all_mod_source_files(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")

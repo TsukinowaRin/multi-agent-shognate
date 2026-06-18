@@ -1,10 +1,12 @@
 import ast
+import io
 import json
 import fnmatch
 import os
 import re
 import subprocess
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -138,6 +140,23 @@ def release_archive_files() -> set[str]:
     if result.returncode != 0:
         raise AssertionError(f"git archive listing failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
     return {line.rstrip("/") for line in result.stdout.splitlines() if line.strip()}
+
+
+def release_zip_archive_files() -> set[str]:
+    result = subprocess.run(
+        ["git", "archive", "--worktree-attributes", "--format=zip", "HEAD"],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise AssertionError(
+            "git zip archive listing failed:\n"
+            f"STDOUT:\n{result.stdout.decode('utf-8', errors='replace')}\n"
+            f"STDERR:\n{result.stderr.decode('utf-8', errors='replace')}"
+        )
+    with zipfile.ZipFile(io.BytesIO(result.stdout)) as archive:
+        return {name.rstrip("/") for name in archive.namelist() if name.strip()}
 
 
 def packed_files_cover_path(files: set[str], rel_path: str) -> bool:
@@ -3837,6 +3856,9 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], missing)
         self.assertEqual([], forbidden)
+
+    def test_release_tar_and_zip_archives_have_same_file_boundary(self):
+        self.assertEqual(release_archive_files(), release_zip_archive_files())
 
     def test_release_archive_root_wrappers_match_manifest(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")

@@ -222,6 +222,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] package release workflow でも prepublish check 前に `upstream/main` を fetch し、CI 用の upstream ancestry / upstream-modified root surface contract が release channel でも skip/fail せず実行されるようにした。
 - [x] package release workflow が作成済み `dist/multi-agent-shognate-package.tar.gz` を `SHOGUNATE_PACKAGE_CURL_SMOKE_PACKAGE` として `make package-curl-smoke` に渡し、upload/publish 前に実 cURL install smoke を実行するようにした。
 - [x] package release workflow の tar.gz / zip 作成を `git archive --worktree-attributes` に統一し、package distribution test と local cURL smoke が検査する release archive 境界と一致させた。
+- [x] package distribution contract で release tar archive と zip archive の実ファイル一覧が一致することを固定し、同じ release tag に載る2種類の package asset が別境界にならないようにした。
 - [x] package release workflow の GitHub Release `target_commitish` を `github.sha` ではなく検証済み release tag output に固定し、Release 表示対象も archive tree と同じ tag に揃えた。
 - [x] `require_manifest_mod_sources_in_head` の失敗時に missing 件数と「release archive 作成前に shogunate_mod sources を commit する」対処を表示するようにした。
 - [x] full `prepublish_check.sh` を実測し、root `skills/.system/` が誤って MOD skill 同期対象になっていた問題を修正した。`require_directory_files_synced` は `*/.system/*` を除外し、system-managed skills を Shogunate MOD 正本に混ぜない。
@@ -1524,6 +1525,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: YAML parse for `.github/workflows/package-release.yml` and `shogunate_mod/package/workflows/package-release.yml` after switching release workflow archive creation to `--worktree-attributes`.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_workflow_builds_packages_not_installers_or_apks tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_actual_runtime_boundary` after aligning release workflow archive creation with the package distribution archive boundary.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 130 package distribution contract tests after aligning release workflow archive creation with the package distribution archive boundary.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_tar_and_zip_archives_have_same_file_boundary tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_actual_runtime_boundary` after adding the release tar/zip boundary parity contract.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` and `git diff --check` after adding the release tar/zip boundary parity contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 131 package distribution contract tests after adding the release tar/zip boundary parity contract.
 
 ## 復旧
 

@@ -1306,6 +1306,20 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual({}, missing)
 
+    def test_npm_and_release_mod_directory_surface_diff_is_explicit(self):
+        def packaged_mod_dirs(files: set[str]) -> set[str]:
+            return {
+                rel.removeprefix("shogunate_mod/").split("/", 1)[0]
+                for rel in files
+                if rel.startswith("shogunate_mod/") and "/" in rel.removeprefix("shogunate_mod/")
+            }
+
+        npm_dirs = packaged_mod_dirs(npm_pack_files())
+        release_dirs = packaged_mod_dirs(release_archive_files())
+
+        self.assertEqual(["github"], sorted(npm_dirs - release_dirs))
+        self.assertEqual([], sorted(release_dirs - npm_dirs))
+
     def test_manifest_compatibility_wrappers_are_mod_delegates_and_packaged(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = npm_pack_files()

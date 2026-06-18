@@ -1171,6 +1171,19 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], unclassified)
         self.assertEqual([], vague)
 
+    def test_manifest_target_direction_keeps_core_mod_boundary(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        target_direction = manifest_list_values(manifest, "target_direction")
+
+        self.assertEqual(
+            [
+                "Keep upstream-like runtime entrypoints thin.",
+                "Move Shogunate-only behavior into shogunate_mod/ first.",
+                "Leave compatibility wrappers at historical paths.",
+            ],
+            target_direction,
+        )
+
     def test_manifest_covers_all_mod_source_files(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         canonical_paths = manifest_mapping_values(manifest, "canonical_paths")

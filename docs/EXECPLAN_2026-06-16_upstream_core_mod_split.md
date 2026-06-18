@@ -277,6 +277,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] root Shogunate-specific text surface の検出対象に公開/設計 docs を追加し、内部作業 docs を除外したうえで `docs/philosophy.md` / `docs/codd/` も MOD 正本同期 gate で守られることを package distribution contract で固定した。
 - [x] 現HEADの一時 source checkout worktree で `shutsujin_departure.sh -s -c` を再スモークし、MOD runtime loader 経由の setup-only 起動、5 role pane、queue/runtime、dashboard、tmux project/runtime metadata が成立することを確認した。
 - [x] manifest `current_core_touchpoints.next_step` が、同期 / 生成物 / root public metadata / archive 除外 / local runtime state のような操作可能な分類に落ちることを contract で固定した。曖昧な `where possible` 型の移行メモへ戻る場合は package distribution contract が検出する。
+- [x] manifest `target_direction` を contract で固定し、本家風 runtime entrypoint は薄く保つ、Shogunate-only 実装は `shogunate_mod/` へ先に置く、歴史的 root path は互換 wrapper として残す、という core/MOD 境界方針が書き換わった場合に検出できるようにした。
 
 ## 判断
 
@@ -1447,6 +1448,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding the manifest `next_step` operational-class contract.
 - PASS: `git diff --check` after adding the manifest `next_step` operational-class contract.
 - PASS: `make package-check` ran source syntax checks, 121 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and the clean-worktree dirty gate after adding the manifest `next_step` operational-class contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_target_direction_keeps_core_mod_boundary tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_core_touchpoint_next_steps_use_operational_classes` after fixing manifest `target_direction` as the core/MOD boundary contract.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding the manifest `target_direction` contract.
+- PASS: `git diff --check` after adding the manifest `target_direction` contract.
 
 ## 復旧
 

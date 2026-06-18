@@ -26,9 +26,9 @@ is Shogunate-only.
   context files, while `context/{project}.md` stays user/runtime state.
 - `development/` owns the Shogunate developer command surface such as the
   MOD-specific `Makefile` targets for instruction builds, package checks,
-  Bats tests, shellcheck, Gunkan/CoDD audit helpers, and test helper submodule
-  metadata. Root `Makefile` and `.gitmodules` remain the compatibility copies
-  used by `make` and Git.
+  Bats tests, shellcheck, Gunkan/CoDD audit helpers, source checkout runtime
+  smoke checks, and test helper submodule metadata. Root `Makefile` and
+  `.gitmodules` remain the compatibility copies used by `make` and Git.
 - `docs/` owns the public Shogunate README source for package install, cURL,
   cwd-first project runtime, Android Pair, supported CLI guidance, changelog,
   contribution rules, and security policy. Root `README.md`, `README_ja.md`,

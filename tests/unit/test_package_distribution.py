@@ -2662,6 +2662,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         text = mod_makefile.decode("utf-8")
         self.assertIn("scripts/build_instructions.sh", text)
         self.assertIn("scripts/codd_check.sh gunkan", text)
+        self.assertIn("source-smoke", text)
+        self.assertIn("bash shogunate_mod/runtime/source_smoke.sh", text)
         self.assertIn("test-int", text)
         self.assertIn(
             "require_same_file Makefile shogunate_mod/development/Makefile",

@@ -2663,7 +2663,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("scripts/build_instructions.sh", text)
         self.assertIn("scripts/codd_check.sh gunkan", text)
         self.assertIn("mod-check", text)
-        self.assertIn("mod-check: package-check source-smoke", text)
+        self.assertIn("mod-check: package-check source-smoke android-check", text)
         self.assertIn("package-check", text)
         self.assertIn("bash shogunate_mod/package/prepublish_check.sh", text)
         self.assertIn("source-smoke", text)

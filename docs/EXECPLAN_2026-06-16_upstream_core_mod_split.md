@@ -1,6 +1,6 @@
 # ExecPlan: upstream core + Shogunate MOD split
 
-最終更新: 2026-06-18
+最終更新: 2026-06-19
 
 ## 目的
 
@@ -219,6 +219,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] package release workflow の archive 対象を tag 名から checked-out `HEAD` へ変更し、archive 作成前に `TAG_COMMIT` と `HEAD_COMMIT` の一致を検証するようにした。これにより prepublish 済み tree と cURL release archive tree のズレを防ぐ。
 - [x] package release workflow の upload artifact と GitHub Release `files` が、通常名/バージョン付きの package tar.gz/zip 4 assets だけを公開することを package distribution contract で固定した。
 - [x] GitHub Actions の MOD verification job が `make mod-check` 前に `curl` を明示導入するようにし、`package-curl-smoke` が runner の既定状態に依存しないことを package distribution contract で固定した。
+- [x] package release workflow でも prepublish check 前に `upstream/main` を fetch し、CI 用の upstream ancestry / upstream-modified root surface contract が release channel でも skip/fail せず実行されるようにした。
 - [x] package release workflow の GitHub Release `target_commitish` を `github.sha` ではなく検証済み release tag output に固定し、Release 表示対象も archive tree と同じ tag に揃えた。
 - [x] `require_manifest_mod_sources_in_head` の失敗時に missing 件数と「release archive 作成前に shogunate_mod sources を commit する」対処を表示するようにした。
 - [x] full `prepublish_check.sh` を実測し、root `skills/.system/` が誤って MOD skill 同期対象になっていた問題を修正した。`require_directory_files_synced` は `*/.system/*` を除外し、system-managed skills を Shogunate MOD 正本に混ぜない。
@@ -1508,6 +1509,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 130 package distribution contract tests after adding the cURL package smoke target.
 - PASS: `SHOGUNATE_PACKAGE_CURL_SMOKE_RUN_ID=package-curl-smoke-postcommit-20260619004109 make package-curl-smoke` against committed HEAD `a9bbcd9`; installed the release-style archive through cURL into an isolated `HOME` and verified the generated `shogunate` command, `help`, cwd-first `where`, workspace metadata, and `pair --help`.
 - PASS: `SHOGUNATE_SOURCE_SMOKE_RUN_ID=source-runtime-smoke-mod-check-curl-20260619004141 SHOGUNATE_PACKAGE_CURL_SMOKE_RUN_ID=package-curl-smoke-mod-check-20260619004141 make mod-check` against committed HEAD `a9bbcd9`; ran package prepublish checks, package cURL install smoke, detached source runtime smoke, and Android `testDebugUnitTest assembleDebug`. Android emitted the known SDK XML version warning and exited with `BUILD SUCCESSFUL`.
+- PASS: direct `diff -q .github/workflows/package-release.yml shogunate_mod/package/workflows/package-release.yml` and `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding upstream fetch to the package release workflow.
+- PASS: YAML parse for `.github/workflows/package-release.yml` and `shogunate_mod/package/workflows/package-release.yml` after adding upstream fetch to the package release workflow.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_workflow_builds_packages_not_installers_or_apks tests.unit.test_package_distribution.PackageDistributionContractTests.test_prepublish_requires_upstream_main_in_ci` after fixing release workflow upstream fetch coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 130 package distribution contract tests after fixing release workflow upstream fetch coverage.
 
 ## 復旧
 

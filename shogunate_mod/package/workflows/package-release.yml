@@ -42,6 +42,11 @@ jobs:
           SITE_PACKAGES="$("$PWD/.venv/bin/python" -c 'import site; print(site.getsitepackages()[0])')"
           echo "PYTHONPATH=$SITE_PACKAGES" >> $GITHUB_ENV
 
+      - name: Fetch upstream main
+        run: |
+          git remote add upstream https://github.com/yohey-w/multi-agent-shogun.git
+          git fetch --no-tags upstream main:refs/remotes/upstream/main
+
       - name: Run prepublish check
         run: |
           bash scripts/prepublish_check.sh

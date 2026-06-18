@@ -2187,6 +2187,29 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual(root_package, mod_package)
         self.assertEqual([], unclassified)
 
+    def test_package_direct_root_file_entries_are_manifest_classified(self):
+        root_package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+        mod_package = json.loads(
+            (ROOT / "shogunate_mod" / "package" / "package.json").read_text(encoding="utf-8")
+        )
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        root_paths = manifest_core_touchpoint_paths(manifest) + manifest_list_values(
+            manifest,
+            "compatibility_wrappers",
+        )
+        unclassified = []
+
+        for entry in root_package["files"]:
+            if entry.startswith("!") or entry.endswith("/") or "*" in entry:
+                continue
+            if entry.startswith("shogunate_mod/"):
+                continue
+            if not manifest_root_paths_cover_path(root_paths, entry):
+                unclassified.append(entry)
+
+        self.assertEqual(root_package, mod_package)
+        self.assertEqual([], unclassified)
+
     def test_npm_pack_root_scripts_are_manifest_compatibility_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = npm_pack_files()

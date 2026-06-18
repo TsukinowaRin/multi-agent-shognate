@@ -57,7 +57,7 @@ PYEOF
 }
 
 require_instruction_sources_synced() {
-  local root_path rel mod_path
+  local root_path mod_source_path rel mod_path
 
   while IFS= read -r root_path; do
     rel="${root_path#instructions/}"
@@ -66,12 +66,20 @@ require_instruction_sources_synced() {
     cmp -s "$root_path" "$mod_path" \
       || fail "$root_path must match $mod_path"
   done < <(find instructions -type f -name '*.md' ! -path 'instructions/generated/*' | sort)
+
+  while IFS= read -r mod_source_path; do
+    rel="${mod_source_path#shogunate_mod/instructions/source/}"
+    root_path="instructions/${rel}"
+    [[ -f "$root_path" ]] || fail "missing root instruction compatibility copy: $root_path"
+    cmp -s "$root_path" "$mod_source_path" \
+      || fail "$root_path must match $mod_source_path"
+  done < <(find shogunate_mod/instructions/source -type f -name '*.md' | sort)
 }
 
 require_directory_files_synced() {
   local root_dir="$1"
   local mod_dir="$2"
-  local root_path rel mod_path
+  local root_path rel mod_path mod_source_path
 
   while IFS= read -r root_path; do
     rel="${root_path#${root_dir}/}"
@@ -80,6 +88,19 @@ require_directory_files_synced() {
     cmp -s "$root_path" "$mod_path" \
       || fail "$root_path must match $mod_path"
   done < <(find "$root_dir" -type f \
+    ! -path '*/__pycache__/*' \
+    ! -path '*/.system/*' \
+    ! -name '*.pyc' \
+    ! -name '*.pyo' \
+    | sort)
+
+  while IFS= read -r mod_source_path; do
+    rel="${mod_source_path#${mod_dir}/}"
+    root_path="${root_dir}/${rel}"
+    [[ -f "$root_path" ]] || fail "missing root compatibility copy: $root_path"
+    cmp -s "$root_path" "$mod_source_path" \
+      || fail "$root_path must match $mod_source_path"
+  done < <(find "$mod_dir" -type f \
     ! -path '*/__pycache__/*' \
     ! -path '*/.system/*' \
     ! -name '*.pyc' \

@@ -2070,6 +2070,18 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], missing)
         self.assertEqual([], unexpected)
 
+    def test_npm_pack_mod_files_are_manifest_canonical(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        canonical_paths = manifest_mapping_values(manifest, "canonical_paths")
+        files = npm_pack_files()
+        unclassified = []
+
+        for rel in sorted(path for path in files if path.startswith("shogunate_mod/")):
+            if not manifest_canonical_paths_cover_path(canonical_paths, rel):
+                unclassified.append(rel)
+
+        self.assertEqual([], unclassified)
+
     def test_package_files_entries_materialize_in_npm_pack(self):
         root_package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
         mod_package = json.loads(

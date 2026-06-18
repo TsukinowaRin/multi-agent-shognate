@@ -12,9 +12,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "shogunate_pair_server.py"
+SCRIPT = ROOT / "shogunate_mod" / "pair" / "server.py"
 
-spec = importlib.util.spec_from_file_location("shogunate_pair_server", SCRIPT)
+spec = importlib.util.spec_from_file_location("shogunate_mod_pair_server_under_test", SCRIPT)
 pair_server = importlib.util.module_from_spec(spec)
 assert spec.loader is not None
 spec.loader.exec_module(pair_server)

@@ -1712,6 +1712,25 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], sorted(reversed_or_unscoped))
 
+    def test_prepublish_sync_pairs_are_declared_as_synchronized_touchpoints(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
+        synchronized_root_paths = []
+        undeclared = []
+
+        for item in manifest_core_touchpoints(manifest):
+            if "synchronized" not in item.get("next_step", ""):
+                continue
+            synchronized_root_paths.extend(
+                manifest_core_touchpoint_paths(f"current_core_touchpoints:\n  - path: {item['path']}")
+            )
+
+        for root_rel, mod_rel in prepublish_sync_pairs(prepublish):
+            if not manifest_root_paths_cover_path(synchronized_root_paths, root_rel):
+                undeclared.append(f"{root_rel} -> {mod_rel}")
+
+        self.assertEqual([], sorted(undeclared))
+
     def test_prepublish_sync_pairs_do_not_duplicate_nested_roots(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
         pairs = prepublish_sync_pairs(prepublish)

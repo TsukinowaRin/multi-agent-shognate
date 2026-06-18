@@ -2058,6 +2058,24 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], batch_wrappers_with_labels)
         self.assertEqual([], thick_wrappers)
 
+    def test_only_package_bootstrap_wrapper_has_remote_fallback(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        remote_wrappers = []
+        remote_tokens = (
+            "curl ",
+            "https://raw.githubusercontent.com",
+            "git fetch",
+            "git clone",
+        )
+
+        for rel in manifest_list_values(manifest, "compatibility_wrappers"):
+            path = ROOT / rel.rstrip("/")
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            if any(token in text for token in remote_tokens):
+                remote_wrappers.append(rel)
+
+        self.assertEqual(["scripts/shogunate_package_bootstrap.sh"], remote_wrappers)
+
     def test_npm_wrapper_points_to_curl_bootstrap(self):
         package = (ROOT / "package.json").read_text(encoding="utf-8")
         gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")

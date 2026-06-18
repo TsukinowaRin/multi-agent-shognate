@@ -1486,6 +1486,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 127 package distribution contract tests after adding the single-delegate wrapper contract.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the single-delegate wrapper contract.
 - PASS: `git diff --check` after adding the single-delegate wrapper contract.
+- PASS: `git fetch upstream main:refs/remotes/upstream/main` confirmed latest fetched `upstream/main` remained `431b86a` and `git merge-base --is-ancestor upstream/main HEAD` returned 0.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_only_package_bootstrap_wrapper_has_remote_fallback` after limiting root wrapper remote bootstrap/network fallback to the historical cURL entrypoint.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 128 package distribution contract tests after adding the remote-fallback wrapper contract.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the remote-fallback wrapper contract.
+- PASS: `git diff --check` after adding the remote-fallback wrapper contract.
 
 ## 復旧
 

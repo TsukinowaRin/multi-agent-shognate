@@ -281,6 +281,21 @@ if missing:
 PYEOF
 }
 
+require_python_syntax_clean() {
+  python3 <<'PYEOF' || fail "tracked Python source syntax check failed"
+import pathlib
+import subprocess
+
+files = subprocess.check_output(["git", "ls-files", "-z", "--", "*.py"]).split(b"\0")
+for raw in files:
+    if not raw:
+        continue
+    path = pathlib.Path(raw.decode())
+    source = path.read_text(encoding="utf-8")
+    compile(source, str(path), "exec")
+PYEOF
+}
+
 printf '[INFO] prepublish check start\n'
 
 tracked_forbidden="$(git ls-files | rg '^(Waste/|_trash/|_upstream_reference/|\\.shogunate/|docs/(WORKLOG|HANDOVER|UPSTREAM_SYNC)|config/(settings|projects)\.yaml|dashboard.md|queue/)' || true)"
@@ -334,6 +349,10 @@ require_directory_files_synced docs/codd shogunate_mod/gunkan/docs
 require_android_sources_synced
 require_directory_files_synced tests shogunate_mod/tests
 require_manifest_mod_sources_in_head
+printf '[INFO] source syntax checks\n'
+git ls-files -z -- '*.sh' '*.command' | xargs -0 -r bash -n
+require_python_syntax_clean
+git ls-files -z -- '*.js' | xargs -0 -r -n1 node --check
 printf '[INFO] package distribution contract tests\n'
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution
 printf '[INFO] MOD behavior unit tests\n'

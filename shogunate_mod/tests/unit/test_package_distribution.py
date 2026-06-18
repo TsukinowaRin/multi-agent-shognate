@@ -3168,6 +3168,12 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual(root_mock_cli.read_bytes(), mod_mock_cli.read_bytes())
         self.assertIn("MOCK_CLI_TYPE", mod_mock_cli.read_text(encoding="utf-8"))
         self.assertIn("require_directory_files_synced tests shogunate_mod/tests", prepublish)
+        self.assertIn("printf '[INFO] source syntax checks\\n'", prepublish)
+        self.assertIn("git ls-files -z -- '*.sh' '*.command' | xargs -0 -r bash -n", prepublish)
+        self.assertIn("require_python_syntax_clean", prepublish)
+        self.assertIn('subprocess.check_output(["git", "ls-files", "-z", "--", "*.py"])', prepublish)
+        self.assertIn('compile(source, str(path), "exec")', prepublish)
+        self.assertIn("xargs -0 -r -n1 node --check", prepublish)
         self.assertIn(
             "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution",
             prepublish,
@@ -3176,6 +3182,10 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("tests.unit.test_shogunate_pair_server", prepublish)
         self.assertIn("tests.unit.test_runtime_blocker_notice", prepublish)
         self.assertIn("tests.unit.test_update_manager", prepublish)
+        self.assertLess(
+            prepublish.index("printf '[INFO] source syntax checks\\n'"),
+            prepublish.index("PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution"),
+        )
         self.assertLess(
             prepublish.index("PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution"),
             prepublish.index("printf '[INFO] MOD behavior unit tests\\n'"),

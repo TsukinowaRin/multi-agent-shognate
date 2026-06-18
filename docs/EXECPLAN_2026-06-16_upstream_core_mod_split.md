@@ -264,6 +264,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Pair server unit test の import 対象を root wrapper から `shogunate_mod/pair/server.py` へ切り替え、Android Pair の主要挙動を MOD 正本で直接検証するようにした。
 - [x] runtime / Pair / update unit tests が root wrapper ではなく MOD 正本を import することを package distribution contract で固定した。
 - [x] package prepublish gate に MOD behavior unit tests（Pair server / runtime blocker notice / update manager）を追加し、package surface だけでなく主要 MOD 正本の挙動も release 前に検証するようにした。
+- [x] package prepublish gate に tracked shell / command / Python / JavaScript source syntax checks を追加し、MOD 正本と root wrapper の基本構文退行を release 前に検出できるようにした。
 - [x] npm package / cURL release archive に入る `shogunate_mod/` top-level directory が `shogunate_mod/README.md` の Boundaries で説明されることを package distribution contract で固定した。これにより配布物へ新しい MOD directory を入れるとき、ownership 説明漏れを検出できる。
 - [x] `shogunate_mod/README.md` の Boundaries に書いた MOD path が npm package / cURL release archive に実収録されるか、意図的除外として分類されることを package distribution contract で固定した。これにより README の ownership 説明と配布境界のズレを検出できる。
 - [x] npm package と cURL release archive の `shogunate_mod/` top-level directory surface の差分が、npm だけに残す GitHub metadata 用 `github/` だけであることを package distribution contract で固定した。これにより両配布経路の MOD directory 差分が意図なく広がる事故を検出できる。
@@ -1429,6 +1430,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_shogunate_pair_server tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_support_files_have_mod_canonical_copy` after switching Pair server unit tests to import `shogunate_mod/pair/server.py` directly.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_unit_tests_import_mod_canonical_runtime_sources tests.unit.test_package_distribution.PackageDistributionContractTests.test_unit_test_cases_have_mod_canonical_copy` after adding a contract that runtime/Pair/update unit tests import MOD canonical sources instead of root wrappers.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_e2e_support_files_have_mod_canonical_copy tests.unit.test_shogunate_pair_server tests.unit.test_runtime_blocker_notice tests.unit.test_update_manager` after adding MOD behavior unit tests to package prepublish.
+- PASS: tracked source syntax checks (`bash -n` for `*.sh` / `*.command`, `compile(..., "exec")` for `*.py` without bytecode generation, `node --check` for `*.js`) and `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_e2e_support_files_have_mod_canonical_copy` after adding syntax checks to package prepublish.
+- PASS: `make package-check` ran source syntax checks, 120 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and the dirty-worktree gate after adding the syntax checks to package prepublish.
 
 ## 復旧
 

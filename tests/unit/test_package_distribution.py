@@ -781,6 +781,16 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertLess(text.index(local_delegate), text.index(remote_exec))
         self.assertNotIn("/scripts/shogunate_package_bootstrap.sh", text)
 
+    def test_representative_wrapper_smoke_cases_are_manifest_wrappers(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))
+        smoke_paths = [command[1] for command, _ in representative_wrapper_smoke_cases()]
+
+        self.assertEqual(len(smoke_paths), len(set(smoke_paths)))
+        for rel in smoke_paths:
+            self.assertIn(rel, wrappers)
+            self.assertTrue((ROOT / rel).exists(), f"missing representative wrapper smoke path: {rel}")
+
     def test_representative_compatibility_wrappers_execute_mod_sources(self):
         for command, expected in representative_wrapper_smoke_cases():
             with self.subTest(command=command):

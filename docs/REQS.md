@@ -478,6 +478,7 @@
 4. `scripts/shogunate_package_bootstrap.sh --version <tag> --prefix ~/.shogunate/shogunate --no-setup` 相当の導入がこのPCで成功する。
 5. package release workflow は prepublish check 前に `upstream/main` を fetch し、CI 用の upstream ancestry / upstream-modified root surface contract を release channel でも実行する。
 6. package release workflow は GitHub Release へ upload/publish する前に、作成済み `dist/multi-agent-shognate-package.tar.gz` を使って cURL install smoke を実行する。
+7. package release workflow の tar.gz / zip は、package distribution test と同じ `git archive --worktree-attributes` 境界で作成する。
 
 ## 追補（2026-06-11: README package install 導線）
 

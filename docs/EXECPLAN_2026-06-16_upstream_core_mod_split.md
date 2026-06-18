@@ -227,6 +227,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] package release workflow の Release notes が固定 release 用 cURL と latest channel 用 cURL を出し、固定 release 用 cURL では raw script tag と `--version` の両方に同じ `${TAG}` を使うことを package distribution contract で固定した。
 - [x] package release workflow の GitHub Release `target_commitish` を `github.sha` ではなく検証済み release tag output に固定し、Release 表示対象も archive tree と同じ tag に揃えた。
 - [x] `require_manifest_mod_sources_in_head` の失敗時に missing 件数と「release archive 作成前に shogunate_mod sources を commit する」対処を表示するようにした。
+- [x] Public README / README_ja の fixed release cURL と latest channel cURL を package distribution contract で固定し、root README と MOD README の両方で fixed cURL の raw URL tag と `--version` が一致すること、4つの public README が同じ fixed release tag を示すことを検査するようにした。
+- [x] `docs/REQS.md` に残っていた古い固定 release tag 前提を、README が示す現在の fixed release tag と release tag/APK 名対応を要求する形へ更新した。
 - [x] full `prepublish_check.sh` を実測し、root `skills/.system/` が誤って MOD skill 同期対象になっていた問題を修正した。`require_directory_files_synced` は `*/.system/*` を除外し、system-managed skills を Shogunate MOD 正本に混ぜない。
 - [x] full `prepublish_check.sh` の Android source sync が root Android build/cache 配下を `rglob` で列挙して遅くなる問題を修正した。`require_android_sources_synced` は `os.walk` で excluded dirs を traversal 前に prune する。
 - [x] `require_manifest_mod_sources_in_head` も重複 canonical directory を再走査しないよう `expanded_dirs` で親ディレクトリ優先にした。
@@ -1536,6 +1538,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_workflow_builds_packages_not_installers_or_apks` after fixing Release notes cURL command coverage.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` and `git diff --check` after fixing Release notes cURL command coverage.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 131 package distribution contract tests after fixing Release notes cURL command coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_readmes_have_mod_canonical_copy` after adding the public README fixed/latest cURL contract.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the public README fixed/latest cURL contract.
+- PASS: `git diff --check` after adding the public README fixed/latest cURL contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 131 package distribution contract tests after adding the public README fixed/latest cURL contract.
 
 ## 復旧
 

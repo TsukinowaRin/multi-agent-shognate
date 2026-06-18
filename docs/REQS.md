@@ -494,7 +494,7 @@
 ### 受け入れ条件（観測可能）
 
 1. `README.md` / `README_ja.md` の冒頭 Quick Start で cURL install が最初に提示される。
-2. `v5.2.0.3` 固定の install command と、将来 main 反映後の moving command の違いが分かる。
+2. README の固定 release install command と、将来 main 反映後の moving command の違いが分かる。
 3. `shogunate`, `shogunate resume`, `shogunate configure`, `shogunate status`, `shogunate aliases` が導入後コマンドとして記載される。
 4. CI の MOD verification job は `make mod-check` の前提として `curl` を明示導入し、cURL install smoke が runner の既定状態に依存しない。
 
@@ -520,13 +520,13 @@
 ### 要求
 
 1. `README.md` / `README_ja.md` を package install 前提の導入文書として全面的に書き直す。
-2. 冒頭 Quick Start に、現在の通常 release tag `v5.2.0.3` 固定の cURL install command を明示する。
+2. 冒頭 Quick Start に、README が示す現在の通常 release tag 固定の cURL install command を明示する。
 3. 導入後に使う `shogunate` command、alias、role/CLI 設定、軍監、Android companion、開発 checkout、troubleshooting、release versioning を短く辿れる構成にする。
 4. `-preview` 前提の記述や重複した古い導入導線を README から外す。
 
 ### 受け入れ条件（観測可能）
 
-1. `README.md` / `README_ja.md` の冒頭に `v5.2.0.3` 固定 cURL がある。
+1. `README.md` / `README_ja.md` の冒頭に固定 release cURL があり、raw URL の tag と `--version` が一致する。
 2. README 内の導入例は `~/.shogunate/shogunate`、`~/.local/bin/shogunate`、`shogunate clean/resume/configure/status/aliases` を説明する。
 3. README 内に `v5.2.0.1-preview` や古い preview install 導線が残っていない。
 4. README の cURL URL が `scripts/shogunate_package_bootstrap.sh` の実在 path を指している。
@@ -562,13 +562,13 @@
 
 1. `shogunate pair` を USB/無線統合入口にした Android app を release asset として配布する。
 2. Android APK version は `5.2.0.3`、`versionCode` は `52003` にする。
-3. README の固定 cURL / APK 名は `v5.2.0.3` に更新する。
+3. README の固定 cURL は release 更新時に現在の固定 release tag へ更新し、APK 名は同じ release tag を使う。
 4. package command の `shogunate help` に `pair` と Pair Password の案内を表示する。
 
 ### 受け入れ条件（観測可能）
 
 1. `android/app/build.gradle.kts` の `versionName` が `5.2.0.3`、`versionCode` が `52003`。
-2. `shogunate-android-v5.2.0.3.apk` が GitHub Release asset としてアップロードされる。
+2. `shogunate-android-<version>.apk` が GitHub Release asset としてアップロードされ、`<version>` は同じ release tag と対応する。
 3. `multi-agent-shognate-package.tar.gz` / `.zip` も同じ release tag にアップロードされる。
 4. `shogunate help` に `shogunate pair [opts]` と `SHOGUNATE_PAIR_PASSWORD` が表示される。
 

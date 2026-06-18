@@ -2911,6 +2911,22 @@ class PackageDistributionContractTests(unittest.TestCase):
         mod_readme = (ROOT / "shogunate_mod" / "docs" / "README.md").read_text(encoding="utf-8")
         mod_readme_ja = (ROOT / "shogunate_mod" / "docs" / "README_ja.md").read_text(encoding="utf-8")
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
+        readmes = {
+            "README.md": root_readme,
+            "README_ja.md": root_readme_ja,
+            "shogunate_mod/docs/README.md": mod_readme,
+            "shogunate_mod/docs/README_ja.md": mod_readme_ja,
+        }
+        latest_curl = (
+            "curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/"
+            "multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash"
+        )
+        pinned_curl = re.compile(
+            r"curl -fsSL https://raw\.githubusercontent\.com/TsukinowaRin/"
+            r"multi-agent-shognate/(v[0-9]+(?:\.[0-9]+)+)/"
+            r"scripts/shogunate_package_bootstrap\.sh \| bash -s -- --version "
+            r"(v[0-9]+(?:\.[0-9]+)+)"
+        )
 
         self.assertEqual(root_readme, mod_readme)
         self.assertEqual(root_readme_ja, mod_readme_ja)
@@ -2920,6 +2936,19 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("curl -fsSL", mod_readme_ja)
         self.assertIn("shogunate pair", mod_readme_ja)
         self.assertIn("cd /path/to/your-project", mod_readme_ja)
+        pinned_tags = set()
+        for path, text in readmes.items():
+            self.assertIn(latest_curl, text, path)
+            matches = pinned_curl.findall(text)
+            self.assertGreaterEqual(len(matches), 1, f"missing pinned release cURL in {path}")
+            for url_tag, version_arg in matches:
+                self.assertEqual(url_tag, version_arg, f"pinned cURL tag/version mismatch in {path}")
+                pinned_tags.add(url_tag)
+        self.assertEqual(
+            len(pinned_tags),
+            1,
+            f"public README pinned release tags must stay synchronized: {sorted(pinned_tags)}",
+        )
         self.assertIn(
             "require_same_file README.md shogunate_mod/docs/README.md",
             prepublish,

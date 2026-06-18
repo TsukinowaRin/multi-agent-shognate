@@ -1,4 +1,4 @@
-.PHONY: test build lint check package-check source-smoke help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
+.PHONY: test build lint check mod-check package-check source-smoke help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
 
 # Default target
 help:
@@ -10,6 +10,7 @@ help:
 	@echo "  make build         - Run build_instructions.sh"
 	@echo "  make lint          - Run shellcheck on lib/ and scripts/"
 	@echo "  make check         - Run build + diff check (CI equivalent)"
+	@echo "  make mod-check     - Run package checks + source runtime smoke"
 	@echo "  make package-check - Run package prepublish checks"
 	@echo "  make source-smoke  - Run detached source checkout runtime smoke"
 	@echo "  make codd          - Run CoDD validate"
@@ -93,6 +94,8 @@ check: build
 		echo "WARNING: build_instructions.sh, instructions/generated, or .opencode/agents not found"; \
 		echo "Skipping diff check (Phase 2 feature)"; \
 	fi
+
+mod-check: package-check source-smoke
 
 source-smoke:
 	bash shogunate_mod/runtime/source_smoke.sh

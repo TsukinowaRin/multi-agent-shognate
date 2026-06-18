@@ -7,6 +7,12 @@ The compatibility paths under `scripts/` remain stable for release cURL URLs,
 tests, and older installs, but they should delegate here whenever the behavior
 is Shogunate-only.
 
+## Direction
+
+- Keep upstream-like runtime entrypoints thin.
+- Move Shogunate-only behavior into shogunate_mod/ first.
+- Leave compatibility wrappers at historical paths.
+
 ## Boundaries
 
 - `cli/` owns the Multi-CLI adapter used to build role-specific Claude,

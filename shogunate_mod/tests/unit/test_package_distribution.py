@@ -1184,6 +1184,13 @@ class PackageDistributionContractTests(unittest.TestCase):
             target_direction,
         )
 
+    def test_mod_readme_documents_manifest_target_direction(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        readme = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")
+
+        for direction in manifest_list_values(manifest, "target_direction"):
+            self.assertIn(f"- {direction}", readme)
+
     def test_manifest_covers_all_mod_source_files(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         canonical_paths = manifest_mapping_values(manifest, "canonical_paths")

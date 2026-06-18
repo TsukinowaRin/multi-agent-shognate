@@ -1486,6 +1486,22 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], sorted(set(missing_targets)))
 
+    def test_manifest_compatibility_wrapper_targets_have_readme_boundaries(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        readme = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")
+        boundary_paths = mod_readme_boundary_paths(readme)
+        missing_targets = []
+
+        for rel in manifest_list_values(manifest, "compatibility_wrappers"):
+            path = ROOT / rel.rstrip("/")
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for mod_path in wrapper_mod_delegate_paths(text):
+                mod_rel = mod_path.removeprefix("shogunate_mod/").rstrip("/")
+                if not any(mod_rel == boundary or mod_rel.startswith(boundary.rstrip("/") + "/") for boundary in boundary_paths):
+                    missing_targets.append(f"{rel} -> {mod_path}")
+
+        self.assertEqual([], sorted(set(missing_targets)))
+
     def test_release_archive_includes_manifest_wrapper_delegate_targets(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = release_archive_files()

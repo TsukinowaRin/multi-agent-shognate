@@ -281,6 +281,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] `shogunate_mod/README.md` に manifest `target_direction` と同じ core/MOD 境界方針を明記し、README と manifest が drift した場合に package distribution contract が検出するようにした。
 - [x] README/manifest の core/MOD 境界 contract を、README 全体の包含チェックではなく `## Direction` 節のリストと manifest `target_direction` の完全一致へ強化した。
 - [x] prepublish の root/MOD sync pair は、manifest 上でも `synchronized` な current core touchpoint として宣言されていることを contract で固定した。これにより同期 gate だけが増えて、core touchpoint の理由・次手順が manifest に残らない事故を検出する。
+- [x] root compatibility wrapper が参照する MOD delegate target は、manifest canonical path であるだけでなく `shogunate_mod/README.md` の Boundaries でも ownership が説明されていることを contract で固定した。
 
 ## 判断
 
@@ -1463,6 +1464,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_prepublish_sync_pairs_are_declared_as_synchronized_touchpoints tests.unit.test_package_distribution.PackageDistributionContractTests.test_prepublish_sync_targets_are_tracked_by_manifest tests.unit.test_package_distribution.PackageDistributionContractTests.test_prepublish_sync_pairs_flow_from_root_compatibility_to_mod_source tests.unit.test_package_distribution.PackageDistributionContractTests.test_synchronized_core_touchpoints_have_prepublish_gates` after requiring every prepublish root/MOD sync pair to be declared as a synchronized manifest touchpoint.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding synchronized sync-pair coverage.
 - PASS: `git diff --check` after adding synchronized sync-pair coverage.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrapper_targets_have_readme_boundaries tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrapper_targets_are_canonical_paths tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrappers_have_explicit_delegate_targets tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_readme_boundary_paths_are_manifest_canonical` after requiring wrapper delegate targets to have MOD README boundary ownership.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` confirmed root test compatibility file matches MOD test source after adding wrapper delegate ownership coverage.
+- PASS: `git diff --check` after adding wrapper delegate ownership coverage.
 
 ## 復旧
 

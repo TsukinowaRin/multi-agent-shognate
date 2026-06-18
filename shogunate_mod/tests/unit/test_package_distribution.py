@@ -3506,6 +3506,20 @@ class PackageDistributionContractTests(unittest.TestCase):
             sorted(set(intentionally_excluded_paths)),
         )
 
+    def test_release_archive_mod_files_are_manifest_canonical(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        canonical_paths = manifest_mapping_values(manifest, "canonical_paths")
+        files = release_archive_files()
+        unclassified = []
+
+        for rel in sorted(path for path in files if path.startswith("shogunate_mod/")):
+            if rel.endswith("/") or (ROOT / rel).is_dir():
+                continue
+            if not manifest_canonical_paths_cover_path(canonical_paths, rel):
+                unclassified.append(rel)
+
+        self.assertEqual([], unclassified)
+
     def test_android_source_has_mod_canonical_copy(self):
         root_android = ROOT / "android"
         mod_android = ROOT / "shogunate_mod" / "mobile" / "android"

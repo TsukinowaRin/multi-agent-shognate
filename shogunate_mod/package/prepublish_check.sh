@@ -281,6 +281,15 @@ if missing:
 PYEOF
 }
 
+require_upstream_main_in_ci() {
+  if [[ "${CI:-}" != "true" ]]; then
+    return 0
+  fi
+
+  git rev-parse --verify upstream/main >/dev/null 2>&1 \
+    || fail "CI prepublish check requires upstream/main; fetch upstream before running make package-check"
+}
+
 require_python_syntax_clean() {
   python3 <<'PYEOF' || fail "tracked Python source syntax check failed"
 import pathlib
@@ -349,6 +358,7 @@ require_directory_files_synced docs/codd shogunate_mod/gunkan/docs
 require_android_sources_synced
 require_directory_files_synced tests shogunate_mod/tests
 require_manifest_mod_sources_in_head
+require_upstream_main_in_ci
 printf '[INFO] source syntax checks\n'
 git ls-files -z -- '*.sh' '*.command' | xargs -0 -r bash -n
 require_python_syntax_clean

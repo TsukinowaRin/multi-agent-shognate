@@ -1788,6 +1788,22 @@ class PackageDistributionContractTests(unittest.TestCase):
             prepublish.index('dirty="$(git status --short || true)"'),
         )
 
+    def test_prepublish_requires_upstream_main_in_ci(self):
+        prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
+
+        self.assertIn("require_upstream_main_in_ci()", prepublish)
+        self.assertIn('if [[ "${CI:-}" != "true" ]]; then', prepublish)
+        self.assertIn("git rev-parse --verify upstream/main", prepublish)
+        self.assertIn("CI prepublish check requires upstream/main", prepublish)
+        self.assertLess(
+            prepublish.index("require_upstream_main_in_ci"),
+            prepublish.index("PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution"),
+        )
+        self.assertLess(
+            prepublish.index("require_upstream_main_in_ci"),
+            prepublish.index('dirty="$(git status --short || true)"'),
+        )
+
     def test_runtime_cleanup_uses_exact_tmux_session_targets(self):
         state = (ROOT / "shogunate_mod" / "runtime" / "state.sh").read_text(encoding="utf-8")
         android_compat = (ROOT / "shogunate_mod" / "runtime" / "android_compat.sh").read_text(encoding="utf-8")

@@ -265,6 +265,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] MOD-owned development command surface に `make mod-check` を追加し、package prepublish gate / detached source runtime smoke / Android Gradle check を一括で再実行できるようにした。
 - [x] MOD-owned development command surface に `make android-check` を追加し、root Android Gradle working tree から `testDebugUnitTest assembleDebug` を再実行できるようにした。
 - [x] GitHub Actions `mod-check` job で `upstream/main` を fetch し、上流 ancestry / upstream-modified root surface contract が CI でも skip されず実行されるようにした。
+- [x] package prepublish gate に CI 用 `upstream/main` 必須チェックを追加し、CI で upstream fetch が壊れた場合に上流追従 contract が skip されず fail するようにした。
 - [x] Pair server unit test の import 対象を root wrapper から `shogunate_mod/pair/server.py` へ切り替え、Android Pair の主要挙動を MOD 正本で直接検証するようにした。
 - [x] runtime / Pair / update unit tests が root wrapper ではなく MOD 正本を import することを package distribution contract で固定した。
 - [x] package prepublish gate に MOD behavior unit tests（Pair server / runtime blocker notice / update manager）を追加し、package surface だけでなく主要 MOD 正本の挙動も release 前に検証するようにした。
@@ -1472,6 +1473,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: YAML parse for `.github/workflows/test.yml` and `shogunate_mod/package/workflows/test.yml` after adding upstream fetch to the CI `mod-check` job.
 - PASS: direct `diff -q .github/workflows/test.yml shogunate_mod/package/workflows/test.yml` and `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding upstream fetch to the CI `mod-check` job.
 - PASS: `git diff --check` after adding upstream fetch to the CI `mod-check` job.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_prepublish_requires_upstream_main_in_ci tests.unit.test_package_distribution.PackageDistributionContractTests.test_prepublish_requires_manifest_mod_sources_in_head tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_workflow_has_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_development_branch_keeps_upstream_main_as_ancestor` after adding the CI-only upstream/main prepublish gate.
+- PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding the CI-only upstream/main prepublish gate.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the CI-only upstream/main prepublish gate.
+- PASS: `git diff --check` after adding the CI-only upstream/main prepublish gate.
 
 ## 復旧
 

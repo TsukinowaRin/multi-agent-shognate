@@ -791,6 +791,15 @@ class PackageDistributionContractTests(unittest.TestCase):
             self.assertIn(rel, wrappers)
             self.assertTrue((ROOT / rel).exists(), f"missing representative wrapper smoke path: {rel}")
 
+    def test_representative_wrapper_smoke_cases_have_mod_delegates(self):
+        for command, _ in representative_wrapper_smoke_cases():
+            rel = command[1]
+            text = (ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+            delegate_paths = wrapper_mod_delegate_paths(text)
+
+            self.assertEqual(1, len(delegate_paths), f"{rel}: {delegate_paths}")
+            self.assertTrue((ROOT / delegate_paths[0]).exists(), f"{rel} delegate missing: {delegate_paths[0]}")
+
     def test_representative_compatibility_wrappers_execute_mod_sources(self):
         for command, expected in representative_wrapper_smoke_cases():
             with self.subTest(command=command):

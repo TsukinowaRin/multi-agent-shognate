@@ -3426,6 +3426,22 @@ class PackageDistributionContractTests(unittest.TestCase):
             )
             self.assertEqual(declared_files, archived_files)
 
+    def test_release_archive_root_code_like_files_are_manifest_classified(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        files = release_archive_files()
+        root_paths = manifest_core_touchpoint_paths(manifest) + manifest_list_values(
+            manifest,
+            "compatibility_wrappers",
+        )
+        archived_root_code_like = sorted(set(files) & set(tracked_root_code_like_files()))
+        missing = [
+            rel
+            for rel in archived_root_code_like
+            if not manifest_root_paths_cover_path(root_paths, rel)
+        ]
+
+        self.assertEqual([], missing)
+
     def test_release_archive_top_level_launchers_match_manifest_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = release_archive_files()

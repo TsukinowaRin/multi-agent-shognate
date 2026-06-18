@@ -3243,14 +3243,26 @@ class PackageDistributionContractTests(unittest.TestCase):
 
     def test_unit_tests_import_mod_canonical_runtime_sources(self):
         expected_imports = {
-            "test_shogunate_pair_server.py": 'ROOT / "shogunate_mod" / "pair" / "server.py"',
-            "test_runtime_blocker_notice.py": 'ROOT / "shogunate_mod" / "runtime" / "blocker_notice.py"',
-            "test_update_manager.py": 'ROOT / "shogunate_mod" / "update" / "manager.py"',
+            "tests.unit.test_shogunate_pair_server": 'ROOT / "shogunate_mod" / "pair" / "server.py"',
+            "tests.unit.test_runtime_blocker_notice": 'ROOT / "shogunate_mod" / "runtime" / "blocker_notice.py"',
+            "tests.unit.test_update_manager": 'ROOT / "shogunate_mod" / "update" / "manager.py"',
         }
-        for filename, expected in expected_imports.items():
+
+        prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
+        behavior_block = prepublish.split("printf '[INFO] MOD behavior unit tests\\n'", 1)[1].split(
+            "bash shogunate_mod/instructions/ensure_generated.sh",
+            1,
+        )[0]
+        behavior_modules = re.findall(r"tests\.unit\.test_[A-Za-z0-9_]+", behavior_block)
+
+        self.assertEqual(behavior_modules, list(expected_imports))
+        for module_name, expected in expected_imports.items():
+            filename = f"{module_name.rsplit('.', 1)[1]}.py"
             text = (ROOT / "tests" / "unit" / filename).read_text(encoding="utf-8")
+            self.assertIn("importlib.util.spec_from_file_location", text)
             self.assertIn(expected, text, f"{filename} should import the MOD canonical source")
             self.assertNotIn('ROOT / "scripts"', text, f"{filename} should not import root scripts wrappers")
+            self.assertNotIn("scripts/", text, f"{filename} should not import root scripts wrappers")
 
     def test_e2e_support_files_have_mod_canonical_copy(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")

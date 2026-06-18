@@ -1477,6 +1477,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash -n shogunate_mod/package/prepublish_check.sh scripts/prepublish_check.sh` after adding the CI-only upstream/main prepublish gate.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the CI-only upstream/main prepublish gate.
 - PASS: `git diff --check` after adding the CI-only upstream/main prepublish gate.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_unit_tests_import_mod_canonical_runtime_sources` after tying the prepublish MOD behavior unit list to direct `shogunate_mod/` source imports.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_shogunate_pair_server tests.unit.test_runtime_blocker_notice tests.unit.test_update_manager` ran 34 MOD behavior unit tests after tightening the import contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 126 package distribution contract tests after tying prepublish behavior units to direct MOD canonical imports.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after tightening the MOD behavior unit import contract.
+- PASS: `git diff --check` after tightening the MOD behavior unit import contract.
 
 ## 復旧
 

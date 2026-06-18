@@ -744,6 +744,21 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("queue/runtime/session_name", text)
         self.assertIn("print_project_info", text)
 
+    def test_package_bootstrap_wrapper_prefers_mod_source(self):
+        text = (ROOT / "scripts" / "shogunate_package_bootstrap.sh").read_text(encoding="utf-8")
+        local_delegate = 'exec bash "$SCRIPT_DIR/../shogunate_mod/package/bootstrap.sh" "$@"'
+        remote_delegate = (
+            'MOD_BOOTSTRAP_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/'
+            '${REF}/shogunate_mod/package/bootstrap.sh"'
+        )
+        remote_exec = 'curl -fsSL "$MOD_BOOTSTRAP_URL" | bash -s -- "$@"'
+
+        self.assertIn(local_delegate, text)
+        self.assertIn(remote_delegate, text)
+        self.assertIn(remote_exec, text)
+        self.assertLess(text.index(local_delegate), text.index(remote_exec))
+        self.assertNotIn("/scripts/shogunate_package_bootstrap.sh", text)
+
     def test_compatibility_wrappers_delegate_to_shogunate_mod(self):
         bootstrap_wrapper = (ROOT / "scripts" / "shogunate_package_bootstrap.sh").read_text(encoding="utf-8")
         first_setup_wrapper = (ROOT / "first_setup.sh").read_text(encoding="utf-8")

@@ -844,6 +844,60 @@ class PackageDistributionContractTests(unittest.TestCase):
                     self.assertEqual(0, smoke.returncode, output)
                     self.assertIn(expected, output)
 
+    def test_npm_package_representative_wrappers_execute_mod_sources(self):
+        cases = [
+            (
+                ["python3", "scripts/shogunate_pair_server.py", "--help"],
+                "Run the Shogunate Android pairing server.",
+            ),
+            (
+                ["bash", "scripts/shell_aliases.sh"],
+                "scripts/install_shell_aliases.sh",
+            ),
+            (
+                ["bash", "scripts/agent_status.sh", "--help"],
+                "Usage: agent_status.sh",
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = Path(tmp)
+            pack = subprocess.run(
+                ["npm", "pack", "--pack-destination", str(package_dir)],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if pack.returncode != 0:
+                raise AssertionError(f"npm pack failed:\nSTDOUT:\n{pack.stdout}\nSTDERR:\n{pack.stderr}")
+            packages = sorted(package_dir.glob("*.tgz"))
+            self.assertEqual(1, len(packages), pack.stdout + pack.stderr)
+            extract = subprocess.run(
+                ["tar", "-xzf", str(packages[0]), "-C", str(package_dir)],
+                capture_output=True,
+                check=False,
+            )
+            if extract.returncode != 0:
+                raise AssertionError(
+                    "npm tar extraction failed:\n"
+                    f"STDOUT:\n{extract.stdout.decode('utf-8', errors='replace')}\n"
+                    f"STDERR:\n{extract.stderr.decode('utf-8', errors='replace')}"
+                )
+            package_root = package_dir / "package"
+            for command, expected in cases:
+                with self.subTest(command=command):
+                    smoke = subprocess.run(
+                        command,
+                        cwd=package_root,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    output = smoke.stdout + smoke.stderr
+                    self.assertEqual(0, smoke.returncode, output)
+                    self.assertIn(expected, output)
+
     def test_compatibility_wrappers_delegate_to_shogunate_mod(self):
         bootstrap_wrapper = (ROOT / "scripts" / "shogunate_package_bootstrap.sh").read_text(encoding="utf-8")
         first_setup_wrapper = (ROOT / "first_setup.sh").read_text(encoding="utf-8")

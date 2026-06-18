@@ -60,7 +60,8 @@
 5. `scripts/shogunate_package_bootstrap.sh` はローカル checkout では `shogunate_mod/package/bootstrap.sh` を優先して実行し、remote fallback でも root wrapper ではなく MOD bootstrap を取得する。
 6. 代表的な互換 wrapper は、文字列上の委譲だけでなく、`python3 scripts/shogunate_pair_server.py --help`、`bash scripts/shell_aliases.sh`、`bash scripts/agent_status.sh --help` として直接実行できる。
 7. cURL release archive を展開した状態でも、代表的な互換 wrapper が同じコマンドで直接実行できる。
-8. 既存 unit / package / Android / runtime smoke が PASS する。
+8. npm package tarball を展開した状態でも、代表的な互換 wrapper が同じコマンドで直接実行できる。
+9. 既存 unit / package / Android / runtime smoke が PASS する。
 
 ## 追補（2026-05-22: upstream latest base rebuild）
 

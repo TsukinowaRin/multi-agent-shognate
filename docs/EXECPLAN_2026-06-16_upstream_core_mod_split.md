@@ -1505,6 +1505,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `SHOGUNATE_PACKAGE_CURL_SMOKE_RUN_ID=package-curl-smoke-codex-20260619003659 make package-curl-smoke`; created a release-style `git archive` package tarball, installed it through `curl -fsSL file://.../shogunate_mod/package/bootstrap.sh | bash` into an isolated `HOME`, verified the generated `shogunate` command, `shogunate help`, cwd-first `shogunate --project <tmp-project> where`, workspace metadata creation, and `shogunate --project <tmp-project> pair --help`.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_makefile_has_mod_canonical_copy` after adding the cURL package smoke target.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 130 package distribution contract tests after adding the cURL package smoke target.
+- PASS: `SHOGUNATE_PACKAGE_CURL_SMOKE_RUN_ID=package-curl-smoke-postcommit-20260619004109 make package-curl-smoke` against committed HEAD `a9bbcd9`; installed the release-style archive through cURL into an isolated `HOME` and verified the generated `shogunate` command, `help`, cwd-first `where`, workspace metadata, and `pair --help`.
+- PASS: `SHOGUNATE_SOURCE_SMOKE_RUN_ID=source-runtime-smoke-mod-check-curl-20260619004141 SHOGUNATE_PACKAGE_CURL_SMOKE_RUN_ID=package-curl-smoke-mod-check-20260619004141 make mod-check` against committed HEAD `a9bbcd9`; ran package prepublish checks, package cURL install smoke, detached source runtime smoke, and Android `testDebugUnitTest assembleDebug`. Android emitted the known SDK XML version warning and exited with `BUILD SUCCESSFUL`.
 
 ## 復旧
 

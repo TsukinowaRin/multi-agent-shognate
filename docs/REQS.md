@@ -490,6 +490,7 @@
 1. `README.md` / `README_ja.md` の冒頭 Quick Start で cURL install が最初に提示される。
 2. `v5.2.0.3` 固定の install command と、将来 main 反映後の moving command の違いが分かる。
 3. `shogunate`, `shogunate resume`, `shogunate configure`, `shogunate status`, `shogunate aliases` が導入後コマンドとして記載される。
+4. CI の MOD verification job は `make mod-check` の前提として `curl` を明示導入し、cURL install smoke が runner の既定状態に依存しない。
 
 ## 追補（2026-06-12: package clean 警告と軍監口調維持）
 

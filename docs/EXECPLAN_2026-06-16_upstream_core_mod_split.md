@@ -218,6 +218,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] release 前の `prepublish_check.sh` に `require_manifest_mod_sources_in_head` gate を追加し、manifest `canonical_paths` 配下の MOD 正本ファイルが checked `HEAD` に存在しない場合に release を止めるようにした。これにより `git archive HEAD` が未コミット MOD 正本を落とす事故を防ぐ。
 - [x] package release workflow の archive 対象を tag 名から checked-out `HEAD` へ変更し、archive 作成前に `TAG_COMMIT` と `HEAD_COMMIT` の一致を検証するようにした。これにより prepublish 済み tree と cURL release archive tree のズレを防ぐ。
 - [x] package release workflow の upload artifact と GitHub Release `files` が、通常名/バージョン付きの package tar.gz/zip 4 assets だけを公開することを package distribution contract で固定した。
+- [x] GitHub Actions の MOD verification job が `make mod-check` 前に `curl` を明示導入するようにし、`package-curl-smoke` が runner の既定状態に依存しないことを package distribution contract で固定した。
 - [x] package release workflow の GitHub Release `target_commitish` を `github.sha` ではなく検証済み release tag output に固定し、Release 表示対象も archive tree と同じ tag に揃えた。
 - [x] `require_manifest_mod_sources_in_head` の失敗時に missing 件数と「release archive 作成前に shogunate_mod sources を commit する」対処を表示するようにした。
 - [x] full `prepublish_check.sh` を実測し、root `skills/.system/` が誤って MOD skill 同期対象になっていた問題を修正した。`require_directory_files_synced` は `*/.system/*` を除外し、system-managed skills を Shogunate MOD 正本に混ぜない。

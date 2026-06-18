@@ -5,6 +5,7 @@ import fnmatch
 import os
 import re
 import subprocess
+import tempfile
 import unittest
 import zipfile
 from pathlib import Path
@@ -787,6 +788,61 @@ class PackageDistributionContractTests(unittest.TestCase):
                 output = result.stdout + result.stderr
                 self.assertEqual(0, result.returncode, output)
                 self.assertIn(expected, output)
+
+    def test_release_archive_representative_wrappers_execute_mod_sources(self):
+        result = subprocess.run(
+            ["git", "archive", "--worktree-attributes", "--format=tar", "HEAD"],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise AssertionError(
+                "git archive failed:\n"
+                f"STDOUT:\n{result.stdout.decode('utf-8', errors='replace')}\n"
+                f"STDERR:\n{result.stderr.decode('utf-8', errors='replace')}"
+            )
+        cases = [
+            (
+                ["python3", "scripts/shogunate_pair_server.py", "--help"],
+                "Run the Shogunate Android pairing server.",
+            ),
+            (
+                ["bash", "scripts/shell_aliases.sh"],
+                "scripts/install_shell_aliases.sh",
+            ),
+            (
+                ["bash", "scripts/agent_status.sh", "--help"],
+                "Usage: agent_status.sh",
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_root = Path(tmp)
+            extract = subprocess.run(
+                ["tar", "-xf", "-", "-C", str(archive_root)],
+                input=result.stdout,
+                capture_output=True,
+                check=False,
+            )
+            if extract.returncode != 0:
+                raise AssertionError(
+                    "tar extraction failed:\n"
+                    f"STDOUT:\n{extract.stdout.decode('utf-8', errors='replace')}\n"
+                    f"STDERR:\n{extract.stderr.decode('utf-8', errors='replace')}"
+                )
+            for command, expected in cases:
+                with self.subTest(command=command):
+                    smoke = subprocess.run(
+                        command,
+                        cwd=archive_root,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    output = smoke.stdout + smoke.stderr
+                    self.assertEqual(0, smoke.returncode, output)
+                    self.assertIn(expected, output)
 
     def test_compatibility_wrappers_delegate_to_shogunate_mod(self):
         bootstrap_wrapper = (ROOT / "scripts" / "shogunate_package_bootstrap.sh").read_text(encoding="utf-8")

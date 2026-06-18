@@ -1496,6 +1496,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 129 package distribution contract tests after adding the executable-body wrapper target contract.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the executable-body wrapper target contract.
 - PASS: `git diff --check` after adding the executable-body wrapper target contract.
+- PASS: `git fetch upstream main:refs/remotes/upstream/main` confirmed latest fetched `upstream/main` remained `431b86a` and `git merge-base --is-ancestor upstream/main HEAD` returned 0 before adding the shell-wrapper exec contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_shell_compatibility_wrappers_exec_unless_sourced` after requiring execution-style shell/command wrappers to `exec` into MOD targets, leaving only `lib/*.sh`, `shutsujin_departure.sh`, and the remote bootstrap wrapper as source/fallback exceptions.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 130 package distribution contract tests after adding the shell-wrapper exec contract.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the shell-wrapper exec contract.
+- PASS: `git diff --check` after adding the shell-wrapper exec contract.
 
 ## 復旧
 

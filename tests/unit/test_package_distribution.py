@@ -2072,6 +2072,30 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual([], batch_wrappers_with_labels)
         self.assertEqual([], thick_wrappers)
 
+    def test_shell_compatibility_wrappers_exec_unless_sourced(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        source_only_wrappers = {
+            "shutsujin_departure.sh",
+            *[
+                rel
+                for rel in manifest_list_values(manifest, "compatibility_wrappers")
+                if rel.startswith("lib/") and rel.endswith(".sh")
+            ],
+        }
+        missing_exec = []
+
+        for rel in manifest_list_values(manifest, "compatibility_wrappers"):
+            if not rel.endswith((".sh", ".command")):
+                continue
+            if rel == "scripts/shogunate_package_bootstrap.sh" or rel in source_only_wrappers:
+                continue
+            path = ROOT / rel.rstrip("/")
+            body_lines = non_comment_body(path.read_text(encoding="utf-8", errors="ignore")).splitlines()
+            if not any(line.strip().startswith("exec ") for line in body_lines):
+                missing_exec.append(rel)
+
+        self.assertEqual([], missing_exec)
+
     def test_only_package_bootstrap_wrapper_has_remote_fallback(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         remote_wrappers = []

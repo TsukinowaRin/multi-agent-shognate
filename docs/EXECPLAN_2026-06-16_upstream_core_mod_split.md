@@ -1491,6 +1491,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 128 package distribution contract tests after adding the remote-fallback wrapper contract.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the remote-fallback wrapper contract.
 - PASS: `git diff --check` after adding the remote-fallback wrapper contract.
+- PASS: `git fetch upstream main:refs/remotes/upstream/main` on 2026-06-19 confirmed latest fetched `upstream/main` remained `431b86a` and `git merge-base --is-ancestor upstream/main HEAD` returned 0.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrapper_targets_are_in_executable_body` after requiring wrapper MOD delegate targets to appear in executable body text, not comments only.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 129 package distribution contract tests after adding the executable-body wrapper target contract.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the executable-body wrapper target contract.
+- PASS: `git diff --check` after adding the executable-body wrapper target contract.
 
 ## 復旧
 

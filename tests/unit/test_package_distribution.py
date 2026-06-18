@@ -1472,6 +1472,20 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], missing_targets)
 
+    def test_manifest_compatibility_wrapper_targets_are_in_executable_body(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        comment_only_targets = []
+
+        for rel in manifest_list_values(manifest, "compatibility_wrappers"):
+            path = ROOT / rel.rstrip("/")
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            all_targets = wrapper_mod_delegate_paths(text)
+            body_targets = wrapper_mod_delegate_paths(non_comment_body(text))
+            if all_targets != body_targets:
+                comment_only_targets.append(f"{rel}: all={all_targets} body={body_targets}")
+
+        self.assertEqual([], comment_only_targets)
+
     def test_manifest_compatibility_wrappers_have_single_delegate_target(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         multi_target_wrappers = []

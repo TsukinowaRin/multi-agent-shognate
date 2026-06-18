@@ -3309,6 +3309,11 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("Run unit tests", mod_workflow)
         self.assertIn("bats tests/agent_selfwatch.bats", mod_workflow)
         self.assertIn("python3 -m venv .venv", mod_workflow)
+        self.assertIn("MOD Package, Runtime, and Android Check", mod_workflow)
+        self.assertIn("actions/setup-java@v4", mod_workflow)
+        self.assertIn("sudo apt-get install -y tmux python3-venv ripgrep", mod_workflow)
+        self.assertIn("SHOGUNATE_SOURCE_SMOKE_RUN_ID: source-runtime-smoke-ci-", mod_workflow)
+        self.assertIn("make mod-check", mod_workflow)
 
     def test_package_archive_excludes_android_app(self):
         attrs = (ROOT / ".gitattributes").read_text(encoding="utf-8")

@@ -3515,23 +3515,30 @@ class PackageDistributionContractTests(unittest.TestCase):
         excluded_names = {"local.properties", ".gitignore"}
         excluded_suffixes = {".apk"}
 
-        root_files = []
-        for dirpath, dirnames, filenames in os.walk(root_android):
-            dirnames[:] = [name for name in dirnames if name not in excluded_dirs]
-            current_dir = Path(dirpath)
-            for filename in filenames:
-                path = current_dir / filename
-                rel = path.relative_to(root_android)
-                if filename in excluded_names:
-                    continue
-                if path.suffix in excluded_suffixes:
-                    continue
-                root_files.append(rel)
+        def source_files(base: Path) -> list[Path]:
+            files = []
+            for dirpath, dirnames, filenames in os.walk(base):
+                dirnames[:] = [name for name in dirnames if name not in excluded_dirs]
+                current_dir = Path(dirpath)
+                for filename in filenames:
+                    path = current_dir / filename
+                    rel = path.relative_to(base)
+                    if filename in excluded_names:
+                        continue
+                    if path.suffix in excluded_suffixes:
+                        continue
+                    files.append(rel)
+            return files
+
+        root_files = source_files(root_android)
+        mod_files = source_files(mod_android)
 
         self.assertGreater(len(root_files), 50)
         self.assertIn("require_android_sources_synced", prepublish)
-        self.assertIn("import os\nfrom pathlib import Path", prepublish)
-        self.assertIn("for dirpath, dirnames, filenames in os.walk(root_android):", prepublish)
+        self.assertIn("def check_tree(source: Path, destination: Path", prepublish)
+        self.assertIn('check_tree(root_android, mod_android, "compatibility", "MOD")', prepublish)
+        self.assertIn('check_tree(mod_android, root_android, "MOD", "root compatibility")', prepublish)
+        self.assertIn("for dirpath, dirnames, filenames in os.walk(source):", prepublish)
         self.assertIn("dirnames[:] = [name for name in dirnames if name not in excluded_dirs]", prepublish)
         self.assertIn('excluded_names = {"local.properties", ".gitignore"}', prepublish)
         mod_gitignore = (mod_android / ".gitignore").read_text(encoding="utf-8")
@@ -3543,6 +3550,14 @@ class PackageDistributionContractTests(unittest.TestCase):
                 (root_android / rel).read_bytes(),
                 mod_path.read_bytes(),
                 f"Android compatibility copy differs: {rel}",
+            )
+        for rel in sorted(mod_files):
+            root_path = root_android / rel
+            self.assertTrue(root_path.exists(), f"missing root Android compatibility source: {rel}")
+            self.assertEqual(
+                root_path.read_bytes(),
+                (mod_android / rel).read_bytes(),
+                f"Android MOD copy differs: {rel}",
             )
 
     def test_docs_describe_curl_and_npm_package_distribution(self):

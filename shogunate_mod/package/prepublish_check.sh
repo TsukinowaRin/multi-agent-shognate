@@ -132,22 +132,26 @@ excluded_names = {"local.properties", ".gitignore"}
 excluded_suffixes = {".apk"}
 problems = []
 
-for dirpath, dirnames, filenames in os.walk(root_android):
-    dirnames[:] = [name for name in dirnames if name not in excluded_dirs]
-    current_dir = Path(dirpath)
-    for filename in filenames:
-        path = current_dir / filename
-        rel = path.relative_to(root_android)
-        if filename in excluded_names:
-            continue
-        if path.suffix in excluded_suffixes:
-            continue
-        mod_path = mod_android / rel
-        if not mod_path.exists():
-            problems.append(f"missing MOD Android source: {mod_path}")
-            continue
-        if path.read_bytes() != mod_path.read_bytes():
-            problems.append(f"Android compatibility copy differs: {rel}")
+def check_tree(source: Path, destination: Path, source_name: str, destination_name: str) -> None:
+    for dirpath, dirnames, filenames in os.walk(source):
+        dirnames[:] = [name for name in dirnames if name not in excluded_dirs]
+        current_dir = Path(dirpath)
+        for filename in filenames:
+            path = current_dir / filename
+            rel = path.relative_to(source)
+            if filename in excluded_names:
+                continue
+            if path.suffix in excluded_suffixes:
+                continue
+            destination_path = destination / rel
+            if not destination_path.exists():
+                problems.append(f"missing {destination_name} Android source: {destination_path}")
+                continue
+            if path.read_bytes() != destination_path.read_bytes():
+                problems.append(f"Android {source_name} copy differs: {rel}")
+
+check_tree(root_android, mod_android, "compatibility", "MOD")
+check_tree(mod_android, root_android, "MOD", "root compatibility")
 
 if problems:
     print("\n".join(problems), file=sys.stderr)

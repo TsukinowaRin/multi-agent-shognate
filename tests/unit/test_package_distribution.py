@@ -1320,6 +1320,32 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual(["github"], sorted(npm_dirs - release_dirs))
         self.assertEqual([], sorted(release_dirs - npm_dirs))
 
+    def test_npm_and_release_mod_file_surface_diff_is_explicit(self):
+        npm_files = {
+            rel
+            for rel in npm_pack_files()
+            if rel.startswith("shogunate_mod/") and (ROOT / rel).is_file()
+        }
+        release_files = {
+            rel
+            for rel in release_archive_files()
+            if rel.startswith("shogunate_mod/") and (ROOT / rel).is_file()
+        }
+
+        self.assertEqual(
+            [
+                "shogunate_mod/development/gitmodules",
+                "shogunate_mod/github/FUNDING.yml",
+                "shogunate_mod/package/gitattributes",
+                "shogunate_mod/package/gitignore",
+                "shogunate_mod/package/package-lock.json",
+                "shogunate_mod/package/workflows/package-release.yml",
+                "shogunate_mod/package/workflows/test.yml",
+            ],
+            sorted(npm_files - release_files),
+        )
+        self.assertEqual([], sorted(release_files - npm_files))
+
     def test_manifest_compatibility_wrappers_are_mod_delegates_and_packaged(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         files = npm_pack_files()

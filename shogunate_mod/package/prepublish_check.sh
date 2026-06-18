@@ -34,21 +34,19 @@ if body(sys.argv[1]) != body(sys.argv[2]):
 PYEOF
 }
 
-require_same_non_comment_body() {
+require_same_after_header_comment() {
   local root_path="$1"
   local mod_path="$2"
 
   python3 - "$root_path" "$mod_path" <<'PYEOF' \
-    || fail "$root_path must match $mod_path after ignoring blank/comment-only lines"
+    || fail "$root_path must match $mod_path except for the leading comment block"
 import sys
 from pathlib import Path
 
 def body(path: str) -> str:
-    lines = []
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        line = line.rstrip()
-        if line and not line.lstrip().startswith("#"):
-            lines.append(line)
+    lines = Path(path).read_text(encoding="utf-8").replace("\r\n", "\n").splitlines()
+    while lines and (not lines[0].strip() or lines[0].lstrip().startswith("#")):
+        lines.pop(0)
     return "\n".join(lines)
 
 if body(sys.argv[1]) != body(sys.argv[2]):
@@ -325,7 +323,7 @@ require_same_file CLAUDE.md shogunate_mod/instructions/autoload/CLAUDE.md
 require_same_file .codd/codd.yaml shogunate_mod/gunkan/codd.yaml
 require_same_file config/opencode-tui.json shogunate_mod/configure/opencode-tui.json
 require_same_file config/ntfy_auth.env.sample shogunate_mod/notify/ntfy_auth.env.sample
-require_same_non_comment_body \
+require_same_after_header_comment \
   config/opencode-permissions.yaml \
   shogunate_mod/configure/opencode-permissions.yaml
 require_instruction_sources_synced

@@ -21,6 +21,13 @@ def non_comment_body(text: str) -> str:
     )
 
 
+def without_header_comment(text: str) -> str:
+    lines = text.replace("\r\n", "\n").splitlines()
+    while lines and (not lines[0].strip() or lines[0].lstrip().startswith("#")):
+        lines.pop(0)
+    return "\n".join(lines)
+
+
 def manifest_section(text: str, name: str) -> list[str]:
     lines = text.splitlines()
     start = lines.index(f"{name}:") + 1
@@ -203,7 +210,7 @@ def prepublish_sync_pairs(text: str) -> list[tuple[str, str]]:
     commands = {
         "require_same_file",
         "require_same_text_file",
-        "require_same_non_comment_body",
+        "require_same_after_header_comment",
         "require_directory_files_synced",
     }
     for line in normalized.splitlines():
@@ -885,7 +892,9 @@ class PackageDistributionContractTests(unittest.TestCase):
             "require_same_file config/ntfy_auth.env.sample shogunate_mod/notify/ntfy_auth.env.sample",
             prepublish_mod,
         )
-        self.assertIn("require_same_non_comment_body", prepublish_mod)
+        self.assertIn("require_same_after_header_comment", prepublish_mod)
+        self.assertIn("leading comment block", prepublish_mod)
+        self.assertIn("while lines and (not lines[0].strip() or lines[0].lstrip().startswith(\"#\"))", prepublish_mod)
         self.assertIn("config/opencode-permissions.yaml", prepublish_mod)
         self.assertIn("shogunate_mod/configure/opencode-permissions.yaml", prepublish_mod)
         self.assertIn("require_instruction_sources_synced", prepublish_mod)
@@ -2545,7 +2554,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             ROOT / "shogunate_mod" / "configure" / "opencode-permissions.yaml"
         ).read_text(encoding="utf-8")
         build_script = (ROOT / "shogunate_mod" / "instructions" / "build.sh").read_text(encoding="utf-8")
-        self.assertEqual(non_comment_body(root_permissions), non_comment_body(mod_permissions))
+        self.assertEqual(without_header_comment(root_permissions), without_header_comment(mod_permissions))
+        self.assertNotEqual(root_permissions.splitlines()[:5], mod_permissions.splitlines()[:5])
         self.assertIn("shogunate_mod/configure/opencode-permissions.yaml", build_script)
         self.assertIn("config/opencode-permissions.yaml", build_script)
 

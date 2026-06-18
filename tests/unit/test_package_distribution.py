@@ -711,6 +711,27 @@ def legacy_installer_surface_files() -> set[str]:
     }
 
 
+def representative_wrapper_smoke_cases() -> list[tuple[list[str], str]]:
+    return [
+        (
+            ["node", "bin/shogunate.js", "--help"],
+            "The npm package is a thin wrapper.",
+        ),
+        (
+            ["python3", "scripts/shogunate_pair_server.py", "--help"],
+            "Run the Shogunate Android pairing server.",
+        ),
+        (
+            ["bash", "scripts/shell_aliases.sh"],
+            "scripts/install_shell_aliases.sh",
+        ),
+        (
+            ["bash", "scripts/agent_status.sh", "--help"],
+            "Usage: agent_status.sh",
+        ),
+    ]
+
+
 class PackageDistributionContractTests(unittest.TestCase):
     def test_curl_bootstrap_is_release_package_aware(self):
         text = BOOTSTRAP.read_text(encoding="utf-8")
@@ -761,26 +782,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("/scripts/shogunate_package_bootstrap.sh", text)
 
     def test_representative_compatibility_wrappers_execute_mod_sources(self):
-        cases = [
-            (
-                ["node", "bin/shogunate.js", "--help"],
-                "The npm package is a thin wrapper.",
-            ),
-            (
-                ["python3", "scripts/shogunate_pair_server.py", "--help"],
-                "Run the Shogunate Android pairing server.",
-            ),
-            (
-                ["bash", "scripts/shell_aliases.sh"],
-                "scripts/install_shell_aliases.sh",
-            ),
-            (
-                ["bash", "scripts/agent_status.sh", "--help"],
-                "Usage: agent_status.sh",
-            ),
-        ]
-
-        for command, expected in cases:
+        for command, expected in representative_wrapper_smoke_cases():
             with self.subTest(command=command):
                 result = subprocess.run(
                     command,
@@ -806,25 +808,6 @@ class PackageDistributionContractTests(unittest.TestCase):
                 f"STDOUT:\n{result.stdout.decode('utf-8', errors='replace')}\n"
                 f"STDERR:\n{result.stderr.decode('utf-8', errors='replace')}"
             )
-        cases = [
-            (
-                ["node", "bin/shogunate.js", "--help"],
-                "The npm package is a thin wrapper.",
-            ),
-            (
-                ["python3", "scripts/shogunate_pair_server.py", "--help"],
-                "Run the Shogunate Android pairing server.",
-            ),
-            (
-                ["bash", "scripts/shell_aliases.sh"],
-                "scripts/install_shell_aliases.sh",
-            ),
-            (
-                ["bash", "scripts/agent_status.sh", "--help"],
-                "Usage: agent_status.sh",
-            ),
-        ]
-
         with tempfile.TemporaryDirectory() as tmp:
             archive_root = Path(tmp)
             extract = subprocess.run(
@@ -839,7 +822,7 @@ class PackageDistributionContractTests(unittest.TestCase):
                     f"STDOUT:\n{extract.stdout.decode('utf-8', errors='replace')}\n"
                     f"STDERR:\n{extract.stderr.decode('utf-8', errors='replace')}"
                 )
-            for command, expected in cases:
+            for command, expected in representative_wrapper_smoke_cases():
                 with self.subTest(command=command):
                     smoke = subprocess.run(
                         command,
@@ -853,25 +836,6 @@ class PackageDistributionContractTests(unittest.TestCase):
                     self.assertIn(expected, output)
 
     def test_npm_package_representative_wrappers_execute_mod_sources(self):
-        cases = [
-            (
-                ["node", "bin/shogunate.js", "--help"],
-                "The npm package is a thin wrapper.",
-            ),
-            (
-                ["python3", "scripts/shogunate_pair_server.py", "--help"],
-                "Run the Shogunate Android pairing server.",
-            ),
-            (
-                ["bash", "scripts/shell_aliases.sh"],
-                "scripts/install_shell_aliases.sh",
-            ),
-            (
-                ["bash", "scripts/agent_status.sh", "--help"],
-                "Usage: agent_status.sh",
-            ),
-        ]
-
         with tempfile.TemporaryDirectory() as tmp:
             package_dir = Path(tmp)
             pack = subprocess.run(
@@ -897,7 +861,7 @@ class PackageDistributionContractTests(unittest.TestCase):
                     f"STDERR:\n{extract.stderr.decode('utf-8', errors='replace')}"
                 )
             package_root = package_dir / "package"
-            for command, expected in cases:
+            for command, expected in representative_wrapper_smoke_cases():
                 with self.subTest(command=command):
                     smoke = subprocess.run(
                         command,

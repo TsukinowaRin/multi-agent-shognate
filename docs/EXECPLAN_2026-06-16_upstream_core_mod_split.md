@@ -234,6 +234,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] cURL release archive を実際に展開した状態でも、代表的な互換 wrapper（Pair server / shell aliases / agent status command）が MOD 正本へ到達して直接実行できることを package distribution contract で固定した。
 - [x] npm package tarball を実際に展開した状態でも、代表的な互換 wrapper（Pair server / shell aliases / agent status command）が MOD 正本へ到達して直接実行できることを package distribution contract で固定した。
 - [x] npm CLI entrypoint `bin/shogunate.js` も source checkout / cURL release archive / npm package tarball の3面で `--help` 実行でき、MOD 正本 `shogunate_mod/package/npm_cli.js` へ到達することを package distribution contract で固定した。
+- [x] 代表 wrapper smoke の command list を package distribution contract 内で共有 helper 化し、source checkout / cURL release archive / npm package tarball の3面で同じ entrypoint set を検査するようにした。
 - [x] full `prepublish_check.sh` を実測し、root `skills/.system/` が誤って MOD skill 同期対象になっていた問題を修正した。`require_directory_files_synced` は `*/.system/*` を除外し、system-managed skills を Shogunate MOD 正本に混ぜない。
 - [x] full `prepublish_check.sh` の Android source sync が root Android build/cache 配下を `rglob` で列挙して遅くなる問題を修正した。`require_android_sources_synced` は `os.walk` で excluded dirs を traversal 前に prune する。
 - [x] `require_manifest_mod_sources_in_head` も重複 canonical directory を再走査しないよう `expanded_dirs` で親ディレクトリ優先にした。
@@ -1567,6 +1568,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding npm CLI entrypoint smoke.
 - PASS: `git diff --check` after adding npm CLI entrypoint smoke.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 135 package distribution contract tests after adding npm CLI entrypoint smoke.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_representative_compatibility_wrappers_execute_mod_sources tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_representative_wrappers_execute_mod_sources tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_package_representative_wrappers_execute_mod_sources` after sharing the representative wrapper smoke case list across source/archive/npm package surfaces.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after sharing the representative wrapper smoke case list.
+- PASS: `git diff --check` after sharing the representative wrapper smoke case list.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 135 package distribution contract tests after sharing the representative wrapper smoke case list.
 
 ## 復旧
 

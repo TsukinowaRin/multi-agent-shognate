@@ -1579,6 +1579,44 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual([], missing)
 
+    def test_root_shogunate_text_surfaces_have_sync_or_generation_gate(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
+        ensure_generated = (ROOT / "shogunate_mod" / "instructions" / "ensure_generated.sh").read_text(encoding="utf-8")
+        wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))
+        sync_pairs = prepublish_sync_pairs(prepublish)
+        generated_targets = set(ensure_generated_targets(ensure_generated))
+        missing = []
+
+        def covered_by_sync(root_rel: str) -> bool:
+            normalized = root_rel.rstrip("/")
+            if root_rel.startswith("android/") and "require_android_sources_synced" in prepublish:
+                return True
+            if (
+                root_rel.startswith("instructions/")
+                and not root_rel.startswith("instructions/generated/")
+                and "require_instruction_sources_synced" in prepublish
+            ):
+                return True
+            for pair_root, _ in sync_pairs:
+                pair_root_normalized = pair_root.rstrip("/")
+                if (
+                    normalized == pair_root_normalized
+                    or normalized.startswith(pair_root_normalized + "/")
+                    or pair_root_normalized.startswith(normalized + "/")
+                ):
+                    return True
+            return False
+
+        for rel in root_shogunate_surface_candidates():
+            if rel in wrappers:
+                continue
+            if rel in generated_targets or covered_by_sync(rel):
+                continue
+            missing.append(rel)
+
+        self.assertEqual([], missing)
+
     def test_prepublish_sync_targets_are_tracked_by_manifest(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")

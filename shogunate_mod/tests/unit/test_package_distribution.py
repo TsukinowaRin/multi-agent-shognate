@@ -3497,6 +3497,16 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn('"Release tag $TAG does not point to the checked prepublish commit."', text)
         self.assertIn("git archive --worktree-attributes --format=tar.gz --prefix=multi-agent-shognate/ HEAD", text)
         self.assertIn("git archive --worktree-attributes --format=zip --prefix=multi-agent-shognate/ HEAD", text)
+        self.assertIn('cp "dist/${PACKAGE_TGZ_ASSET}" "dist/${VERSIONED_PACKAGE_TGZ_ASSET}"', text)
+        self.assertIn('cp "dist/${PACKAGE_ZIP_ASSET}" "dist/${VERSIONED_PACKAGE_ZIP_ASSET}"', text)
+        self.assertLess(
+            text.index('git archive --worktree-attributes --format=tar.gz --prefix=multi-agent-shognate/ HEAD'),
+            text.index('cp "dist/${PACKAGE_TGZ_ASSET}" "dist/${VERSIONED_PACKAGE_TGZ_ASSET}"'),
+        )
+        self.assertLess(
+            text.index('git archive --worktree-attributes --format=zip --prefix=multi-agent-shognate/ HEAD'),
+            text.index('cp "dist/${PACKAGE_ZIP_ASSET}" "dist/${VERSIONED_PACKAGE_ZIP_ASSET}"'),
+        )
         self.assertIn("target_commitish: ${{ steps.asset.outputs.tag }}", text)
         self.assertIn("fetch-depth: 0", text)
         self.assertIn("Fetch upstream main", text)

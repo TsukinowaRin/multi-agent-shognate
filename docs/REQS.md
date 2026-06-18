@@ -480,6 +480,7 @@
 6. package release workflow は GitHub Release へ upload/publish する前に、作成済み `dist/multi-agent-shognate-package.tar.gz` を使って cURL install smoke を実行する。
 7. package release workflow の tar.gz / zip は、package distribution test と同じ `git archive --worktree-attributes` 境界で作成する。
 8. package distribution contract は release tar archive と zip archive の実ファイル一覧が一致することを検査する。
+9. package release workflow のバージョン付き package asset は、通常名 package asset から `cp` で作成し、同一内容として公開する。
 
 ## 追補（2026-06-11: README package install 導線）
 

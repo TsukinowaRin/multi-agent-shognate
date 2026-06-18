@@ -109,10 +109,14 @@ package-curl-smoke:
 		bin="$$home/.local/bin"; \
 		project="$$work/project"; \
 		tmp="$$work/tmp"; \
-		package="$$work/multi-agent-shognate-package.tar.gz"; \
+		package="$${SHOGUNATE_PACKAGE_CURL_SMOKE_PACKAGE:-$$work/multi-agent-shognate-package.tar.gz}"; \
 		mkdir -p "$$home" "$$bin" "$$project" "$$tmp"; \
 		trap '\''rm -rf "$$work"'\'' EXIT; \
-		git archive --worktree-attributes --format=tar.gz --prefix=multi-agent-shognate/ HEAD -o "$$package"; \
+		if [ -z "$${SHOGUNATE_PACKAGE_CURL_SMOKE_PACKAGE:-}" ]; then \
+			git archive --worktree-attributes --format=tar.gz --prefix=multi-agent-shognate/ HEAD -o "$$package"; \
+		else \
+			test -f "$$package"; \
+		fi; \
 		SHOGUNATE_PACKAGE_URL="file://$$package" HOME="$$home" TMPDIR="$$tmp" \
 			curl -fsSL "file://$$root/shogunate_mod/package/bootstrap.sh" \
 			| SHOGUNATE_PACKAGE_URL="file://$$package" HOME="$$home" TMPDIR="$$tmp" \

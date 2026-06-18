@@ -34,6 +34,11 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl python3-venv
+
       - name: Setup Python venv with PyYAML
         run: |
           python3 -m venv .venv
@@ -113,6 +118,13 @@ jobs:
           echo "versioned_package_tgz_asset=${VERSIONED_PACKAGE_TGZ_ASSET}" >> "$GITHUB_OUTPUT"
           echo "versioned_package_zip_asset=${VERSIONED_PACKAGE_ZIP_ASSET}" >> "$GITHUB_OUTPUT"
           echo "release_notes_path=dist/release-notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke cURL install package
+        env:
+          SHOGUNATE_PACKAGE_CURL_SMOKE_RUN_ID: package-curl-smoke-release-${{ github.run_id }}-${{ github.run_attempt }}
+          SHOGUNATE_PACKAGE_CURL_SMOKE_PACKAGE: ${{ github.workspace }}/dist/${{ steps.asset.outputs.package_tgz_asset }}
+        run: |
+          make package-curl-smoke
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4

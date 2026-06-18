@@ -230,6 +230,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Public README / README_ja の fixed release cURL と latest channel cURL を package distribution contract で固定し、root README と MOD README の両方で fixed cURL の raw URL tag と `--version` が一致すること、4つの public README が同じ fixed release tag を示すことを検査するようにした。
 - [x] `docs/REQS.md` に残っていた古い固定 release tag 前提を、README が示す現在の fixed release tag と release tag/APK 名対応を要求する形へ更新した。
 - [x] `scripts/shogunate_package_bootstrap.sh` の互換 wrapper が、ローカル checkout では MOD 正本 `shogunate_mod/package/bootstrap.sh` を優先して exec し、remote fallback でも旧 root wrapper ではなく MOD bootstrap を取得することを package distribution contract で固定した。
+- [x] 代表的な互換 wrapper（Pair server / shell aliases / agent status command）が文字列上の委譲だけでなく、直接実行して MOD 正本へ到達できることを package distribution contract で固定した。
 - [x] full `prepublish_check.sh` を実測し、root `skills/.system/` が誤って MOD skill 同期対象になっていた問題を修正した。`require_directory_files_synced` は `*/.system/*` を除外し、system-managed skills を Shogunate MOD 正本に混ぜない。
 - [x] full `prepublish_check.sh` の Android source sync が root Android build/cache 配下を `rglob` で列挙して遅くなる問題を修正した。`require_android_sources_synced` は `os.walk` で excluded dirs を traversal 前に prune する。
 - [x] `require_manifest_mod_sources_in_head` も重複 canonical directory を再走査しないよう `expanded_dirs` で親ディレクトリ優先にした。
@@ -1547,6 +1548,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding the package bootstrap wrapper local/remote MOD-source contract.
 - PASS: `git diff --check` after adding the package bootstrap wrapper local/remote MOD-source contract.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 132 package distribution contract tests after adding the package bootstrap wrapper local/remote MOD-source contract.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_representative_compatibility_wrappers_execute_mod_sources` after adding direct execution smoke for representative compatibility wrappers.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after adding direct execution smoke for representative compatibility wrappers.
+- PASS: `git diff --check` after adding direct execution smoke for representative compatibility wrappers.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 133 package distribution contract tests after adding direct execution smoke for representative compatibility wrappers.
 
 ## 復旧
 

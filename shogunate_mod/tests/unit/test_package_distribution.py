@@ -759,6 +759,35 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertLess(text.index(local_delegate), text.index(remote_exec))
         self.assertNotIn("/scripts/shogunate_package_bootstrap.sh", text)
 
+    def test_representative_compatibility_wrappers_execute_mod_sources(self):
+        cases = [
+            (
+                ["python3", "scripts/shogunate_pair_server.py", "--help"],
+                "Run the Shogunate Android pairing server.",
+            ),
+            (
+                ["bash", "scripts/shell_aliases.sh"],
+                "scripts/install_shell_aliases.sh",
+            ),
+            (
+                ["bash", "scripts/agent_status.sh", "--help"],
+                "Usage: agent_status.sh",
+            ),
+        ]
+
+        for command, expected in cases:
+            with self.subTest(command=command):
+                result = subprocess.run(
+                    command,
+                    cwd=ROOT,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                output = result.stdout + result.stderr
+                self.assertEqual(0, result.returncode, output)
+                self.assertIn(expected, output)
+
     def test_compatibility_wrappers_delegate_to_shogunate_mod(self):
         bootstrap_wrapper = (ROOT / "scripts" / "shogunate_package_bootstrap.sh").read_text(encoding="utf-8")
         first_setup_wrapper = (ROOT / "first_setup.sh").read_text(encoding="utf-8")

@@ -265,6 +265,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] npm package と cURL release archive の root compatibility surface の差分が、cURL だけに残す runtime default config / public philosophy doc 3 files だけであることを package distribution contract で固定した。これにより root 側互換面の配布差分が意図なく広がる事故を検出できる。
 - [x] root に残る Shogunate-specific text surface が manifest で分類されるだけでなく、compatibility wrapper / generated target / prepublish sync / instruction source sync のいずれかの gate で守られることを package distribution contract で固定した。
 - [x] root Shogunate-specific text surface の検出対象に公開/設計 docs を追加し、内部作業 docs を除外したうえで `docs/philosophy.md` / `docs/codd/` も MOD 正本同期 gate で守られることを package distribution contract で固定した。
+- [x] 現HEADの一時 source checkout worktree で `shutsujin_departure.sh -s -c` を再スモークし、MOD runtime loader 経由の setup-only 起動、5 role pane、queue/runtime、dashboard、tmux project/runtime metadata が成立することを確認した。
 
 ## 判断
 
@@ -1413,6 +1414,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash shogunate_mod/package/prepublish_check.sh` ran 119 package distribution contract tests, confirmed generated instruction files are up to date, and passed after requiring root Shogunate text surfaces to have a wrapper, generated, prepublish sync, or instruction source sync gate.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_root_shogunate_text_surfaces_have_sync_or_generation_gate tests.unit.test_package_distribution.PackageDistributionContractTests.test_root_shogunate_surfaces_are_classified_by_manifest tests.unit.test_package_distribution.PackageDistributionContractTests.test_codd_docs_have_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_support_files_have_mod_canonical_copy` after adding public/design docs to the root Shogunate text surface scan.
 - PASS: `bash shogunate_mod/package/prepublish_check.sh` ran 119 package distribution contract tests, confirmed generated instruction files are up to date, and passed after adding public/design docs to the root Shogunate text surface scan.
+- PASS: source checkout smoke in detached worktree `runtime_sandboxes/source-runtime-smoke-20260618191513` with `SHOGUNATE_PROJECT_DIR=<worktree>/target-project SHOGUNATE_SESSION_NAME=shogunate-mod-source-runtime-smoke-20260618191513 GOZA_SESSION_NAME=shogunate-mod-source-runtime-smoke-20260618191513 RUNTIME_DAEMON_SESSION=goza-runtime-shogunate-mod-source-runtime-smoke-20260618191513 MAS_BOOTSTRAP_READY_TIMEOUT=3 bash shutsujin_departure.sh -s -c`; verified the `goza` tmux window had 5 role panes (`shogun`, `gunkan`, `karo`, `gunshi`, `ashigaru1`), `queue/runtime/agent_cli.tsv` had 5 role entries, dashboard and Gunkan queue/report files existed, and tmux `@shogunate_project_dir` / `@shogunate_runtime_dir` matched the target project and detached runtime worktree. The smoke-owned tmux session and worktree were removed after verification.
 
 ## 復旧
 

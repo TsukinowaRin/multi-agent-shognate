@@ -39,12 +39,14 @@ setup() {
     # inbox_write.shはSCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"で解決するため、
     # シンボリックリンクでテスト用ディレクトリを作成
     export TEST_SCRIPT_DIR="$TEST_TMPDIR/scripts"
-    mkdir -p "$TEST_SCRIPT_DIR"
+    mkdir -p "$TEST_SCRIPT_DIR" "$TEST_TMPDIR/shogunate_mod/inbox"
 
     # 元のスクリプトをコピー（SCRIPT_DIRをテスト用に書き換える）
     sed "s|SCRIPT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE\[0\]}\")/..*|SCRIPT_DIR=\"$TEST_TMPDIR\"|" \
         "$PROJECT_ROOT/scripts/inbox_write.sh" > "$TEST_SCRIPT_DIR/inbox_write.sh"
     chmod +x "$TEST_SCRIPT_DIR/inbox_write.sh"
+    cp "$PROJECT_ROOT/shogunate_mod/inbox/write.sh" "$TEST_TMPDIR/shogunate_mod/inbox/write.sh"
+    chmod +x "$TEST_TMPDIR/shogunate_mod/inbox/write.sh"
 
     export TEST_INBOX_WRITE="$TEST_SCRIPT_DIR/inbox_write.sh"
 }

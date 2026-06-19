@@ -1820,6 +1820,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bats tests/unit/test_gunkan_audit.bats --timing` ran 14 Gunkan audit tests after moving the light watch test harness to the MOD canonical source.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_gunkan_audit_tests_run_mod_light_watch tests.unit.test_package_distribution.PackageDistributionContractTests.test_codd_docs_have_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_unit_test_cases_have_mod_canonical_copy` after adding a contract that Gunkan audit tests do not execute the root compatibility wrapper.
 - PASS: direct root/MOD sync checks for `tests/unit/test_gunkan_audit.bats` and `tests/unit/test_package_distribution.py`, followed by `git diff --check`.
+- `shogunate_mod/README.md` の `configure/` 境界説明も root `scripts/configure_*` / `scripts/switch_cli.sh` path を正本のように列挙する形から、MOD 正本 `shogunate_mod/configure/agents.sh`, `runtime_roles.py`, `sync_opencode_config.py`, `switch_cli.sh` を明示し、root configure/switch path は compatibility wrapper とだけ説明する形へ寄せた。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_readme_describes_configure_canonical_sources` after adding the MOD README configure-boundary contract.
+- PASS: direct root/MOD package distribution test sync and `git diff --check` after the MOD README configure-boundary update.
 
 ## 復旧
 

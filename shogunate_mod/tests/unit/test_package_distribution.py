@@ -3600,6 +3600,25 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("scripts/gunkan_codd_audit.py 経由", index)
         self.assertNotIn("scripts/gunkan_light_watch.py", index)
 
+    def test_mod_readme_describes_configure_canonical_sources(self):
+        text = (ROOT / "shogunate_mod" / "README.md").read_text(encoding="utf-8")
+
+        for required in (
+            "shogunate_mod/configure/agents.sh",
+            "shogunate_mod/configure/runtime_roles.py",
+            "shogunate_mod/configure/sync_opencode_config.py",
+            "shogunate_mod/configure/switch_cli.sh",
+            "compatibility wrappers only",
+        ):
+            self.assertIn(required, text)
+        for forbidden in (
+            "`scripts/configure_agents.sh`",
+            "`scripts/configure_runtime_roles.py`",
+            "`scripts/sync_opencode_config.py`",
+            "`scripts/switch_cli.sh`",
+        ):
+            self.assertNotIn(forbidden, text)
+
     def test_public_community_docs_have_mod_canonical_copy(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
         package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))

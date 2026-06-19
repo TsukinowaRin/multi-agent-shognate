@@ -24,9 +24,12 @@ is Shogunate-only.
   OS launchers for role configuration, live CLI switching, default
   `config/settings.yaml` / `config/projects.yaml` templates, the OpenCode
   permission matrix and TUI keybinding config, OpenCode/Kilo project config
-  sync, and the historical `Shogunate-Configure-Roles.*`,
-  `scripts/configure_agents.sh`, `scripts/configure_runtime_roles.py`,
-  `scripts/sync_opencode_config.py`, and `scripts/switch_cli.sh` paths.
+  sync, and the MOD canonical helpers `shogunate_mod/configure/agents.sh`,
+  `shogunate_mod/configure/runtime_roles.py`,
+  `shogunate_mod/configure/sync_opencode_config.py`, and
+  `shogunate_mod/configure/switch_cli.sh`. Historical
+  `Shogunate-Configure-Roles.*` and root configure/switch paths remain
+  compatibility wrappers only.
 - `context/` owns the Shogunate context directory guide. Root
   `context/README.md` remains the compatibility guide next to project-specific
   context files, while `context/{project}.md` stays user/runtime state.

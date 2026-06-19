@@ -3948,8 +3948,10 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual(root_settings, mod_settings)
         self.assertIn("SessionStart", mod_settings["hooks"])
         self.assertIn("Stop", mod_settings["hooks"])
-        self.assertIn("bash scripts/session_start_hook.sh", str(mod_settings))
-        self.assertIn("bash scripts/stop_hook_inbox.sh", str(mod_settings))
+        self.assertIn("bash shogunate_mod/hooks/session_start_hook.sh", str(mod_settings))
+        self.assertIn("bash shogunate_mod/hooks/stop_hook_inbox.sh", str(mod_settings))
+        self.assertNotIn("bash scripts/session_start_hook.sh", str(mod_settings))
+        self.assertNotIn("bash scripts/stop_hook_inbox.sh", str(mod_settings))
         self.assertIn(
             "require_same_file .claude/settings.json shogunate_mod/hooks/claude_settings.json",
             prepublish,

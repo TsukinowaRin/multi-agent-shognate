@@ -57,7 +57,7 @@ case "$AGENT_ID" in
 Rationale: 2026-04-18 に家老が「我は将軍」と役職誤認する persona 崩壊事例あり。
 command-layer agent は persona + 戦国口調 + forbidden_actions の再確立が必須。
 
-なお、本メッセージは SessionStart hook (scripts/session_start_hook.sh) が
+なお、本メッセージは SessionStart hook (shogunate_mod/hooks/session_start_hook.sh) が
 tmux pane の @agent_id を読み出して生成したものであり、推測や混同の余地はない。
 EOF
         ;;
@@ -81,7 +81,7 @@ EOF
 **Step 1-2 完了まで inbox 処理・ユーザ応答は禁止**。
 初回起動時は CLAUDE.md 自動ロード済み、instructions/ashigaru.md の再読は不要 (コスト節約)。
 
-本メッセージは SessionStart hook (scripts/session_start_hook.sh) が
+本メッセージは SessionStart hook (shogunate_mod/hooks/session_start_hook.sh) が
 tmux pane の @agent_id を読み出して生成したものであり、推測や混同の余地はない。
 EOF
         ;;

@@ -312,6 +312,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] OpenCode / Codex / AGY などの TUI へ送る inbox nudge を通常 wake-up だけでなく Phase 2 Escape+nudge でも literal `tmux send-keys -l` に統一し、長い日本語 nudge や `queue/inbox/...` を含む structured nudge が tmux の key 名解釈で崩れないようにした。
 - [x] Android app の Agents 画面にある使用量チェックも root `scripts/ratelimit_check.sh` 直呼びから、MOD 正本 `shogunate_mod/status/ratelimit_check.sh` 優先 + root wrapper fallback に変更した。Pair 後の runtime root でも Shogunate-only status 実装を MOD 側正本から使う。
 - [x] Runtime cleanup / watcher stale cleanup を MOD 正本プロセス対応へ補強した。clean start と runtime daemon restart は旧 `scripts/` watcher だけでなく `shogunate_mod/watcher/inbox_watcher.sh` も掃除し、Gunkan light watch は旧 wrapper / MOD 正本の両方を掃除する。watcher supervisor の stale process 検出も旧 `scripts/inbox_watcher.sh` と MOD 正本 `shogunate_mod/watcher/inbox_watcher.sh` の両方を同じ agent 判定で扱う。
+- [x] Claude Code hook settings の command を root `scripts/session_start_hook.sh` / `scripts/stop_hook_inbox.sh` 互換入口から、MOD 正本 `shogunate_mod/hooks/session_start_hook.sh` / `shogunate_mod/hooks/stop_hook_inbox.sh` 直接実行へ寄せた。root `.claude/settings.json` は Claude Code が読む互換コピーとして MOD 正本 `shogunate_mod/hooks/claude_settings.json` と同期する。
 
 ## 判断
 
@@ -1722,6 +1723,12 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_runtime_daemon_starts_mod_canonical_helpers tests.unit.test_package_distribution.PackageDistributionContractTests.test_runtime_state_cleanup_handles_mod_and_legacy_daemons tests.unit.test_package_distribution.PackageDistributionContractTests.test_watcher_supervisor_starts_mod_canonical_helpers` after adding cleanup path contracts.
 - PASS: `bats tests/unit/test_mux_parity.bats tests/unit/test_watcher_supervisor.bats --timing` ran 82 mux / watcher tests after the runtime cleanup hardening.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 147 package distribution contract tests after adding the runtime cleanup contracts.
+- Claude Code hook settings の command を root `scripts/session_start_hook.sh` / `scripts/stop_hook_inbox.sh` 互換入口から、MOD 正本 `shogunate_mod/hooks/session_start_hook.sh` / `shogunate_mod/hooks/stop_hook_inbox.sh` 直接実行へ寄せた。
+- PASS: `python3 -m json.tool shogunate_mod/hooks/claude_settings.json`, `python3 -m json.tool .claude/settings.json`, and `bash -n shogunate_mod/hooks/session_start_hook.sh scripts/session_start_hook.sh shogunate_mod/hooks/stop_hook_inbox.sh scripts/stop_hook_inbox.sh` after changing Claude hook settings to MOD canonical commands.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_claude_settings_have_mod_canonical_copy` after updating the settings contract to require MOD hook command paths and forbid root wrapper command paths.
+- PASS: `bats tests/unit/test_session_start_hook.bats tests/unit/test_stop_hook.bats tests/unit/test_idle_flag.bats --timing` ran 23 hook / idle flag tests after the Claude hook settings command change.
+- PASS: direct root/MOD package distribution test sync and `git diff --check` after the Claude hook settings command change.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 147 package distribution contract tests after the Claude hook settings command change.
 
 ## 復旧
 

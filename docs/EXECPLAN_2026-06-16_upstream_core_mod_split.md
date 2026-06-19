@@ -310,6 +310,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] prepublish の root/MOD sync pair は、manifest 上でも `synchronized` な current core touchpoint として宣言されていることを contract で固定した。これにより同期 gate だけが増えて、core touchpoint の理由・次手順が manifest に残らない事故を検出する。
 - [x] root compatibility wrapper が参照する MOD delegate target は、manifest canonical path であるだけでなく `shogunate_mod/README.md` の Boundaries でも ownership が説明されていることを contract で固定した。
 - [x] OpenCode / Codex / AGY などの TUI へ送る inbox nudge を通常 wake-up だけでなく Phase 2 Escape+nudge でも literal `tmux send-keys -l` に統一し、長い日本語 nudge や `queue/inbox/...` を含む structured nudge が tmux の key 名解釈で崩れないようにした。
+- [x] Android app の Agents 画面にある使用量チェックも root `scripts/ratelimit_check.sh` 直呼びから、MOD 正本 `shogunate_mod/status/ratelimit_check.sh` 優先 + root wrapper fallback に変更した。Pair 後の runtime root でも Shogunate-only status 実装を MOD 側正本から使う。
 
 ## 判断
 
@@ -1709,6 +1710,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash -n shogunate_mod/watcher/inbox_watcher.sh tests/unit/test_send_wakeup.bats shogunate_mod/tests/unit/test_send_wakeup.bats` and direct root/MOD unit test sync plus `git diff --check` after the Phase 2 literal nudge change.
 - PASS: `bats tests/e2e/e2e_inbox_delivery.bats tests/e2e/e2e_opencode_startup.bats --timing` ran 6 inbox/OpenCode e2e tests after the Phase 2 literal nudge change.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution tests.unit.test_shogunate_pair_server tests.unit.test_runtime_blocker_notice tests.unit.test_update_manager` ran 179 package/MOD behavior tests after the Phase 2 literal nudge change.
+- Android Agents screen の使用量チェック command を `shogunate_mod/status/ratelimit_check.sh` 優先へ変更し、旧 package / source checkout 互換のため `scripts/ratelimit_check.sh` fallback は残した。
+- PASS: targeted package distribution contract `test_android_rate_limit_check_prefers_mod_canonical_status_script` verifies root and MOD Android ViewModel copies prefer `shogunate_mod/status/ratelimit_check.sh`, retain `scripts/ratelimit_check.sh` fallback, and execute the resolved `$rate_limit_script`.
+- PASS: direct sync checks for root/MOD `AgentsViewModel.kt`, root/MOD package distribution tests, and `git diff --check` after the Android rate-limit command change.
+- PASS: Android Gradle `testDebugUnitTest assembleDebug` after the Android rate-limit command change; build succeeded with existing deprecation/unused-parameter warnings only.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 146 package distribution contract tests after adding the Android rate-limit MOD canonical contract.
 
 ## 復旧
 

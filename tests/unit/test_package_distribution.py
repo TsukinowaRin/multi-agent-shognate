@@ -3487,6 +3487,24 @@ class PackageDistributionContractTests(unittest.TestCase):
             prepublish,
         )
 
+    def test_android_rate_limit_check_prefers_mod_canonical_status_script(self):
+        root_viewmodel = (
+            ROOT / "android/app/src/main/java/com/shogun/android/viewmodel/AgentsViewModel.kt"
+        ).read_text(encoding="utf-8")
+        mod_viewmodel = (
+            ROOT
+            / "shogunate_mod/mobile/android/app/src/main/java/com/shogun/android/viewmodel/AgentsViewModel.kt"
+        ).read_text(encoding="utf-8")
+
+        for text in (root_viewmodel, mod_viewmodel):
+            self.assertIn("shogunate_mod/status/ratelimit_check.sh", text)
+            self.assertIn("scripts/ratelimit_check.sh", text)
+            self.assertLess(
+                text.index("shogunate_mod/status/ratelimit_check.sh"),
+                text.index("scripts/ratelimit_check.sh"),
+            )
+            self.assertIn('timeout 12s bash \\"\\$rate_limit_script\\"', text)
+
     def test_default_config_templates_are_mod_owned(self):
         first_setup = (ROOT / "shogunate_mod" / "package" / "first_setup.sh").read_text(encoding="utf-8")
         requirements = (

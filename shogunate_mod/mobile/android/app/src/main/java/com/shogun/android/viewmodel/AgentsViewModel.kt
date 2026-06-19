@@ -226,7 +226,7 @@ class AgentsViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
             val safeProjectPath = projectPath.replace("'", "'\\''")
-            val cmd = "if [ ! -f '$safeProjectPath/scripts/ratelimit_check.sh' ]; then echo '使用量チェック script が見つかりません。Shogunate runtime のプロジェクトパスを確認してください。'; exit 0; fi; timeout 12s bash '$safeProjectPath/scripts/ratelimit_check.sh' 2>&1"
+            val cmd = "rate_limit_script='$safeProjectPath/shogunate_mod/status/ratelimit_check.sh'; if [ ! -f \"\$rate_limit_script\" ]; then rate_limit_script='$safeProjectPath/scripts/ratelimit_check.sh'; fi; if [ ! -f \"\$rate_limit_script\" ]; then echo '使用量チェック script が見つかりません。Shogunate runtime のプロジェクトパスを確認してください。'; exit 0; fi; timeout 12s bash \"\$rate_limit_script\" 2>&1"
             val result = sshManager.execCommand(cmd)
             _rateLimitLoading.value = false
             _rateLimitResult.value = result.getOrElse { "SSH取得失敗: ${it.message}\ncmd: $cmd" }

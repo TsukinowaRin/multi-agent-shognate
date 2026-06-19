@@ -89,7 +89,7 @@ Android APK は Shogunate 本体のリリースバージョンに fork/app 側�
 ### 前提条件
 
 - ホストマシンでSSHサーバーが稼働中
-- `shutsujin_departure.sh` でtmuxセッション起動済み
+- `shogunate_mod/runtime/entrypoint.sh` でtmuxセッション起動済み
 - スマホとサーバー間の接続（USBデバッグ + `adb reverse`、LAN、Tailscale等）
 - USB 接続を使う場合は `adb`
 - ワンタッチ鍵ペアリングは release APK でも使える app 内鍵生成 provider を優先します。古い debug APK で provider がない場合だけ `run-as` fallback を使います。

@@ -1814,6 +1814,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash -n shogunate_mod/view/focus_agent_pane.sh scripts/focus_agent_pane.sh`, targeted package distribution contract, root/MOD package distribution test sync, `git diff --check`, and `bats tests/unit/test_mux_parity.bats --timing` after changing focus helper guidance.
 - MOD runtime の依存不足 / tmux 不足 / CLI 不足時の first setup guidance も root `bash first_setup.sh` / `./first_setup.sh` 案内から `bash shogunate_mod/package/first_setup.sh` 案内へ寄せた。root `first_setup.sh` は互換入口として残すが、MOD runtime helper が示す復旧正本は MOD package first setup にする。
 - PASS: `bash -n shogunate_mod/runtime/startup.sh shogunate_mod/runtime/departure.sh shogunate_mod/runtime/launch.sh`, targeted package distribution contract, and root/MOD package distribution test sync after moving MOD runtime first setup guidance to `shogunate_mod/package/first_setup.sh`.
+- Public README / README_ja の source checkout 開発手順と Android README の tmux 起動済み前提も root `first_setup.sh` / `shutsujin_departure.sh` 案内から MOD 正本 `shogunate_mod/package/first_setup.sh` / `shogunate_mod/runtime/entrypoint.sh` 案内へ寄せた。release cURL の互換 `scripts/shogunate_package_bootstrap.sh` URL は既存ユーザー向け stable entrypoint として維持する。
+- PASS: targeted package distribution contracts for public README MOD setup guidance and Android README MOD runtime prerequisite, root/MOD README sync checks, root/MOD Android README sync checks, and `git diff --check` after moving source checkout docs to MOD canonical setup/runtime paths.
 
 ## 復旧
 

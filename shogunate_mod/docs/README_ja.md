@@ -269,8 +269,8 @@ Shogunate 自体を開発する場合だけ source checkout を使います。
 ```bash
 git clone https://github.com/TsukinowaRin/multi-agent-shognate
 cd multi-agent-shognate
-bash first_setup.sh
-bash shutsujin_departure.sh
+bash shogunate_mod/package/first_setup.sh
+bash shogunate_mod/runtime/entrypoint.sh
 ```
 
 出荷前の基本確認:

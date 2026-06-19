@@ -269,8 +269,8 @@ Use source checkout only when developing Shogunate itself:
 ```bash
 git clone https://github.com/TsukinowaRin/multi-agent-shognate
 cd multi-agent-shognate
-bash first_setup.sh
-bash shutsujin_departure.sh
+bash shogunate_mod/package/first_setup.sh
+bash shogunate_mod/runtime/entrypoint.sh
 ```
 
 Run the main checks before shipping:

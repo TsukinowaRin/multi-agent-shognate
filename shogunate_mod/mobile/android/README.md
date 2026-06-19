@@ -89,7 +89,7 @@ The Android APK follows the Shogunate release version plus a fork/app revision. 
 ### Prerequisites
 
 - SSH server running on the host machine
-- tmux sessions already launched via `shutsujin_departure.sh`
+- tmux sessions already launched via `shogunate_mod/runtime/entrypoint.sh`
 - Network connectivity between phone and server: USB debugging + `adb reverse`, LAN, or Tailscale
 - `adb` for USB setup
 - One-touch key pairing prefers the release-compatible app-side key provider. Older debug APKs without that provider fall back to `run-as`.

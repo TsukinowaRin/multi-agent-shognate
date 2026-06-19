@@ -3558,8 +3558,12 @@ class PackageDistributionContractTests(unittest.TestCase):
             self.assertNotIn("scripts/gunkan_emergency_stop.sh", text, path)
             self.assertIn("shogunate_mod/cli/antigravity_keyring.sh", text, path)
             self.assertIn("shogunate_mod/instructions/ensure_generated.sh", text, path)
+            self.assertIn("bash shogunate_mod/package/first_setup.sh", text, path)
+            self.assertIn("bash shogunate_mod/runtime/entrypoint.sh", text, path)
             self.assertNotIn("scripts/ensure_antigravity_keyring.sh", text, path)
             self.assertNotIn("scripts/ensure_generated_instructions.sh", text, path)
+            self.assertNotIn("bash first_setup.sh", text, path)
+            self.assertNotIn("bash shutsujin_departure.sh", text, path)
             self.assertIn("make package-check", text, path)
             self.assertNotIn("bash -n scripts/shogunate_package_bootstrap.sh shutsujin_departure.sh", text, path)
         pinned_tags = set()
@@ -3734,6 +3738,21 @@ class PackageDistributionContractTests(unittest.TestCase):
                 text.index("scripts/ratelimit_check.sh"),
             )
             self.assertIn('timeout 12s bash \\"\\$rate_limit_script\\"', text)
+
+    def test_android_readmes_use_mod_runtime_entrypoint(self):
+        paths = [
+            ROOT / "android/README.md",
+            ROOT / "android/README_ja.md",
+            ROOT / "shogunate_mod/mobile/android/README.md",
+            ROOT / "shogunate_mod/mobile/android/README_ja.md",
+        ]
+
+        for path in paths:
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn("shogunate_mod/runtime/entrypoint.sh", text)
+                self.assertNotIn("via `shutsujin_departure.sh`", text)
+                self.assertNotIn("`shutsujin_departure.sh` でtmux", text)
 
     def test_default_config_templates_are_mod_owned(self):
         first_setup = (ROOT / "shogunate_mod" / "package" / "first_setup.sh").read_text(encoding="utf-8")

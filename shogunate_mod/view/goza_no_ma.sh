@@ -17,7 +17,7 @@ PASS_THROUGH=()
 usage() {
   cat <<'USAGE'
 Usage:
-  bash scripts/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
+  bash shogunate_mod/view/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
 
 Options:
   -s, --setup-only   backend を setup-only で起動してから御座の間を開く
@@ -37,15 +37,15 @@ Options:
 
 Aliases (shell):
   csst / CSST → cd repo && ./shutsujin_departure.sh
-  cgo / CGO  → bash scripts/goza_no_ma.sh
-  css / CSS  → bash scripts/focus_agent_pane.sh shogun
-  csm / CSM  → bash scripts/goza_no_ma.sh -t multiagent
-  cgn / CGN  → bash scripts/focus_agent_pane.sh gunkan
-  csg / CSG  → bash scripts/focus_agent_pane.sh gunshi
-  csk / CSK  → bash scripts/focus_agent_pane.sh karo
-  ckr / CKR  → bash scripts/focus_agent_pane.sh karo
-  csa / CSA  → bash scripts/goza_no_ma.sh -t ashigaru
-  cma / CMA  → bash scripts/goza_no_ma.sh -t multiagent
+  cgo / CGO  → bash shogunate_mod/view/goza_no_ma.sh
+  css / CSS  → bash shogunate_mod/view/focus_agent_pane.sh shogun
+  csm / CSM  → bash shogunate_mod/view/goza_no_ma.sh -t multiagent
+  cgn / CGN  → bash shogunate_mod/view/focus_agent_pane.sh gunkan
+  csg / CSG  → bash shogunate_mod/view/focus_agent_pane.sh gunshi
+  csk / CSK  → bash shogunate_mod/view/focus_agent_pane.sh karo
+  ckr / CKR  → bash shogunate_mod/view/focus_agent_pane.sh karo
+  csa / CSA  → bash shogunate_mod/view/goza_no_ma.sh -t ashigaru
+  cma / CMA  → bash shogunate_mod/view/goza_no_ma.sh -t multiagent
 USAGE
 }
 
@@ -198,7 +198,7 @@ if ! resolve_goza_session; then
   if [[ "$ENSURE_BACKEND" != true ]]; then
     echo "[ERROR] ${GOZA_SESSION} session が存在しません。" >&2
     echo "        先に: bash shutsujin_departure.sh" >&2
-    echo "        あるいは: bash scripts/goza_no_ma.sh --ensure-backend" >&2
+    echo "        あるいは: bash shogunate_mod/view/goza_no_ma.sh --ensure-backend" >&2
     exit 1
   fi
   START_ARGS=("${PASS_THROUGH[@]}")

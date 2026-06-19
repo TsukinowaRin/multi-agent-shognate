@@ -10,7 +10,7 @@ GOZA_WINDOW="${GOZA_WINDOW_NAME:-goza}"
 AGENT_ID="${1:-}"
 
 if [[ -z "$AGENT_ID" ]]; then
-  echo "Usage: bash scripts/focus_agent_pane.sh <agent_id>" >&2
+  echo "Usage: bash shogunate_mod/view/focus_agent_pane.sh <agent_id>" >&2
   exit 1
 fi
 

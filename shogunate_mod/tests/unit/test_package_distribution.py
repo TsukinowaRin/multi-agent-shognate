@@ -926,6 +926,13 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "shogunate_mod/view/focus_agent_pane.sh",
                 "shogunate_mod/view/goza_no_ma.sh",
             ],
+            "shogunate_mod/view/goza_no_ma.sh": [
+                "shogunate_mod/view/focus_agent_pane.sh",
+                "shogunate_mod/view/goza_no_ma.sh",
+            ],
+            "shogunate_mod/view/focus_agent_pane.sh": [
+                "shogunate_mod/view/focus_agent_pane.sh",
+            ],
             "shogunate_mod/runtime/mcp_health_check.sh": [
                 "shogunate_mod/configure/switch_cli.sh",
             ],

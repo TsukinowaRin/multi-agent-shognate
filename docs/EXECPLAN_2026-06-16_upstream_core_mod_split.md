@@ -1671,6 +1671,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_curl_bootstrap_installs_command_before_first_setup` after changing generated `shogunate install` to call the MOD bootstrap directly.
 - PASS: `bash -n shogunate_mod/package/bootstrap.sh scripts/shogunate_package_bootstrap.sh` after changing generated `shogunate install`.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` and `git diff --check` after changing generated `shogunate install`.
+- Runtime completion summary の次ステップ表示と Windows Terminal tab command を root `scripts/` 互換入口から `shogunate_mod/view/` / `shogunate_mod/shell/` 正本へ寄せた。`shogunate_mod/shell/aliases.sh` を直接実行した時の案内も MOD alias 正本を `source` する形へ変更した。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_runtime_helpers_call_mod_canonical_sources` after moving runtime summary view/alias commands to MOD canonical paths.
+- PASS: `bash -n shogunate_mod/runtime/summary.sh shogunate_mod/shell/aliases.sh scripts/shell_aliases.sh` after moving runtime summary view/alias commands.
+- PASS: `bats tests/unit/test_shell_aliases.bats` after changing the MOD aliases direct-run help.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after updating the package distribution contract.
 
 ## 復旧
 

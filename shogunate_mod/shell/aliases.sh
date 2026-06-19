@@ -16,7 +16,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     cat <<EOF
 [INFO] このスクリプトは source して使います。
 
-  source "$ROOT_DIR/scripts/shell_aliases.sh"
+  source "$ROOT_DIR/shogunate_mod/shell/aliases.sh"
 
 永続化する場合:
 

@@ -860,6 +860,12 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "shogunate_mod/view/focus_agent_pane.sh",
                 "shogunate_mod/view/goza_no_ma.sh",
             ],
+            "shogunate_mod/runtime/summary.sh": [
+                "shogunate_mod/view/focus_agent_pane.sh",
+                "shogunate_mod/view/goza_no_ma.sh",
+                "shogunate_mod/shell/aliases.sh",
+                "shogunate_mod/shell/install_aliases.sh",
+            ],
             "shogunate_mod/mobile/android/tools/setup_android_ssh.sh": [
                 "shogunate_mod/pair/server.py",
             ],
@@ -923,6 +929,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             'scripts/shogunate_pair_server.py',
             'scripts/focus_agent_pane.sh',
             'scripts/goza_no_ma.sh',
+            'scripts/shell_aliases.sh',
+            'scripts/install_shell_aliases.sh',
             'SCRIPT_DIR}/scripts/android_tmux_proxy.py',
         ]
 

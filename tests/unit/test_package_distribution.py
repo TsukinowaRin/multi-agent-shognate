@@ -11,7 +11,14 @@ import zipfile
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+def find_repo_root(start: Path) -> Path:
+    for candidate in (start, *start.parents):
+        if (candidate / "package.json").is_file() and (candidate / "shogunate_mod" / "manifest.yaml").is_file():
+            return candidate
+    raise RuntimeError(f"repo root not found from {start}")
+
+
+ROOT = find_repo_root(Path(__file__).resolve())
 BOOTSTRAP = ROOT / "shogunate_mod" / "package" / "bootstrap.sh"
 _NPM_PACK_FILES_CACHE: set[str] | None = None
 
@@ -3969,6 +3976,13 @@ class PackageDistributionContractTests(unittest.TestCase):
             self.assertEqual(root_path.read_bytes(), mod_path.read_bytes(), f"unit test case differs: {rel}")
 
         self.assertIn("require_directory_files_synced tests shogunate_mod/tests", prepublish)
+
+    def test_python_unit_tests_resolve_repo_root_from_mod_copy(self):
+        for path in sorted((ROOT / "tests" / "unit").glob("test_*.py")):
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("def find_repo_root(start: Path) -> Path:", text, path)
+            self.assertIn('"shogunate_mod" / "manifest.yaml"', text, path)
+            self.assertNotRegex(text, r"(?m)^ROOT\s*=\s*Path\(__file__\)\.resolve\(\)\.parents\[2\]", path)
 
     def test_unit_tests_import_mod_canonical_runtime_sources(self):
         expected_imports = {

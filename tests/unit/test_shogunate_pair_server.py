@@ -11,7 +11,14 @@ import urllib.request
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+def find_repo_root(start: Path) -> Path:
+    for candidate in (start, *start.parents):
+        if (candidate / "package.json").is_file() and (candidate / "shogunate_mod" / "manifest.yaml").is_file():
+            return candidate
+    raise RuntimeError(f"repo root not found from {start}")
+
+
+ROOT = find_repo_root(Path(__file__).resolve())
 SCRIPT = ROOT / "shogunate_mod" / "pair" / "server.py"
 
 spec = importlib.util.spec_from_file_location("shogunate_mod_pair_server_under_test", SCRIPT)

@@ -351,7 +351,7 @@ case "\$command_name" in
         ;;
     install)
         shift || true
-        exec bash "\$SHOGUNATE_INSTALL_DIR/scripts/shogunate_package_bootstrap.sh" "\$@"
+        exec bash "\$SHOGUNATE_INSTALL_DIR/shogunate_mod/package/bootstrap.sh" "\$@"
         ;;
     home)
         shift || true

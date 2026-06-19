@@ -3509,8 +3509,28 @@ class PackageDistributionContractTests(unittest.TestCase):
             rel = root_path.relative_to(ROOT / "docs" / "codd")
             mod_path = ROOT / "shogunate_mod" / "gunkan" / "docs" / rel
             self.assertTrue(mod_path.exists(), f"missing MOD CoDD doc: {rel}")
-            self.assertEqual(root_path.read_bytes(), mod_path.read_bytes(), f"CoDD doc differs: {rel}")
+            root_text = root_path.read_text(encoding="utf-8")
+            mod_text = mod_path.read_text(encoding="utf-8")
+            self.assertEqual(root_text, mod_text, f"CoDD doc differs: {rel}")
 
+        combined = "\n".join(path.read_text(encoding="utf-8") for path in root_docs)
+        for forbidden in (
+            '"scripts/gunkan_codd_audit.py"',
+            '"scripts/gunkan_light_watch.py"',
+            '"scripts/watcher_supervisor.sh"',
+            "`scripts/gunkan_codd_audit.py`",
+            "`scripts/gunkan_light_watch.py`",
+        ):
+            self.assertNotIn(forbidden, combined)
+        for required in (
+            '"shogunate_mod/gunkan/codd_audit.py"',
+            '"shogunate_mod/gunkan/light_watch.py"',
+            '"shogunate_mod/watcher/supervisor.sh"',
+            '"shogunate_mod/runtime/entrypoint.sh"',
+            "`shogunate_mod/gunkan/codd_audit.py`",
+            "`shogunate_mod/gunkan/light_watch.py`",
+        ):
+            self.assertIn(required, combined)
         self.assertIn("require_directory_files_synced docs/codd shogunate_mod/gunkan/docs", prepublish)
 
     def test_gitleaks_config_has_mod_canonical_copy(self):

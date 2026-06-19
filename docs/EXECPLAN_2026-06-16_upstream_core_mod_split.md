@@ -1778,6 +1778,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - Claude / Cursor skill の操作手順も root `scripts/*` / `lib/*` 互換入口から MOD 正本へ寄せた。`shogun-model-switch` は `shogunate_mod/configure/switch_cli.sh`、inbox 経由例は `shogunate_mod/inbox/write.sh`、agent status skill は `shogunate_mod/status/command.sh`、Bloom config の subscription coverage check は `shogunate_mod/cli/adapter.sh` を案内する。
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_cli_skills_have_mod_canonical_copy` after adding contracts that forbid Shogunate skills from teaching root `scripts/switch_cli.sh`, `scripts/inbox_write.sh`, `scripts/agent_status.sh`, `lib/cli_adapter.sh`, and `scripts/inbox_watcher.sh` as the primary paths.
 - PASS: direct root/MOD sync checks for `skills/shogun-model-switch`, `skills/shogun-agent-status`, `skills/shogun-bloom-config`, and `.cursor/skills/inbox-write` after moving skill guidance to MOD canonical commands.
+- CoDD / Gunkan design docs の `source_files` と本文も root `scripts/gunkan_codd_audit.py` / `scripts/gunkan_light_watch.py` / `scripts/watcher_supervisor.sh` から MOD 正本 `shogunate_mod/gunkan/codd_audit.py` / `shogunate_mod/gunkan/light_watch.py` / `shogunate_mod/watcher/supervisor.sh` / `shogunate_mod/runtime/entrypoint.sh` へ寄せた。root `docs/codd/` は public design docs、`shogunate_mod/gunkan/docs/` は MOD 正本として同期を維持する。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_codd_docs_have_mod_canonical_copy` after adding contracts that forbid the old root Gunkan script paths in CoDD design docs and require the MOD canonical paths.
 
 ## 復旧
 

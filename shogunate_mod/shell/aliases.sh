@@ -26,10 +26,10 @@ EOF
 fi
 
 # Upstream-style shortcuts.
-alias csst="cd $ROOT_DIR && ./shutsujin_departure.sh"
+alias csst="cd $ROOT_DIR && bash shogunate_mod/runtime/entrypoint.sh"
 alias css="bash $ROOT_DIR/shogunate_mod/view/focus_agent_pane.sh shogun"
 alias csm="bash $ROOT_DIR/shogunate_mod/view/goza_no_ma.sh -t multiagent"
-alias CSST="cd $ROOT_DIR && ./shutsujin_departure.sh"
+alias CSST="cd $ROOT_DIR && bash shogunate_mod/runtime/entrypoint.sh"
 alias CSS="bash $ROOT_DIR/shogunate_mod/view/focus_agent_pane.sh shogun"
 alias CSM="bash $ROOT_DIR/shogunate_mod/view/goza_no_ma.sh -t multiagent"
 

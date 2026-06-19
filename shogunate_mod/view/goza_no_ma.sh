@@ -17,7 +17,7 @@ PASS_THROUGH=()
 usage() {
   cat <<'USAGE'
 Usage:
-  bash shogunate_mod/view/goza_no_ma.sh [options] [-- <shutsujin_departure.sh options>]
+  bash shogunate_mod/view/goza_no_ma.sh [options] [-- <runtime entrypoint options>]
 
 Options:
   -s, --setup-only   backend を setup-only で起動してから御座の間を開く
@@ -36,7 +36,7 @@ Options:
   -h, --help         このヘルプ
 
 Aliases (shell):
-  csst / CSST → cd repo && ./shutsujin_departure.sh
+  csst / CSST → cd repo && bash shogunate_mod/runtime/entrypoint.sh
   cgo / CGO  → bash shogunate_mod/view/goza_no_ma.sh
   css / CSS  → bash shogunate_mod/view/focus_agent_pane.sh shogun
   csm / CSM  → bash shogunate_mod/view/goza_no_ma.sh -t multiagent

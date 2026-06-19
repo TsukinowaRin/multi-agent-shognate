@@ -1800,6 +1800,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - Source runtime smoke の detached worktree 起動も root `shutsujin_departure.sh` wrapper から MOD 正本 `shogunate_mod/runtime/entrypoint.sh` 直接実行へ寄せた。root wrapper compatibility は別 contract で維持しつつ、MOD 正本 smoke 自身は MOD entrypoint 経由で runtime loader を検証する。
 - PASS: targeted package distribution contract, `bash -n shogunate_mod/runtime/source_smoke.sh shogunate_mod/runtime/entrypoint.sh`, root/MOD package distribution test sync, and `git diff --check` after moving source smoke to the MOD runtime entrypoint.
 - PASS: actual source runtime smoke `SHOGUNATE_SOURCE_SMOKE_RUN_ID=source-entrypoint-20260619224757 bash shogunate_mod/runtime/source_smoke.sh` created tmux session `shogunate-mod-source-entrypoint-20260619224757`, `goza` window, `shogun,gunkan,karo,gunshi,ashigaru1` panes, runtime metadata, dashboard, and Gunkan queue/report files through `shogunate_mod/runtime/entrypoint.sh`.
+- Source checkout の手動導線に残っていた root launcher 案内も MOD entrypoint へ寄せた。`shogunate_mod/shell/aliases.sh` の `csst` / `CSST`、`shogunate_mod/runtime/options.sh` の Usage / examples / alias guidance、`shogunate_mod/view/goza_no_ma.sh` の passthrough help、role / agent configurator の restart guidance は `shogunate_mod/runtime/entrypoint.sh` を正本として示す。root `shutsujin_departure.sh` は互換入口として残す。
+- PASS: targeted package distribution contract, `bats tests/unit/test_shell_aliases.bats`, shell syntax checks, root/MOD test sync, direct `bash shogunate_mod/runtime/entrypoint.sh -h`, `bash shogunate_mod/view/goza_no_ma.sh --help`, and `source shogunate_mod/shell/aliases.sh; alias csst; alias CSST` after moving source checkout alias/help guidance to the MOD runtime entrypoint.
 
 ## 復旧
 

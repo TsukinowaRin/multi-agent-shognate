@@ -488,4 +488,4 @@ fi
 
 echo "次の確認:"
 echo "  cat config/settings.yaml"
-echo "  bash shutsujin_departure.sh -s"
+echo "  bash shogunate_mod/runtime/entrypoint.sh -s"

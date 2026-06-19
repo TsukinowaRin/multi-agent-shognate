@@ -48,5 +48,5 @@ fi
 
 echo ""
 echo "  [OK] Role configuration finished."
-echo "      Restart runtime with: bash shutsujin_departure.sh -c"
+echo "      Restart runtime with: bash shogunate_mod/runtime/entrypoint.sh -c"
 pause_if_needed

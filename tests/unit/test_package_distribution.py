@@ -890,11 +890,13 @@ class PackageDistributionContractTests(unittest.TestCase):
             ],
             "shogunate_mod/configure/role_launcher.sh": [
                 "shogunate_mod/configure/runtime_roles.py",
+                "shogunate_mod/runtime/entrypoint.sh",
             ],
             "shogunate_mod/package/first_setup.sh": [
                 "shogunate_mod/shell/install_aliases.sh",
             ],
             "shogunate_mod/shell/aliases.sh": [
+                "shogunate_mod/runtime/entrypoint.sh",
                 "shogunate_mod/view/focus_agent_pane.sh",
                 "shogunate_mod/view/goza_no_ma.sh",
             ],
@@ -937,6 +939,7 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "shogunate_mod/cli/adapter.sh",
             ],
             "shogunate_mod/configure/agents.sh": [
+                "shogunate_mod/runtime/entrypoint.sh",
                 "shogunate_mod/topology/adapter.sh",
                 "shogunate_mod/localapi/repl.py",
             ],
@@ -1010,6 +1013,12 @@ class PackageDistributionContractTests(unittest.TestCase):
             'scripts/mux_parity_smoke.sh',
             'source lib/agent_status.sh',
             'bash "$ROOT_DIR/shutsujin_departure.sh"',
+            'bash shutsujin_departure.sh -c',
+            'bash shutsujin_departure.sh -s',
+            './shutsujin_departure.sh [オプション]',
+            './shutsujin_departure.sh              #',
+            '<shutsujin_departure.sh options>',
+            '&& ./shutsujin_departure.sh',
         ]
 
         for rel, required in checks.items():

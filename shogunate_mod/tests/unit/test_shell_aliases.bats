@@ -15,7 +15,7 @@ setup_file() {
     [[ "$output" == *"alias csk='bash $PROJECT_ROOT/shogunate_mod/view/focus_agent_pane.sh karo'"* ]]
     [[ "$output" == *"alias ckr='bash $PROJECT_ROOT/shogunate_mod/view/focus_agent_pane.sh karo'"* ]]
     [[ "$output" == *"alias csm='bash $PROJECT_ROOT/shogunate_mod/view/goza_no_ma.sh -t multiagent'"* ]]
-    [[ "$output" == *"alias csst='cd $PROJECT_ROOT && ./shutsujin_departure.sh'"* ]]
+    [[ "$output" == *"alias csst='cd $PROJECT_ROOT && bash shogunate_mod/runtime/entrypoint.sh'"* ]]
     [[ "$output" == *"alias csa='bash $PROJECT_ROOT/shogunate_mod/view/goza_no_ma.sh -t ashigaru'"* ]]
     [[ "$output" == *"alias cma='bash $PROJECT_ROOT/shogunate_mod/view/goza_no_ma.sh -t multiagent'"* ]]
     [[ "$output" == *"alias CGO='bash $PROJECT_ROOT/shogunate_mod/view/goza_no_ma.sh'"* ]]

@@ -1830,6 +1830,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash shogunate_mod/package/bootstrap.sh --help`, `bash -n shogunate_mod/package/bootstrap.sh`, and targeted package distribution contracts after changing the MOD first setup wording.
 - `shogunate run --help` / npm CLI dispatch で見える runtime launcher help も root `./Shogunate-Runtime.sh` ではなく MOD 正本 `bash shogunate_mod/runtime/runtime_launcher.sh` を Usage / Examples に出すようにした。root `Shogunate-Runtime.*` は互換 launcher として残す。
 - PASS: `node bin/shogunate.js run --help`, `bats tests/unit/test_runtime_launchers.bats --timing`, targeted package distribution contracts, root/MOD test sync, and `git diff --check` after the runtime launcher help update.
+- Public community docs の current contribution/security guidance も MOD 正本境界へ寄せた。`CONTRIBUTING.md` の project structure は `shogunate_mod/` を canonical implementation として示し、`scripts/` / `lib/` / top-level launchers は compatibility surface と説明する。`SECURITY.md` の scope と script review 例も MOD implementation sources と `shogunate_mod/package/bootstrap.sh` / `shogunate_mod/runtime/entrypoint.sh` を確認対象にした。root docs は GitHub/npm 互換コピーとして MOD docs と同期する。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_community_docs_have_mod_canonical_copy`, root/MOD community docs sync checks, root/MOD package distribution test sync, `git diff --check`, and targeted old-guidance search after moving community docs to MOD canonical guidance.
 
 ## 復旧
 

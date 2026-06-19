@@ -48,74 +48,39 @@ Thank you for your interest in contributing to multi-agent-shogun! This document
 Understanding the directory layout will help you navigate the codebase:
 
 ```
-multi-agent-shogun/
-│
-├── scripts/              # Core utility scripts
-│   ├── inbox_write.sh    # Agent-to-agent messaging (file-based mailbox)
-│   ├── inbox_watcher.sh  # Event-driven delivery via inotifywait
-│   ├── ntfy.sh           # Push notifications to phone
-│   └── build_instructions.sh  # Generate CLI-specific instructions
-│
-├── instructions/         # Agent behavior definitions
-│   ├── shogun.md         # Shogun (commander) instructions
-│   ├── karo.md           # Karo (manager) instructions
-│   ├── ashigaru.md       # Ashigaru (worker) instructions
-│   ├── cli_specific/     # CLI-specific tool descriptions
-│   │   ├── claude_tools.md
-│   │   ├── codex_tools.md
-│   │   ├── copilot_tools.md
-│   │   └── opencode_tools.md
-│   └── generated/        # Built from templates (do not edit manually)
-│
-├── lib/                  # Core libraries
-│   ├── cli_adapter.sh    # Multi-CLI abstraction layer
-│   └── agent_status.sh   # Shared busy/idle detection
-│
-├── templates/            # Report and context templates
-│   ├── context_template.md  # Universal 7-section project context
-│   └── integ_*.md        # Integration report templates
-│
-├── queue/                # Communication and task data
-│   ├── shogun_to_karo.yaml  # Command queue
-│   ├── inbox/            # Per-agent mailboxes
-│   ├── tasks/            # Per-worker task assignments
-│   └── reports/          # Completion reports
-│
-├── config/               # Configuration files
-│   ├── settings.yaml     # Language, CLI settings, ntfy topic
-│   ├── opencode-permissions.yaml  # OpenCode role boundary source
-│   ├── opencode-tui.json  # OpenCode TUI keybinding pinning for tmux
-│   └── projects.yaml     # Project registry
-│
-├── .opencode/
-│   └── agents/           # Generated OpenCode agent definitions (do not edit manually)
-│
-├── tests/                # Test suite
-│   ├── unit/             # bats unit tests
-│   ├── integration/      # bats integration tests
-│   └── e2e/              # bats end-to-end tests and mocks
-│
-├── docs/                 # Documentation
-│   └── philosophy.md     # Design principles
-│
-├── .github/
-│   └── workflows/        # CI/CD pipelines
-│       └── test.yml      # GitHub Actions test suite
-│
-├── shutsujin_departure.sh  # Daily deployment script
-├── first_setup.sh          # First-time setup
-├── CLAUDE.md               # Core system instructions (auto-loaded)
-├── AGENTS.md               # Codex auto-load file
-└── Makefile                # Development commands
+multi-agent-shognate/
+├── shogunate_mod/        # Shogunate MOD canonical sources
+│   ├── package/          # cURL/npm package install, first setup, release checks
+│   ├── runtime/          # Runtime entrypoint, launchers, lifecycle, Goza setup
+│   ├── inbox/            # Agent-to-agent messaging policy and mailbox writer
+│   ├── watcher/          # Event-driven delivery and file watch helpers
+│   ├── gunkan/           # Independent auditor helpers and CoDD bridge
+│   ├── configure/        # CLI/role configuration and live switching
+│   ├── instructions/     # Role/common/CLI prompt sources and generated freshness
+│   ├── docs/             # Public README, changelog, contribution, security sources
+│   └── mobile/android/   # Android companion app canonical source
+├── scripts/              # Stable compatibility wrappers; delegate into shogunate_mod/
+├── lib/                  # Compatibility libraries for historical import/source paths
+├── instructions/         # Root compatibility prompt source and generated outputs
+├── android/              # Android Studio / Gradle compatibility working tree
+├── config/               # Runtime defaults and user-editable settings
+├── queue/                # Runtime data, generated dynamically
+├── tests/                # Root compatibility test suite, synced with MOD tests
+├── docs/                 # Public design docs and execution plans
+├── .github/              # GitHub-required workflow compatibility surface
+├── AGENTS.md             # Codex auto-load compatibility file
+├── CLAUDE.md             # Claude auto-load compatibility file
+└── Makefile              # Development command compatibility surface
 ```
 
 ### Key Directories
 
 | Directory | Purpose | Important Notes |
 |-----------|---------|-----------------|
-| `scripts/` | Core system utilities | All scripts must pass shellcheck |
-| `instructions/` | Agent behavior | CLI-specific instructions go in `cli_specific/` |
-| `lib/` | Shared libraries | `cli_adapter.sh` handles CLI abstraction |
+| `shogunate_mod/` | Shogunate-specific implementation | Put new Shogunate-only behavior here first |
+| `scripts/` | Compatibility wrappers | Keep thin; delegate to MOD canonical sources |
+| `instructions/` | Agent behavior compatibility surface | Prompt sources and generated files are guarded by MOD freshness checks |
+| `lib/` | Historical compatibility libraries | Do not add new Shogunate-only implementation here |
 | `queue/` | Runtime data | Git-ignored, generated at runtime |
 | `templates/` | Reusable templates | Used for reports and context files |
 | `tests/` | Test suite | bats format, organized by level (unit/integration) |

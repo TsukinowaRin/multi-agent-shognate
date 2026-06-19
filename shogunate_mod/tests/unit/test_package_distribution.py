@@ -3671,8 +3671,21 @@ class PackageDistributionContractTests(unittest.TestCase):
         contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
         self.assertIn("touch shogunate_mod/example/new_helper.sh", contributing)
         self.assertIn("bash shogunate_mod/inbox/write.sh karo", contributing)
+        self.assertIn("shogunate_mod/        # Shogunate MOD canonical sources", contributing)
+        self.assertIn("Compatibility wrappers", contributing)
+        self.assertIn("Put new Shogunate-only behavior here first", contributing)
         self.assertNotIn("touch scripts/new_script.sh", contributing)
         self.assertNotIn("bash scripts/inbox_write.sh karo", contributing)
+        self.assertNotIn("scripts/              # Core utility scripts", contributing)
+        self.assertNotIn("shutsujin_departure.sh  # Daily deployment script", contributing)
+        self.assertNotIn("| `scripts/` | Core system utilities", contributing)
+
+        security = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+        self.assertIn("Shogunate MOD implementation sources", security)
+        self.assertIn("cat shogunate_mod/package/bootstrap.sh", security)
+        self.assertIn("cat shogunate_mod/runtime/entrypoint.sh", security)
+        self.assertNotIn("Shell scripts** in `scripts/`, `lib/`, and root directory", security)
+        self.assertNotIn("cat shutsujin_departure.sh", security)
 
     def test_codd_config_has_mod_canonical_copy(self):
         root_codd = (ROOT / ".codd" / "codd.yaml").read_text(encoding="utf-8")

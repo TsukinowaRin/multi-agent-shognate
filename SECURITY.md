@@ -216,7 +216,8 @@ Security fixes will be:
 
 The following are considered in scope for security reports:
 
-- **Shell scripts** in `scripts/`, `lib/`, and root directory
+- **Shogunate MOD implementation sources** in `shogunate_mod/`
+- **Compatibility wrappers** in `scripts/`, `lib/`, and root launchers
 - **YAML parsing** and file handling in queue system
 - **ntfy integration** (message handling, authentication)
 - **tmux integration** (command injection, session hijacking)
@@ -259,8 +260,9 @@ To keep your multi-agent-shogun installation secure:
 
 3. **Review scripts before running**:
    ```bash
-   # Always check what a script does before running it
-   cat shutsujin_departure.sh
+   # Always check the MOD canonical implementation before running it
+   cat shogunate_mod/package/bootstrap.sh
+   cat shogunate_mod/runtime/entrypoint.sh
    ```
 
 4. **Limit tmux session access**:

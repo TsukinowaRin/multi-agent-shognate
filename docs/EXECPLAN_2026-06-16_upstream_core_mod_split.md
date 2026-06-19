@@ -1797,6 +1797,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: targeted package distribution contract, `bats tests/unit/test_gunkan_audit.bats`, actual CoDD typecheck command, root/MOD CoDD config sync, root/MOD package distribution test sync, and `git diff --check` after moving CoDD config coverage to MOD canonical source.
 - Development `make lint` と GitHub Actions shellcheck job の対象を root `lib/` / `scripts/` 中心から MOD 正本込みへ広げた。root `Makefile` と MOD 正本 `shogunate_mod/development/Makefile` は `shogunate_mod/`（`shogunate_mod/tests` 除外）、`lib/`, `scripts/` を shellcheck 対象にし、root `.github/workflows/test.yml` と MOD 正本 workflow も同じ MOD shellcheck step を持つ。
 - PASS: targeted package distribution contract, root/MOD Makefile sync, root/MOD workflow sync, workflow YAML parse, MOD/source shell `bash -n`, and `git diff --check` after adding MOD source shellcheck coverage. Local `shellcheck` binary was not installed, so actual ShellCheck execution was left to CI / environments with shellcheck.
+- Source runtime smoke の detached worktree 起動も root `shutsujin_departure.sh` wrapper から MOD 正本 `shogunate_mod/runtime/entrypoint.sh` 直接実行へ寄せた。root wrapper compatibility は別 contract で維持しつつ、MOD 正本 smoke 自身は MOD entrypoint 経由で runtime loader を検証する。
+- PASS: targeted package distribution contract, `bash -n shogunate_mod/runtime/source_smoke.sh shogunate_mod/runtime/entrypoint.sh`, root/MOD package distribution test sync, and `git diff --check` after moving source smoke to the MOD runtime entrypoint.
+- PASS: actual source runtime smoke `SHOGUNATE_SOURCE_SMOKE_RUN_ID=source-entrypoint-20260619224757 bash shogunate_mod/runtime/source_smoke.sh` created tmux session `shogunate-mod-source-entrypoint-20260619224757`, `goza` window, `shogun,gunkan,karo,gunshi,ashigaru1` panes, runtime metadata, dashboard, and Gunkan queue/report files through `shogunate_mod/runtime/entrypoint.sh`.
 
 ## 復旧
 

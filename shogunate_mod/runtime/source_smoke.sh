@@ -72,7 +72,7 @@ printf '[INFO] starting setup-only runtime smoke: %s\n' "$SESSION"
   LEGACY_GOZA_SESSION_NAME="${SESSION}-legacy" \
   RUNTIME_DAEMON_SESSION="$DAEMON" \
   MAS_BOOTSTRAP_READY_TIMEOUT="${MAS_BOOTSTRAP_READY_TIMEOUT:-3}" \
-    bash shutsujin_departure.sh -s -c
+    bash shogunate_mod/runtime/entrypoint.sh -s -c
 )
 
 tmux has-session -t "$SESSION" 2>/dev/null || fail "tmux session was not created: $SESSION"

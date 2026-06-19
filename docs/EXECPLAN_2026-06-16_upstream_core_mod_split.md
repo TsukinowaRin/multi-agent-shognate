@@ -1663,6 +1663,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_curl_bootstrap_is_release_package_aware tests.unit.test_package_distribution.PackageDistributionContractTests.test_curl_bootstrap_installs_command_before_first_setup` after changing the generated cURL command shim to call the MOD Pair server directly.
 - PASS: `bash -n shogunate_mod/package/bootstrap.sh scripts/shogunate_package_bootstrap.sh` after changing the generated cURL command shim.
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after updating the package distribution contract.
+- cURL/package bootstrap が生成する `shogunate run` / `clean` / `resume` / `configure` / default runtime command も root launcher 互換入口ではなく、`shogunate_mod/runtime/runtime_launcher.sh` と `shogunate_mod/configure/role_launcher.sh` 正本を直接実行するようにした。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_curl_bootstrap_is_release_package_aware tests.unit.test_package_distribution.PackageDistributionContractTests.test_curl_bootstrap_installs_command_before_first_setup` after changing generated cURL runtime/configure commands to call MOD launchers directly.
+- PASS: `bash -n shogunate_mod/package/bootstrap.sh scripts/shogunate_package_bootstrap.sh shogunate_mod/runtime/runtime_launcher.sh shogunate_mod/configure/role_launcher.sh` after changing generated cURL runtime/configure commands.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` and `git diff --check` after changing generated cURL runtime/configure commands.
 
 ## 復旧
 

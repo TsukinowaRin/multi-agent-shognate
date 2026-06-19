@@ -149,7 +149,7 @@ Project options:
 
 Pair options are forwarded to shogunate_mod/pair/server.py.
 Set SHOGUNATE_PAIR_PASSWORD to require a fixed local approval password.
-Runtime args are forwarded to Shogunate-Runtime.sh.
+Runtime args are forwarded to shogunate_mod/runtime/runtime_launcher.sh.
 USAGE
 }
 
@@ -302,19 +302,19 @@ case "\$command_name" in
         shift || true
         parse_project_args "\$@"
         run_in_project_runtime
-        exec ./Shogunate-Runtime.sh "\${RUNTIME_ARGS[@]}"
+        exec bash shogunate_mod/runtime/runtime_launcher.sh "\${RUNTIME_ARGS[@]}"
         ;;
     clean)
         shift || true
         parse_project_args "\$@"
         run_in_project_runtime
-        exec ./Shogunate-Runtime.sh --clean "\${RUNTIME_ARGS[@]}"
+        exec bash shogunate_mod/runtime/runtime_launcher.sh --clean "\${RUNTIME_ARGS[@]}"
         ;;
     resume)
         shift || true
         parse_project_args "\$@"
         run_in_project_runtime
-        exec ./Shogunate-Runtime.sh --resume "\${RUNTIME_ARGS[@]}"
+        exec bash shogunate_mod/runtime/runtime_launcher.sh --resume "\${RUNTIME_ARGS[@]}"
         ;;
     attach)
         shift || true
@@ -331,7 +331,7 @@ case "\$command_name" in
         shift || true
         parse_project_args "\$@"
         run_in_project_runtime
-        exec ./Shogunate-Configure-Roles.sh "\${RUNTIME_ARGS[@]}"
+        exec bash shogunate_mod/configure/role_launcher.sh "\${RUNTIME_ARGS[@]}"
         ;;
     where)
         shift || true
@@ -361,7 +361,7 @@ case "\$command_name" in
     *)
         parse_project_args "\$@"
         run_in_project_runtime
-        exec ./Shogunate-Runtime.sh "\${RUNTIME_ARGS[@]}"
+        exec bash shogunate_mod/runtime/runtime_launcher.sh "\${RUNTIME_ARGS[@]}"
         ;;
 esac
 EOF

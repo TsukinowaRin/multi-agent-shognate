@@ -3990,6 +3990,13 @@ class PackageDistributionContractTests(unittest.TestCase):
             "scripts/localapi_repl.py",
             "lib/file_watch.sh",
         ]
+        forbidden_legacy_mailbox_labels = [
+            "## Mailbox System (inbox_write.sh)",
+            "| inbox_write.sh |",
+            "No sleep needed. All messages guaranteed delivered by inbox_watcher.sh",
+            "**Why no background monitor**: inbox_watcher.sh",
+            "- inbox_watcher.sh sends",
+        ]
         required_mod_commands = [
             "shogunate_mod/inbox/write.sh",
             "shogunate_mod/notify/ntfy.sh",
@@ -4007,8 +4014,13 @@ class PackageDistributionContractTests(unittest.TestCase):
                 combined += text
                 for forbidden in forbidden_root_wrappers:
                     self.assertNotIn(forbidden, text)
+                for forbidden in forbidden_legacy_mailbox_labels:
+                    self.assertNotIn(forbidden, text)
         for required in required_mod_commands:
             self.assertIn(required, combined)
+        self.assertIn("## Mailbox System (shogunate_mod/inbox/write.sh)", combined)
+        self.assertIn("mailbox write to ashigaru via shogunate_mod/inbox/write.sh", combined)
+        self.assertIn("shogunate_mod/watcher/inbox_watcher.sh sends nudge text", combined)
 
     def test_claude_settings_have_mod_canonical_copy(self):
         root_settings = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))

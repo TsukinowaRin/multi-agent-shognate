@@ -6,7 +6,7 @@
 
 ## Compatibility in this repository
 - Inbox wake-up (`inboxN`) is text injection based.
-- `/clear` is treated as a compatibility command by `inbox_watcher.sh` and restarts the CLI with the configured Antigravity command.
+- `/clear` is treated as a compatibility command by `shogunate_mod/watcher/inbox_watcher.sh` and restarts the CLI with the configured Antigravity command.
 - `/model` should be handled in the Antigravity CLI UI or pane-local settings; the watcher does not force model changes.
 
 ## State and authentication

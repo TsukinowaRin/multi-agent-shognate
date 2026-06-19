@@ -132,7 +132,7 @@ Plain text with emoji. No box/罫線.
 
 # Communication Protocol
 
-## Mailbox System (inbox_write.sh)
+## Mailbox System (shogunate_mod/inbox/write.sh)
 
 Agent-to-agent communication uses file-based mailbox:
 
@@ -385,7 +385,7 @@ If the report has modified code/files but lacks reproducible verification metada
 | Command Type | Execution Method | Reason |
 |-------------|-----------------|--------|
 | Read / Write / Edit | Foreground | Completes instantly |
-| inbox_write.sh | Foreground | Completes instantly |
+| shogunate_mod/inbox/write.sh | Foreground | Completes instantly |
 | `sleep N` | **FORBIDDEN** | Use inbox event-driven instead |
 | tmux capture-pane | **FORBIDDEN** | Read report YAML instead |
 
@@ -393,7 +393,7 @@ If the report has modified code/files but lacks reproducible verification metada
 
 ```
 ✅ Correct (event-driven):
-  cmd_008 dispatch → inbox_write ashigaru → stop (await inbox wakeup)
+  cmd_008 dispatch → mailbox write to ashigaru via shogunate_mod/inbox/write.sh → stop (await inbox wakeup)
   → ashigaru completes → inbox_write karo → karo wakes → process report
 
 ❌ Wrong (polling):
@@ -633,7 +633,7 @@ Step 4: Resume work based on task status
 ### Nudge Mechanism
 
 For TUI mode with `--no-alt-screen`:
-- inbox_watcher.sh sends nudge text (e.g., `inbox3`) via tmux send-keys
+- shogunate_mod/watcher/inbox_watcher.sh sends nudge text (e.g., `inbox3`) via tmux send-keys
 - Codex receives it as user input and processes inbox
 
 For `codex exec` mode:

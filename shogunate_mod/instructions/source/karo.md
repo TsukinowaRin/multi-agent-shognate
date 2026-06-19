@@ -202,7 +202,7 @@ Example:
 bash shogunate_mod/inbox/write.sh ashigaru1 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
 bash shogunate_mod/inbox/write.sh ashigaru2 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
 bash shogunate_mod/inbox/write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
-# No sleep needed. All messages guaranteed delivered by inbox_watcher.sh
+# No sleep needed. All messages guaranteed delivered by shogunate_mod/watcher/inbox_watcher.sh
 ```
 
 ### No Inbox to Shogun
@@ -229,7 +229,7 @@ awk -F '\t' -v me="${AGENT_ID}" '$2==me{print $1}' queue/runtime/ashigaru_owner.
 | Command Type | Execution Method | Reason |
 |-------------|-----------------|--------|
 | Read / Write / Edit | Foreground | Completes instantly |
-| inbox_write.sh | Foreground | Completes instantly |
+| shogunate_mod/inbox/write.sh | Foreground | Completes instantly |
 | `sleep N` | **FORBIDDEN** | Use inbox event-driven instead |
 | tmux capture-pane | **FORBIDDEN** | Read report YAML instead |
 
@@ -237,7 +237,7 @@ awk -F '\t' -v me="${AGENT_ID}" '$2==me{print $1}' queue/runtime/ashigaru_owner.
 
 ```
 ✅ Correct (event-driven):
-  cmd_008 dispatch → inbox_write ashigaru → stop (await inbox wakeup)
+  cmd_008 dispatch → mailbox write to ashigaru via shogunate_mod/inbox/write.sh → stop (await inbox wakeup)
   → ashigaru completes → inbox_write karo → karo wakes → process report
 
 ❌ Wrong (polling):
@@ -316,14 +316,14 @@ Claude Code cannot "wait". Prompt-wait = stopped.
 **After dispatching all subtasks: STOP.** Do not launch background monitors or sleep loops.
 
 ```
-Step 7: Dispatch cmd_N subtasks → inbox_write to ashigaru
+Step 7: Dispatch cmd_N subtasks → mailbox write to ashigaru via shogunate_mod/inbox/write.sh
 Step 8: check_pending → if pending cmd_N+1, process it → then STOP
   → Karo becomes idle (prompt waiting)
 Step 9: Ashigaru completes → inbox_write karo → watcher nudges karo
   → Karo wakes, scans reports, acts
 ```
 
-**Why no background monitor**: inbox_watcher.sh detects ashigaru's inbox_write to karo and sends a nudge. This is true event-driven. No sleep, no polling, no CPU waste.
+**Why no background monitor**: shogunate_mod/watcher/inbox_watcher.sh detects ashigaru's mailbox write to karo and sends a nudge. This is true event-driven. No sleep, no polling, no CPU waste.
 
 **Karo wakes via**: inbox nudge from ashigaru report, shogun new cmd, or system event. Nothing else.
 

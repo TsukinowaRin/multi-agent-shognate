@@ -96,7 +96,7 @@ Always include: 1) Agent role (shogun/karo/ashigaru) 2) Forbidden actions list 3
 
 # Communication Protocol
 
-## Mailbox System (inbox_write.sh)
+## Mailbox System (shogunate_mod/inbox/write.sh)
 
 Agent-to-agent communication uses file-based mailbox:
 

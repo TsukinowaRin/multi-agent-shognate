@@ -229,7 +229,7 @@ Plain text with emoji. No box/罫線.
 
 # Communication Protocol
 
-## Mailbox System (inbox_write.sh)
+## Mailbox System (shogunate_mod/inbox/write.sh)
 
 Agent-to-agent communication uses file-based mailbox:
 
@@ -470,14 +470,14 @@ Lord: command → Shogun: write YAML → inbox_write → END TURN
 **After dispatching all subtasks: STOP.** Do not launch background monitors or sleep loops.
 
 ```
-Step 7: Dispatch cmd_N subtasks → inbox_write to ashigaru
+Step 7: Dispatch cmd_N subtasks → mailbox write to ashigaru via shogunate_mod/inbox/write.sh
 Step 8: check_pending → if pending cmd_N+1, process it → then STOP
   → Karo becomes idle (prompt waiting)
 Step 9: Ashigaru completes → inbox_write karo → watcher nudges karo
   → Karo wakes, scans reports, acts
 ```
 
-**Why no background monitor**: inbox_watcher.sh detects ashigaru's inbox_write to karo and sends a nudge. This is true event-driven. No sleep, no polling, no CPU waste.
+**Why no background monitor**: shogunate_mod/watcher/inbox_watcher.sh detects ashigaru's mailbox write to karo and sends a nudge. This is true event-driven. No sleep, no polling, no CPU waste.
 
 **Karo wakes via**: inbox nudge from ashigaru report, shogun new cmd, or system event. Nothing else.
 
@@ -529,7 +529,7 @@ If the report has modified code/files but lacks reproducible verification metada
 | Command Type | Execution Method | Reason |
 |-------------|-----------------|--------|
 | Read / Write / Edit | Foreground | Completes instantly |
-| inbox_write.sh | Foreground | Completes instantly |
+| shogunate_mod/inbox/write.sh | Foreground | Completes instantly |
 | `sleep N` | **FORBIDDEN** | Use inbox event-driven instead |
 | tmux capture-pane | **FORBIDDEN** | Read report YAML instead |
 
@@ -537,7 +537,7 @@ If the report has modified code/files but lacks reproducible verification metada
 
 ```
 ✅ Correct (event-driven):
-  cmd_008 dispatch → inbox_write ashigaru → stop (await inbox wakeup)
+  cmd_008 dispatch → mailbox write to ashigaru via shogunate_mod/inbox/write.sh → stop (await inbox wakeup)
   → ashigaru completes → inbox_write karo → karo wakes → process report
 
 ❌ Wrong (polling):
@@ -618,7 +618,7 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 
 ## Compatibility in this repository
 - Inbox wake-up (`inboxN`) is text injection based.
-- `/clear` is treated as a compatibility command by `inbox_watcher.sh` and restarts the CLI with the configured Antigravity command.
+- `/clear` is treated as a compatibility command by `shogunate_mod/watcher/inbox_watcher.sh` and restarts the CLI with the configured Antigravity command.
 - `/model` should be handled in the Antigravity CLI UI or pane-local settings; the watcher does not force model changes.
 
 ## State and authentication

@@ -5,7 +5,8 @@ const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
 const repoRawBase = "https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main";
-const bootstrapUrl = `${repoRawBase}/shogunate_mod/package/bootstrap.sh`;
+const defaultBootstrapUrl = `${repoRawBase}/shogunate_mod/package/bootstrap.sh`;
+const bootstrapUrl = process.env.SHOGUNATE_NPM_BOOTSTRAP_URL || defaultBootstrapUrl;
 
 function usage() {
   console.log(`Usage:
@@ -22,6 +23,7 @@ Commands:
 
 The npm package is a thin wrapper. Its install command runs the MOD package bootstrap:
   curl -fsSL ${bootstrapUrl} | bash
+Set SHOGUNATE_NPM_BOOTSTRAP_URL to test or mirror the bootstrap script.
 Set SHOGUNATE_PAIR_PASSWORD to require a fixed local approval password.
 `);
 }

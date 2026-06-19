@@ -2721,8 +2721,53 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn('path.join(root, "scripts/shogunate_pair_server.py")', npm_cli)
         self.assertIn("SHOGUNATE_PAIR_PASSWORD", npm_cli)
         self.assertIn("curl -fsSL", npm_cli)
+        self.assertIn("SHOGUNATE_NPM_BOOTSTRAP_URL", npm_cli)
         self.assertIn("--target-project", npm_cli)
         self.assertIn("process.cwd()", npm_cli)
+
+    def test_npm_cli_install_dispatch_can_use_bootstrap_override(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            fake_bootstrap = tmp_path / "bootstrap.sh"
+            proof = tmp_path / "args.txt"
+            fake_bootstrap.write_text(
+                "\n".join(
+                    [
+                        "set -euo pipefail",
+                        ": \"${SHOGUNATE_NPM_BOOTSTRAP_PROOF:?}\"",
+                        "printf '%s\\n' \"$@\" > \"$SHOGUNATE_NPM_BOOTSTRAP_PROOF\"",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env["SHOGUNATE_NPM_BOOTSTRAP_URL"] = fake_bootstrap.resolve().as_uri()
+            env["SHOGUNATE_NPM_BOOTSTRAP_PROOF"] = str(proof)
+
+            result = subprocess.run(
+                [
+                    "node",
+                    "bin/shogunate.js",
+                    "install",
+                    "--",
+                    "--version",
+                    "v-test",
+                    "--no-setup",
+                ],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            output = result.stdout + result.stderr
+            self.assertEqual(0, result.returncode, output)
+            self.assertEqual(
+                ["--version", "v-test", "--no-setup"],
+                proof.read_text(encoding="utf-8").splitlines(),
+            )
 
     def test_npm_cli_run_and_pair_dispatch_to_mod_sources(self):
         for command, expected in npm_cli_dispatch_smoke_cases():

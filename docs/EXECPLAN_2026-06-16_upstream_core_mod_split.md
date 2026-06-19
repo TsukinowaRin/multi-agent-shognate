@@ -1808,6 +1808,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: targeted package distribution contract, `bash -n shogunate_mod/package/first_setup.sh shogunate_mod/runtime/entrypoint.sh shogunate_mod/runtime/runtime_launcher.sh shogunate_mod/runtime/shutsujin_launcher.sh shogunate_mod/runtime/setup_compat.sh shogunate_mod/shell/install_aliases.sh`, root/MOD package distribution test sync, and `git diff --check` after adding MOD canonical launcher chmod coverage.
 - npm CLI の `install` 導線も remote `scripts/shogunate_package_bootstrap.sh` 互換入口経由から、remote `shogunate_mod/package/bootstrap.sh` 正本を直接 `curl | bash` する形へ寄せた。README / release note の public cURL は既存互換 URL として維持する。
 - PASS: `node bin/shogunate.js --help`, `node shogunate_mod/package/npm_cli.js --help`, targeted package distribution contracts for npm CLI MOD bootstrap / run / pair dispatch, root/MOD package distribution test sync, and `git diff --check` after moving npm install bootstrap guidance to the MOD package bootstrap.
+- npm CLI の `install` dispatch をネットワークなしで検証できるよう `SHOGUNATE_NPM_BOOTSTRAP_URL` override を追加した。通常値は remote `shogunate_mod/package/bootstrap.sh` のまま、テストや mirror 環境では fake/local bootstrap を `curl | bash` に渡せる。
+- PASS: `node --check shogunate_mod/package/npm_cli.js`, `node --check bin/shogunate.js`, `node bin/shogunate.js --help`, targeted package distribution contract with a fake `file://` bootstrap proving `node bin/shogunate.js install -- --version v-test --no-setup` forwards args through `bash -s --`, root/MOD package distribution test sync, and `git diff --check`.
 
 ## 復旧
 

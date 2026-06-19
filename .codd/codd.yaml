@@ -13,6 +13,7 @@ project:
 
 scan:
   source_dirs:
+    - "shogunate_mod/"
     - "scripts/"
     - "lib/"
   test_dirs:
@@ -43,6 +44,6 @@ graph:
   path: ".codd/scan"
 
 verify:
-  typecheck_command: "bash -n shutsujin_departure.sh scripts/*.sh lib/*.sh"
+  typecheck_command: "find shogunate_mod scripts lib -name '*.sh' -print0 | xargs -0 bash -n && bash -n shutsujin_departure.sh"
   test_command: "bats tests/unit/test_gunkan_audit.bats tests/unit/test_watcher_supervisor.bats tests/unit/test_mux_parity.bats"
   report_output: ".codd/verify_report.md"

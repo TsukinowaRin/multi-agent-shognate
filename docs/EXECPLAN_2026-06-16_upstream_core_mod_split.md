@@ -1793,6 +1793,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - mux parity smoke の成功時終了コードが、setup 成功後も初期値のまま失敗扱いになる不具合を修正した。Bats では fake `tmux` / fake runtime entrypoint で setup 成功時に exit 0 になることを固定した。
 - PASS: `bats tests/unit/test_mux_parity_smoke.bats`, targeted package distribution contract, shell syntax / root-MOD test sync / `git diff --check` after moving mux parity smoke to the MOD runtime entrypoint.
 - PASS: actual setup-only smoke `SHOGUNATE_SESSION_NAME=shogunate-mux-mod-entrypoint-20260619222130-3484114 GOZA_SESSION_NAME=shogunate-mux-mod-entrypoint-20260619222130-3484114 SHOGUNATE_PROJECT_DIR=<runtime_sandboxes/.../project> bash shogunate_mod/runtime/mux_parity_smoke.sh --tmux-only --clean` completed with exit 0 and created `goza` window with 8 panes.
+- CoDD graph config の scan / verify 対象を root wrapper surface 中心から MOD 正本中心へ寄せた。`shogunate_mod/gunkan/codd.yaml` と互換コピー `.codd/codd.yaml` の `scan.source_dirs` に `shogunate_mod/` を追加し、`verify.typecheck_command` は `find shogunate_mod scripts lib -name '*.sh' -print0 | xargs -0 bash -n && bash -n shutsujin_departure.sh` で MOD 正本と互換 wrapper の両方を検査する。
+- PASS: targeted package distribution contract, `bats tests/unit/test_gunkan_audit.bats`, actual CoDD typecheck command, root/MOD CoDD config sync, root/MOD package distribution test sync, and `git diff --check` after moving CoDD config coverage to MOD canonical source.
 
 ## 復旧
 

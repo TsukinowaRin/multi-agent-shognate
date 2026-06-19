@@ -3538,6 +3538,9 @@ class PackageDistributionContractTests(unittest.TestCase):
         root_codd = (ROOT / ".codd" / "codd.yaml").read_text(encoding="utf-8")
         mod_codd = (ROOT / "shogunate_mod" / "gunkan" / "codd.yaml").read_text(encoding="utf-8")
         self.assertEqual(root_codd, mod_codd)
+        self.assertIn('- "shogunate_mod/"', mod_codd)
+        self.assertIn("find shogunate_mod scripts lib -name '*.sh' -print0 | xargs -0 bash -n", mod_codd)
+        self.assertNotIn('typecheck_command: "bash -n shutsujin_departure.sh scripts/*.sh lib/*.sh"', mod_codd)
 
     def test_codd_docs_have_mod_canonical_copy(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")

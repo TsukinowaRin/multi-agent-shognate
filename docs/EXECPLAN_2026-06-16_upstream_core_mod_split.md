@@ -313,6 +313,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Android app の Agents 画面にある使用量チェックも root `scripts/ratelimit_check.sh` 直呼びから、MOD 正本 `shogunate_mod/status/ratelimit_check.sh` 優先 + root wrapper fallback に変更した。Pair 後の runtime root でも Shogunate-only status 実装を MOD 側正本から使う。
 - [x] Runtime cleanup / watcher stale cleanup を MOD 正本プロセス対応へ補強した。clean start と runtime daemon restart は旧 `scripts/` watcher だけでなく `shogunate_mod/watcher/inbox_watcher.sh` も掃除し、Gunkan light watch は旧 wrapper / MOD 正本の両方を掃除する。watcher supervisor の stale process 検出も旧 `scripts/inbox_watcher.sh` と MOD 正本 `shogunate_mod/watcher/inbox_watcher.sh` の両方を同じ agent 判定で扱う。
 - [x] Claude Code hook settings の command を root `scripts/session_start_hook.sh` / `scripts/stop_hook_inbox.sh` 互換入口から、MOD 正本 `shogunate_mod/hooks/session_start_hook.sh` / `shogunate_mod/hooks/stop_hook_inbox.sh` 直接実行へ寄せた。root `.claude/settings.json` は Claude Code が読む互換コピーとして MOD 正本 `shogunate_mod/hooks/claude_settings.json` と同期する。
+- [x] Runtime help / MCP health check の案内文を root `scripts/` 互換入口から MOD 正本 path へ寄せた。`shogunate_mod/runtime/options.sh` は `shogunate_mod/configure/agents.sh` と `shogunate_mod/view/*` を案内し、`shogunate_mod/runtime/mcp_health_check.sh` は `shogunate_mod/configure/switch_cli.sh` を案内する。`shogunate_mod/configure/switch_cli.sh` 自身の Usage コメントも MOD 正本 path に揃えた。
 
 ## 判断
 
@@ -1729,6 +1730,12 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bats tests/unit/test_session_start_hook.bats tests/unit/test_stop_hook.bats tests/unit/test_idle_flag.bats --timing` ran 23 hook / idle flag tests after the Claude hook settings command change.
 - PASS: direct root/MOD package distribution test sync and `git diff --check` after the Claude hook settings command change.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 147 package distribution contract tests after the Claude hook settings command change.
+- Runtime help / MCP health check の案内文を root `scripts/` 互換入口から MOD 正本 path へ寄せた。`shogunate_mod/runtime/options.sh` は `shogunate_mod/configure/agents.sh` と `shogunate_mod/view/*` を案内し、`shogunate_mod/runtime/mcp_health_check.sh` は `shogunate_mod/configure/switch_cli.sh` を案内する。`shogunate_mod/configure/switch_cli.sh` 自身の Usage コメントも MOD 正本 path に揃えた。
+- PASS: `bash -n shogunate_mod/runtime/options.sh shogunate_mod/runtime/mcp_health_check.sh shogunate_mod/configure/switch_cli.sh` after moving runtime help / MCP guidance to MOD canonical paths.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_runtime_helpers_call_mod_canonical_sources` after adding contracts for runtime help and MCP health guidance paths.
+- PASS: `bats tests/unit/test_switch_cli.bats tests/unit/test_mux_parity.bats --timing` ran 92 switch / mux tests after changing the guidance text.
+- PASS: direct root/MOD package distribution test sync and `git diff --check` after changing runtime help / MCP guidance.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 147 package distribution contract tests after changing runtime help / MCP guidance.
 
 ## 復旧
 

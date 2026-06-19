@@ -40,7 +40,7 @@ show_shutsujin_help() {
     echo ""
     echo "CLI/モデル構成:"
     echo "  config/settings.yaml の cli.default / cli.agents.* を使用"
-    echo "  変更は scripts/configure_agents.sh から行う"
+    echo "  変更は shogunate_mod/configure/agents.sh から行う"
     echo "  --kessen は Claude 系エージェントのみ Opus 優先に上書き"
     echo ""
     echo "表示モード:"
@@ -49,10 +49,10 @@ show_shutsujin_help() {
     echo ""
     echo "エイリアス:"
     echo "  csst  → cd $SCRIPT_DIR && ./shutsujin_departure.sh"
-    echo "  css   → bash scripts/focus_agent_pane.sh shogun"
-    echo "  csg   → bash scripts/focus_agent_pane.sh gunshi"
-    echo "  csm   → bash scripts/focus_agent_pane.sh karo"
-    echo "  cgo   → bash scripts/goza_no_ma.sh"
+    echo "  css   → bash shogunate_mod/view/focus_agent_pane.sh shogun"
+    echo "  csg   → bash shogunate_mod/view/focus_agent_pane.sh gunshi"
+    echo "  csm   → bash shogunate_mod/view/focus_agent_pane.sh karo"
+    echo "  cgo   → bash shogunate_mod/view/goza_no_ma.sh"
     echo ""
 }
 

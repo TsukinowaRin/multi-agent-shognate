@@ -41,7 +41,7 @@ done < <(tmux list-panes -t "multiagent:agents" -F '#{pane_index}' 2>/dev/null |
 echo "[${TIMESTAMP}] Result: ${errors} errors found (checked ${checked} codex panes)" | tee -a "$LOG_FILE"
 
 if [ "$errors" -gt 0 ]; then
-    echo "⚠️ MCP Health Check: ${errors} error(s) detected. Run 'bash scripts/switch_cli.sh <agent>' to restart affected agents."
+    echo "⚠️ MCP Health Check: ${errors} error(s) detected. Run 'bash shogunate_mod/configure/switch_cli.sh <agent>' to restart affected agents."
     exit 1
 else
     echo "✅ MCP Health Check: All codex agents OK (${checked} checked)"

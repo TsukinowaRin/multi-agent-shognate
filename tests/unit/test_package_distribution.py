@@ -921,6 +921,14 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/runtime/shutsujin_launcher.sh": [
                 "shogunate_mod/shell/aliases.sh",
             ],
+            "shogunate_mod/runtime/options.sh": [
+                "shogunate_mod/configure/agents.sh",
+                "shogunate_mod/view/focus_agent_pane.sh",
+                "shogunate_mod/view/goza_no_ma.sh",
+            ],
+            "shogunate_mod/runtime/mcp_health_check.sh": [
+                "shogunate_mod/configure/switch_cli.sh",
+            ],
         }
 
         forbidden = [
@@ -945,6 +953,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             'scripts/shell_aliases.sh',
             'scripts/install_shell_aliases.sh',
             'SCRIPT_DIR}/scripts/android_tmux_proxy.py',
+            'scripts/switch_cli.sh',
+            'scripts/configure_agents.sh',
         ]
 
         for rel, required in checks.items():

@@ -11,8 +11,8 @@ RUN_SETUP=1
 usage() {
     cat <<'EOF'
 Usage:
-  curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/scripts/shogunate_package_bootstrap.sh | bash
-  curl -fsSL .../shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.4 --prefix ~/.shogunate/shogunate
+  curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main/shogunate_mod/package/bootstrap.sh | bash
+  curl -fsSL .../shogunate_mod/package/bootstrap.sh | bash -s -- --version v5.2.0.4 --prefix ~/.shogunate/shogunate
 
 Options:
   --version TAG    GitHub Release tag to install. Defaults to latest.

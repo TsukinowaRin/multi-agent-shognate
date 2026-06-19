@@ -1823,6 +1823,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - `shogunate_mod/README.md` の `configure/` 境界説明も root `scripts/configure_*` / `scripts/switch_cli.sh` path を正本のように列挙する形から、MOD 正本 `shogunate_mod/configure/agents.sh`, `runtime_roles.py`, `sync_opencode_config.py`, `switch_cli.sh` を明示し、root configure/switch path は compatibility wrapper とだけ説明する形へ寄せた。
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_readme_describes_configure_canonical_sources` after adding the MOD README configure-boundary contract.
 - PASS: direct root/MOD package distribution test sync and `git diff --check` after the MOD README configure-boundary update.
+- MOD 正本 `shogunate_mod/package/bootstrap.sh --help` の cURL 例も root `scripts/shogunate_package_bootstrap.sh` 互換 wrapper ではなく `shogunate_mod/package/bootstrap.sh` 直 URL を案内するようにした。public README / release note の互換 cURL は既存ユーザー向け stable entrypoint として維持する。
+- PASS: `bash shogunate_mod/package/bootstrap.sh --help` showed the MOD package bootstrap URL, and targeted package distribution contracts verified the root compatibility wrapper still delegates to the MOD bootstrap.
+- PASS: direct root/MOD package distribution test sync and `git diff --check` after the MOD bootstrap help update.
 
 ## 復旧
 

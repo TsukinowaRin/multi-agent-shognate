@@ -763,6 +763,22 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("releases/download/${VERSION}/${REPO_NAME}-package.tar.gz", text)
         self.assertIn('PACKAGE_URL="${SHOGUNATE_PACKAGE_URL:-$PACKAGE_URL}"', text)
         self.assertIn("SHOGUNATE_PACKAGE_URL  Override package URL", text)
+        self.assertIn(
+            "main/shogunate_mod/package/bootstrap.sh | bash",
+            text,
+        )
+        self.assertIn(
+            ".../shogunate_mod/package/bootstrap.sh | bash -s -- --version",
+            text,
+        )
+        self.assertNotIn(
+            "main/scripts/shogunate_package_bootstrap.sh | bash",
+            text,
+        )
+        self.assertNotIn(
+            ".../shogunate_package_bootstrap.sh | bash -s -- --version",
+            text,
+        )
         self.assertIn("--strip-components=1", text)
         self.assertIn("first_setup.sh", text)
         self.assertIn("shogunate_mod/package/first_setup.sh", text)

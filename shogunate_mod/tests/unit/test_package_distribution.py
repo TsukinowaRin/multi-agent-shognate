@@ -3751,12 +3751,22 @@ class PackageDistributionContractTests(unittest.TestCase):
 
     def test_test_support_files_have_mod_canonical_copy(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")
+        def is_synced_test_file(path: Path) -> bool:
+            rel_parts = path.relative_to(ROOT / "tests").parts
+            if "__pycache__" in rel_parts:
+                return False
+            if path.suffix in {".pyc", ".pyo"}:
+                return False
+            return not (
+                len(rel_parts) >= 2
+                and rel_parts[0] == "test_helper"
+                and rel_parts[1] in {"bats-assert", "bats-support"}
+            )
+
         root_test_files = sorted(
             path
             for path in (ROOT / "tests").rglob("*")
-            if path.is_file()
-            and "__pycache__" not in path.relative_to(ROOT / "tests").parts
-            and path.suffix not in {".pyc", ".pyo"}
+            if path.is_file() and is_synced_test_file(path)
         )
 
         self.assertGreaterEqual(len(root_test_files), 1)

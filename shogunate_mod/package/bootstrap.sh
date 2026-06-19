@@ -147,7 +147,7 @@ Usage:
 Project options:
   --project DIR             Use DIR instead of the current directory
 
-Pair options are forwarded to scripts/shogunate_pair_server.py.
+Pair options are forwarded to shogunate_mod/pair/server.py.
 Set SHOGUNATE_PAIR_PASSWORD to require a fixed local approval password.
 Runtime args are forwarded to Shogunate-Runtime.sh.
 USAGE
@@ -325,7 +325,7 @@ case "\$command_name" in
         shift || true
         parse_project_args "\$@"
         run_in_project_runtime
-        exec python3 scripts/shogunate_pair_server.py --project-root "\$SHOGUNATE_WORKSPACE_DIR" --target-project "\$SHOGUNATE_PROJECT_DIR" "\${RUNTIME_ARGS[@]}"
+        exec python3 shogunate_mod/pair/server.py --project-root "\$SHOGUNATE_WORKSPACE_DIR" --target-project "\$SHOGUNATE_PROJECT_DIR" "\${RUNTIME_ARGS[@]}"
         ;;
     configure)
         shift || true

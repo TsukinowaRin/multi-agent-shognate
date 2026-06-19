@@ -1659,6 +1659,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct sync checks for root/MOD package distribution, shell alias, mux parity, and runtime launcher tests after the alias canonicalization.
 - PASS: `git diff --check` after the alias canonicalization.
 - EXPECTED FAIL before commit: `test_release_archive_representative_wrappers_execute_mod_sources` still saw the previous `scripts/install_shell_aliases.sh` message from `git archive HEAD`; the release archive contract is expected to pass after committing because it intentionally validates committed release assets.
+- cURL/package bootstrap が生成する `shogunate pair` command shim も `scripts/shogunate_pair_server.py` 互換 wrapper 経由ではなく、`shogunate_mod/pair/server.py` 正本を直接実行するようにした。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_curl_bootstrap_is_release_package_aware tests.unit.test_package_distribution.PackageDistributionContractTests.test_curl_bootstrap_installs_command_before_first_setup` after changing the generated cURL command shim to call the MOD Pair server directly.
+- PASS: `bash -n shogunate_mod/package/bootstrap.sh scripts/shogunate_package_bootstrap.sh` after changing the generated cURL command shim.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` after updating the package distribution contract.
 
 ## 復旧
 

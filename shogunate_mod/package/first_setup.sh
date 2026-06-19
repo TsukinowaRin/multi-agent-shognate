@@ -781,6 +781,11 @@ SCRIPTS=(
     "shutsujin_departure.sh"
     "first_setup.sh"
     "shogunate_mod/package/first_setup.sh"
+    "shogunate_mod/runtime/entrypoint.sh"
+    "shogunate_mod/runtime/runtime_launcher.sh"
+    "shogunate_mod/runtime/shutsujin_launcher.sh"
+    "shogunate_mod/runtime/setup_compat.sh"
+    "shogunate_mod/shell/install_aliases.sh"
 )
 
 TARGETS=()

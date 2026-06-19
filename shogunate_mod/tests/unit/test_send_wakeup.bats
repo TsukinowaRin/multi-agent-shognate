@@ -1130,7 +1130,7 @@ YAML
 
     grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
     grep -q "send-keys.*Escape" "$MOCK_LOG"
-    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox4" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010c1: send_wakeup_with_escape も新しい Codex rate-limit prompt variant を dismiss する" {
@@ -1144,7 +1144,7 @@ YAML
 
     grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
     grep -q "send-keys.*Escape" "$MOCK_LOG"
-    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox4" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010c0: send_wakeup_with_escape は Codex 通常画面では no-prompt を許容して継続する" {
@@ -1158,7 +1158,7 @@ YAML
 
     ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
     grep -q "send-keys.*Escape" "$MOCK_LOG"
-    grep -q "send-keys.*inbox4" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox4" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010c2: send_wakeup_with_escape は Codex rate-limit prompt dismiss 失敗時に abort する" {

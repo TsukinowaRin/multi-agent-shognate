@@ -1788,7 +1788,7 @@ send_wakeup_with_escape() {
         sleep 0.5
         c_ctrl_state="sent"
     fi
-    if send_text_and_enter "$nudge" "Escape+nudge"; then
+    if send_text_and_enter "$nudge" "Escape+nudge" "1"; then
         echo "[$(date)] Escape+nudge sent to $AGENT_ID (${unread_count} unread, cli=$effective_cli, C-c=$c_ctrl_state)" >&2
         return 0
     fi

@@ -309,6 +309,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] README/manifest の core/MOD 境界 contract を、README 全体の包含チェックではなく `## Direction` 節のリストと manifest `target_direction` の完全一致へ強化した。
 - [x] prepublish の root/MOD sync pair は、manifest 上でも `synchronized` な current core touchpoint として宣言されていることを contract で固定した。これにより同期 gate だけが増えて、core touchpoint の理由・次手順が manifest に残らない事故を検出する。
 - [x] root compatibility wrapper が参照する MOD delegate target は、manifest canonical path であるだけでなく `shogunate_mod/README.md` の Boundaries でも ownership が説明されていることを contract で固定した。
+- [x] OpenCode / Codex / AGY などの TUI へ送る inbox nudge を通常 wake-up だけでなく Phase 2 Escape+nudge でも literal `tmux send-keys -l` に統一し、長い日本語 nudge や `queue/inbox/...` を含む structured nudge が tmux の key 名解釈で崩れないようにした。
 
 ## 判断
 
@@ -1703,6 +1704,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: source runtime smoke `SHOGUNATE_SOURCE_SMOKE_RUN_ID=entrypoint-smoke-20260619145722 bash shogunate_mod/runtime/source_smoke.sh` started a detached `HEAD fdf2356` worktree through root `shutsujin_departure.sh` -> `shogunate_mod/runtime/entrypoint.sh` -> MOD loader, created tmux session `shogunate-mod-entrypoint-smoke-20260619145722`, built generated instructions, created `shogun,gunkan,karo,gunshi,ashigaru1` panes, and completed setup-only runtime verification.
 - PASS: final `make package-check` on amended entrypoint commit `27147bc`; prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
 - PASS: final source runtime smoke `SHOGUNATE_SOURCE_SMOKE_RUN_ID=entrypoint-final-20260619150143 bash shogunate_mod/runtime/source_smoke.sh` ran against detached `HEAD 27147bc`, created tmux session `shogunate-mod-entrypoint-final-20260619150143`, built generated instructions, created `shogun,gunkan,karo,gunshi,ashigaru1` panes, and completed setup-only runtime verification through root wrapper -> MOD entrypoint -> MOD loader.
+- OpenCode startup e2e で確認した structured inbox nudge の literal delivery を、通常 `send_wakeup` に加えて escalation Phase 2 の `send_wakeup_with_escape` にも広げた。Phase 2 は Escape/C-c で stale input を掃除した後に同じ自然言語 nudge を送るため、通常経路と同じ literal send が必要。
+- PASS: `bats tests/unit/test_send_wakeup.bats --timing` ran 110 wake-up / Codex prompt / OpenCode shell-return / escalation tests after literalizing Phase 2 Escape+nudge.
+- PASS: `bash -n shogunate_mod/watcher/inbox_watcher.sh tests/unit/test_send_wakeup.bats shogunate_mod/tests/unit/test_send_wakeup.bats` and direct root/MOD unit test sync plus `git diff --check` after the Phase 2 literal nudge change.
+- PASS: `bats tests/e2e/e2e_inbox_delivery.bats tests/e2e/e2e_opencode_startup.bats --timing` ran 6 inbox/OpenCode e2e tests after the Phase 2 literal nudge change.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution tests.unit.test_shogunate_pair_server tests.unit.test_runtime_blocker_notice tests.unit.test_update_manager` ran 179 package/MOD behavior tests after the Phase 2 literal nudge change.
 
 ## 復旧
 

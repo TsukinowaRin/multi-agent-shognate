@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
 Usage: ./Shogunate-Runtime.sh [--clean|--resume] [--no-attach] [shutsujin args...]
 
 Defaults:
-  --clean      Start with bash shutsujin_departure.sh -c
+  --clean      Start with bash shogunate_mod/runtime/entrypoint.sh -c
   attach       Attach to tmux session shogunate after startup
   project      Use the caller's current directory as the target project
 
@@ -86,9 +86,9 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
   info "Startup log: $STARTUP_LOG"
   RUN_ID="runtime-$(date +%s)-$$"
   if [[ -n "$CLEAN_ARG" ]]; then
-    SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+    SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shogunate_mod/runtime/entrypoint.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   else
-    SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+    SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shogunate_mod/runtime/entrypoint.sh "${EXTRA_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   fi
   RUNTIME_PID=$!
 
@@ -122,9 +122,9 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
 fi
 
 if [[ -n "$CLEAN_ARG" ]]; then
-  SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" bash shutsujin_departure.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}"
+  SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" bash shogunate_mod/runtime/entrypoint.sh "$CLEAN_ARG" "${EXTRA_ARGS[@]}"
 else
-  SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" bash shutsujin_departure.sh "${EXTRA_ARGS[@]}"
+  SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" bash shogunate_mod/runtime/entrypoint.sh "${EXTRA_ARGS[@]}"
 fi
 
 echo ""

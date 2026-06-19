@@ -13,9 +13,4 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-MOD_RUNTIME_LOADER="$SCRIPT_DIR/shogunate_mod/runtime/load.sh"
-[ -f "$MOD_RUNTIME_LOADER" ] && . "$MOD_RUNTIME_LOADER"
-
-run_shutsujin_departure "$@"
+exec bash "$SCRIPT_DIR/shogunate_mod/runtime/entrypoint.sh" "$@"

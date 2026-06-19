@@ -87,6 +87,7 @@ canonical_paths:
   runtime_daemon: shogunate_mod/runtime/daemon.sh
   runtime_departure: shogunate_mod/runtime/departure.sh
   runtime_directives: shogunate_mod/runtime/directives.sh
+  runtime_entrypoint: shogunate_mod/runtime/entrypoint.sh
   runtime_env: shogunate_mod/runtime/env.sh
   runtime_goza: shogunate_mod/runtime/goza.sh
   runtime_launch: shogunate_mod/runtime/launch.sh

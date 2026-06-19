@@ -4,7 +4,7 @@ setup() {
   PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 }
 
-@test "runtime launchers: Unix wrappers are valid shell and call shutsujin" {
+@test "runtime launchers: Unix wrappers are valid shell and call the MOD runtime entrypoint" {
   run bash -n "$PROJECT_ROOT/Shutsujin.sh"
   [ "$status" -eq 0 ]
 
@@ -26,6 +26,9 @@ setup() {
   run bash -n "$PROJECT_ROOT/shogunate_mod/runtime/launcher.sh"
   [ "$status" -eq 0 ]
 
+  run bash -n "$PROJECT_ROOT/shogunate_mod/runtime/entrypoint.sh"
+  [ "$status" -eq 0 ]
+
   run grep -F "shogunate_mod/macos/runtime_launcher.command" "$PROJECT_ROOT/Shogunate-Runtime.command"
   [ "$status" -eq 0 ]
 
@@ -38,8 +41,11 @@ setup() {
   run grep -F "shogunate_mod/runtime/launcher.sh" "$PROJECT_ROOT/shogunate_mod/runtime/runtime_launcher.sh"
   [ "$status" -eq 0 ]
 
-  run grep -F "bash shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/runtime_launcher.sh"
+  run grep -F "bash shogunate_mod/runtime/entrypoint.sh" "$PROJECT_ROOT/shogunate_mod/runtime/runtime_launcher.sh"
   [ "$status" -eq 0 ]
+
+  run grep -F "bash shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/runtime_launcher.sh"
+  [ "$status" -ne 0 ]
 
   run grep -F "MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1" "$PROJECT_ROOT/shogunate_mod/runtime/runtime_launcher.sh"
   [ "$status" -eq 0 ]
@@ -67,8 +73,11 @@ setup() {
   run grep -F "shogunate_mod/runtime/launcher.sh" "$PROJECT_ROOT/shogunate_mod/runtime/shutsujin_launcher.sh"
   [ "$status" -eq 0 ]
 
-  run grep -F "bash shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/shutsujin_launcher.sh"
+  run grep -F "bash shogunate_mod/runtime/entrypoint.sh" "$PROJECT_ROOT/shogunate_mod/runtime/shutsujin_launcher.sh"
   [ "$status" -eq 0 ]
+
+  run grep -F "bash shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/shutsujin_launcher.sh"
+  [ "$status" -ne 0 ]
 
   run grep -F "MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1" "$PROJECT_ROOT/shogunate_mod/runtime/shutsujin_launcher.sh"
   [ "$status" -eq 0 ]

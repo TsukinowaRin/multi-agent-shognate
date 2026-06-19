@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start Shogunate with shutsujin_departure.sh and attach before CLI launch.
+# Start Shogunate with the MOD runtime entrypoint and attach before CLI launch.
 
 set -euo pipefail
 
@@ -34,13 +34,13 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       cat <<'EOF'
-Usage: ./Shutsujin.sh [--clean|--resume] [--no-attach] [--no-shell] [shutsujin_departure.sh args...]
+Usage: ./Shutsujin.sh [--clean|--resume] [--no-attach] [--no-shell] [runtime args...]
 
-Starts Shogunate with shutsujin_departure.sh, attaches before agent CLIs launch,
+Starts Shogunate with shogunate_mod/runtime/entrypoint.sh, attaches before agent CLIs launch,
 then opens an alias-ready command shell after startup.
 
 Pass --clean to recreate tmux sessions and reset runtime queues. Without
---clean, Shutsujin resumes or recreates according to shutsujin_departure.sh.
+--clean, Shutsujin resumes or recreates according to the runtime entrypoint.
 
 Use --no-attach when you want the old pre-attach manual shell workflow. Add
 --no-shell to skip that shell:
@@ -89,7 +89,7 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
   info "After startup, type cgo/CMA/csa/css/cgn/csk in the command shell."
   info "Startup log: $STARTUP_LOG"
   RUN_ID="shutsujin-$(date +%s)-$$"
-  SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_GOZA_FINISH_TARGET=command MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
+  SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" SHOGUNATE_SESSION_NAME="$SHOGUNATE_SESSION_NAME" GOZA_SESSION_NAME="$SHOGUNATE_SESSION_NAME" MAS_WAIT_FOR_GOZA_CLIENT_BEFORE_CLI=1 MAS_GOZA_STARTUP_WINDOW=1 MAS_GOZA_STARTUP_LOG="$STARTUP_LOG" MAS_GOZA_FINISH_TARGET=command MAS_LAUNCHER_RUN_ID="$RUN_ID" bash shogunate_mod/runtime/entrypoint.sh "${SHUTSUJIN_ARGS[@]}" >"$STARTUP_LOG" 2>&1 &
   RUNTIME_PID=$!
 
   for _ in $(seq 1 120); do
@@ -121,8 +121,8 @@ if [[ "$ATTACH_AFTER" -eq 1 ]]; then
   exec tmux attach-session -t "$SHOGUNATE_SESSION_NAME"
 fi
 
-info "Starting without auto attach: bash shutsujin_departure.sh ${SHUTSUJIN_ARGS[*]}"
-SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" bash shutsujin_departure.sh "${SHUTSUJIN_ARGS[@]}"
+info "Starting without auto attach: bash shogunate_mod/runtime/entrypoint.sh ${SHUTSUJIN_ARGS[*]}"
+SHOGUNATE_PROJECT_DIR="$SHOGUNATE_PROJECT_DIR" bash shogunate_mod/runtime/entrypoint.sh "${SHUTSUJIN_ARGS[@]}"
 
 echo ""
 ok "Shutsujin finished."

@@ -63,8 +63,8 @@ shogunate_launcher_resolve_project_dir() {
 }
 
 shogunate_launcher_require_departure() {
-    if [[ ! -f "shutsujin_departure.sh" ]]; then
-        err "shutsujin_departure.sh not found."
+    if [[ ! -f "shogunate_mod/runtime/entrypoint.sh" ]]; then
+        err "shogunate_mod/runtime/entrypoint.sh not found."
         echo "          Run this launcher from the Shogunate folder." >&2
         exit 1
     fi

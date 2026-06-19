@@ -64,6 +64,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] inbox writer policy を `shogunate_mod/inbox/write.sh` へ移動し、旧 `scripts/inbox_write.sh` を薄い互換入口化。
 - [x] watcher supervisor を `shogunate_mod/watcher/supervisor.sh` へ移動し、旧 `scripts/watcher_supervisor.sh` を薄い互換入口化。
 - [x] MOD watcher supervisor の CLI adapter source と inbox watcher 起動を root wrapper 経由から `shogunate_mod/cli/adapter.sh` / `shogunate_mod/watcher/inbox_watcher.sh` 直接参照へ寄せた。
+- [x] MOD runtime helper の残存 root wrapper 呼び出しをさらに削減し、inbox watcher / ntfy listener / runtime blocker / switch CLI / rate-limit status / branch policy の実行時呼び出しを MOD 正本へ寄せた。
 - [x] inbox watcher を `shogunate_mod/watcher/inbox_watcher.sh` へ移動し、旧 `scripts/inbox_watcher.sh` を source/exec 互換入口化。
 - [x] CLI adapter を `shogunate_mod/cli/adapter.sh` へ移動し、旧 `lib/cli_adapter.sh` を source 互換入口化。
 - [x] inbox path normalization を `shogunate_mod/inbox/path.sh` へ移動し、旧 `lib/inbox_path.sh` を source 互換入口化。
@@ -1620,6 +1621,14 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bats tests/unit/test_watcher_supervisor.bats tests/unit/test_mux_parity.bats` ran 82 watcher/mux tests after changing watcher supervisor helper dispatch.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 144 package distribution contract tests after changing watcher supervisor helper dispatch.
 - PASS: `make package-check` after committing watcher supervisor MOD helper dispatch; prepublish source syntax checks, 144 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
+- PASS: `bash -n shogunate_mod/watcher/inbox_watcher.sh shogunate_mod/notify/listener.sh shogunate_mod/runtime/blocker.sh shogunate_mod/configure/switch_cli.sh shogunate_mod/status/ratelimit_check.sh shogunate_mod/git/branch_policy.sh` after changing remaining MOD runtime helper calls to MOD canonical sources.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_runtime_helpers_call_mod_canonical_sources tests.unit.test_package_distribution.PackageDistributionContractTests.test_watcher_supervisor_starts_mod_canonical_helpers` after adding a contract that these helpers no longer call root wrappers for runtime delivery.
+- PASS: `bats tests/unit/test_ntfy_ack.bats tests/unit/test_branch_policy_scripts.bats` ran 11 ntfy / branch-policy tests after switching ntfy listener and branch-policy notification to MOD canonical send/write helpers.
+- PASS: `bats tests/unit/test_switch_cli.bats tests/unit/test_idle_flag.bats tests/unit/test_mux_parity.bats` ran 101 switch/idle/mux tests after switching runtime helper calls to MOD canonical sources.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py`, `diff -q tests/unit/test_ntfy_ack.bats shogunate_mod/tests/unit/test_ntfy_ack.bats`, and `git diff --check` after switching remaining MOD runtime helper calls.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 package distribution contract tests after adding the MOD canonical helper-call contract.
+- EXPECTED FAIL: `make package-check` ran prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, and generated instruction freshness successfully, then stopped at the dirty worktree gate because the current MOD helper-call changes were intentionally uncommitted.
+- PASS: `make package-check` after committing the MOD canonical helper-call change; prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
 
 ## 復旧
 

@@ -32,7 +32,7 @@ setup() {
     export MOCK_CURL_OUTPUT="$TEST_TMPDIR/curl_output.json"
 
     # モックプロジェクト構築
-    mkdir -p "$MOCK_PROJECT"/{config,lib,scripts,queue,logs/ntfy_inbox_corrupt,shogunate_mod/notify}
+    mkdir -p "$MOCK_PROJECT"/{config,lib,scripts,queue,logs/ntfy_inbox_corrupt,shogunate_mod/notify,shogunate_mod/inbox}
     mkdir -p "$MOCK_PROJECT/.venv/bin"
     mkdir -p "$MOCK_BIN"
 
@@ -77,12 +77,12 @@ exit ${MOCK_NTFY_EXIT_CODE:-0}
 NTFY_MOCK
     chmod +x "$MOCK_PROJECT/scripts/ntfy.sh"
 
-    # mock inbox_write.sh
-    cat > "$MOCK_PROJECT/scripts/inbox_write.sh" << 'INBOX_MOCK'
+    # mock MOD canonical inbox write
+    cat > "$MOCK_PROJECT/shogunate_mod/inbox/write.sh" << 'INBOX_MOCK'
 #!/bin/bash
 echo "$@" >> "$INBOX_LOG"
 INBOX_MOCK
-    chmod +x "$MOCK_PROJECT/scripts/inbox_write.sh"
+    chmod +x "$MOCK_PROJECT/shogunate_mod/inbox/write.sh"
 
     # ntfy listener MOD 正本コピー（SCRIPT_DIR差し替え）
     sed "s|^SCRIPT_DIR=.*|SCRIPT_DIR=\"$MOCK_PROJECT\"|" \

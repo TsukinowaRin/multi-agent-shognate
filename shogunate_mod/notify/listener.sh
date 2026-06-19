@@ -150,7 +150,7 @@ while true; do
             continue
         fi
 
-        bash "$SCRIPT_DIR/scripts/inbox_write.sh" shogun \
+        bash "$SCRIPT_DIR/shogunate_mod/inbox/write.sh" shogun \
             "ntfyから新しいメッセージ受信。queue/ntfy_inbox.yaml を確認し処理せよ。" \
             ntfy_received ntfy_listener
     done

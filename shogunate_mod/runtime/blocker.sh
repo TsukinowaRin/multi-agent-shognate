@@ -89,7 +89,7 @@ notify_shogun_runtime_blocked_tmux() {
             ;;
     esac
 
-    if bash "$SCRIPT_DIR/scripts/inbox_write.sh" shogun "$message" runtime_blocked "startup_guard" >/dev/null 2>&1; then
+    if bash "$SCRIPT_DIR/shogunate_mod/inbox/write.sh" shogun "$message" runtime_blocked "startup_guard" >/dev/null 2>&1; then
         : > "$marker_path"
         log_info "  └─ ${agent_id}: runtime blocker を shogun inbox へ通知"
         return 0
@@ -125,7 +125,7 @@ notify_lord_runtime_blocked_tmux() {
             ;;
     esac
 
-    if bash "$SCRIPT_DIR/scripts/inbox_write.sh" lord "$message" runtime_blocked "startup_guard" >/dev/null 2>&1; then
+    if bash "$SCRIPT_DIR/shogunate_mod/inbox/write.sh" lord "$message" runtime_blocked "startup_guard" >/dev/null 2>&1; then
         : > "$marker_path"
         log_info "  └─ ${agent_id}: runtime blocker を lord inbox へ通知"
         return 0

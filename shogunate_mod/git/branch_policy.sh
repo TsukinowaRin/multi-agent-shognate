@@ -116,8 +116,8 @@ branch_policy_notify() {
         return 0
     fi
 
-    if [[ -x "$BRANCH_POLICY_ROOT/scripts/ntfy_send.sh" ]]; then
-        bash "$BRANCH_POLICY_ROOT/scripts/ntfy_send.sh" "$message"
+    if [[ -f "$BRANCH_POLICY_ROOT/shogunate_mod/notify/send.sh" ]]; then
+        bash "$BRANCH_POLICY_ROOT/shogunate_mod/notify/send.sh" "$message"
         return $?
     fi
 

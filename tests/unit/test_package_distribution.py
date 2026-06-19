@@ -819,6 +819,50 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn('source "$SCRIPT_DIR/lib/cli_adapter.sh"', text)
         self.assertNotIn('"$SCRIPT_DIR/scripts/inbox_watcher.sh" \\', text)
 
+    def test_mod_runtime_helpers_call_mod_canonical_sources(self):
+        checks = {
+            "shogunate_mod/watcher/inbox_watcher.sh": [
+                "shogunate_mod/cli/adapter.sh",
+                "shogunate_mod/inbox/write.sh",
+                "shogunate_mod/localapi/repl.py",
+                "shogunate_mod/gunkan/codd_audit.py",
+            ],
+            "shogunate_mod/notify/listener.sh": [
+                "shogunate_mod/inbox/write.sh",
+            ],
+            "shogunate_mod/runtime/blocker.sh": [
+                "shogunate_mod/inbox/write.sh",
+            ],
+            "shogunate_mod/configure/switch_cli.sh": [
+                "shogunate_mod/cli/adapter.sh",
+            ],
+            "shogunate_mod/status/ratelimit_check.sh": [
+                "shogunate_mod/status/agent_status.sh",
+                "shogunate_mod/cli/adapter.sh",
+            ],
+            "shogunate_mod/git/branch_policy.sh": [
+                "shogunate_mod/notify/send.sh",
+            ],
+        }
+
+        forbidden = [
+            'SCRIPT_DIR}/lib/cli_adapter.sh',
+            'PROJECT_ROOT}/lib/cli_adapter.sh',
+            'SCRIPT_DIR}/scripts/inbox_write.sh',
+            'project_root}/scripts/inbox_write.sh',
+            'scripts/localapi_repl.py',
+            'scripts/gunkan_codd_audit.py',
+            'scripts/ntfy_send.sh',
+        ]
+
+        for rel, required in checks.items():
+            with self.subTest(path=rel):
+                text = (ROOT / rel).read_text(encoding="utf-8")
+                for needle in required:
+                    self.assertIn(needle, text)
+                for needle in forbidden:
+                    self.assertNotIn(needle, text)
+
     def test_representative_wrapper_smoke_cases_are_manifest_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))

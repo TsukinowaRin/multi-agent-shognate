@@ -58,7 +58,7 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
 
     echo "[$(date)] inbox_watcher started — agent: $AGENT_ID, pane: $PANE_TARGET, cli: $CLI_TYPE, mux: $MUX_TYPE" >&2
 
-    _cli_adapter="${SCRIPT_DIR}/lib/cli_adapter.sh"
+    _cli_adapter="${SCRIPT_DIR}/shogunate_mod/cli/adapter.sh"
     if [ -f "$_cli_adapter" ]; then
         # shellcheck source=/dev/null
         source "$_cli_adapter"
@@ -324,7 +324,7 @@ notify_shogun_runtime_blocked_if_needed() {
     local project_root="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
     local relay_dir="${project_root}/queue/runtime/runtime_blocked_relay"
     local marker_path
-    local inbox_write_script="${project_root}/scripts/inbox_write.sh"
+    local inbox_write_script="${project_root}/shogunate_mod/inbox/write.sh"
     local message=""
 
     [ -n "$issue" ] || return 0
@@ -365,7 +365,7 @@ notify_lord_runtime_blocked_if_needed() {
     local project_root="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
     local relay_dir="${project_root}/queue/runtime/runtime_blocked_human_relay"
     local marker_path
-    local inbox_write_script="${project_root}/scripts/inbox_write.sh"
+    local inbox_write_script="${project_root}/shogunate_mod/inbox/write.sh"
     local message=""
 
     [ -n "$issue" ] || return 0
@@ -722,7 +722,7 @@ restart_command_for_cli() {
         antigravity) printf '%s\n' "${ANTIGRAVITY_RESTART_CMD:-agy --dangerously-skip-permissions}" ;;
         opencode) printf '%s\n' "${OPENCODE_RESTART_CMD:-opencode}" ;;
         kilo) printf '%s\n' "${KILO_RESTART_CMD:-kilo}" ;;
-        localapi) printf '%s\n' "${LOCALAPI_RESTART_CMD:-python3 scripts/localapi_repl.py}" ;;
+        localapi) printf '%s\n' "${LOCALAPI_RESTART_CMD:-python3 shogunate_mod/localapi/repl.py}" ;;
         copilot) printf '%s\n' "${COPILOT_RESTART_CMD:-copilot --yolo}" ;;
         cursor) printf '%s\n' "${CURSOR_RESTART_CMD:-cursor-agent --yolo}" ;;
         codex) printf '%s\n' "${CODEX_RESTART_CMD:-codex --search --sandbox danger-full-access --ask-for-approval never}" ;;
@@ -1332,7 +1332,7 @@ PY
 
     if [[ "${AGENT_ID:-}" == "gunkan" ]]; then
         if [[ "$decision" == "gunkan_audit_event" ]]; then
-            echo "queue/inbox/gunkan.yaml に未読の監査イベントがある。queue/runtime/gunkan_events.yaml と関連 queue/report を読み、必要なら python3 scripts/gunkan_codd_audit.py を実行し、queue/reports/gunkan_report.yaml に監査結果を書け。処理後は発火元 message を read:true にせよ。通常の中間報告取得や進行管理は行うな。"
+            echo "queue/inbox/gunkan.yaml に未読の監査イベントがある。queue/runtime/gunkan_events.yaml と関連 queue/report を読み、必要なら python3 shogunate_mod/gunkan/codd_audit.py を実行し、queue/reports/gunkan_report.yaml に監査結果を書け。処理後は発火元 message を read:true にせよ。通常の中間報告取得や進行管理は行うな。"
             return 0
         fi
         echo "__gunkan_passive__"

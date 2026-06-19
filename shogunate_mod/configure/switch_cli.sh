@@ -38,7 +38,7 @@ SETTINGS_FILE="${PROJECT_ROOT}/config/settings.yaml"
 LOG_FILE="${PROJECT_ROOT}/logs/switch_cli.log"
 
 # cli_adapter.sh をロード
-source "${PROJECT_ROOT}/lib/cli_adapter.sh"
+source "${PROJECT_ROOT}/shogunate_mod/cli/adapter.sh"
 
 # ─── ログ ───
 log() {

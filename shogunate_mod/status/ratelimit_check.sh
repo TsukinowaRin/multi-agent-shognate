@@ -25,8 +25,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ─── Load shared libraries ───
-source "$SCRIPT_DIR/lib/agent_status.sh"
-source "$SCRIPT_DIR/lib/cli_adapter.sh"
+source "$SCRIPT_DIR/shogunate_mod/status/agent_status.sh"
+source "$SCRIPT_DIR/shogunate_mod/cli/adapter.sh"
 
 PYTHON="${SCRIPT_DIR}/.venv/bin/python3"
 

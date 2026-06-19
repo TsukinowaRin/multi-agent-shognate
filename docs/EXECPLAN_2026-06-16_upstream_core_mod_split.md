@@ -1816,6 +1816,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash -n shogunate_mod/runtime/startup.sh shogunate_mod/runtime/departure.sh shogunate_mod/runtime/launch.sh`, targeted package distribution contract, and root/MOD package distribution test sync after moving MOD runtime first setup guidance to `shogunate_mod/package/first_setup.sh`.
 - Public README / README_ja の source checkout 開発手順と Android README の tmux 起動済み前提も root `first_setup.sh` / `shutsujin_departure.sh` 案内から MOD 正本 `shogunate_mod/package/first_setup.sh` / `shogunate_mod/runtime/entrypoint.sh` 案内へ寄せた。release cURL の互換 `scripts/shogunate_package_bootstrap.sh` URL は既存ユーザー向け stable entrypoint として維持する。
 - PASS: targeted package distribution contracts for public README MOD setup guidance and Android README MOD runtime prerequisite, root/MOD README sync checks, root/MOD Android README sync checks, and `git diff --check` after moving source checkout docs to MOD canonical setup/runtime paths.
+- Gunkan light watch の unit test harness も root `scripts/gunkan_light_watch.py` 互換 wrapper ではなく MOD 正本 `shogunate_mod/gunkan/light_watch.py` を直接実行するようにした。互換 wrapper は release/user surface として残しつつ、回帰テストが MOD 実装そのものを検証する状態に寄せた。
+- PASS: `bats tests/unit/test_gunkan_audit.bats --timing` ran 14 Gunkan audit tests after moving the light watch test harness to the MOD canonical source.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_gunkan_audit_tests_run_mod_light_watch tests.unit.test_package_distribution.PackageDistributionContractTests.test_codd_docs_have_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_unit_test_cases_have_mod_canonical_copy` after adding a contract that Gunkan audit tests do not execute the root compatibility wrapper.
+- PASS: direct root/MOD sync checks for `tests/unit/test_gunkan_audit.bats` and `tests/unit/test_package_distribution.py`, followed by `git diff --check`.
 
 ## 復旧
 

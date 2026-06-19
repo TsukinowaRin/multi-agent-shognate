@@ -3672,6 +3672,13 @@ class PackageDistributionContractTests(unittest.TestCase):
             self.assertIn(required, combined)
         self.assertIn("require_directory_files_synced docs/codd shogunate_mod/gunkan/docs", prepublish)
 
+    def test_gunkan_audit_tests_run_mod_light_watch(self):
+        for rel in ("tests/unit/test_gunkan_audit.bats", "shogunate_mod/tests/unit/test_gunkan_audit.bats"):
+            with self.subTest(path=rel):
+                text = (ROOT / rel).read_text(encoding="utf-8")
+                self.assertIn("$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py", text)
+                self.assertNotIn("$PROJECT_ROOT/scripts/gunkan_light_watch.py", text)
+
     def test_gitleaks_config_has_mod_canonical_copy(self):
         root_gitleaks = (ROOT / ".gitleaks.toml").read_text(encoding="utf-8")
         mod_gitleaks = (ROOT / "shogunate_mod" / "security" / "gitleaks.toml").read_text(encoding="utf-8")

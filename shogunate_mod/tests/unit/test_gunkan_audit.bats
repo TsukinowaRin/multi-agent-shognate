@@ -146,7 +146,7 @@ verification: 未実行
 parent_cmd: cmd_watch_1
 YAML
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" "$TEST_TMP/queue/inbox/gunkan.yaml" <<'PY'
@@ -164,7 +164,7 @@ assert messages[0]["type"] == "audit_requested"
 assert messages[0]["from"] == "gunkan_light_watch"
 PY
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/inbox/gunkan.yaml" <<'PY'
@@ -184,10 +184,10 @@ verification: 未実行
 parent_cmd: cmd_watch_1
 YAML
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run --cooldown 0
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run --cooldown 0
   [ "$status" -eq 0 ]
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run --cooldown 0
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run --cooldown 0
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/inbox/gunkan.yaml" <<'PY'
@@ -205,7 +205,7 @@ verification: 未確認
 parent_cmd: cmd_watch_1
 YAML
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run --cooldown 0
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run --cooldown 0
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/inbox/gunkan.yaml" <<'PY'
@@ -224,7 +224,7 @@ status: blocked
 parent_cmd: old_cmd
 YAML
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP"
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP"
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" "$TEST_TMP/queue/inbox/gunkan.yaml" <<'PY'
@@ -247,7 +247,7 @@ PY
   git -C "$TEST_TMP" commit -q -m baseline
   printf 'TOKEN=placeholder\n' > "$TEST_TMP/.env"
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" "$TEST_TMP/queue/inbox/gunkan.yaml" <<'PY'
@@ -287,7 +287,7 @@ YAML
 - `cmd_watch_done` 完了。デモは完成。
 MD
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'
@@ -320,7 +320,7 @@ result:
   summary: "自然文に missing/file.js と書いても path key ではないので成果物扱いしない"
 YAML
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'
@@ -344,7 +344,7 @@ artifacts:
   - dist/missing.html
 YAML
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'
@@ -365,7 +365,7 @@ PY
   git -C "$TEST_TMP" commit -q -m baseline
   printf 'API_KEY=sk_test_1234567890abcdef1234567890abcdef\n' > "$TEST_TMP/notes.txt"
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'

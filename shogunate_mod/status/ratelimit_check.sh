@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# scripts/ratelimit_check.sh — CLI Rate Limit Monitor
+# shogunate_mod/status/ratelimit_check.sh — CLI Rate Limit Monitor
 # CLI種別ごとに重複排除し、共有クォータの消費状況を統合表示する。
 #
 # Usage:
-#   bash scripts/ratelimit_check.sh              # 日本語出力
-#   bash scripts/ratelimit_check.sh --lang en    # English output
+#   bash shogunate_mod/status/ratelimit_check.sh              # 日本語出力
+#   bash shogunate_mod/status/ratelimit_check.sh --lang en    # English output
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --lang)  LANG_MODE="$2"; shift 2 ;;
         --help|-h)
-            echo "Usage: ratelimit_check.sh [--lang en|ja]"
+            echo "Usage: bash shogunate_mod/status/ratelimit_check.sh [--lang en|ja]"
             exit 0
             ;;
         *) echo "Unknown option: $1"; exit 1 ;;

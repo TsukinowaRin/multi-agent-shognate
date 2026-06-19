@@ -1,7 +1,7 @@
 #!/bin/bash
-# inbox_write.sh — メールボックスへのメッセージ書き込み（排他ロック付き）
-# Usage: bash scripts/inbox_write.sh <target_agent> <content> <type> <from>
-# Example: bash scripts/inbox_write.sh karo "足軽5号、任務完了" report_received ashigaru5
+# shogunate_mod/inbox/write.sh — メールボックスへのメッセージ書き込み（排他ロック付き）
+# Usage: bash shogunate_mod/inbox/write.sh <target_agent> <content> <type> <from>
+# Example: bash shogunate_mod/inbox/write.sh karo "足軽5号、任務完了" report_received ashigaru5
 
 set -e
 
@@ -19,7 +19,7 @@ INBOX_DIR="$(dirname "$INBOX")"
 
 # Validate arguments
 if [ -z "$TARGET" ] || [ -z "$CONTENT" ] || [ -z "$TYPE" ] || [ -z "$FROM" ]; then
-    echo "Usage: inbox_write.sh <target_agent> <content> <type> <from>" >&2
+    echo "Usage: bash shogunate_mod/inbox/write.sh <target_agent> <content> <type> <from>" >&2
     exit 1
 fi
 

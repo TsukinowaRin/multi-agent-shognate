@@ -844,6 +844,10 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "shogunate_mod/localapi/repl.py",
                 "shogunate_mod/gunkan/codd_audit.py",
             ],
+            "shogunate_mod/inbox/write.sh": [
+                "shogunate_mod/inbox/write.sh",
+                "shogunate_mod/gunkan/event_log.py",
+            ],
             "shogunate_mod/notify/listener.sh": [
                 "shogunate_mod/inbox/write.sh",
             ],
@@ -856,6 +860,12 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/status/ratelimit_check.sh": [
                 "shogunate_mod/status/agent_status.sh",
                 "shogunate_mod/cli/adapter.sh",
+            ],
+            "shogunate_mod/status/command.sh": [
+                "shogunate_mod/status/command.sh",
+            ],
+            "shogunate_mod/status/agent_status.sh": [
+                "shogunate_mod/status/agent_status.sh",
             ],
             "shogunate_mod/git/branch_policy.sh": [
                 "shogunate_mod/notify/send.sh",
@@ -888,8 +898,14 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/gunkan/emergency_stop.sh": [
                 "shogunate_mod/inbox/write.sh",
             ],
-            "shogunate_mod/inbox/write.sh": [
-                "shogunate_mod/gunkan/event_log.py",
+            "shogunate_mod/gunkan/codd_check.sh": [
+                "shogunate_mod/gunkan/codd_check.sh",
+            ],
+            "shogunate_mod/update/stop_and_apply_update.sh": [
+                "shogunate_mod/update/stop_and_apply_update.sh",
+            ],
+            "shogunate_mod/runtime/mux_parity_smoke.sh": [
+                "shogunate_mod/runtime/mux_parity_smoke.sh",
             ],
             "shogunate_mod/cli/adapter.sh": [
                 "shogunate_mod/cli/antigravity_keyring.sh",
@@ -962,6 +978,14 @@ class PackageDistributionContractTests(unittest.TestCase):
             'SCRIPT_DIR}/scripts/android_tmux_proxy.py',
             'scripts/switch_cli.sh',
             'scripts/configure_agents.sh',
+            'scripts/inbox_watcher.sh',
+            'scripts/gunkan_emergency_stop.sh',
+            'scripts/codd_check.sh',
+            'scripts/ratelimit_check.sh',
+            'scripts/agent_status.sh',
+            'scripts/stop_and_apply_update.sh',
+            'scripts/mux_parity_smoke.sh',
+            'source lib/agent_status.sh',
         ]
 
         for rel, required in checks.items():

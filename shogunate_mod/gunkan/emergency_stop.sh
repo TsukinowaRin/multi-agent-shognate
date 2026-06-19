@@ -1,6 +1,6 @@
 #!/bin/bash
 # Gunkan emergency stop helper.
-# Usage: bash scripts/gunkan_emergency_stop.sh <agent_id> <reason>
+# Usage: bash shogunate_mod/gunkan/emergency_stop.sh <agent_id> <reason>
 
 set -euo pipefail
 
@@ -11,7 +11,7 @@ SESSION_NAME="${SHOGUNATE_SESSION_NAME:-shogunate}"
 OUT="$SCRIPT_DIR/queue/runtime/gunkan_emergency_stop.yaml"
 
 if [ -z "$AGENT_ID" ] || [ -z "$REASON" ]; then
-    echo "Usage: gunkan_emergency_stop.sh <agent_id> <reason>" >&2
+    echo "Usage: bash shogunate_mod/gunkan/emergency_stop.sh <agent_id> <reason>" >&2
     exit 1
 fi
 

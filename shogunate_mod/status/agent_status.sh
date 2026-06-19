@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# lib/agent_status.sh — エージェント稼働状態検出の共有ライブラリ
+# shogunate_mod/status/agent_status.sh — エージェント稼働状態検出の共有ライブラリ
 #
 # 提供関数:
 #   agent_is_busy_check <pane_target>   → 0=busy, 1=idle, 2=pane不在
 #   get_pane_state_label <pane_target>  → "稼働中" / "待機中" / "不在"
 #
 # 使用例:
-#   source lib/agent_status.sh
+#   source shogunate_mod/status/agent_status.sh
 #   agent_is_busy_check "multiagent:agents.0"
 #   state=$(get_pane_state_label "multiagent:agents.3")
 

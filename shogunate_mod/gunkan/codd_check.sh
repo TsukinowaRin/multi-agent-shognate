@@ -13,7 +13,7 @@ CODD_AUTO_INSTALL="${CODD_AUTO_INSTALL:-0}"
 
 usage() {
     cat <<'EOF'
-Usage: scripts/codd_check.sh [command]
+Usage: bash shogunate_mod/gunkan/codd_check.sh [command]
 
 Commands:
   install    Install/update codd-dev into .shogunate/codd-venv
@@ -104,9 +104,9 @@ ensure_codd() {
     cat >&2 <<EOF
 CoDD CLI not found.
 Run:
-  scripts/codd_check.sh install
+  bash shogunate_mod/gunkan/codd_check.sh install
 or:
-  CODD_AUTO_INSTALL=1 scripts/codd_check.sh scan
+  CODD_AUTO_INSTALL=1 bash shogunate_mod/gunkan/codd_check.sh scan
 EOF
     return 127
 }

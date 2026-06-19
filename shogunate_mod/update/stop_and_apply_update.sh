@@ -7,7 +7,7 @@ cd "$SCRIPT_DIR"
 usage() {
     cat <<'EOF'
 Usage:
-  bash scripts/stop_and_apply_update.sh <manual|upstream-sync> [--restart] [--requested-by <name>]
+  bash shogunate_mod/update/stop_and_apply_update.sh <manual|upstream-sync> [--restart] [--requested-by <name>]
 
 Queues an update request, stops Shogunate tmux sessions, applies the pending update,
 and optionally restarts the system with the new code.

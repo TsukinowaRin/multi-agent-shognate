@@ -15,7 +15,7 @@ SETUP_ARGS=(-s)
 usage() {
   cat <<'USAGE'
 Usage:
-  bash scripts/mux_parity_smoke.sh [options]
+  bash shogunate_mod/runtime/mux_parity_smoke.sh [options]
 
 Options:
   --tmux-only      tmux のみ検証（既定）

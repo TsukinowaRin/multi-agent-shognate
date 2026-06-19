@@ -2,10 +2,10 @@
 # shogunate_mod/status/command.sh — Show busy/idle status of all agents in tmux panes
 #
 # Usage:
-#   bash scripts/agent_status.sh                    # Auto-detect from config
-#   bash scripts/agent_status.sh --session myses    # Specify tmux session
-#   bash scripts/agent_status.sh --panes 0,1,2,3    # Specify pane indices
-#   bash scripts/agent_status.sh --lang en          # English labels
+#   bash shogunate_mod/status/command.sh                    # Auto-detect from config
+#   bash shogunate_mod/status/command.sh --session myses    # Specify tmux session
+#   bash shogunate_mod/status/command.sh --panes 0,1,2,3    # Specify pane indices
+#   bash shogunate_mod/status/command.sh --lang en          # English labels
 #
 # Works in two modes:
 #   1. Project mode (default): Reads agent list from config/settings.yaml

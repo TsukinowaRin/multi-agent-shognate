@@ -1,8 +1,8 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# inbox_watcher.sh — メールボックス監視＆起動シグナル配信
-# Usage: bash scripts/inbox_watcher.sh <agent_id> <pane_target> [cli_type] [mux_type]
-# Example: bash scripts/inbox_watcher.sh karo multiagent:0.0 claude tmux
+# shogunate_mod/watcher/inbox_watcher.sh — メールボックス監視＆起動シグナル配信
+# Usage: bash shogunate_mod/watcher/inbox_watcher.sh <agent_id> <pane_target> [cli_type] [mux_type]
+# Example: bash shogunate_mod/watcher/inbox_watcher.sh karo multiagent:0.0 claude tmux
 #
 # 設計思想:
 #   メッセージ本体はファイル（inbox YAML）に書く = 確実

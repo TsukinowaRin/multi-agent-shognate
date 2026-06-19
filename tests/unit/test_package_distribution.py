@@ -3948,6 +3948,44 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("Auto-load source: $AUTOLOAD_CLAUDE_MD", build_script)
         self.assertIn("AUTOLOAD_CLAUDE_MD", ensure_script)
 
+    def test_autoload_mailbox_protocol_uses_mod_canonical_writer(self):
+        autoload_surfaces = [
+            ROOT / "shogunate_mod" / "instructions" / "autoload" / "CLAUDE.md",
+            ROOT / "CLAUDE.md",
+            ROOT / "AGENTS.md",
+            ROOT / ".github" / "copilot-instructions.md",
+            ROOT / "agents" / "default" / "system.md",
+        ]
+        canonical_command = 'bash shogunate_mod/inbox/write.sh <target_agent> "<message>" <type> <from>'
+
+        for path in autoload_surfaces:
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn(canonical_command, text)
+                self.assertNotIn("bash scripts/inbox_write.sh <target_agent>", text)
+                self.assertNotIn("bash scripts/inbox_write.sh karo", text)
+                self.assertNotIn("bash scripts/inbox_write.sh ashigaru3", text)
+
+    def test_instruction_mailbox_protocols_do_not_point_to_root_inbox_wrapper(self):
+        instruction_surfaces = [
+            ROOT / "shogunate_mod" / "instructions" / "autoload" / "CLAUDE.md",
+            ROOT / "CLAUDE.md",
+            ROOT / "AGENTS.md",
+            ROOT / ".github" / "copilot-instructions.md",
+            ROOT / "agents" / "default" / "system.md",
+        ]
+        for base in [
+            ROOT / "shogunate_mod" / "instructions" / "source",
+            ROOT / "instructions",
+            ROOT / ".opencode" / "agents",
+        ]:
+            instruction_surfaces.extend(path for path in base.rglob("*.md") if path.is_file())
+
+        for path in sorted(set(instruction_surfaces)):
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                text = path.read_text(encoding="utf-8")
+                self.assertNotIn("bash scripts/inbox_write.sh", text)
+
     def test_claude_settings_have_mod_canonical_copy(self):
         root_settings = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))
         mod_settings = json.loads(

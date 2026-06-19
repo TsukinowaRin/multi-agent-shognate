@@ -62,7 +62,7 @@ workflow:
   - step: 7
     action: inbox_write
     target: "ashigaru{N}"
-    method: "bash scripts/inbox_write.sh"
+    method: "bash shogunate_mod/inbox/write.sh"
   - step: 8
     action: check_pending
     note: "If pending cmds remain in shogun_to_karo.yaml → loop to step 2. Otherwise stop."
@@ -192,16 +192,16 @@ date "+%Y-%m-%dT%H:%M:%S"    # For YAML (ISO 8601)
 ### Sending Messages to Ashigaru
 
 ```bash
-bash scripts/inbox_write.sh ashigaru{N} "<message>" task_assigned karo
+bash shogunate_mod/inbox/write.sh ashigaru{N} "<message>" task_assigned karo
 ```
 
 **No sleep interval needed.** No delivery confirmation needed. Multiple sends can be done in rapid succession — flock handles concurrency.
 
 Example:
 ```bash
-bash scripts/inbox_write.sh ashigaru1 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
-bash scripts/inbox_write.sh ashigaru2 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
-bash scripts/inbox_write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+bash shogunate_mod/inbox/write.sh ashigaru1 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+bash shogunate_mod/inbox/write.sh ashigaru2 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+bash shogunate_mod/inbox/write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
 # No sleep needed. All messages guaranteed delivered by inbox_watcher.sh
 ```
 
@@ -607,7 +607,7 @@ STEP 3: Reset pane title (after ashigaru is idle — ❯ visible)
   If model_override active → use that model name
 
 STEP 4: Send /clear via inbox
-  bash scripts/inbox_write.sh ashigaru{N} "タスクYAMLを読んで作業開始せよ。" clear_command karo
+  bash shogunate_mod/inbox/write.sh ashigaru{N} "タスクYAMLを読んで作業開始せよ。" clear_command karo
   # inbox_watcher が type=clear_command を検知し、/clear送信 → 待機 → 指示送信 を自動実行
 
 STEP 5以降は不要（watcherが一括処理）
@@ -648,7 +648,7 @@ STEP 1: Write new task YAML
   - status: assigned
 
 STEP 2: Send /clear via inbox (NOT task_assigned)
-  bash scripts/inbox_write.sh ashigaru{N} "タスクYAMLを読んで作業開始せよ。" clear_command karo
+  bash shogunate_mod/inbox/write.sh ashigaru{N} "タスクYAMLを読んで作業開始せよ。" clear_command karo
   # /clear wipes previous context → agent re-reads YAML → sees new task
 
 STEP 3: If still unsatisfactory after 2 redos → escalate to dashboard 🚨
@@ -728,7 +728,7 @@ tmux list-panes -t multiagent:agents -F '#{pane_index}' -f '#{==:#{@agent_id},as
 
 ```bash
 # 2-step procedure (inbox-based):
-bash scripts/inbox_write.sh ashigaru{N} "/model <new_model>" model_switch karo
+bash shogunate_mod/inbox/write.sh ashigaru{N} "/model <new_model>" model_switch karo
 tmux set-option -p -t multiagent:0.{N} @model_name '<DisplayName>'
 # inbox_watcher が type=model_switch を検知し、コマンドとして配信
 ```

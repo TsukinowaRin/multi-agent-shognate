@@ -137,19 +137,19 @@ Plain text with emoji. No box/罫線.
 Agent-to-agent communication uses file-based mailbox:
 
 ```bash
-bash scripts/inbox_write.sh <target_agent> "<message>" <type> <from>
+bash shogunate_mod/inbox/write.sh <target_agent> "<message>" <type> <from>
 ```
 
 Examples:
 ```bash
 # Shogun → Karo
-bash scripts/inbox_write.sh karo "cmd_048を書いた。実行せよ。" cmd_new shogun
+bash shogunate_mod/inbox/write.sh karo "cmd_048を書いた。実行せよ。" cmd_new shogun
 
 # Ashigaru → Karo
-bash scripts/inbox_write.sh karo "足軽5号、任務完了。報告YAML確認されたし。" report_received ashigaru5
+bash shogunate_mod/inbox/write.sh karo "足軽5号、任務完了。報告YAML確認されたし。" report_received ashigaru5
 
 # Karo → Ashigaru
-bash scripts/inbox_write.sh ashigaru3 "subtask_001 を割り当てた。まず queue/tasks/ashigaru3.yaml を読み、作業開始せよ。" task_assigned karo
+bash shogunate_mod/inbox/write.sh ashigaru3 "subtask_001 を割り当てた。まず queue/tasks/ashigaru3.yaml を読み、作業開始せよ。" task_assigned karo
 ```
 
 Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
@@ -304,7 +304,7 @@ If the relay appears broken, record that as a blocker in `dashboard.md` after cl
 ### Sending Messages
 
 ```bash
-bash scripts/inbox_write.sh <target> "<message>" <type> <from>
+bash shogunate_mod/inbox/write.sh <target> "<message>" <type> <from>
 ```
 
 **No sleep interval needed.** No delivery confirmation needed. Multiple sends can be done in rapid succession — flock handles concurrency.
@@ -314,7 +314,7 @@ bash scripts/inbox_write.sh <target> "<message>" <type> <from>
 After writing report YAML, notify Karo:
 
 ```bash
-bash scripts/inbox_write.sh karo "足軽{N}号、任務完了でござる。報告書を確認されよ。" report_received ashigaru{N}
+bash shogunate_mod/inbox/write.sh karo "足軽{N}号、任務完了でござる。報告書を確認されよ。" report_received ashigaru{N}
 ```
 
 That's it. No state checking, no retry, no delivery verification.

@@ -29,7 +29,7 @@
 tmux を直接操作することは禁止。
 
 ```bash
-bash scripts/inbox_write.sh <target_agent> "<message>" <type> <from>
+bash shogunate_mod/inbox/write.sh <target_agent> "<message>" <type> <from>
 ```
 
 ## モデル切り替え

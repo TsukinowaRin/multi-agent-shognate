@@ -106,6 +106,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] 初回セットアップ用 default config template を `shogunate_mod/configure/settings.yaml.sample` / `projects.yaml.sample` へ MOD 正本として追加し、root `config/*.yaml` はユーザー設定として維持する方針にした。
 - [x] role/common/CLI instruction source を `shogunate_mod/instructions/source/` へ MOD 正本として追加し、builder / freshness guard は MOD source を優先、root `instructions/` 非生成 source は互換コピーとして同期テストで固定した。
 - [x] Claude auto-load source を `shogunate_mod/instructions/autoload/CLAUDE.md` へ MOD 正本として追加し、builder / freshness guard は MOD autoload source を優先、root `CLAUDE.md` は Claude Code 用互換コピーとして同期テストで固定した。
+- [x] agent-facing instruction の mailbox protocol から root `scripts/inbox_write.sh` 案内を外し、autoload / MOD source / root compatibility source / generated instructions / OpenCode agent definitions すべてで MOD 正本 `shogunate_mod/inbox/write.sh` を案内するようにした。旧 `scripts/inbox_write.sh` は互換 wrapper として残す。
 - [x] GitHub Actions workflow source を `shogunate_mod/package/workflows/` へ MOD 正本として追加し、root `.github/workflows/` は GitHub Actions 用互換配置として同期テストで固定した。
 - [x] Android app source を `shogunate_mod/mobile/android/` へ MOD 正本として追加し、root `android/` は Android Studio / Gradle 用互換 working tree として同期テストで固定した。Android build/cache/local APK artifacts は runtime package から除外する方針を維持した。
 - [x] npm package metadata を `shogunate_mod/package/package.json` / `package-lock.json` へ MOD 正本として追加し、root `package*.json` は npm-required 互換コピーとして同期テストで固定した。
@@ -1736,6 +1737,12 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bats tests/unit/test_switch_cli.bats tests/unit/test_mux_parity.bats --timing` ran 92 switch / mux tests after changing the guidance text.
 - PASS: direct root/MOD package distribution test sync and `git diff --check` after changing runtime help / MCP guidance.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 147 package distribution contract tests after changing runtime help / MCP guidance.
+- Agent-facing instruction の mailbox protocol を root wrapper 案内から MOD 正本 `shogunate_mod/inbox/write.sh` 案内へ変更した。対象は MOD autoload source、root auto-load compatibility files、MOD/root instruction source、generated instructions、OpenCode agent definitions。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_autoload_mailbox_protocol_uses_mod_canonical_writer tests.unit.test_package_distribution.PackageDistributionContractTests.test_instruction_mailbox_protocols_do_not_point_to_root_inbox_wrapper` after adding contracts that forbid `bash scripts/inbox_write.sh` in agent-facing instruction surfaces.
+- PASS: `bash shogunate_mod/instructions/ensure_generated.sh && bash shogunate_mod/instructions/ensure_generated.sh` confirmed generated instruction freshness after rebuilding the mailbox protocol changes.
+- PASS: `bats tests/unit/test_build_system.bats --timing` ran 61 build-system tests after regenerating all instruction outputs.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 149 package distribution contract tests after updating the agent-facing mailbox protocol. A previous parallel run failed with npm `EOF` because `test_build_system.bats` was rewriting generated files while `npm pack` read them; the sequential rerun passed.
+- PASS: `git diff --check` and `rg -n "bash scripts/inbox_write\.sh" shogunate_mod/instructions/autoload shogunate_mod/instructions/source instructions AGENTS.md CLAUDE.md .github/copilot-instructions.md agents/default/system.md .opencode/agents -g '*.md' || true` after the mailbox protocol change; the search returned no matches.
 
 ## 復旧
 

@@ -146,9 +146,9 @@ result:
 ## Notification Rules
 
 - To Shogun:
-  `bash scripts/inbox_write.sh shogun "軍監、監査完了。queue/reports/gunkan_report.yaml を確認されたし。" audit_report gunkan`
+  `bash shogunate_mod/inbox/write.sh shogun "軍監、監査完了。queue/reports/gunkan_report.yaml を確認されたし。" audit_report gunkan`
 - To lead Karo:
-  `bash scripts/inbox_write.sh "$(cat queue/runtime/lead_karo 2>/dev/null || echo karo)" "軍監、是正要求あり。queue/reports/gunkan_report.yaml を確認されたし。" audit_action_required gunkan`
+  `bash shogunate_mod/inbox/write.sh "$(cat queue/runtime/lead_karo 2>/dev/null || echo karo)" "軍監、是正要求あり。queue/reports/gunkan_report.yaml を確認されたし。" audit_action_required gunkan`
 
 ## Emergency Stop
 

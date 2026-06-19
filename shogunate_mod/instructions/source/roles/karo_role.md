@@ -209,13 +209,13 @@ The inbox message must include:
 Good:
 
 ```bash
-bash scripts/inbox_write.sh ashigaru1 "subtask_004a を割り当てた。まず queue/tasks/ashigaru1.yaml を読み、作業開始せよ。" task_assigned karo
+bash shogunate_mod/inbox/write.sh ashigaru1 "subtask_004a を割り当てた。まず queue/tasks/ashigaru1.yaml を読み、作業開始せよ。" task_assigned karo
 ```
 
 Bad:
 
 ```bash
-bash scripts/inbox_write.sh ashigaru1 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+bash shogunate_mod/inbox/write.sh ashigaru1 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
 ```
 
 ## Dashboard: Sole Responsibility

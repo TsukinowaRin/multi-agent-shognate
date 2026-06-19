@@ -1812,6 +1812,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `node --check shogunate_mod/package/npm_cli.js`, `node --check bin/shogunate.js`, `node bin/shogunate.js --help`, targeted package distribution contract with a fake `file://` bootstrap proving `node bin/shogunate.js install -- --version v-test --no-setup` forwards args through `bash -s --`, root/MOD package distribution test sync, and `git diff --check`.
 - MOD view focus helper の missing-session error guidance も root `bash shutsujin_departure.sh` 案内から `bash shogunate_mod/runtime/entrypoint.sh` 案内へ寄せた。root `shutsujin_departure.sh` は互換入口として残すが、MOD helper 自身が提示する起動正本は MOD runtime entrypoint にする。
 - PASS: `bash -n shogunate_mod/view/focus_agent_pane.sh scripts/focus_agent_pane.sh`, targeted package distribution contract, root/MOD package distribution test sync, `git diff --check`, and `bats tests/unit/test_mux_parity.bats --timing` after changing focus helper guidance.
+- MOD runtime の依存不足 / tmux 不足 / CLI 不足時の first setup guidance も root `bash first_setup.sh` / `./first_setup.sh` 案内から `bash shogunate_mod/package/first_setup.sh` 案内へ寄せた。root `first_setup.sh` は互換入口として残すが、MOD runtime helper が示す復旧正本は MOD package first setup にする。
+- PASS: `bash -n shogunate_mod/runtime/startup.sh shogunate_mod/runtime/departure.sh shogunate_mod/runtime/launch.sh`, targeted package distribution contract, and root/MOD package distribution test sync after moving MOD runtime first setup guidance to `shogunate_mod/package/first_setup.sh`.
 
 ## 復旧
 

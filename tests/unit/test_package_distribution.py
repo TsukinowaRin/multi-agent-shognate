@@ -941,6 +941,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             ],
             "shogunate_mod/runtime/departure.sh": [
                 "shogunate_mod/cli/adapter.sh",
+                "shogunate_mod/package/first_setup.sh",
             ],
             "shogunate_mod/configure/agents.sh": [
                 "shogunate_mod/runtime/entrypoint.sh",
@@ -962,6 +963,10 @@ class PackageDistributionContractTests(unittest.TestCase):
             ],
             "shogunate_mod/runtime/launch.sh": [
                 "shogunate_mod/shell/aliases.sh",
+                "shogunate_mod/package/first_setup.sh",
+            ],
+            "shogunate_mod/runtime/startup.sh": [
+                "shogunate_mod/package/first_setup.sh",
             ],
             "shogunate_mod/runtime/shutsujin_launcher.sh": [
                 "shogunate_mod/shell/aliases.sh",
@@ -1021,6 +1026,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             'bash shutsujin_departure.sh -c',
             'bash shutsujin_departure.sh -s',
             'bash shutsujin_departure.sh を実行',
+            'bash first_setup.sh',
+            'Run first_setup.sh first:',
             './shutsujin_departure.sh [オプション]',
             './shutsujin_departure.sh              #',
             '<shutsujin_departure.sh options>',

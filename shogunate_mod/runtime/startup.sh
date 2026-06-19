@@ -79,7 +79,7 @@ select_runtime_python_or_die() {
         echo "    - PyYAML (python3 -c 'import yaml' が成功すること)"
         echo ""
         echo "  まず次を実行してください:"
-        echo "    bash first_setup.sh"
+        echo "    bash shogunate_mod/package/first_setup.sh"
         echo ""
         echo "  あるいは Ubuntu/Debian なら:"
         echo "    sudo apt-get install -y python3 python3-yaml inotify-tools"
@@ -109,7 +109,7 @@ run_startup_update_check() {
 
     case "$?" in
         10)
-            log_info "🆙 更新を適用したため first_setup.sh を再実行します"
+            log_info "🆙 更新を適用したため shogunate_mod/package/first_setup.sh を再実行します"
             bash "$SCRIPT_DIR/shogunate_mod/package/first_setup.sh" || true
             log_info "🆙 新しいコードで出陣をやり直します"
             exec env MAS_SKIP_STARTUP_UPDATE=1 bash "$0" "$@"
@@ -133,7 +133,7 @@ run_pending_update_request() {
 
     case "$?" in
         10)
-            log_info "🆙 予約済みアップデートを適用したため first_setup.sh を再実行します"
+            log_info "🆙 予約済みアップデートを適用したため shogunate_mod/package/first_setup.sh を再実行します"
             bash "$SCRIPT_DIR/shogunate_mod/package/first_setup.sh" || true
             log_info "🆙 新しいコードで出陣をやり直します"
             exec env MAS_SKIP_PENDING_UPDATE=1 MAS_SKIP_STARTUP_UPDATE=1 bash "$0" "$@"

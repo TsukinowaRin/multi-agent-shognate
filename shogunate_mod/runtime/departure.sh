@@ -59,9 +59,9 @@ run_shutsujin_departure() {
         echo "  ║  [ERROR] tmux not found!                              ║"
         echo "  ║  tmux が見つかりません                                 ║"
         echo "  ╠════════════════════════════════════════════════════════╣"
-        echo "  ║  Run first_setup.sh first:                            ║"
-        echo "  ║  まず first_setup.sh を実行してください:               ║"
-        echo "  ║     ./first_setup.sh                                  ║"
+        echo "  ║  Run the MOD first setup first:                       ║"
+        echo "  ║  まず MOD first setup を実行してください:              ║"
+        echo "  ║     bash shogunate_mod/package/first_setup.sh         ║"
         echo "  ╚════════════════════════════════════════════════════════╝"
         echo ""
         exit 1

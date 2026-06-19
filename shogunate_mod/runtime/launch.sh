@@ -166,8 +166,8 @@ launch_all_agent_clis_tmux() {
     else
         if ! command -v claude &> /dev/null; then
             log_info "⚠️  claude コマンドが見つかりません"
-            echo "  first_setup.sh を再実行してください:"
-            echo "    ./first_setup.sh"
+            echo "  shogunate_mod/package/first_setup.sh を再実行してください:"
+            echo "    bash shogunate_mod/package/first_setup.sh"
             exit 1
         fi
     fi

@@ -83,7 +83,7 @@ fi
 
 if [ "$RESTART" -eq 1 ]; then
     echo "[stop_and_apply_update] restarting Shogunate"
-    exec env MAS_SKIP_PENDING_UPDATE=1 MAS_SKIP_STARTUP_UPDATE=1 bash "$SCRIPT_DIR/shutsujin_departure.sh"
+    exec env MAS_SKIP_PENDING_UPDATE=1 MAS_SKIP_STARTUP_UPDATE=1 bash "$SCRIPT_DIR/shogunate_mod/runtime/entrypoint.sh"
 fi
 
 echo "[stop_and_apply_update] done"

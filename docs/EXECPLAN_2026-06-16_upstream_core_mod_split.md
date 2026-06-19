@@ -320,6 +320,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Python unit tests の repo root 解決を固定 `parents[2]` から manifest 探索へ変更し、`shogunate_mod/tests/unit` から直接 discover しても MOD 正本 / root 互換面を正しく検証できるようにした。`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s shogunate_mod/tests/unit -p 'test_*.py'` は 186 tests OK。
 - [x] macOS runtime launcher の MOD 正本 `shogunate_mod/macos/runtime_launcher.command` が root `./Shogunate-Runtime.sh` wrapper へ戻らず、`shogunate_mod/runtime/runtime_launcher.sh` を直接呼ぶようにした。root `Shogunate-Runtime.command` は互換入口として MOD macOS launcher へ委譲し続ける。Bats と package distribution contract でこの境界を固定した。
 - [x] Android Pair server の pair 成功後 runtime 起動を root `Shogunate-Runtime.sh` wrapper から MOD 正本 `shogunate_mod/runtime/runtime_launcher.sh --resume --no-attach` 直接起動へ寄せた。`start_runtime()` の unit test で起動 command / cwd / `SHOGUNATE_PROJECT_DIR` を固定し、Pair server の既存 pairing tests も通した。
+- [x] update apply command の `--restart` 経路を root `shutsujin_departure.sh` wrapper から MOD 正本 `shogunate_mod/runtime/entrypoint.sh` 直接実行へ寄せた。root `scripts/stop_and_apply_update.sh` は互換入口として MOD update command へ委譲し続け、package distribution contract で restart 先が root wrapper へ戻らないことを固定した。
 
 ## 判断
 

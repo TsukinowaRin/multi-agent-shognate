@@ -311,6 +311,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] root compatibility wrapper が参照する MOD delegate target は、manifest canonical path であるだけでなく `shogunate_mod/README.md` の Boundaries でも ownership が説明されていることを contract で固定した。
 - [x] OpenCode / Codex / AGY などの TUI へ送る inbox nudge を通常 wake-up だけでなく Phase 2 Escape+nudge でも literal `tmux send-keys -l` に統一し、長い日本語 nudge や `queue/inbox/...` を含む structured nudge が tmux の key 名解釈で崩れないようにした。
 - [x] Android app の Agents 画面にある使用量チェックも root `scripts/ratelimit_check.sh` 直呼びから、MOD 正本 `shogunate_mod/status/ratelimit_check.sh` 優先 + root wrapper fallback に変更した。Pair 後の runtime root でも Shogunate-only status 実装を MOD 側正本から使う。
+- [x] Runtime cleanup / watcher stale cleanup を MOD 正本プロセス対応へ補強した。clean start と runtime daemon restart は旧 `scripts/` watcher だけでなく `shogunate_mod/watcher/inbox_watcher.sh` も掃除し、Gunkan light watch は旧 wrapper / MOD 正本の両方を掃除する。watcher supervisor の stale process 検出も旧 `scripts/inbox_watcher.sh` と MOD 正本 `shogunate_mod/watcher/inbox_watcher.sh` の両方を同じ agent 判定で扱う。
 
 ## 判断
 
@@ -1715,6 +1716,12 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct sync checks for root/MOD `AgentsViewModel.kt`, root/MOD package distribution tests, and `git diff --check` after the Android rate-limit command change.
 - PASS: Android Gradle `testDebugUnitTest assembleDebug` after the Android rate-limit command change; build succeeded with existing deprecation/unused-parameter warnings only.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 146 package distribution contract tests after adding the Android rate-limit MOD canonical contract.
+- Runtime cleanup / watcher stale cleanup を MOD 正本プロセス対応へ補強した。clean start と runtime daemon restart は旧 `scripts/` watcher だけでなく `shogunate_mod/watcher/inbox_watcher.sh` も掃除し、Gunkan light watch は旧 wrapper / MOD 正本の両方を掃除する。watcher supervisor の stale process 検出も旧 `scripts/inbox_watcher.sh` と MOD 正本 `shogunate_mod/watcher/inbox_watcher.sh` の両方を同じ agent 判定で扱う。
+- PASS: `bash -n shogunate_mod/runtime/state.sh shogunate_mod/runtime/daemon.sh shogunate_mod/watcher/supervisor.sh` after adding MOD canonical cleanup coverage for inbox watchers and Gunkan light watch.
+- PASS: `bats tests/unit/test_watcher_supervisor.bats --timing` ran 10 watcher supervisor tests after teaching stale watcher cleanup to parse both legacy and MOD inbox watcher process paths.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_runtime_daemon_starts_mod_canonical_helpers tests.unit.test_package_distribution.PackageDistributionContractTests.test_runtime_state_cleanup_handles_mod_and_legacy_daemons tests.unit.test_package_distribution.PackageDistributionContractTests.test_watcher_supervisor_starts_mod_canonical_helpers` after adding cleanup path contracts.
+- PASS: `bats tests/unit/test_mux_parity.bats tests/unit/test_watcher_supervisor.bats --timing` ran 82 mux / watcher tests after the runtime cleanup hardening.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 147 package distribution contract tests after adding the runtime cleanup contracts.
 
 ## 復旧
 

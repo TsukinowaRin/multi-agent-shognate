@@ -18,6 +18,8 @@ teardown() {
 1001 $PROJECT_ROOT/scripts/inbox_watcher.sh gunshi %9 claude tmux
 1003 $PROJECT_ROOT/scripts/inbox_watcher.sh gunkan %8 claude tmux
 1002 $PROJECT_ROOT/scripts/inbox_watcher.sh ashigaru9 %10 claude tmux
+1004 $PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh gunshi %14 claude tmux
+1005 $PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh ashigaru10 %15 claude tmux
 EOF
 
   run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
@@ -31,7 +33,7 @@ EOF
   [ "$status" -eq 0 ]
   run cat "$TEST_TMP/killed.txt"
   [ "$status" -eq 0 ]
-  [[ "$output" == "1002" ]]
+  [[ "$output" == $'1002\n1005' ]]
 }
 
 @test "watcher_supervisor: cleanup_stale_watchers は karo と active ashigaru を保持する" {
@@ -39,6 +41,8 @@ EOF
 2001 $PROJECT_ROOT/scripts/inbox_watcher.sh karo %11 codex tmux
 2002 $PROJECT_ROOT/scripts/inbox_watcher.sh ashigaru1 %12 codex tmux
 2003 $PROJECT_ROOT/scripts/inbox_watcher.sh ashigaru8 %13 codex tmux
+2004 $PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh karo %14 codex tmux
+2005 $PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh ashigaru8 %15 codex tmux
 EOF
 
   run env TEST_TMP="$TEST_TMP" PROJECT_ROOT="$PROJECT_ROOT" SUPERVISOR_SNIPPET="$SUPERVISOR_SNIPPET" bash -lc '
@@ -52,7 +56,7 @@ EOF
   [ "$status" -eq 0 ]
   run cat "$TEST_TMP/killed.txt"
   [ "$status" -eq 0 ]
-  [[ "$output" == "2003" ]]
+  [[ "$output" == $'2003\n2005' ]]
 }
 
 @test "watcher_supervisor: shell に戻った codex pane を cooldown 付きで再起動する" {

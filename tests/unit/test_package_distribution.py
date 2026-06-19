@@ -815,14 +815,24 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertIn('bash "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh"', normalized)
         self.assertIn('python3 "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py"', normalized)
+        self.assertIn('pkill -f "$SCRIPT_DIR/shogunate_mod/watcher/inbox_watcher.sh "', normalized)
         self.assertNotIn('bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh"', normalized)
         self.assertNotIn('python3 "$SCRIPT_DIR/scripts/gunkan_light_watch.py"', normalized)
+
+    def test_runtime_state_cleanup_handles_mod_and_legacy_daemons(self):
+        text = (ROOT / "shogunate_mod" / "runtime" / "state.sh").read_text(encoding="utf-8")
+
+        self.assertIn('pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh "', text)
+        self.assertIn('pkill -f "$SCRIPT_DIR/shogunate_mod/watcher/inbox_watcher.sh "', text)
+        self.assertIn('pkill -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py"', text)
+        self.assertIn('pkill -f "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py"', text)
 
     def test_watcher_supervisor_starts_mod_canonical_helpers(self):
         text = (ROOT / "shogunate_mod" / "watcher" / "supervisor.sh").read_text(encoding="utf-8")
 
         self.assertIn("shogunate_mod/cli/adapter.sh", text)
         self.assertIn("shogunate_mod/watcher/inbox_watcher.sh", text)
+        self.assertIn("(scripts|shogunate_mod/watcher)/inbox_watcher", text)
         self.assertNotIn('source "$SCRIPT_DIR/lib/cli_adapter.sh"', text)
         self.assertNotIn('"$SCRIPT_DIR/scripts/inbox_watcher.sh" \\', text)
 

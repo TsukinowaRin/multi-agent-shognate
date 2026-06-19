@@ -29,6 +29,11 @@ initialize_runtime_daemon_session() {
     fi
 }
 
+tmux_kill_runtime_daemon_session_exact() {
+    local session_name="$1"
+    tmux kill-session -t "=$session_name" 2>/dev/null
+}
+
 start_tmux_runtime_daemon_window() {
     local session_name="$1"
     local window_name="$2"
@@ -76,7 +81,7 @@ restart_tmux_runtime_daemon_session() {
     local session_env=""
     local started=0
 
-    tmux kill-session -t "$session_name" 2>/dev/null || true
+    tmux_kill_runtime_daemon_session_exact "$session_name" || true
     session_env="$(build_runtime_session_env_args)"
 
     if command -v inotifywait >/dev/null 2>&1; then
@@ -131,6 +136,7 @@ start_runtime_watchers_and_bridges() {
     done
 
     pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh " 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/shogunate_mod/watcher/inbox_watcher.sh " 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/watcher_supervisor.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
@@ -141,7 +147,7 @@ start_runtime_watchers_and_bridges() {
     pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/cli_pref_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py" 2>/dev/null || true
-    tmux kill-session -t "$RUNTIME_DAEMON_SESSION" 2>/dev/null || true
+    tmux_kill_runtime_daemon_session_exact "$RUNTIME_DAEMON_SESSION" || true
     pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
     sleep 1
 

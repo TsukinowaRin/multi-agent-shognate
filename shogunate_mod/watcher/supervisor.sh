@@ -499,8 +499,8 @@ cleanup_stale_watchers() {
     while IFS= read -r line; do
         pid="${line%% *}"
         cmd="${line#* }"
-        if [[ "$cmd" =~ scripts/inbox_watcher\.sh[[:space:]]+([a-zA-Z0-9_]+)[[:space:]] ]]; then
-            agent="${BASH_REMATCH[1]}"
+        if [[ "$cmd" =~ (scripts|shogunate_mod/watcher)/inbox_watcher\.sh[[:space:]]+([a-zA-Z0-9_]+)[[:space:]] ]]; then
+            agent="${BASH_REMATCH[2]}"
             agent_is_supervised "$agent" && continue
             kill "$pid" >/dev/null 2>&1 || true
         fi

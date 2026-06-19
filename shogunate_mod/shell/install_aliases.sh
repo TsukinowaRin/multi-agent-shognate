@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TARGET_RC="${1:-$HOME/.bashrc}"
 BEGIN_MARK="# >>> multi-agent-shognate aliases >>>"
 END_MARK="# <<< multi-agent-shognate aliases <<<"
-SOURCE_LINE="source \"$ROOT_DIR/scripts/shell_aliases.sh\""
+SOURCE_LINE="source \"$ROOT_DIR/shogunate_mod/shell/aliases.sh\""
 
 mkdir -p "$(dirname "$TARGET_RC")"
 touch "$TARGET_RC"
@@ -29,4 +29,4 @@ awk -v begin="$BEGIN_MARK" -v end="$END_MARK" '
 
 echo "[INFO] shell alias を更新しました: $TARGET_RC"
 echo "[INFO] 現在のシェルへ即時反映するには次を実行してください:"
-echo "       source \"$ROOT_DIR/scripts/shell_aliases.sh\""
+echo "       source \"$ROOT_DIR/shogunate_mod/shell/aliases.sh\""

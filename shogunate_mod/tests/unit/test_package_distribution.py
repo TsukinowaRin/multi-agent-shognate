@@ -860,6 +860,9 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "shogunate_mod/view/focus_agent_pane.sh",
                 "shogunate_mod/view/goza_no_ma.sh",
             ],
+            "shogunate_mod/shell/install_aliases.sh": [
+                "shogunate_mod/shell/aliases.sh",
+            ],
             "shogunate_mod/runtime/summary.sh": [
                 "shogunate_mod/view/focus_agent_pane.sh",
                 "shogunate_mod/view/goza_no_ma.sh",
@@ -1139,7 +1142,9 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("shogunate_mod/package/bootstrap.sh", bootstrap_wrapper)
         self.assertIn("shogunate_mod/package/first_setup.sh", first_setup_wrapper)
         self.assertIn("shogunate_mod/runtime/setup_compat.sh", setup_wrapper)
-        self.assertIn("shutsujin_departure.sh", setup_compat)
+        self.assertIn("shogunate_mod/runtime/load.sh", setup_compat)
+        self.assertIn("run_shutsujin_departure", setup_compat)
+        self.assertNotIn('exec bash "$SCRIPT_DIR/shutsujin_departure.sh"', setup_compat)
         self.assertIn("shogunate_mod/package/first_setup.sh", manifest)
         self.assertIn("shogunate_mod/runtime/setup_compat.sh", manifest)
         self.assertIn("shogunate_mod/package/package.json", manifest)

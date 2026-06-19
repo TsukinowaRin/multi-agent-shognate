@@ -49,7 +49,7 @@ EOF
     [ "$status" -eq 0 ]
 
     grep -qF '# >>> multi-agent-shognate aliases >>>' "$rc_file"
-    grep -qF "source \"$PROJECT_ROOT/scripts/shell_aliases.sh\"" "$rc_file"
+    grep -qF "source \"$PROJECT_ROOT/shogunate_mod/shell/aliases.sh\"" "$rc_file"
     grep -qF '# <<< multi-agent-shognate aliases <<<' "$rc_file"
     grep -qF 'export SAMPLE_FLAG=1' "$rc_file"
     ! grep -qF 'Human-Emulator/scripts/goza_no_ma.sh' "$rc_file"
@@ -68,7 +68,7 @@ EOF
     run bash "$PROJECT_ROOT/scripts/install_shell_aliases.sh" "$rc_file"
     [ "$status" -eq 0 ]
 
-    grep -qF "source \"$PROJECT_ROOT/scripts/shell_aliases.sh\"" "$rc_file"
+    grep -qF "source \"$PROJECT_ROOT/shogunate_mod/shell/aliases.sh\"" "$rc_file"
     grep -qF 'export SAMPLE_FLAG=1' "$rc_file"
     ! grep -qF 'alias css=' "$rc_file"
     ! grep -qF 'css()' "$rc_file"
@@ -87,5 +87,5 @@ EOF
 
     [ "$(grep -c '^# >>> multi-agent-shognate aliases >>>$' "$rc_file")" -eq 1 ]
     [ "$(grep -c '^# <<< multi-agent-shognate aliases <<<$' "$rc_file")" -eq 1 ]
-    [ "$(grep -cF "source \"$PROJECT_ROOT/scripts/shell_aliases.sh\"" "$rc_file")" -eq 1 ]
+    [ "$(grep -cF "source \"$PROJECT_ROOT/shogunate_mod/shell/aliases.sh\"" "$rc_file")" -eq 1 ]
 }

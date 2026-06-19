@@ -791,6 +791,17 @@ class PackageDistributionContractTests(unittest.TestCase):
             self.assertIn(rel, wrappers)
             self.assertTrue((ROOT / rel).exists(), f"missing representative wrapper smoke path: {rel}")
 
+    def test_representative_wrapper_smoke_cases_cover_required_entrypoints(self):
+        required_paths = {
+            "bin/shogunate.js",
+            "scripts/shogunate_pair_server.py",
+            "scripts/shell_aliases.sh",
+            "scripts/agent_status.sh",
+        }
+        smoke_paths = {command[1] for command, _ in representative_wrapper_smoke_cases()}
+
+        self.assertEqual(required_paths, smoke_paths)
+
     def test_representative_wrapper_smoke_cases_have_mod_delegates(self):
         for command, _ in representative_wrapper_smoke_cases():
             rel = command[1]

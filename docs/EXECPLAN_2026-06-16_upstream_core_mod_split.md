@@ -318,6 +318,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Runtime help / MCP health check の案内文を root `scripts/` 互換入口から MOD 正本 path へ寄せた。`shogunate_mod/runtime/options.sh` は `shogunate_mod/configure/agents.sh` と `shogunate_mod/view/*` を案内し、`shogunate_mod/runtime/mcp_health_check.sh` は `shogunate_mod/configure/switch_cli.sh` を案内する。`shogunate_mod/configure/switch_cli.sh` 自身の Usage コメントも MOD 正本 path に揃えた。
 - [x] generated instruction freshness guard の tracked source から root `scripts/build_instructions.sh` 互換 wrapper を外し、MOD 正本 `shogunate_mod/instructions/build.sh` / `ensure_generated.sh` を追うようにした。互換 wrapper 変更で生成 freshness が揺れず、MOD builder 変更だけが正しく gate される。
 - [x] Python unit tests の repo root 解決を固定 `parents[2]` から manifest 探索へ変更し、`shogunate_mod/tests/unit` から直接 discover しても MOD 正本 / root 互換面を正しく検証できるようにした。`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s shogunate_mod/tests/unit -p 'test_*.py'` は 186 tests OK。
+- [x] macOS runtime launcher の MOD 正本 `shogunate_mod/macos/runtime_launcher.command` が root `./Shogunate-Runtime.sh` wrapper へ戻らず、`shogunate_mod/runtime/runtime_launcher.sh` を直接呼ぶようにした。root `Shogunate-Runtime.command` は互換入口として MOD macOS launcher へ委譲し続ける。Bats と package distribution contract でこの境界を固定した。
 
 ## 判断
 

@@ -32,7 +32,7 @@ setup() {
   run grep -F "shogunate_mod/macos/runtime_launcher.command" "$PROJECT_ROOT/Shogunate-Runtime.command"
   [ "$status" -eq 0 ]
 
-  run grep -F "./Shogunate-Runtime.sh" "$PROJECT_ROOT/shogunate_mod/macos/runtime_launcher.command"
+  run grep -F "shogunate_mod/runtime/runtime_launcher.sh" "$PROJECT_ROOT/shogunate_mod/macos/runtime_launcher.command"
   [ "$status" -eq 0 ]
 
   run grep -F "shogunate_mod/runtime/runtime_launcher.sh" "$PROJECT_ROOT/Shogunate-Runtime.sh"

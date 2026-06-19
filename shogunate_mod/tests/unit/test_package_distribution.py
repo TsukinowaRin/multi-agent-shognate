@@ -3988,6 +3988,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             "scripts/gunkan_codd_audit.py",
             "scripts/gunkan_emergency_stop.sh",
             "scripts/localapi_repl.py",
+            "lib/file_watch.sh",
         ]
         required_mod_commands = [
             "shogunate_mod/inbox/write.sh",
@@ -3996,6 +3997,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/gunkan/codd_audit.py",
             "shogunate_mod/gunkan/emergency_stop.sh",
             "shogunate_mod/localapi/repl.py",
+            "shogunate_mod/watcher/inbox_watcher.sh",
+            "shogunate_mod/watcher/file_watch.sh",
         ]
         combined = ""
         for path in sorted(set(instruction_surfaces)):

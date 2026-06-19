@@ -116,14 +116,14 @@ bash shogunate_mod/inbox/write.sh karo "足軽5号、任務完了。報告YAML�
 bash shogunate_mod/inbox/write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
 ```
 
-Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
+Delivery is handled by `shogunate_mod/watcher/inbox_watcher.sh` (infrastructure layer).
 **Agents NEVER call tmux send-keys directly.**
 
 ## Delivery Mechanism
 
 Two layers:
-1. **Message persistence**: `inbox_write.sh` writes to `queue/inbox/{agent}.yaml` with flock. Guaranteed.
-2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `lib/file_watch.sh` (`inotifywait` on Linux/WSL, `fswatch` on macOS, polling fallback) → wakes agent:
+1. **Message persistence**: `shogunate_mod/inbox/write.sh` writes to `queue/inbox/{agent}.yaml` with flock. Guaranteed.
+2. **Wake-up signal**: `shogunate_mod/watcher/inbox_watcher.sh` detects file change via `shogunate_mod/watcher/file_watch.sh` (`inotifywait` on Linux/WSL, `fswatch` on macOS, polling fallback) → wakes agent:
    - **優先度1**: Agent self-watch (agent's own native watcher on its inbox) → no nudge needed
    - **優先度2**: `tmux send-keys` — short nudge only (text and Enter sent separately, 0.3s gap)
 

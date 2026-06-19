@@ -1750,6 +1750,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash shogunate_mod/instructions/ensure_generated.sh` reported generated instruction files are up to date after regeneration.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 149 package distribution contract tests after the broader instruction command path change.
 - PASS: `bats tests/unit/test_build_system.bats --timing` ran 61 build-system / idempotency tests after regenerating instruction outputs.
+- PASS: `make package-check` on clean `HEAD 3144610` after committing the broader instruction command path change; prepublish source syntax checks, 149 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
+- Agent-facing instruction の mailbox delivery mechanism に残っていた root `lib/file_watch.sh` 案内も MOD 正本 path へ変更した。autoload / source / generated / OpenCode agent definitions は `shogunate_mod/watcher/inbox_watcher.sh` と `shogunate_mod/watcher/file_watch.sh` を案内し、旧 `lib/file_watch.sh` が戻らない contract を追加した。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_instruction_runtime_commands_do_not_point_to_root_wrappers` after adding `lib/file_watch.sh` to the forbidden agent-facing instruction paths and requiring the MOD watcher/file-watch paths.
+- PASS: `rg -n 'lib/file_watch\.sh|scripts/(inbox_write|ntfy|karo_done_to_shogun_bridge_daemon|gunkan_codd_audit|gunkan_emergency_stop|localapi_repl)\.(sh|py)' shogunate_mod/instructions/autoload shogunate_mod/instructions/source instructions AGENTS.md CLAUDE.md .github/copilot-instructions.md agents/default/system.md .opencode/agents -g '*.md' || true` returned no matches after regenerating instruction outputs.
+- PASS: `bash shogunate_mod/instructions/ensure_generated.sh`, root/MOD package distribution test sync, and `git diff --check` after the watcher/file-watch instruction path change.
 
 ## 復旧
 

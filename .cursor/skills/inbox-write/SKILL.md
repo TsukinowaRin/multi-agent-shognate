@@ -9,7 +9,7 @@ tmux send-keys で直接メッセージを送ることは禁止。
 ## 使い方
 
 ```bash
-bash scripts/inbox_write.sh <target_agent> "<message>" <type> <from>
+bash shogunate_mod/inbox/write.sh <target_agent> "<message>" <type> <from>
 ```
 
 ### type 一覧
@@ -25,7 +25,7 @@ bash scripts/inbox_write.sh <target_agent> "<message>" <type> <from>
 ### 例
 
 ```bash
-bash scripts/inbox_write.sh karo "cmd_048を書いた。実行せよ。" cmd_new shogun
-bash scripts/inbox_write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
-bash scripts/inbox_write.sh gunshi "足軽5号、任務完了。品質チェックを仰ぎたし。" report_received ashigaru5
+bash shogunate_mod/inbox/write.sh karo "cmd_048を書いた。実行せよ。" cmd_new shogun
+bash shogunate_mod/inbox/write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+bash shogunate_mod/inbox/write.sh gunshi "足軽5号、任務完了。品質チェックを仰ぎたし。" report_received ashigaru5
 ```

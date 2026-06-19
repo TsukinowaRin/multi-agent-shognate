@@ -5,7 +5,7 @@ description: |
   pane metadata更新を一発で実行。Thinking有無も制御。
   「モデル切替」「Sonnetにして」「Opusに変えて」「足軽全員切替」「Thinking切って」で起動。
 argument-hint: "[agent-name target-model e.g. ashigaru1 sonnet]"
-allowed-tools: Bash(bash scripts/switch_cli.sh *), Read, Edit
+allowed-tools: Bash(bash shogunate_mod/configure/switch_cli.sh *), Read, Edit
 ---
 
 # /model-switch - Agent CLI Live Switcher
@@ -57,16 +57,16 @@ settings.yaml (source of truth)
 
 ```bash
 # settings.yaml の現在値で再起動（CLIリセットしたいだけのとき）
-bash scripts/switch_cli.sh ashigaru3
+bash shogunate_mod/configure/switch_cli.sh ashigaru3
 
 # モデル変更（settings.yaml も自動更新）
-bash scripts/switch_cli.sh ashigaru3 --model claude-opus-4-6
+bash shogunate_mod/configure/switch_cli.sh ashigaru3 --model claude-opus-4-6
 
 # CLI種別ごと変更（Codex → Claude）
-bash scripts/switch_cli.sh ashigaru3 --type claude --model claude-sonnet-4-6
+bash shogunate_mod/configure/switch_cli.sh ashigaru3 --type claude --model claude-sonnet-4-6
 
 # Claude → Codex Spark
-bash scripts/switch_cli.sh ashigaru5 --type codex --model gpt-5.3-codex-spark
+bash shogunate_mod/configure/switch_cli.sh ashigaru5 --type codex --model gpt-5.3-codex-spark
 ```
 
 ### 一括切替
@@ -74,17 +74,17 @@ bash scripts/switch_cli.sh ashigaru5 --type codex --model gpt-5.3-codex-spark
 ```bash
 # 全足軽をSonnetに
 for i in $(seq 1 7); do
-    bash scripts/switch_cli.sh ashigaru$i --type claude --model claude-sonnet-4-6
+    bash shogunate_mod/configure/switch_cli.sh ashigaru$i --type claude --model claude-sonnet-4-6
 done
 
 # 全足軽をSparkに
 for i in $(seq 1 7); do
-    bash scripts/switch_cli.sh ashigaru$i --type codex --model gpt-5.3-codex-spark
+    bash shogunate_mod/configure/switch_cli.sh ashigaru$i --type codex --model gpt-5.3-codex-spark
 done
 
 # 全エージェント（家老・軍師含む）を再起動
 for agent in karo ashigaru1 ashigaru2 ashigaru3 ashigaru4 ashigaru5 ashigaru6 ashigaru7 gunshi; do
-    bash scripts/switch_cli.sh "$agent"
+    bash shogunate_mod/configure/switch_cli.sh "$agent"
 done
 ```
 
@@ -104,19 +104,19 @@ cli:
 
 ```bash
 # settings.yaml 編集後に再起動
-bash scripts/switch_cli.sh ashigaru3
+bash shogunate_mod/configure/switch_cli.sh ashigaru3
 ```
 
 Thinking ON/OFF の切替手順:
 1. `config/settings.yaml` の対象エージェントの `thinking:` を `true` / `false` に変更
-2. `bash scripts/switch_cli.sh <agent_id>` で再起動
+2. `bash shogunate_mod/configure/switch_cli.sh <agent_id>` で再起動
 3. pane border に `+T` の有無が反映される
 
 ### inbox 経由（家老からの切替）
 
 ```bash
 # 家老が足軽のCLIを切り替える場合
-bash scripts/inbox_write.sh ashigaru3 "--type claude --model claude-opus-4-6" cli_restart karo
+bash shogunate_mod/inbox/write.sh ashigaru3 "--type claude --model claude-opus-4-6" cli_restart karo
 ```
 
 inbox_watcher が `cli_restart` type を検知し、switch_cli.sh を自動実行する。
@@ -139,10 +139,10 @@ inbox_watcher が `cli_restart` type を検知し、switch_cli.sh を自動実�
 
 | ファイル | 役割 |
 |---|---|
-| `scripts/switch_cli.sh` | メインスクリプト |
-| `lib/cli_adapter.sh` | `build_cli_command()`, `get_model_display_name()` |
+| `shogunate_mod/configure/switch_cli.sh` | メインスクリプト |
+| `shogunate_mod/cli/adapter.sh` | `build_cli_command()`, `get_model_display_name()` |
 | `config/settings.yaml` | エージェント設定（type, model, thinking） |
-| `scripts/inbox_watcher.sh` | `cli_restart` type ハンドリング |
+| `shogunate_mod/watcher/inbox_watcher.sh` | `cli_restart` type ハンドリング |
 | `logs/switch_cli.log` | 実行ログ |
 
 ## Constraints

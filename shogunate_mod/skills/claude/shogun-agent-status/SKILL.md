@@ -27,7 +27,7 @@ Claude Code / Codex CLI 両方に対応。
 以下のコマンドを実行する:
 
 ```bash
-bash scripts/agent_status.sh
+bash shogunate_mod/status/command.sh
 ```
 
 ## 出力の読み方

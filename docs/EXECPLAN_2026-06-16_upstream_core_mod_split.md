@@ -1775,6 +1775,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - Public README / README_ja の repository structure を、旧 `scripts/gunkan_*` wrapper 一覧中心の説明から、root は upstream-facing compatibility surface、実装は `Shogunate MOD canonical sources` という境界説明へ変更した。`shogunate_mod/gunkan/`, `status/`, `watcher/`, `view/` も構造図に明示し、legacy `scripts/*` / `lib/*` / top-level launchers は `shogunate_mod/` へ委譲する stable compatibility entrypoint として説明した。
 - `docs/INDEX.md` の Gunkan / CoDD メモも root `scripts/gunkan_codd_audit.py` / `scripts/gunkan_light_watch.py` ではなく、MOD 正本 `shogunate_mod/gunkan/codd_audit.py` / `shogunate_mod/gunkan/light_watch.py` を指すようにした。
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_readmes_have_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_docs_index_uses_mod_canonical_gunkan_helpers` after adding contracts for README structure and docs index Gunkan helper paths.
+- Claude / Cursor skill の操作手順も root `scripts/*` / `lib/*` 互換入口から MOD 正本へ寄せた。`shogun-model-switch` は `shogunate_mod/configure/switch_cli.sh`、inbox 経由例は `shogunate_mod/inbox/write.sh`、agent status skill は `shogunate_mod/status/command.sh`、Bloom config の subscription coverage check は `shogunate_mod/cli/adapter.sh` を案内する。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_cli_skills_have_mod_canonical_copy` after adding contracts that forbid Shogunate skills from teaching root `scripts/switch_cli.sh`, `scripts/inbox_write.sh`, `scripts/agent_status.sh`, `lib/cli_adapter.sh`, and `scripts/inbox_watcher.sh` as the primary paths.
+- PASS: direct root/MOD sync checks for `skills/shogun-model-switch`, `skills/shogun-agent-status`, `skills/shogun-bloom-config`, and `.cursor/skills/inbox-write` after moving skill guidance to MOD canonical commands.
 
 ## 復旧
 

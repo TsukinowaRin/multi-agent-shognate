@@ -498,7 +498,7 @@ bloom_routing: "manual"   # "off"(無効) → "manual"(手動) → "auto"(全自
 
 ```bash
 # subscription coverage チェック（カバーできないBloomレベルを検出）
-source lib/cli_adapter.sh && validate_subscription_coverage
+source shogunate_mod/cli/adapter.sh && validate_subscription_coverage
 ```
 
 ---

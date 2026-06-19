@@ -3824,6 +3824,36 @@ class PackageDistributionContractTests(unittest.TestCase):
             self.assertTrue(mod_path.exists(), f"missing MOD Cursor skill: {rel}")
             self.assertEqual(root_path.read_bytes(), mod_path.read_bytes(), f"Cursor skill differs: {rel}")
 
+        skill_texts = {
+            str(path.relative_to(ROOT)): path.read_text(encoding="utf-8")
+            for path in [*root_skill_files, *cursor_skill_files]
+        }
+        forbidden_root_skill_commands = [
+            "Bash(bash scripts/switch_cli.sh",
+            "bash scripts/switch_cli.sh",
+            "bash scripts/inbox_write.sh",
+            "bash scripts/agent_status.sh",
+            "source lib/cli_adapter.sh",
+            "`scripts/switch_cli.sh`",
+            "`lib/cli_adapter.sh`",
+            "`scripts/inbox_watcher.sh`",
+        ]
+        required_mod_skill_commands = [
+            "bash shogunate_mod/configure/switch_cli.sh",
+            "bash shogunate_mod/inbox/write.sh",
+            "bash shogunate_mod/status/command.sh",
+            "source shogunate_mod/cli/adapter.sh",
+            "`shogunate_mod/configure/switch_cli.sh`",
+            "`shogunate_mod/cli/adapter.sh`",
+            "`shogunate_mod/watcher/inbox_watcher.sh`",
+        ]
+        combined_skill_text = "\n".join(skill_texts.values())
+        for forbidden in forbidden_root_skill_commands:
+            for path, text in skill_texts.items():
+                self.assertNotIn(forbidden, text, path)
+        for required in required_mod_skill_commands:
+            self.assertIn(required, combined_skill_text)
+
     def test_integration_templates_have_mod_canonical_copy(self):
         root_templates = sorted(path for path in (ROOT / "templates").glob("*.md") if path.is_file())
         package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))

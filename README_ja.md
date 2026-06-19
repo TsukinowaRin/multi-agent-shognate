@@ -175,22 +175,23 @@ Shogunate は `tmux` 上に見える runtime を作ります。
 Shogunate は「本家 Shogun core + Shogunate MOD」へ寄せています。
 
 ```text
-upstream-like runtime files
-  AGENTS.md, instructions/, lib/, shutsujin_departure.sh, runtime helpers
+upstream-facing compatibility surface
+  AGENTS.md, instructions/, lib/, scripts/, top-level launchers
+  既存 tool と release cURL URL のために維持
 
-Shogunate MOD
+Shogunate MOD canonical sources
   shogunate_mod/
-    gunkan/    independent auditor helper
+    gunkan/    independent auditor / CoDD helper
     package/   cURL package install と cwd-first workspace 管理
     pair/      Android Pair server
     runtime/   cwd/project/session helper
     shell/     Shogunate view aliases
+    status/    agent / rate-limit status command
+    watcher/   inbox / file-watch supervisor
+    view/      Goza attach / focus helper
 
-compatibility wrappers
-  scripts/gunkan_*.py / scripts/gunkan_emergency_stop.sh
-  scripts/shogunate_package_bootstrap.sh
-  scripts/shogunate_pair_server.py
-  scripts/shell_aliases.sh
+stable compatibility entrypoints
+  legacy scripts/*, lib/*, top-level launcher は shogunate_mod/ へ委譲
 ```
 
 既存 install と release cURL を壊さないため、`scripts/` の入口は残します。新しい Shogunate-only の挙動はまず `shogunate_mod/` 側へ置き、本家 runtime 更新時の衝突を減らします。

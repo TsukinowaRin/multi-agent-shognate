@@ -175,22 +175,23 @@ Agents communicate through files under `queue/`, `dashboard.md`, and runtime met
 Shogunate is being organized as an upstream Shogun core plus a Shogunate MOD layer:
 
 ```text
-upstream-like runtime files
-  AGENTS.md, instructions/, lib/, shutsujin_departure.sh, runtime helpers
+upstream-facing compatibility surface
+  AGENTS.md, instructions/, lib/, scripts/, top-level launchers
+  kept for existing tools and release cURL URLs
 
-Shogunate MOD
+Shogunate MOD canonical sources
   shogunate_mod/
-    gunkan/    independent auditor helpers
+    gunkan/    independent auditor and CoDD helpers
     package/   cURL package install and cwd-first workspace management
     pair/      Android Pair server
     runtime/   cwd/project/session helpers used by thin runtime entrypoints
     shell/     Shogunate view aliases
+    status/    agent and rate-limit status commands
+    watcher/   inbox/file-watch supervisors
+    view/      Goza attach/focus helpers
 
-compatibility wrappers
-  scripts/gunkan_*.py / scripts/gunkan_emergency_stop.sh
-  scripts/shogunate_package_bootstrap.sh
-  scripts/shogunate_pair_server.py
-  scripts/shell_aliases.sh
+stable compatibility entrypoints
+  legacy scripts/*, lib/*, and top-level launchers delegate into shogunate_mod/
 ```
 
 The wrapper paths stay stable for existing installs and release cURL commands. New Shogunate-only behavior should live under `shogunate_mod/` first, so upstream runtime updates remain easier to review.

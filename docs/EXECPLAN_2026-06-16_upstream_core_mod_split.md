@@ -1772,6 +1772,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_readmes_have_mod_canonical_copy` after requiring public README copies to contain the MOD troubleshooting commands and forbid the old root `scripts/ensure_*` command guidance.
 - PASS: `bash -n shogunate_mod/cli/antigravity_keyring.sh shogunate_mod/instructions/ensure_generated.sh` after updating the README troubleshooting guidance.
 - PASS: `rg -n "scripts/ensure_antigravity_keyring\\.sh|scripts/ensure_generated_instructions\\.sh" README.md README_ja.md shogunate_mod/docs/README.md shogunate_mod/docs/README_ja.md tests/unit/test_package_distribution.py` showed the old paths only in package distribution contract assertions, not in public README text.
+- Public README / README_ja の repository structure を、旧 `scripts/gunkan_*` wrapper 一覧中心の説明から、root は upstream-facing compatibility surface、実装は `Shogunate MOD canonical sources` という境界説明へ変更した。`shogunate_mod/gunkan/`, `status/`, `watcher/`, `view/` も構造図に明示し、legacy `scripts/*` / `lib/*` / top-level launchers は `shogunate_mod/` へ委譲する stable compatibility entrypoint として説明した。
+- `docs/INDEX.md` の Gunkan / CoDD メモも root `scripts/gunkan_codd_audit.py` / `scripts/gunkan_light_watch.py` ではなく、MOD 正本 `shogunate_mod/gunkan/codd_audit.py` / `shogunate_mod/gunkan/light_watch.py` を指すようにした。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_readmes_have_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_docs_index_uses_mod_canonical_gunkan_helpers` after adding contracts for README structure and docs index Gunkan helper paths.
 
 ## 復旧
 

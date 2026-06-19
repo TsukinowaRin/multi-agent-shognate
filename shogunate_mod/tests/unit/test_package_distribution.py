@@ -3421,6 +3421,17 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("shogunate pair", mod_readme_ja)
         self.assertIn("cd /path/to/your-project", mod_readme_ja)
         for path, text in readmes.items():
+            self.assertIn("Shogunate MOD canonical sources", text, path)
+            self.assertIn("legacy scripts/*, lib/*", text, path)
+            self.assertTrue(
+                "delegate into shogunate_mod/" in text or "shogunate_mod/ へ委譲" in text,
+                path,
+            )
+            self.assertIn("shogunate_mod/\n    gunkan/", text, path)
+            self.assertIn("    watcher/", text, path)
+            self.assertIn("    view/", text, path)
+            self.assertNotIn("scripts/gunkan_*.py", text, path)
+            self.assertNotIn("scripts/gunkan_emergency_stop.sh", text, path)
             self.assertIn("shogunate_mod/cli/antigravity_keyring.sh", text, path)
             self.assertIn("shogunate_mod/instructions/ensure_generated.sh", text, path)
             self.assertNotIn("scripts/ensure_antigravity_keyring.sh", text, path)
@@ -3450,6 +3461,14 @@ class PackageDistributionContractTests(unittest.TestCase):
             "require_same_file docs/philosophy.md shogunate_mod/docs/philosophy.md",
             prepublish,
         )
+
+    def test_docs_index_uses_mod_canonical_gunkan_helpers(self):
+        index = (ROOT / "docs" / "INDEX.md").read_text(encoding="utf-8")
+
+        self.assertIn("shogunate_mod/gunkan/codd_audit.py", index)
+        self.assertIn("shogunate_mod/gunkan/light_watch.py", index)
+        self.assertNotIn("scripts/gunkan_codd_audit.py 経由", index)
+        self.assertNotIn("scripts/gunkan_light_watch.py", index)
 
     def test_public_community_docs_have_mod_canonical_copy(self):
         prepublish = (ROOT / "shogunate_mod" / "package" / "prepublish_check.sh").read_text(encoding="utf-8")

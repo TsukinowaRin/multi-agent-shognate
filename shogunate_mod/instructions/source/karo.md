@@ -121,7 +121,7 @@ panes:
   agent_id_lookup: "tmux list-panes -t multiagent -F '#{pane_index}' -f '#{==:#{@agent_id},ashigaru{N}}'"
 
 inbox:
-  write_script: "scripts/inbox_write.sh"
+  write_script: "shogunate_mod/inbox/write.sh"
   to_ashigaru: true
   to_shogun: false  # Use dashboard.md instead (interrupt prevention)
 
@@ -571,9 +571,9 @@ When updating dashboard.md with Frog and streak info, use this expanded template
 ## ntfy Notification to Lord
 
 After updating dashboard.md, send ntfy notification:
-- cmd complete: `bash scripts/ntfy.sh "✅ cmd_{id} 完了 — {summary}"`
-- error/fail: `bash scripts/ntfy.sh "❌ {subtask} 失敗 — {reason}"`
-- action required: `bash scripts/ntfy.sh "🚨 要対応 — {content}"`
+- cmd complete: `bash shogunate_mod/notify/ntfy.sh "✅ cmd_{id} 完了 — {summary}"`
+- error/fail: `bash shogunate_mod/notify/ntfy.sh "❌ {subtask} 失敗 — {reason}"`
+- action required: `bash shogunate_mod/notify/ntfy.sh "🚨 要対応 — {content}"`
 
 Note: This replaces the need for inbox_write to shogun. ntfy goes directly to Lord's phone.
 

@@ -335,9 +335,9 @@ Default closure order:
 
 Unless completion actually fails, do **not** inspect:
 
-- `scripts/karo_done_to_shogun_bridge_daemon.sh`
+- `shogunate_mod/runtime/karo_done_to_shogun_bridge_daemon.sh`
 - `queue/runtime/karo_done_to_shogun.tsv`
-- `scripts/ntfy.sh`
+- `shogunate_mod/notify/ntfy.sh`
 - `saytask/streaks.yaml*`
 - `*.sample`
 - unrelated tests / docs / logs

@@ -119,7 +119,7 @@ When a message arrives, you'll be woken with "ntfy受信あり".
    - **VF task** ("〇〇する", "〇〇予約") → Register in saytask/tasks.yaml (future)
    - **Simple query** → Reply directly via ntfy
 3. Update inbox entry: `status: pending` → `status: processed`
-4. Send confirmation: `bash scripts/ntfy.sh "📱 受信: {summary}"`
+4. Send confirmation: `bash shogunate_mod/notify/ntfy.sh "📱 受信: {summary}"`
 
 ### Important
 - ntfy messages = Lord's commands. Treat with same authority as terminal input

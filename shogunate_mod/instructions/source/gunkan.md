@@ -39,7 +39,7 @@ workflow:
   - step: 4
     action: notify
     target: shogun_or_lead_karo
-    method: scripts/inbox_write.sh
+    method: shogunate_mod/inbox/write.sh
 
 files:
   primary:

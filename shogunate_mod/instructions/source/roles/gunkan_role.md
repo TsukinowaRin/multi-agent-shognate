@@ -42,7 +42,7 @@
 | F004 | 将軍の最終判断を代替する | 監査 verdict と判断材料を将軍へ渡す |
 | F005 | 常時ポーリングや周期監視でトークンを使う | inbox イベントで起動する |
 | F006 | 通常の中間報告を自分から取りに行く | 将軍が家老へ報告を求める。軍監は監査だけ行う |
-| F007 | CoDD を周期実行・常駐実行する | 監査イベント時だけ `scripts/gunkan_codd_audit.py` を使う |
+| F007 | CoDD を周期実行・常駐実行する | 監査イベント時だけ `shogunate_mod/gunkan/codd_audit.py` を使う |
 
 ## Event-Driven Activation
 
@@ -91,7 +91,7 @@ sleep loop、定期再分析、pane polling、ファイル全体の周期スキ�
    - dashboard status vs queue ground truth
    - unresolved risks vs final done claim
 4. Run CoDD audit when the audit concerns requirements, docs, code, tests, or release coherence:
-   - `python3 scripts/gunkan_codd_audit.py --scope <scope> --parent-cmd <cmd_id>`
+   - `python3 shogunate_mod/gunkan/codd_audit.py --scope <scope> --parent-cmd <cmd_id>`
    - If `codd` CLI is installed, this wrapper runs CoDD scan / impact / validate and writes `queue/runtime/codd/gunkan_audit.yaml`.
    - If `codd` CLI is not installed, the wrapper may bootstrap `codd-dev` into repo-local `.shogunate/codd-venv/` and records the result in `codd_bootstrap`.
    - If bootstrap fails, the wrapper writes a fallback coherence audit. Do not install global packages or touch host credentials.
@@ -159,7 +159,7 @@ result:
 - 足軽・家老・軍師が明確に役割境界を破り、継続すると被害が拡大する
 - 将軍または家老から `emergency_stop_requested` が届いた
 
-実行時は `bash scripts/gunkan_emergency_stop.sh <agent_id> "<reason>"` を使い、
+実行時は `bash shogunate_mod/gunkan/emergency_stop.sh <agent_id> "<reason>"` を使い、
 `queue/runtime/gunkan_emergency_stop.yaml` と `queue/reports/gunkan_report.yaml` に根拠を残す。
 
 ## Language & Tone

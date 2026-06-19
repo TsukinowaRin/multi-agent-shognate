@@ -1,7 +1,7 @@
 # Local API Tools & Notes
 
 ## CLI Command
-- Default launch: `python3 scripts/localapi_repl.py`
+- Default launch: `python3 shogunate_mod/localapi/repl.py`
 - This wrapper sends prompts to an OpenAI-compatible local endpoint.
 
 ## Required environment variables

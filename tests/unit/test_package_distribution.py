@@ -3966,7 +3966,7 @@ class PackageDistributionContractTests(unittest.TestCase):
                 self.assertNotIn("bash scripts/inbox_write.sh karo", text)
                 self.assertNotIn("bash scripts/inbox_write.sh ashigaru3", text)
 
-    def test_instruction_mailbox_protocols_do_not_point_to_root_inbox_wrapper(self):
+    def test_instruction_runtime_commands_do_not_point_to_root_wrappers(self):
         instruction_surfaces = [
             ROOT / "shogunate_mod" / "instructions" / "autoload" / "CLAUDE.md",
             ROOT / "CLAUDE.md",
@@ -3981,10 +3981,31 @@ class PackageDistributionContractTests(unittest.TestCase):
         ]:
             instruction_surfaces.extend(path for path in base.rglob("*.md") if path.is_file())
 
+        forbidden_root_wrappers = [
+            "scripts/inbox_write.sh",
+            "scripts/ntfy.sh",
+            "scripts/karo_done_to_shogun_bridge_daemon.sh",
+            "scripts/gunkan_codd_audit.py",
+            "scripts/gunkan_emergency_stop.sh",
+            "scripts/localapi_repl.py",
+        ]
+        required_mod_commands = [
+            "shogunate_mod/inbox/write.sh",
+            "shogunate_mod/notify/ntfy.sh",
+            "shogunate_mod/runtime/karo_done_to_shogun_bridge_daemon.sh",
+            "shogunate_mod/gunkan/codd_audit.py",
+            "shogunate_mod/gunkan/emergency_stop.sh",
+            "shogunate_mod/localapi/repl.py",
+        ]
+        combined = ""
         for path in sorted(set(instruction_surfaces)):
             with self.subTest(path=str(path.relative_to(ROOT))):
                 text = path.read_text(encoding="utf-8")
-                self.assertNotIn("bash scripts/inbox_write.sh", text)
+                combined += text
+                for forbidden in forbidden_root_wrappers:
+                    self.assertNotIn(forbidden, text)
+        for required in required_mod_commands:
+            self.assertIn(required, combined)
 
     def test_claude_settings_have_mod_canonical_copy(self):
         root_settings = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))

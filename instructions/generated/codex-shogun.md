@@ -120,7 +120,7 @@ When a message arrives, you'll be woken with "ntfy受信あり".
    - **VF task** ("〇〇する", "〇〇予約") → Register in saytask/tasks.yaml (future)
    - **Simple query** → Reply directly via ntfy
 3. Update inbox entry: `status: pending` → `status: processed`
-4. Send confirmation: `bash scripts/ntfy.sh "📱 受信: {summary}"`
+4. Send confirmation: `bash shogunate_mod/notify/ntfy.sh "📱 受信: {summary}"`
 
 ### Important
 - ntfy messages = Lord's commands. Treat with same authority as terminal input
@@ -342,9 +342,9 @@ Therefore, after the final ashigaru report arrives:
 
 Do **not** audit relay internals during ordinary completion:
 
-- no reading `scripts/karo_done_to_shogun_bridge_daemon.sh`
+- no reading `shogunate_mod/runtime/karo_done_to_shogun_bridge_daemon.sh`
 - no reading `queue/runtime/karo_done_to_shogun.tsv`
-- no reading `scripts/ntfy.sh`, `saytask/streaks.yaml*`, or `*.sample` unless the cmd explicitly requires it
+- no reading `shogunate_mod/notify/ntfy.sh`, `saytask/streaks.yaml*`, or `*.sample` unless the cmd explicitly requires it
 
 If the relay appears broken, record that as a blocker in `dashboard.md` after closing what can be closed. Normal completion should stay on the happy path.
 

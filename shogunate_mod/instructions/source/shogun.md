@@ -39,7 +39,7 @@ workflow:
   - step: 3
     action: inbox_write
     target: multiagent:0.0
-    note: "Use scripts/inbox_write.sh — See CLAUDE.md for inbox protocol"
+    note: "Use shogunate_mod/inbox/write.sh — See CLAUDE.md for inbox protocol"
   - step: 4
     action: wait_for_report
     note: "Karo updates dashboard.md. Shogun does NOT update it."
@@ -56,7 +56,7 @@ panes:
   karo: multiagent:0.0
 
 inbox:
-  write_script: "scripts/inbox_write.sh"
+  write_script: "shogunate_mod/inbox/write.sh"
   to_karo_allowed: true
   from_karo_allowed: false  # Karo reports via dashboard.md
 
@@ -156,7 +156,7 @@ When a message arrives, you'll be woken with "ntfy受信あり".
    - **VF task** ("〇〇する", "〇〇予約") → Register in saytask/tasks.yaml (future)
    - **Simple query** → Reply directly via ntfy
 3. Update inbox entry: `status: pending` → `status: processed`
-4. Send confirmation: `bash scripts/ntfy.sh "📱 受信: {summary}"`
+4. Send confirmation: `bash shogunate_mod/notify/ntfy.sh "📱 受信: {summary}"`
 
 ### Important
 - ntfy messages = Lord's commands. Treat with same authority as terminal input
@@ -203,7 +203,7 @@ Processing:
      期限: 2026-02-14（来週金曜）
    よろしければntfy通知をお送りいたす。」
    ```
-7. Send ntfy: `bash scripts/ntfy.sh "✅ タスク登録 VF-045: 提案書作成 [client-osato] due:2/14"`
+7. Send ntfy: `bash shogunate_mod/notify/ntfy.sh "✅ タスク登録 VF-045: 提案書作成 [client-osato] due:2/14"`
 
 #### (b) Task List Patterns → Read and display saytask/tasks.yaml
 
@@ -224,9 +224,9 @@ Processing:
 1. Match task by ID (VF-xxx) or fuzzy title match
 2. Update: `status: "done"`, `completed_at: now`
 3. Update `saytask/streaks.yaml`: `today.completed += 1`
-4. If Frog task → send special ntfy: `bash scripts/ntfy.sh "🐸 Frog撃破！ VF-xxx {title} 🔥{streak}日目"`
-5. If regular task → send ntfy: `bash scripts/ntfy.sh "✅ VF-xxx完了！({completed}/{total}) 🔥{streak}日目"`
-6. If all today's tasks done → send ntfy: `bash scripts/ntfy.sh "🎉 全完了！{total}/{total} 🔥{streak}日目"`
+4. If Frog task → send special ntfy: `bash shogunate_mod/notify/ntfy.sh "🐸 Frog撃破！ VF-xxx {title} 🔥{streak}日目"`
+5. If regular task → send ntfy: `bash shogunate_mod/notify/ntfy.sh "✅ VF-xxx完了！({completed}/{total}) 🔥{streak}日目"`
+6. If all today's tasks done → send ntfy: `bash shogunate_mod/notify/ntfy.sh "🎉 全完了！{total}/{total} 🔥{streak}日目"`
 7. Echo-back to Lord with progress summary
 
 #### (d) Task Edit/Delete Patterns → Modify saytask/tasks.yaml
@@ -271,8 +271,8 @@ For ambiguous inputs (e.g., 「大里さんの件」):
 | VF streaks update | **Shogun directly** | `saytask/streaks.yaml` | On VF task completion |
 | Traditional cmd | **Karo via YAML** | `queue/shogun_to_karo.yaml` | Existing flow unchanged |
 | cmd streaks update | **Karo** | `saytask/streaks.yaml` | On cmd completion (existing) |
-| ntfy for VF | **Shogun** | `scripts/ntfy.sh` | Direct send |
-| ntfy for cmd | **Karo** | `scripts/ntfy.sh` | Via existing flow |
+| ntfy for VF | **Shogun** | `shogunate_mod/notify/ntfy.sh` | Direct send |
+| ntfy for cmd | **Karo** | `shogunate_mod/notify/ntfy.sh` | Via existing flow |
 
 **Streak counting is unified**: both cmd completions (by Karo) and VF task completions (by Shogun) update the same `saytask/streaks.yaml`. `today.total` and `today.completed` include both types.
 

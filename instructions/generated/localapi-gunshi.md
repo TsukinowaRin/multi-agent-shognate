@@ -397,9 +397,9 @@ Therefore, after the final ashigaru report arrives:
 
 Do **not** audit relay internals during ordinary completion:
 
-- no reading `scripts/karo_done_to_shogun_bridge_daemon.sh`
+- no reading `shogunate_mod/runtime/karo_done_to_shogun_bridge_daemon.sh`
 - no reading `queue/runtime/karo_done_to_shogun.tsv`
-- no reading `scripts/ntfy.sh`, `saytask/streaks.yaml*`, or `*.sample` unless the cmd explicitly requires it
+- no reading `shogunate_mod/notify/ntfy.sh`, `saytask/streaks.yaml*`, or `*.sample` unless the cmd explicitly requires it
 
 If the relay appears broken, record that as a blocker in `dashboard.md` after closing what can be closed. Normal completion should stay on the happy path.
 
@@ -613,7 +613,7 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 # Local API Tools & Notes
 
 ## CLI Command
-- Default launch: `python3 scripts/localapi_repl.py`
+- Default launch: `python3 shogunate_mod/localapi/repl.py`
 - This wrapper sends prompts to an OpenAI-compatible local endpoint.
 
 ## Required environment variables

@@ -107,6 +107,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] role/common/CLI instruction source を `shogunate_mod/instructions/source/` へ MOD 正本として追加し、builder / freshness guard は MOD source を優先、root `instructions/` 非生成 source は互換コピーとして同期テストで固定した。
 - [x] Claude auto-load source を `shogunate_mod/instructions/autoload/CLAUDE.md` へ MOD 正本として追加し、builder / freshness guard は MOD autoload source を優先、root `CLAUDE.md` は Claude Code 用互換コピーとして同期テストで固定した。
 - [x] agent-facing instruction の mailbox protocol から root `scripts/inbox_write.sh` 案内を外し、autoload / MOD source / root compatibility source / generated instructions / OpenCode agent definitions すべてで MOD 正本 `shogunate_mod/inbox/write.sh` を案内するようにした。旧 `scripts/inbox_write.sh` は互換 wrapper として残す。
+- [x] agent-facing instruction に残る Shogunate-only runtime command 案内をさらに MOD 正本へ寄せた。`ntfy`, `karo_done_to_shogun_bridge_daemon`, Gunkan CoDD audit / emergency stop, LocalAPI REPL の案内は `shogunate_mod/notify/`, `shogunate_mod/runtime/`, `shogunate_mod/gunkan/`, `shogunate_mod/localapi/` を指す。旧 `scripts/*` は互換 wrapper として残す。
 - [x] GitHub Actions workflow source を `shogunate_mod/package/workflows/` へ MOD 正本として追加し、root `.github/workflows/` は GitHub Actions 用互換配置として同期テストで固定した。
 - [x] Android app source を `shogunate_mod/mobile/android/` へ MOD 正本として追加し、root `android/` は Android Studio / Gradle 用互換 working tree として同期テストで固定した。Android build/cache/local APK artifacts は runtime package から除外する方針を維持した。
 - [x] npm package metadata を `shogunate_mod/package/package.json` / `package-lock.json` へ MOD 正本として追加し、root `package*.json` は npm-required 互換コピーとして同期テストで固定した。
@@ -1743,6 +1744,12 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bats tests/unit/test_build_system.bats --timing` ran 61 build-system tests after regenerating all instruction outputs.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 149 package distribution contract tests after updating the agent-facing mailbox protocol. A previous parallel run failed with npm `EOF` because `test_build_system.bats` was rewriting generated files while `npm pack` read them; the sequential rerun passed.
 - PASS: `git diff --check` and `rg -n "bash scripts/inbox_write\.sh" shogunate_mod/instructions/autoload shogunate_mod/instructions/source instructions AGENTS.md CLAUDE.md .github/copilot-instructions.md agents/default/system.md .opencode/agents -g '*.md' || true` after the mailbox protocol change; the search returned no matches.
+- Agent-facing instruction に残っていた root `scripts/ntfy.sh`, `scripts/karo_done_to_shogun_bridge_daemon.sh`, `scripts/gunkan_codd_audit.py`, `scripts/gunkan_emergency_stop.sh`, `scripts/localapi_repl.py` の案内を MOD 正本 path へ変更した。autoload / source / generated / OpenCode agent definitions に旧 path が戻らない contract も追加した。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_autoload_mailbox_protocol_uses_mod_canonical_writer tests.unit.test_package_distribution.PackageDistributionContractTests.test_instruction_runtime_commands_do_not_point_to_root_wrappers` after broadening the instruction command contract to forbid the root wrapper paths and require their MOD canonical paths.
+- PASS: `rg -n 'scripts/(inbox_write|ntfy|karo_done_to_shogun_bridge_daemon|gunkan_codd_audit|gunkan_emergency_stop|localapi_repl)\.(sh|py)' shogunate_mod/instructions/autoload shogunate_mod/instructions/source instructions AGENTS.md CLAUDE.md .github/copilot-instructions.md agents/default/system.md .opencode/agents -g '*.md' || true` returned no matches after the instruction runtime command path change.
+- PASS: `bash shogunate_mod/instructions/ensure_generated.sh` reported generated instruction files are up to date after regeneration.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 149 package distribution contract tests after the broader instruction command path change.
+- PASS: `bats tests/unit/test_build_system.bats --timing` ran 61 build-system / idempotency tests after regenerating instruction outputs.
 
 ## 復旧
 

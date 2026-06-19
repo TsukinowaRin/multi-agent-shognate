@@ -780,8 +780,12 @@ class PackageDistributionContractTests(unittest.TestCase):
             text,
         )
         self.assertIn("--strip-components=1", text)
-        self.assertIn("first_setup.sh", text)
+        self.assertIn("--no-setup       Extract package but do not run shogunate_mod/package/first_setup.sh.", text)
         self.assertIn("shogunate_mod/package/first_setup.sh", text)
+        self.assertIn('log "run shogunate_mod/package/first_setup.sh"', text)
+        self.assertIn('log "run legacy first_setup.sh"', text)
+        self.assertIn('log "shogunate_mod/package/first_setup.sh not found; skipped"', text)
+        self.assertNotIn("--no-setup       Extract package but do not run first_setup.sh.", text)
         self.assertIn("install.bat", text)
         self.assertIn("Shogunate-Uninstaller.bat", text)
         self.assertIn("shogunate pair", text)
@@ -794,7 +798,7 @@ class PackageDistributionContractTests(unittest.TestCase):
     def test_curl_bootstrap_installs_command_before_first_setup(self):
         text = BOOTSTRAP.read_text(encoding="utf-8")
         command_index = text.index('cat > "$BIN_DIR/shogunate"')
-        setup_index = text.index('log "run first_setup.sh"')
+        setup_index = text.index('log "run shogunate_mod/package/first_setup.sh"')
         self.assertLess(command_index, setup_index)
         self.assertIn("pair)\n        shift || true", text)
         self.assertIn("exec bash shogunate_mod/runtime/runtime_launcher.sh", text)

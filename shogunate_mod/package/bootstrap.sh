@@ -18,7 +18,7 @@ Options:
   --version TAG    GitHub Release tag to install. Defaults to latest.
   --prefix DIR     Install/update directory. Defaults to $SHOGUNATE_HOME or ~/.shogunate/shogunate.
   --bin-dir DIR    Install the shogunate command here. Defaults to ~/.local/bin.
-  --no-setup       Extract package but do not run first_setup.sh.
+  --no-setup       Extract package but do not run shogunate_mod/package/first_setup.sh.
   -h, --help       Show this help.
 
 Environment:
@@ -374,10 +374,10 @@ if [ "$RUN_SETUP" = "1" ]; then
         log "run shogunate_mod/package/first_setup.sh"
         (cd "$PREFIX" && bash shogunate_mod/package/first_setup.sh)
     elif [ -f "$PREFIX/first_setup.sh" ]; then
-        log "run first_setup.sh"
+        log "run legacy first_setup.sh"
         (cd "$PREFIX" && bash first_setup.sh)
     else
-        log "first_setup.sh not found; skipped"
+        log "shogunate_mod/package/first_setup.sh not found; skipped"
     fi
 fi
 

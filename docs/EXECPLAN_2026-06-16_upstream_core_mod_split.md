@@ -1768,6 +1768,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - GitHub workflow 正本 (`shogunate_mod/package/workflows/`) と root `.github/workflows/` 同期コピーの内部コマンドも root wrapper から MOD 正本へ寄せた。test workflow は `shogunate_mod/instructions/build.sh` を存在確認・実行・案内し、release workflow は `shogunate_mod/package/prepublish_check.sh` を実行する。release note の public cURL は互換入口 `scripts/shogunate_package_bootstrap.sh` として維持した。
 - PASS: workflow root/MOD sync checks and `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_workflow_builds_packages_not_installers_or_apks tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_workflow_has_mod_canonical_copy` after moving workflow-internal commands to MOD canonical paths.
 - Workflow の step 名も `Run build_instructions.sh` から `Run MOD instruction build` へ変更し、workflow UI 上でも MOD 正本の instruction build であることが分かるようにした。targeted `test_test_workflow_has_mod_canonical_copy` で旧 step 名が戻らないことを固定した。
+- Public README / README_ja の troubleshooting command も root `scripts/ensure_antigravity_keyring.sh` / `scripts/ensure_generated_instructions.sh` 互換入口から、MOD 正本 `shogunate_mod/cli/antigravity_keyring.sh` / `shogunate_mod/instructions/ensure_generated.sh` へ寄せた。release cURL URL は互換入口として維持し、導入後にユーザーが手動実行する保守コマンドだけを MOD 正本へ揃えた。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_readmes_have_mod_canonical_copy` after requiring public README copies to contain the MOD troubleshooting commands and forbid the old root `scripts/ensure_*` command guidance.
+- PASS: `bash -n shogunate_mod/cli/antigravity_keyring.sh shogunate_mod/instructions/ensure_generated.sh` after updating the README troubleshooting guidance.
+- PASS: `rg -n "scripts/ensure_antigravity_keyring\\.sh|scripts/ensure_generated_instructions\\.sh" README.md README_ja.md shogunate_mod/docs/README.md shogunate_mod/docs/README_ja.md tests/unit/test_package_distribution.py` showed the old paths only in package distribution contract assertions, not in public README text.
 
 ## 復旧
 

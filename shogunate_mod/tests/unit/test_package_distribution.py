@@ -3420,6 +3420,11 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("curl -fsSL", mod_readme_ja)
         self.assertIn("shogunate pair", mod_readme_ja)
         self.assertIn("cd /path/to/your-project", mod_readme_ja)
+        for path, text in readmes.items():
+            self.assertIn("shogunate_mod/cli/antigravity_keyring.sh", text, path)
+            self.assertIn("shogunate_mod/instructions/ensure_generated.sh", text, path)
+            self.assertNotIn("scripts/ensure_antigravity_keyring.sh", text, path)
+            self.assertNotIn("scripts/ensure_generated_instructions.sh", text, path)
         pinned_tags = set()
         for path, text in readmes.items():
             self.assertIn(latest_curl, text, path)

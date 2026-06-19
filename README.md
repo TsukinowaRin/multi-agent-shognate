@@ -308,13 +308,13 @@ If `tput colors` is less than `256`, use a 256-color terminal or tmux profile.
 Antigravity (`agy`) asks for login repeatedly:
 
 ```bash
-bash ~/.shogunate/shogunate/scripts/ensure_antigravity_keyring.sh
+bash ~/.shogunate/shogunate/shogunate_mod/cli/antigravity_keyring.sh
 ```
 
 Generated instruction warning after package install:
 
 ```bash
-bash ~/.shogunate/shogunate/scripts/ensure_generated_instructions.sh
+bash ~/.shogunate/shogunate/shogunate_mod/instructions/ensure_generated.sh
 ```
 
 ## Release Versioning

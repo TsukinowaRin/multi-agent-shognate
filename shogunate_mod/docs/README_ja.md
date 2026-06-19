@@ -308,13 +308,13 @@ printf '\033[31mRED\033[0m \033[32mGREEN\033[0m \033[34mBLUE\033[0m\n'
 Antigravity (`agy`) が毎回 login を求める場合:
 
 ```bash
-bash ~/.shogunate/shogunate/scripts/ensure_antigravity_keyring.sh
+bash ~/.shogunate/shogunate/shogunate_mod/cli/antigravity_keyring.sh
 ```
 
 package install 後に generated instruction の警告が出る場合:
 
 ```bash
-bash ~/.shogunate/shogunate/scripts/ensure_generated_instructions.sh
+bash ~/.shogunate/shogunate/shogunate_mod/instructions/ensure_generated.sh
 ```
 
 ## release versioning

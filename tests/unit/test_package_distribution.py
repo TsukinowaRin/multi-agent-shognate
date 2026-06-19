@@ -977,6 +977,7 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "shogunate_mod/view/goza_no_ma.sh",
             ],
             "shogunate_mod/view/focus_agent_pane.sh": [
+                "shogunate_mod/runtime/entrypoint.sh",
                 "shogunate_mod/view/focus_agent_pane.sh",
             ],
             "shogunate_mod/runtime/mcp_health_check.sh": [
@@ -1019,6 +1020,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             'bash "$ROOT_DIR/shutsujin_departure.sh"',
             'bash shutsujin_departure.sh -c',
             'bash shutsujin_departure.sh -s',
+            'bash shutsujin_departure.sh を実行',
             './shutsujin_departure.sh [オプション]',
             './shutsujin_departure.sh              #',
             '<shutsujin_departure.sh options>',

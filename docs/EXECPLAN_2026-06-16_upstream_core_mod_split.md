@@ -1810,6 +1810,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `node bin/shogunate.js --help`, `node shogunate_mod/package/npm_cli.js --help`, targeted package distribution contracts for npm CLI MOD bootstrap / run / pair dispatch, root/MOD package distribution test sync, and `git diff --check` after moving npm install bootstrap guidance to the MOD package bootstrap.
 - npm CLI の `install` dispatch をネットワークなしで検証できるよう `SHOGUNATE_NPM_BOOTSTRAP_URL` override を追加した。通常値は remote `shogunate_mod/package/bootstrap.sh` のまま、テストや mirror 環境では fake/local bootstrap を `curl | bash` に渡せる。
 - PASS: `node --check shogunate_mod/package/npm_cli.js`, `node --check bin/shogunate.js`, `node bin/shogunate.js --help`, targeted package distribution contract with a fake `file://` bootstrap proving `node bin/shogunate.js install -- --version v-test --no-setup` forwards args through `bash -s --`, root/MOD package distribution test sync, and `git diff --check`.
+- MOD view focus helper の missing-session error guidance も root `bash shutsujin_departure.sh` 案内から `bash shogunate_mod/runtime/entrypoint.sh` 案内へ寄せた。root `shutsujin_departure.sh` は互換入口として残すが、MOD helper 自身が提示する起動正本は MOD runtime entrypoint にする。
+- PASS: `bash -n shogunate_mod/view/focus_agent_pane.sh scripts/focus_agent_pane.sh`, targeted package distribution contract, root/MOD package distribution test sync, `git diff --check`, and `bats tests/unit/test_mux_parity.bats --timing` after changing focus helper guidance.
 
 ## 復旧
 

@@ -27,7 +27,7 @@ if ! tmux has-session -t "$GOZA_SESSION" 2>/dev/null; then
 fi
 
 if ! tmux has-session -t "$GOZA_SESSION" 2>/dev/null; then
-  echo "[ERROR] ${GOZA_SESSION} session が存在しません。先に bash shutsujin_departure.sh を実行してください。" >&2
+  echo "[ERROR] ${GOZA_SESSION} session が存在しません。先に bash shogunate_mod/runtime/entrypoint.sh を実行してください。" >&2
   exit 1
 fi
 

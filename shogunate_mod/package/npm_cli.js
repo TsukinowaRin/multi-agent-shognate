@@ -16,7 +16,7 @@ function usage() {
 
 Commands:
   install   Run the cURL-based package bootstrap.
-  run       Run Shogunate-Runtime.sh for the current project directory.
+  run       Run the Shogunate MOD runtime launcher for the current project directory.
   pair      Pair Android app over USB auto + Tailscale/LAN for the current project.
 
 The npm package is a thin wrapper. The canonical install path is:
@@ -57,12 +57,12 @@ function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   }
 
   if (command === "run") {
-    run("bash", [path.join(root, "Shogunate-Runtime.sh"), "--project", cwd, ...args]);
+    run("bash", [path.join(root, "shogunate_mod/runtime/runtime_launcher.sh"), "--project", cwd, ...args]);
   }
 
   if (command === "pair") {
     run("python3", [
-      path.join(root, "scripts/shogunate_pair_server.py"),
+      path.join(root, "shogunate_mod/pair/server.py"),
       "--project-root",
       root,
       "--target-project",

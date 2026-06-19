@@ -2421,11 +2421,39 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("shogunate_mod/**/__pycache__/", gitignore)
         self.assertIn("shogunate_mod/package/npm_cli.js", wrapper)
         self.assertIn("shogunate_package_bootstrap.sh", npm_cli)
-        self.assertIn("shogunate_pair_server.py", npm_cli)
+        self.assertIn("shogunate_mod/runtime/runtime_launcher.sh", npm_cli)
+        self.assertIn("shogunate_mod/pair/server.py", npm_cli)
+        self.assertNotIn('path.join(root, "Shogunate-Runtime.sh")', npm_cli)
+        self.assertNotIn('path.join(root, "scripts/shogunate_pair_server.py")', npm_cli)
         self.assertIn("SHOGUNATE_PAIR_PASSWORD", npm_cli)
         self.assertIn("curl -fsSL", npm_cli)
         self.assertIn("--target-project", npm_cli)
         self.assertIn("process.cwd()", npm_cli)
+
+    def test_npm_cli_run_and_pair_dispatch_to_mod_sources(self):
+        cases = [
+            (
+                ["node", "bin/shogunate.js", "run", "--help"],
+                "Usage: ./Shogunate-Runtime.sh",
+            ),
+            (
+                ["node", "bin/shogunate.js", "pair", "--help"],
+                "Run the Shogunate Android pairing server.",
+            ),
+        ]
+
+        for command, expected in cases:
+            with self.subTest(command=command):
+                result = subprocess.run(
+                    command,
+                    cwd=ROOT,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                output = result.stdout + result.stderr
+                self.assertEqual(0, result.returncode, output)
+                self.assertIn(expected, output)
 
     def test_package_json_has_mod_canonical_copy(self):
         root_package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))

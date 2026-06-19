@@ -1712,7 +1712,7 @@ send_wakeup() {
 
     # 優先度3: tmux send-keys（テキストとEnterを分離 — Codex TUI対策）
     echo "[$(date)] [SEND-KEYS] Sending nudge to $PANE_TARGET for $AGENT_ID" >&2
-    if send_text_and_enter "$nudge" "send-keys"; then
+    if send_text_and_enter "$nudge" "send-keys" "1"; then
         echo "[$(date)] Wake-up sent to $AGENT_ID (${unread_count} unread)" >&2
         return 0
     fi

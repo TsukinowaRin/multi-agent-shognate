@@ -292,6 +292,12 @@ while IFS= read -r input || true; do
             process_inbox
             show_prompt "$MOCK_CLI_TYPE"
             ;;
+        *"queue/inbox/"*|*"task_assigned"*|*"report_received"*|*"cmd_done"*|*"runtime_blocked"*)
+            # Structured natural-language nudges sent by the production watcher.
+            echo "[mock] Received structured nudge: ${input:0:80}..."
+            process_inbox
+            show_prompt "$MOCK_CLI_TYPE"
+            ;;
         cmd_new*)
             # Karo-specific: decompose cmd
             if [ "$MOCK_AGENT_ID" = "karo" ]; then

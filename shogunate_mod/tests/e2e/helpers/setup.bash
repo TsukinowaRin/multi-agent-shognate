@@ -87,6 +87,7 @@ setup_e2e_session() {
     for ((i = 0; i < num_panes && i < ${#DEFAULT_AGENTS[@]}; i++)); do
         tmux set-option -p -t "${E2E_SESSION}:agents.${i}" @agent_id "${DEFAULT_AGENTS[$i]}"
         tmux set-option -p -t "${E2E_SESSION}:agents.${i}" @agent_cli "claude"
+        tmux set-option -p -t "${E2E_SESSION}:agents.${i}" @agent_cli_running "1"
     done
 
     # Start mock CLIs in each pane
@@ -157,4 +158,14 @@ stop_inbox_watcher() {
     local pid="$1"
     kill "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
+}
+
+# ─── mark_mock_cli_running ───
+# Marks an E2E mock pane as an active CLI process. Real runtime launch scripts
+# set @agent_cli_running=1; mock CLIs are bash scripts, so tests must set the
+# same metadata after respawn-pane to avoid shell-return recovery false positives.
+mark_mock_cli_running() {
+    local pane="$1" cli_type="$2"
+    tmux set-option -p -t "$pane" @agent_cli "$cli_type"
+    tmux set-option -p -t "$pane" @agent_cli_running "1"
 }

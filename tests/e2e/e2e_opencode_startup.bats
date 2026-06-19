@@ -1,12 +1,12 @@
 #!/usr/bin/env bats
 # ═══════════════════════════════════════════════════════════════
-# E2E-009: OpenCode CLI task startup after /new
+# E2E-009: OpenCode CLI task startup via inbox nudge
 # ═══════════════════════════════════════════════════════════════
 # Validates that inbox_watcher correctly handles OpenCode CLI agents:
-#   1. Sends /new for context reset
+#   1. Does not restart an already-running OpenCode pane
 #   2. Does NOT send a startup prompt because OpenCode loads role via --agent
 #   3. Sends a normal inbox nudge so the agent processes the assigned task
-#   4. Watcher log shows the OpenCode-specific /new path
+#   4. Uses literal send-keys so natural-language nudges reach the TUI
 # ═══════════════════════════════════════════════════════════════
 
 # bats file_tags=e2e
@@ -47,10 +47,10 @@ dump_watcher_log() {
 }
 
 # ═══════════════════════════════════════════════════════════════
-# E2E-009-A: OpenCode agent resets with /new and processes the assigned task
+# E2E-009-A: OpenCode agent processes an assigned task via inbox_watcher
 # ═══════════════════════════════════════════════════════════════
 
-@test "E2E-009-A: OpenCode /new reset triggers task processing via inbox_watcher" {
+@test "E2E-009-A: OpenCode inbox nudge triggers task processing via inbox_watcher" {
     local ashigaru1_pane
     ashigaru1_pane=$(pane_target 1)
 
@@ -58,7 +58,7 @@ dump_watcher_log() {
     tmux respawn-pane -k -t "$ashigaru1_pane" \
         "MOCK_CLI_TYPE=opencode MOCK_AGENT_ID=ashigaru1 MOCK_PROCESSING_DELAY=1 MOCK_PROJECT_ROOT=$E2E_QUEUE bash $PROJECT_ROOT/tests/e2e/mock_cli.sh"
     sleep 2
-    tmux set-option -p -t "$ashigaru1_pane" @agent_cli "opencode"
+    mark_mock_cli_running "$ashigaru1_pane" "opencode"
 
     # 2. Place assigned task YAML
     cp "$PROJECT_ROOT/tests/e2e/fixtures/task_ashigaru1_basic.yaml" \
@@ -88,11 +88,15 @@ dump_watcher_log() {
     assert_yaml_field "$E2E_QUEUE/queue/reports/ashigaru1_report.yaml" "status" "done"
     assert_yaml_field "$E2E_QUEUE/queue/reports/ashigaru1_report.yaml" "task_id" "subtask_test_001a"
 
-    # 8. Verify OpenCode does NOT receive a startup prompt; --agent handles bootstrap
+    # 8. Verify OpenCode does NOT receive a startup prompt or context reset;
+    # --agent handles bootstrap, and normal task delivery is a nudge.
     run grep "Sending startup prompt" "$log_file"
     assert_failure
 
-    run grep "CONTEXT-RESET.*Sending /new" "$log_file"
+    run grep "OpenCode /clear→/new" "$log_file"
+    assert_failure
+
+    run grep "Wake-up sent to ashigaru1" "$log_file"
     assert_success
 
     # 9. Verify the OpenCode-style mock prompt appeared in the pane output

@@ -6,7 +6,7 @@
 # テスト構成:
 #   T-SW-001: send_wakeup — active self-watch → skip nudge
 #   T-SW-002: send_wakeup — no self-watch → tmux send-keys
-#   T-SW-003: send_wakeup — send-keys content is "inboxN" + Enter (separated)
+#   T-SW-003: send_wakeup — literal send-keys content is "inboxN" + Enter (separated)
 #   T-SW-004: send_wakeup — send-keys failure → return 1
 #   T-SW-005: send_wakeup — no paste-buffer or set-buffer used
 #   T-SW-006: agent_has_self_watch — detects inotifywait process
@@ -183,14 +183,14 @@ MOCK
     grep -q "send-keys.*Enter" "$MOCK_LOG"
 }
 
-# --- T-SW-003: send-keys content is "inboxN" + Enter (separated) ---
+# --- T-SW-003: literal send-keys content is "inboxN" + Enter (separated) ---
 
-@test "T-SW-003: send-keys sends inboxN and Enter as separate calls" {
+@test "T-SW-003: send-keys sends literal inboxN and Enter as separate calls" {
     run bash -c "source '$TEST_HARNESS' && send_wakeup 3"
     [ "$status" -eq 0 ]
 
     # Text and Enter are sent as separate send-keys calls (Codex TUI compatibility)
-    grep -q "send-keys -t test:0.0 inbox3" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox3" "$MOCK_LOG"
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
@@ -987,7 +987,7 @@ YAML
     [ "$status" -eq 0 ]
 
     grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
-    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox2" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010b1: send_wakeup は新しい Codex rate-limit prompt variant も dismiss してから nudge する" {
@@ -1000,7 +1000,7 @@ YAML
     [ "$status" -eq 0 ]
 
     grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
-    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox2" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010b1b: watcher は switch-only Codex confirm prompt を Enter で確定する" {
@@ -1088,7 +1088,7 @@ YAML
     [ "$status" -eq 0 ]
 
     ! grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
-    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox2" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010b2: send_wakeup は Codex rate-limit prompt dismiss 失敗時に abort する" {
@@ -1102,7 +1102,7 @@ YAML
     [ "$status" -eq 1 ]
 
     grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
-    ! grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+    ! grep -q "send-keys -l -t test:0.0 inbox2" "$MOCK_LOG"
     echo "$output" | grep -qi "prompt dismiss failed\|Enter failed"
 }
 
@@ -1116,7 +1116,7 @@ YAML
     [ "$status" -eq 0 ]
 
     grep -q "send-keys -t test:0.0 3" "$MOCK_LOG"
-    grep -q "send-keys -t test:0.0 inbox2" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox2" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010c: send_wakeup_with_escape も Codex rate-limit prompt を dismiss する" {
@@ -1187,7 +1187,7 @@ YAML
     [ "$status" -eq 0 ]
 
     grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
-    grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox1" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010d2: send_wakeup は hard usage-limit prompt では 1 を送らず nudge も抑止する" {
@@ -1200,7 +1200,7 @@ YAML
     [ "$status" -eq 0 ]
 
     ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
-    ! grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    ! grep -q "send-keys -l -t test:0.0 inbox1" "$MOCK_LOG"
     echo "$output" | grep -qi "Hard Codex usage-limit prompt"
 }
 
@@ -1214,7 +1214,7 @@ YAML
     [ "$status" -eq 0 ]
 
     ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
-    ! grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    ! grep -q "send-keys -l -t test:0.0 inbox1" "$MOCK_LOG"
     echo "$output" | grep -qi "Hard Codex usage-limit prompt"
 }
 
@@ -1352,7 +1352,7 @@ MOCK
     [ "$status" -eq 0 ]
 
     grep -q -- '--action clear --agent test_agent --issue codex-hard-usage-limit' "$NOTICE_LOG"
-    grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    grep -q "send-keys -l -t test:0.0 inbox1" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010d3: send_wakeup_with_escape は hard usage-limit prompt では Escape+nudge を抑止する" {
@@ -1366,7 +1366,7 @@ MOCK
 
     ! grep -q "send-keys -t test:0.0 1" "$MOCK_LOG"
     ! grep -q "send-keys.*Escape" "$MOCK_LOG"
-    ! grep -q "send-keys -t test:0.0 inbox1" "$MOCK_LOG"
+    ! grep -q "send-keys -l -t test:0.0 inbox1" "$MOCK_LOG"
     echo "$output" | grep -qi "Hard Codex usage-limit prompt"
 }
 

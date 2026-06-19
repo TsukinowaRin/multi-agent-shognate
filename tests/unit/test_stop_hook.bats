@@ -23,15 +23,15 @@ HOOK_SCRIPT="$SCRIPT_DIR/scripts/stop_hook_inbox.sh"
 
 setup() {
     TEST_TMP="$(mktemp -d)"
-    mkdir -p "$TEST_TMP/scripts"
+    mkdir -p "$TEST_TMP/scripts" "$TEST_TMP/shogunate_mod/inbox"
     mkdir -p "$TEST_TMP/queue/inbox"
 
-    # Mock inbox_write.sh — logs arguments to file
-    cat > "$TEST_TMP/scripts/inbox_write.sh" << 'MOCK'
+    # Mock MOD canonical inbox writer — logs arguments to file
+    cat > "$TEST_TMP/shogunate_mod/inbox/write.sh" << 'MOCK'
 #!/bin/bash
-echo "$@" >> "$(dirname "$0")/../inbox_write_calls.log"
+echo "$@" >> "$(dirname "$0")/../../inbox_write_calls.log"
 MOCK
-    chmod +x "$TEST_TMP/scripts/inbox_write.sh"
+    chmod +x "$TEST_TMP/shogunate_mod/inbox/write.sh"
 }
 
 teardown() {

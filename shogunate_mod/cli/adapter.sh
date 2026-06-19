@@ -613,7 +613,7 @@ _cli_adapter_with_cli_state() {
 
     cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
     if [[ "$cli_type" == "antigravity" ]]; then
-        keyring_cmd="bash $(_cli_adapter_shell_quote "${CLI_ADAPTER_PROJECT_ROOT}/scripts/ensure_antigravity_keyring.sh")"
+        keyring_cmd="bash $(_cli_adapter_shell_quote "${CLI_ADAPTER_PROJECT_ROOT}/shogunate_mod/cli/antigravity_keyring.sh")"
     fi
     prepare_cmd="$(_cli_adapter_prepare_cli_state_cmd "$cli_type" "$agent_id")"
     state_env="$(_cli_adapter_cli_state_env_prefix "$cli_type" "$agent_id")"
@@ -1009,7 +1009,7 @@ build_cli_command_with_type() {
             ;;
         localapi)
             local localapi_cmd
-            localapi_cmd=$(_cli_adapter_read_yaml "cli.commands.localapi" "python3 scripts/localapi_repl.py")
+            localapi_cmd=$(_cli_adapter_read_yaml "cli.commands.localapi" "python3 shogunate_mod/localapi/repl.py")
             local localapi_endpoint
             localapi_endpoint=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.endpoint" "")
             if [[ -z "$localapi_endpoint" ]]; then

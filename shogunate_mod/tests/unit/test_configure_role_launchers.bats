@@ -25,12 +25,15 @@ setup() {
 }
 
 @test "configure role launchers: Windows wrapper runs canonical script through Ubuntu WSL" {
-  run grep -F "wsl.exe -d Ubuntu" "$PROJECT_ROOT/Shogunate-Configure-Roles.bat"
+  run grep -F "shogunate_mod\\windows\\configure_roles.bat" "$PROJECT_ROOT/Shogunate-Configure-Roles.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "wslpath -a" "$PROJECT_ROOT/Shogunate-Configure-Roles.bat"
+  run grep -F "wsl.exe -d Ubuntu" "$PROJECT_ROOT/shogunate_mod/windows/configure_roles.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "bash shogunate_mod/configure/role_launcher.sh" "$PROJECT_ROOT/Shogunate-Configure-Roles.bat"
+  run grep -F "wslpath -a" "$PROJECT_ROOT/shogunate_mod/windows/configure_roles.bat"
+  [ "$status" -eq 0 ]
+
+  run grep -F "bash shogunate_mod/configure/role_launcher.sh" "$PROJECT_ROOT/shogunate_mod/windows/configure_roles.bat"
   [ "$status" -eq 0 ]
 }

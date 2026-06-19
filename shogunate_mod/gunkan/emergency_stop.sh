@@ -75,8 +75,8 @@ except Exception:
     raise
 PY
 
-if [ -f "$SCRIPT_DIR/scripts/inbox_write.sh" ]; then
-    bash "$SCRIPT_DIR/scripts/inbox_write.sh" shogun "軍監、${AGENT_ID} を緊急停止処理。status=${STATUS} reason=${REASON}" emergency_stop_report gunkan >/dev/null 2>&1 || true
+if [ -f "$SCRIPT_DIR/shogunate_mod/inbox/write.sh" ]; then
+    bash "$SCRIPT_DIR/shogunate_mod/inbox/write.sh" shogun "軍監、${AGENT_ID} を緊急停止処理。status=${STATUS} reason=${REASON}" emergency_stop_report gunkan >/dev/null 2>&1 || true
 fi
 
 echo "$STATUS"

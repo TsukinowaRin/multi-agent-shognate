@@ -16,9 +16,9 @@ OWNER_MAP_PATH="$ROOT_DIR/queue/runtime/ashigaru_owner.tsv"
 CONFIG_CAPTURE_DELIM=$'\x1f'
 
 TOPOLOGY_ADAPTER_LOADED=false
-if [[ -f "$ROOT_DIR/lib/topology_adapter.sh" ]]; then
+if [[ -f "$ROOT_DIR/shogunate_mod/topology/adapter.sh" ]]; then
   # shellcheck source=/dev/null
-  source "$ROOT_DIR/lib/topology_adapter.sh"
+  source "$ROOT_DIR/shogunate_mod/topology/adapter.sh"
   TOPOLOGY_ADAPTER_LOADED=true
 fi
 
@@ -460,7 +460,7 @@ fi
   done
   echo "  commands:"
   echo "    antigravity: \"agy --dangerously-skip-permissions\""
-  echo "    localapi: \"python3 scripts/localapi_repl.py\""
+  echo "    localapi: \"python3 shogunate_mod/localapi/repl.py\""
   echo "    opencode: \"opencode\""
   echo "    kilo: \"kilo\""
   emit_opencode_like_yaml "$OPENCODE_PROVIDER" "$OPENCODE_BASE_URL" "$OPENCODE_API_KEY_ENV" "$OPENCODE_INSTRUCTIONS"

@@ -843,15 +843,47 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/git/branch_policy.sh": [
                 "shogunate_mod/notify/send.sh",
             ],
+            "shogunate_mod/hooks/stop_hook_inbox.sh": [
+                "shogunate_mod/inbox/write.sh",
+            ],
+            "shogunate_mod/gunkan/emergency_stop.sh": [
+                "shogunate_mod/inbox/write.sh",
+            ],
+            "shogunate_mod/inbox/write.sh": [
+                "shogunate_mod/gunkan/event_log.py",
+            ],
+            "shogunate_mod/cli/adapter.sh": [
+                "shogunate_mod/cli/antigravity_keyring.sh",
+                "shogunate_mod/localapi/repl.py",
+            ],
+            "shogunate_mod/runtime/departure.sh": [
+                "shogunate_mod/cli/adapter.sh",
+            ],
+            "shogunate_mod/configure/agents.sh": [
+                "shogunate_mod/topology/adapter.sh",
+                "shogunate_mod/localapi/repl.py",
+            ],
+            "shogunate_mod/git/setup_cron.sh": [
+                "shogunate_mod/git/branch_drift_check.sh",
+                "shogunate_mod/git/auto_merge_short_lived.sh",
+            ],
+            "shogunate_mod/gunkan/light_watch.py": [
+                "shogunate_mod/gunkan/codd_audit.py",
+            ],
         }
 
         forbidden = [
             'SCRIPT_DIR}/lib/cli_adapter.sh',
             'PROJECT_ROOT}/lib/cli_adapter.sh',
+            'ROOT_DIR}/lib/topology_adapter.sh',
             'SCRIPT_DIR}/scripts/inbox_write.sh',
             'project_root}/scripts/inbox_write.sh',
+            'SCRIPT_DIR}/scripts/gunkan_event_log.py',
+            'scripts/ensure_antigravity_keyring.sh',
             'scripts/localapi_repl.py',
             'scripts/gunkan_codd_audit.py',
+            'scripts/branch_drift_check.sh',
+            'scripts/auto_merge_short_lived.sh',
             'scripts/ntfy_send.sh',
         ]
 

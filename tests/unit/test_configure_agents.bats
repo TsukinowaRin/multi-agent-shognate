@@ -33,7 +33,7 @@ cli:
       type: antigravity
   commands:
     antigravity: "agy --dangerously-skip-permissions"
-    localapi: "python3 scripts/localapi_repl.py"
+    localapi: "python3 shogunate_mod/localapi/repl.py"
     opencode: "opencode"
     kilo: "kilo"
 YAML

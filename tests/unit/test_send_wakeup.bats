@@ -380,7 +380,7 @@ YAML
     [ "$status" -eq 0 ]
 
     grep -q "queue/inbox/gunkan.yaml に未読の監査イベントがある。" "$MOCK_LOG"
-    grep -q "scripts/gunkan_codd_audit.py" "$MOCK_LOG"
+    grep -q "shogunate_mod/gunkan/codd_audit.py" "$MOCK_LOG"
     grep -q "read:true" "$MOCK_LOG"
     ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
@@ -1263,12 +1263,12 @@ MOCK
     export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_relay.log"
 
     run bash -c '
-        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
-        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+        mkdir -p "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox"
+        cat > "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox/write.sh" <<'"'"'MOCK'"'"'
 #!/bin/bash
 printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
 MOCK
-        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        chmod +x "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox/write.sh"
         export ASW_ENABLE_RUNTIME_BLOCKED_RELAY_TEST=1
         MOCK_PANE_CLI="codex"
         MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
@@ -1287,12 +1287,12 @@ MOCK
     export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_relay_guard.log"
 
     run bash -c '
-        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
-        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+        mkdir -p "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox"
+        cat > "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox/write.sh" <<'"'"'MOCK'"'"'
 #!/bin/bash
 printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
 MOCK
-        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        chmod +x "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox/write.sh"
         MOCK_PANE_CLI="codex"
         MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
         source "'"$TEST_HARNESS"'"
@@ -1308,12 +1308,12 @@ MOCK
     export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_human_relay.log"
 
     run bash -c '
-        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
-        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+        mkdir -p "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox"
+        cat > "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox/write.sh" <<'"'"'MOCK'"'"'
 #!/bin/bash
 printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
 MOCK
-        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        chmod +x "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox/write.sh"
         export ASW_ENABLE_RUNTIME_BLOCKED_HUMAN_RELAY_TEST=1
         MOCK_PANE_CLI="codex"
         MOCK_CAPTURE_PANE=$(printf "%s\n%s" "You'\''ve hit your usage limit" "try again at Apr 4th, 2026 12:47 AM.")
@@ -1479,12 +1479,12 @@ MOCK
     export RELAY_LOG="$TEST_TMPDIR/runtime_blocked_auth_relay.log"
 
     run bash -c '
-        mkdir -p "'"$TEST_TMPDIR"'/project/scripts"
-        cat > "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh" <<'"'"'MOCK'"'"'
+        mkdir -p "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox"
+        cat > "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox/write.sh" <<'"'"'MOCK'"'"'
 #!/bin/bash
 printf "%s\t%s\t%s\t%s\n" "$1" "$2" "$3" "$4" >> "$RELAY_LOG"
 MOCK
-        chmod +x "'"$TEST_TMPDIR"'/project/scripts/inbox_write.sh"
+        chmod +x "'"$TEST_TMPDIR"'/project/shogunate_mod/inbox/write.sh"
         export ASW_ENABLE_RUNTIME_BLOCKED_RELAY_TEST=1
         MOCK_PANE_CLI="codex"
         MOCK_CAPTURE_PANE=$'"'"'Welcome to Codex\n1. Sign in with ChatGPT\nPress Enter to continue'"'"'

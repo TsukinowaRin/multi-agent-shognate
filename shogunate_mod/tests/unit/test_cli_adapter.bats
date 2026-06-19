@@ -274,7 +274,7 @@ cli:
       type: localapi
       model: qwen2.5-coder
   commands:
-    localapi: "python3 scripts/localapi_repl.py"
+    localapi: "python3 shogunate_mod/localapi/repl.py"
 YAML
 
     # opencode settings
@@ -431,7 +431,7 @@ assert_antigravity_settings_seed() {
 assert_antigravity_auth_links() {
     local result="$1"
     local agent_id="$2"
-    [[ "$result" == *"${PROJECT_ROOT}/scripts/ensure_antigravity_keyring.sh && mkdir -p"* ]]
+    [[ "$result" == *"${PROJECT_ROOT}/shogunate_mod/cli/antigravity_keyring.sh && mkdir -p"* ]]
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/auth.json" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/antigravity-oauth-token" "antigravity" "$agent_id"
     assert_cli_host_auth_link "$result" ".gemini/antigravity-cli/oauth_creds.json" "antigravity" "$agent_id"
@@ -925,11 +925,11 @@ SH
     [[ "$result" == *"--add-dir ${PROJECT_ROOT}"* ]]
 }
 
-@test "build_cli_command: localapi → python3 scripts/localapi_repl.py" {
+@test "build_cli_command: localapi → python3 shogunate_mod/localapi/repl.py" {
     load_adapter_with "${TEST_TMP}/settings_localapi.yaml"
     result=$(build_cli_command "ashigaru6")
     # model が指定されている場合は LOCALAI_MODEL= が前置される
-    [[ "$result" == *"python3 scripts/localapi_repl.py"* ]]
+    [[ "$result" == *"python3 shogunate_mod/localapi/repl.py"* ]]
     [[ "$result" == *"LOCALAI_MODEL=qwen2.5-coder"* ]]
 }
 
@@ -1035,7 +1035,7 @@ PY
                     assert_cli_state_isolated "$result" "$cli" "$role"
                     ;;
                 localapi)
-                    [[ "$result" == *"python3 scripts/localapi_repl.py"* ]]
+                    [[ "$result" == *"python3 shogunate_mod/localapi/repl.py"* ]]
                     ;;
             esac
         done

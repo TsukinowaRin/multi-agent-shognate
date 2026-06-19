@@ -65,6 +65,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] watcher supervisor を `shogunate_mod/watcher/supervisor.sh` へ移動し、旧 `scripts/watcher_supervisor.sh` を薄い互換入口化。
 - [x] MOD watcher supervisor の CLI adapter source と inbox watcher 起動を root wrapper 経由から `shogunate_mod/cli/adapter.sh` / `shogunate_mod/watcher/inbox_watcher.sh` 直接参照へ寄せた。
 - [x] MOD runtime helper の残存 root wrapper 呼び出しをさらに削減し、inbox watcher / ntfy listener / runtime blocker / switch CLI / rate-limit status / branch policy の実行時呼び出しを MOD 正本へ寄せた。
+- [x] MOD hook / Gunkan / configure / cron helper の実行時呼び出しもさらに削減し、Stop hook relay / emergency stop relay / Gunkan event log / Antigravity keyring preflight / LocalAPI default command / runtime departure adapter load / agent configurator topology load / branch-policy cron / Gunkan audit prompt を MOD 正本へ寄せた。
 - [x] inbox watcher を `shogunate_mod/watcher/inbox_watcher.sh` へ移動し、旧 `scripts/inbox_watcher.sh` を source/exec 互換入口化。
 - [x] CLI adapter を `shogunate_mod/cli/adapter.sh` へ移動し、旧 `lib/cli_adapter.sh` を source 互換入口化。
 - [x] inbox path normalization を `shogunate_mod/inbox/path.sh` へ移動し、旧 `lib/inbox_path.sh` を source 互換入口化。
@@ -1629,6 +1630,13 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 package distribution contract tests after adding the MOD canonical helper-call contract.
 - EXPECTED FAIL: `make package-check` ran prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, and generated instruction freshness successfully, then stopped at the dirty worktree gate because the current MOD helper-call changes were intentionally uncommitted.
 - PASS: `make package-check` after committing the MOD canonical helper-call change; prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
+- PASS: `bash -n shogunate_mod/hooks/stop_hook_inbox.sh shogunate_mod/gunkan/emergency_stop.sh shogunate_mod/inbox/write.sh shogunate_mod/cli/adapter.sh shogunate_mod/runtime/departure.sh shogunate_mod/configure/agents.sh shogunate_mod/git/setup_cron.sh shogunate_mod/gunkan/codd_check.sh` after changing hook/Gunkan/configure/cron helpers to MOD canonical calls.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_runtime_helpers_call_mod_canonical_sources tests.unit.test_package_distribution.PackageDistributionContractTests.test_compatibility_wrappers_delegate_to_shogunate_mod` after expanding the MOD canonical helper-call contract.
+- PASS: `bats tests/unit/test_stop_hook.bats tests/unit/test_cli_adapter.bats tests/unit/test_configure_agents.bats tests/unit/test_gunkan_audit.bats tests/unit/test_send_wakeup.bats` ran 264 hook/CLI/config/Gunkan/wakeup tests after switching the helpers and test mocks to MOD canonical paths.
+- PASS: `bats tests/unit/test_branch_policy_scripts.bats tests/unit/test_configure_role_launchers.bats tests/unit/test_mux_parity.bats` ran 77 branch-policy/launcher/mux tests after updating cron and launcher wrapper expectations.
+- PASS: direct sync checks for root/MOD unit test copies and `git diff --check` after the hook/Gunkan/configure/cron helper changes.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 package distribution contract tests after the hook/Gunkan/configure/cron helper changes.
+- PASS: `make package-check` after committing the hook/Gunkan/configure/cron helper path changes; prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
 
 ## 復旧
 

@@ -184,8 +184,8 @@ while [ $attempt -lt $max_attempts ]; do
         if [ -x "$SCRIPT_DIR/shogunate_mod/queue/history_book.sh" ]; then
             bash "$SCRIPT_DIR/shogunate_mod/queue/history_book.sh" >/dev/null 2>&1 || true
         fi
-        if [ -f "$SCRIPT_DIR/scripts/gunkan_event_log.py" ] && command -v python3 >/dev/null 2>&1; then
-            python3 "$SCRIPT_DIR/scripts/gunkan_event_log.py" \
+        if [ -f "$SCRIPT_DIR/shogunate_mod/gunkan/event_log.py" ] && command -v python3 >/dev/null 2>&1; then
+            python3 "$SCRIPT_DIR/shogunate_mod/gunkan/event_log.py" \
                 --target "$TARGET" \
                 --from-agent "$FROM" \
                 --type "$TYPE" \

@@ -697,7 +697,7 @@ def write_gunkan_inbox(root: Path, findings: list[Finding]) -> str:
     severity = max_severity(findings)
     lines = [
         f"軽量軍監watcherが監査候補を検出。severity={severity}",
-        "queue/runtime/gunkan_watch.yaml を読み、必要なら python3 scripts/gunkan_codd_audit.py --scope watch を実行し、queue/reports/gunkan_report.yaml に監査結果を書け。",
+        "queue/runtime/gunkan_watch.yaml を読み、必要なら python3 shogunate_mod/gunkan/codd_audit.py --scope watch を実行し、queue/reports/gunkan_report.yaml に監査結果を書け。",
         "通常の中間報告取得や進行管理は行うな。",
         "findings:",
     ]

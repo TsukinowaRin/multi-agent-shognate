@@ -21,7 +21,7 @@ teardown() {
 }
 
 @test "gunkan_event_log: appends event and updates by-agent summary" {
-  run python3 "$PROJECT_ROOT/scripts/gunkan_event_log.py" \
+  run python3 "$PROJECT_ROOT/shogunate_mod/gunkan/event_log.py" \
     --project-root "$TEST_TMP" \
     --target karo \
     --from-agent ashigaru1 \
@@ -45,7 +45,7 @@ PY
   mkdir -p "$TEST_TMP/no-codd"
   export PATH="$TEST_TMP/no-codd:/usr/bin:/bin"
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_codd_audit.py" --project-root "$TEST_TMP" --scope runtime --parent-cmd cmd_1
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/codd_audit.py" --project-root "$TEST_TMP" --scope runtime --parent-cmd cmd_1
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/codd/gunkan_audit.yaml" <<'PY'
@@ -71,7 +71,7 @@ SH
   chmod +x "$TEST_TMP/.shogunate/codd-venv/bin/codd"
   export PATH="/usr/bin:/bin"
 
-  run "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_codd_audit.py" --project-root "$TEST_TMP" --scope runtime --parent-cmd cmd_2
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/codd_audit.py" --project-root "$TEST_TMP" --scope runtime --parent-cmd cmd_2
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/codd/gunkan_audit.yaml" <<'PY'
@@ -121,7 +121,7 @@ SH
   chmod +x "$TEST_TMP/fakebin/python3"
   export PATH="$TEST_TMP/fakebin:/usr/bin:/bin"
 
-  run env MAS_GUNKAN_CODD_AUTO_INSTALL=1 "$PYTHON_BIN" "$PROJECT_ROOT/scripts/gunkan_codd_audit.py" --project-root "$TEST_TMP" --scope runtime --parent-cmd cmd_boot
+  run env MAS_GUNKAN_CODD_AUTO_INSTALL=1 "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/codd_audit.py" --project-root "$TEST_TMP" --scope runtime --parent-cmd cmd_boot
   [ "$status" -eq 0 ]
 
   "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/codd/gunkan_audit.yaml" <<'PY'
@@ -394,7 +394,7 @@ PY
   [ "$status" -eq 0 ]
   [[ "$output" == *"install    Install/update codd-dev"* ]]
   [[ "$output" == *"scan       Run codd scan"* ]]
-  [[ "$output" == *"gunkan     Run scripts/gunkan_codd_audit.py"* ]]
+  [[ "$output" == *"gunkan     Run shogunate_mod/gunkan/codd_audit.py"* ]]
 
   grep -q '^codd:' "$PROJECT_ROOT/Makefile"
   grep -q '^codd-gunkan:' "$PROJECT_ROOT/Makefile"

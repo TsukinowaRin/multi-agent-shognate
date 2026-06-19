@@ -11,9 +11,9 @@ run_shutsujin_departure() {
     detect_early_help_request "$@"
     select_runtime_python_or_die
 
-    if [ -f "$SCRIPT_DIR/lib/cli_adapter.sh" ]; then
+    if [ -f "$SCRIPT_DIR/shogunate_mod/cli/adapter.sh" ]; then
         # shellcheck source=/dev/null
-        source "$SCRIPT_DIR/lib/cli_adapter.sh"
+        source "$SCRIPT_DIR/shogunate_mod/cli/adapter.sh"
         CLI_ADAPTER_LOADED=true
     else
         CLI_ADAPTER_LOADED=false

@@ -21,7 +21,7 @@ Commands:
   scan       Run codd scan --path .
   impact     Run codd impact
   validate   Run codd validate
-  gunkan     Run scripts/gunkan_codd_audit.py --scope manual
+  gunkan     Run shogunate_mod/gunkan/codd_audit.py --scope manual
   help       Show this help
 
 Environment:

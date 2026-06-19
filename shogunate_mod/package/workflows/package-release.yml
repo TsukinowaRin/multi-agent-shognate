@@ -54,7 +54,7 @@ jobs:
 
       - name: Run prepublish check
         run: |
-          bash scripts/prepublish_check.sh
+          bash shogunate_mod/package/prepublish_check.sh
 
       - name: Validate release tag format
         run: |

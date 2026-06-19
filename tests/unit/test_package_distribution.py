@@ -4153,8 +4153,10 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertLess(text.index("Prepare release packages"), text.index("Smoke cURL install package"))
         self.assertLess(text.index("Smoke cURL install package"), text.index("Upload workflow artifact"))
         self.assertLess(text.index("Smoke cURL install package"), text.index("Publish GitHub Release"))
-        self.assertLess(text.index("bash scripts/prepublish_check.sh"), text.index("git archive --worktree-attributes --format=tar.gz"))
-        self.assertLess(text.index("bash scripts/prepublish_check.sh"), text.index("git archive --worktree-attributes --format=zip"))
+        self.assertIn("bash shogunate_mod/package/prepublish_check.sh", text)
+        self.assertNotIn("bash scripts/prepublish_check.sh", text)
+        self.assertLess(text.index("bash shogunate_mod/package/prepublish_check.sh"), text.index("git archive --worktree-attributes --format=tar.gz"))
+        self.assertLess(text.index("bash shogunate_mod/package/prepublish_check.sh"), text.index("git archive --worktree-attributes --format=zip"))
         self.assertNotIn("multi-agent-shognate-installer-", text)
         self.assertNotIn("install.bat", text)
         self.assertNotIn("install.sh", text)
@@ -4185,6 +4187,9 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertLess(mod_workflow.index("Fetch upstream main"), mod_workflow.index("Run MOD verification"))
         self.assertIn("SHOGUNATE_SOURCE_SMOKE_RUN_ID: source-runtime-smoke-ci-", mod_workflow)
         self.assertIn("make mod-check", mod_workflow)
+        self.assertIn("shogunate_mod/instructions/build.sh", mod_workflow)
+        self.assertIn("bash shogunate_mod/instructions/build.sh", mod_workflow)
+        self.assertNotIn("bash scripts/build_instructions.sh", mod_workflow)
 
     def test_package_archive_excludes_android_app(self):
         attrs = (ROOT / ".gitattributes").read_text(encoding="utf-8")

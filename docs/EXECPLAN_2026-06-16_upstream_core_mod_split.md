@@ -1701,6 +1701,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bash shutsujin_departure.sh -h`, `bash setup.sh -h`, and `bash shogunate_mod/runtime/entrypoint.sh -h` all returned the runtime help through the new entrypoint path.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 tests after committing the MOD runtime entrypoint, proving the entrypoint and wrapper changes are present in `git archive HEAD` and npm/package surfaces.
 - PASS: source runtime smoke `SHOGUNATE_SOURCE_SMOKE_RUN_ID=entrypoint-smoke-20260619145722 bash shogunate_mod/runtime/source_smoke.sh` started a detached `HEAD fdf2356` worktree through root `shutsujin_departure.sh` -> `shogunate_mod/runtime/entrypoint.sh` -> MOD loader, created tmux session `shogunate-mod-entrypoint-smoke-20260619145722`, built generated instructions, created `shogun,gunkan,karo,gunshi,ashigaru1` panes, and completed setup-only runtime verification.
+- PASS: final `make package-check` on amended entrypoint commit `27147bc`; prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
+- PASS: final source runtime smoke `SHOGUNATE_SOURCE_SMOKE_RUN_ID=entrypoint-final-20260619150143 bash shogunate_mod/runtime/source_smoke.sh` ran against detached `HEAD 27147bc`, created tmux session `shogunate-mod-entrypoint-final-20260619150143`, built generated instructions, created `shogun,gunkan,karo,gunshi,ashigaru1` panes, and completed setup-only runtime verification through root wrapper -> MOD entrypoint -> MOD loader.
 
 ## 復旧
 

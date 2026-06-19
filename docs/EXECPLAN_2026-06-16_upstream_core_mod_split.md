@@ -1767,6 +1767,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bats tests/test_inbox_write.bats tests/unit/test_send_wakeup.bats tests/unit/test_gunkan_audit.bats tests/unit/test_mux_parity.bats tests/unit/test_mux_parity_smoke.bats tests/unit/test_ratelimit_check.bats tests/unit/test_watcher_supervisor.bats --timing` ran 228 inbox / watcher / Gunkan / mux / status tests after the MOD helper Usage cleanup.
 - GitHub workflow 正本 (`shogunate_mod/package/workflows/`) と root `.github/workflows/` 同期コピーの内部コマンドも root wrapper から MOD 正本へ寄せた。test workflow は `shogunate_mod/instructions/build.sh` を存在確認・実行・案内し、release workflow は `shogunate_mod/package/prepublish_check.sh` を実行する。release note の public cURL は互換入口 `scripts/shogunate_package_bootstrap.sh` として維持した。
 - PASS: workflow root/MOD sync checks and `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_workflow_builds_packages_not_installers_or_apks tests.unit.test_package_distribution.PackageDistributionContractTests.test_test_workflow_has_mod_canonical_copy` after moving workflow-internal commands to MOD canonical paths.
+- Workflow の step 名も `Run build_instructions.sh` から `Run MOD instruction build` へ変更し、workflow UI 上でも MOD 正本の instruction build であることが分かるようにした。targeted `test_test_workflow_has_mod_canonical_copy` で旧 step 名が戻らないことを固定した。
 
 ## 復旧
 

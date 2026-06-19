@@ -4189,6 +4189,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("make mod-check", mod_workflow)
         self.assertIn("shogunate_mod/instructions/build.sh", mod_workflow)
         self.assertIn("bash shogunate_mod/instructions/build.sh", mod_workflow)
+        self.assertIn("Run MOD instruction build", mod_workflow)
+        self.assertNotIn("Run build_instructions.sh", mod_workflow)
         self.assertNotIn("bash scripts/build_instructions.sh", mod_workflow)
 
     def test_package_archive_excludes_android_app(self):

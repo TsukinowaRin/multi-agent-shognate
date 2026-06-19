@@ -135,7 +135,7 @@ jobs:
           python3 -m venv .venv
           .venv/bin/pip install --quiet -r requirements.txt
 
-      - name: Run build_instructions.sh
+      - name: Run MOD instruction build
         if: steps.check_script.outputs.exists == 'true'
         run: |
           bash shogunate_mod/instructions/build.sh

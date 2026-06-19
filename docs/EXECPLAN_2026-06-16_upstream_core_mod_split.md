@@ -1637,6 +1637,14 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct sync checks for root/MOD unit test copies and `git diff --check` after the hook/Gunkan/configure/cron helper changes.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 package distribution contract tests after the hook/Gunkan/configure/cron helper changes.
 - PASS: `make package-check` after committing the hook/Gunkan/configure/cron helper path changes; prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
+- Android legacy tmux compatibility proxy を `shogunate_mod/runtime/android_tmux_proxy.py` として復旧し、root `scripts/android_tmux_proxy.py` は MOD 正本を import/exec する互換 wrapper にした。`shogunate_mod/runtime/android_compat.sh` は旧 `scripts/` 実装ではなく MOD 正本を起動する。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile shogunate_mod/runtime/android_tmux_proxy.py scripts/android_tmux_proxy.py` after adding the MOD-owned Android tmux proxy.
+- PASS: `python3 scripts/android_tmux_proxy.py --help` after adding the root compatibility wrapper.
+- PASS: `bash -n shogunate_mod/runtime/android_compat.sh` after switching Android compat sessions to the MOD proxy.
+- PASS: targeted package distribution contracts for MOD canonical runtime helper calls and compatibility wrapper delegation after declaring the Android tmux proxy in `shogunate_mod/manifest.yaml`.
+- EXPECTED FAIL before commit: full `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` reached release archive HEAD checks and reported the new proxy files missing from `git archive HEAD`; this is expected until the new files are committed, because the contract intentionally validates committed release assets.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 package distribution contract tests after committing the Android tmux proxy, proving the new MOD canonical proxy and root wrapper are included in committed release archives and npm package surfaces.
+- PASS: `make package-check` after committing the Android tmux proxy; prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, and generated instruction freshness all passed.
 
 ## 復旧
 

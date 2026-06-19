@@ -164,6 +164,7 @@
     "shogunate_mod/windows/",
     "shogunate_mod/watcher/",
     "scripts/agent_status.sh",
+    "scripts/android_tmux_proxy.py",
     "scripts/auto_merge_short_lived.sh",
     "scripts/branch_drift_check.sh",
     "scripts/build_instructions.sh",

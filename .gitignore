@@ -277,6 +277,7 @@ shogunate_mod/**/*.pyo
 !scripts/stop_hook_inbox.sh
 !scripts/session_start_hook.sh
 !scripts/dashboard-viewer.py
+!scripts/android_tmux_proxy.py
 !scripts/watcher_supervisor.sh
 !scripts/ntfy.sh
 !scripts/ntfy_listener.sh

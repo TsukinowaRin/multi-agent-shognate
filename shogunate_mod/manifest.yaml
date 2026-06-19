@@ -77,6 +77,7 @@ canonical_paths:
   queue_slim_yaml: shogunate_mod/queue/slim_yaml.py
   queue_slim_yaml_wrapper: shogunate_mod/queue/slim_yaml.sh
   runtime_android_compat: shogunate_mod/runtime/android_compat.sh
+  runtime_android_tmux_proxy: shogunate_mod/runtime/android_tmux_proxy.py
   runtime_agent_cli: shogunate_mod/runtime/agent_cli.sh
   runtime_banner: shogunate_mod/runtime/banner.sh
   runtime_bootstrap: shogunate_mod/runtime/bootstrap.sh
@@ -177,6 +178,7 @@ compatibility_wrappers:
   - scripts/session_start_hook.sh
   - scripts/stop_hook_inbox.sh
   - scripts/agent_status.sh
+  - scripts/android_tmux_proxy.py
   - scripts/auto_merge_short_lived.sh
   - scripts/branch_drift_check.sh
   - scripts/dashboard-viewer.py

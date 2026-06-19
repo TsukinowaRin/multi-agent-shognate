@@ -10,7 +10,7 @@ android_proxy_command() {
     printf 'cd %q && exec %q %q %q' \
         "$SCRIPT_DIR" \
         "${RUNTIME_PYTHON:-python3}" \
-        "$SCRIPT_DIR/scripts/android_tmux_proxy.py" \
+        "$SCRIPT_DIR/shogunate_mod/runtime/android_tmux_proxy.py" \
         "$agent_id"
 }
 
@@ -23,8 +23,8 @@ create_android_compat_sessions() {
     if ! is_android_compat_enabled; then
         return 0
     fi
-    if [ ! -f "$SCRIPT_DIR/scripts/android_tmux_proxy.py" ]; then
-        log_info "Android互換sessionは無効（scripts/android_tmux_proxy.py がありません）"
+    if [ ! -f "$SCRIPT_DIR/shogunate_mod/runtime/android_tmux_proxy.py" ]; then
+        log_info "Android互換sessionは無効（shogunate_mod/runtime/android_tmux_proxy.py がありません）"
         return 0
     fi
 

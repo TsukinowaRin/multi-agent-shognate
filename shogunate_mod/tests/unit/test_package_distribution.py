@@ -870,6 +870,9 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/gunkan/light_watch.py": [
                 "shogunate_mod/gunkan/codd_audit.py",
             ],
+            "shogunate_mod/runtime/android_compat.sh": [
+                "shogunate_mod/runtime/android_tmux_proxy.py",
+            ],
         }
 
         forbidden = [
@@ -885,6 +888,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             'scripts/branch_drift_check.sh',
             'scripts/auto_merge_short_lived.sh',
             'scripts/ntfy_send.sh',
+            'SCRIPT_DIR}/scripts/android_tmux_proxy.py',
         ]
 
         for rel, required in checks.items():
@@ -1037,6 +1041,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         aliases_wrapper = (ROOT / "scripts" / "shell_aliases.sh").read_text(encoding="utf-8")
         install_aliases_wrapper = (ROOT / "scripts" / "install_shell_aliases.sh").read_text(encoding="utf-8")
         agent_status_command_wrapper = (ROOT / "scripts" / "agent_status.sh").read_text(encoding="utf-8")
+        android_tmux_proxy_wrapper = (ROOT / "scripts" / "android_tmux_proxy.py").read_text(encoding="utf-8")
         ratelimit_wrapper = (ROOT / "scripts" / "ratelimit_check.sh").read_text(encoding="utf-8")
         focus_agent_wrapper = (ROOT / "scripts" / "focus_agent_pane.sh").read_text(encoding="utf-8")
         goza_autosave_wrapper = (ROOT / "scripts" / "goza_layout_autosave.sh").read_text(encoding="utf-8")
@@ -1161,6 +1166,9 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("  - path: tests/e2e/", manifest)
         self.assertIn("shogunate_mod/status/command.sh", agent_status_command_wrapper)
         self.assertIn("shogunate_mod/status/command.sh", manifest)
+        self.assertIn("shogunate_mod", android_tmux_proxy_wrapper)
+        self.assertIn('"runtime" / "android_tmux_proxy.py"', android_tmux_proxy_wrapper)
+        self.assertIn("shogunate_mod/runtime/android_tmux_proxy.py", manifest)
         self.assertIn("shogunate_mod/status/ratelimit_check.sh", ratelimit_wrapper)
         self.assertIn("shogunate_mod/status/ratelimit_check.sh", manifest)
         self.assertIn("shogunate_mod/view/focus_agent_pane.sh", focus_agent_wrapper)

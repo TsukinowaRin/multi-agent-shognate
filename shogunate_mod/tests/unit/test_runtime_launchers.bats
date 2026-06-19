@@ -123,11 +123,11 @@ setup() {
   run grep -F "wsl.exe -d Ubuntu" "$PROJECT_ROOT/shogunate_mod/windows/runtime_launcher.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "bash ./Shogunate-Runtime.sh" "$PROJECT_ROOT/shogunate_mod/windows/runtime_launcher.bat"
+  run grep -F "bash shogunate_mod/runtime/runtime_launcher.sh" "$PROJECT_ROOT/shogunate_mod/windows/runtime_launcher.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "Shogunate-Runtime.sh" "$PROJECT_ROOT/shogunate_mod/windows/runtime_launcher.bat"
-  [ "$status" -eq 0 ]
+  run grep -F "bash ./Shogunate-Runtime.sh" "$PROJECT_ROOT/shogunate_mod/windows/runtime_launcher.bat"
+  [ "$status" -ne 0 ]
 }
 
 @test "runtime launchers: Windows Shutsujin wrapper opens Goza via Shutsujin, not Runtime" {
@@ -137,7 +137,7 @@ setup() {
   run grep -F "wsl.exe -d Ubuntu" "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_launcher.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F "bash ./Shutsujin.sh" "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_launcher.bat"
+  run grep -F "bash shogunate_mod/runtime/shutsujin_launcher.sh" "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_launcher.bat"
   [ "$status" -eq 0 ]
 
   run grep -F "opens a command shell after startup" "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_launcher.bat"
@@ -157,6 +157,9 @@ setup() {
 
   run grep -F "Shogunate-Runtime.sh" "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_launcher.bat"
   [ "$status" -ne 0 ]
+
+  run grep -F "bash ./Shutsujin.sh" "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_launcher.bat"
+  [ "$status" -ne 0 ]
 }
 
 @test "runtime launchers: Windows debug wrappers split clean and resume starts" {
@@ -172,10 +175,10 @@ setup() {
   run grep -F "shogunate_mod\\windows\\shutsujin_resume.bat" "$PROJECT_ROOT/Shutsujin-Resume.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F 'call "%REPO_DIR%\Shutsujin.bat" --clean %*' "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_clean.bat"
+  run grep -F 'call "%REPO_DIR%\shogunate_mod\windows\shutsujin_launcher.bat" --clean %*' "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_clean.bat"
   [ "$status" -eq 0 ]
 
-  run grep -F 'call "%REPO_DIR%\Shutsujin.bat" %*' "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_resume.bat"
+  run grep -F 'call "%REPO_DIR%\shogunate_mod\windows\shutsujin_launcher.bat" %*' "$PROJECT_ROOT/shogunate_mod/windows/shutsujin_resume.bat"
   [ "$status" -eq 0 ]
 
   run grep -F 'Shogunate-Runtime' "$PROJECT_ROOT/Shutsujin-Clean.bat" "$PROJECT_ROOT/Shutsujin-Resume.bat"

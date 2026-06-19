@@ -14,8 +14,8 @@ echo   ^|      Starts agents, then opens cgo/CMA command shell       ^|
 echo   +============================================================+
 echo.
 
-if not exist "%REPO_DIR%\shutsujin_departure.sh" (
-    echo   [ERROR] shutsujin_departure.sh not found next to this launcher.
+if not exist "%REPO_DIR%\shogunate_mod\runtime\shutsujin_launcher.sh" (
+    echo   [ERROR] shogunate_mod\runtime\shutsujin_launcher.sh not found next to this launcher.
     echo           Run this bat from the Shogunate folder.
     echo.
     pause
@@ -44,7 +44,7 @@ echo        This launcher opens a command shell after startup.
 echo        Type cgo, CMA, csa, css, cgn, csk, etc. to choose a view.
 echo        Use --no-attach for the old manual shell workflow.
 echo.
-wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && bash ./Shutsujin.sh %*"
+wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && bash shogunate_mod/runtime/shutsujin_launcher.sh %*"
 set "SHUTSUJIN_EXIT=%ERRORLEVEL%"
 if not "%SHUTSUJIN_EXIT%"=="0" (
     echo.

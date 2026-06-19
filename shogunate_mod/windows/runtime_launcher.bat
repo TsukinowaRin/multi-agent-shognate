@@ -22,8 +22,8 @@ echo   ^|      Starts Shogunate in Ubuntu/WSL and opens shogunate    ^|
 echo   +============================================================+
 echo.
 
-if not exist "%REPO_DIR%\shutsujin_departure.sh" (
-    echo   [ERROR] shutsujin_departure.sh not found next to this launcher.
+if not exist "%REPO_DIR%\shogunate_mod\runtime\runtime_launcher.sh" (
+    echo   [ERROR] shogunate_mod\runtime\runtime_launcher.sh not found next to this launcher.
     echo           Run this bat from the Shogunate folder.
     echo.
     pause
@@ -61,7 +61,7 @@ if defined CLEAN_ARG (
     echo        Mode: resume existing state
 )
 echo.
-wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && bash ./Shogunate-Runtime.sh %*"
+wsl.exe -d Ubuntu -- bash -lc "cd \"%REPO_WSL%\" && bash shogunate_mod/runtime/runtime_launcher.sh %*"
 set "RUNTIME_EXIT=%ERRORLEVEL%"
 if not "%RUNTIME_EXIT%"=="0" (
     echo.

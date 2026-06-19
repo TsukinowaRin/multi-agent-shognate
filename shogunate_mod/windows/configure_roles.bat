@@ -61,7 +61,7 @@ if not "%CONFIG_EXIT%"=="0" (
 echo.
 echo   [OK] Role configuration finished.
 echo        Restart runtime with Shogunate-Runtime.bat or:
-echo        bash shutsujin_departure.sh -c
+echo        bash shogunate_mod/runtime/entrypoint.sh -c
 echo.
 pause
 exit /b 0

@@ -11,5 +11,5 @@ echo.
 echo   [SHOGUN] Shutsujin resume debug launcher
 echo            mode: resume existing state
 echo.
-call "%REPO_DIR%\Shutsujin.bat" %*
+call "%REPO_DIR%\shogunate_mod\windows\shutsujin_launcher.bat" %*
 exit /b %ERRORLEVEL%

@@ -11,5 +11,5 @@ echo.
 echo   [SHOGUN] Shutsujin clean start debug launcher
 echo            mode: clean start (--clean)
 echo.
-call "%REPO_DIR%\Shutsujin.bat" --clean %*
+call "%REPO_DIR%\shogunate_mod\windows\shutsujin_launcher.bat" --clean %*
 exit /b %ERRORLEVEL%

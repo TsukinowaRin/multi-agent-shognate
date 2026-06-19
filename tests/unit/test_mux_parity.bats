@@ -108,7 +108,7 @@ setup_file() {
 }
 
 @test "tmux 起動と watcher supervisor は clone 横断しない絶対pathで daemon を管理する" {
-    run bats_search '\$SCRIPT_DIR/scripts/inbox_watcher\.sh |\$SCRIPT_DIR/scripts/watcher_supervisor\.sh|\$SCRIPT_DIR/shogunate_mod/runtime/shogun_to_karo_bridge_daemon\.sh|\$SCRIPT_DIR/shogunate_mod/runtime/karo_done_to_shogun_bridge_daemon\.sh|inotifywait\.\*\$\{SCRIPT_DIR\}/queue/inbox|\$SCRIPT_DIR/shogunate_mod/notify/listener\.sh|\$SCRIPT_DIR/shogunate_mod/view/goza_layout_autosave\.sh' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh" "$PROJECT_ROOT/shogunate_mod/runtime/lifecycle.sh" "$PROJECT_ROOT/shogunate_mod/runtime/daemon.sh" "$PROJECT_ROOT/shogunate_mod/runtime/goza.sh"
+    run bats_search '\$SCRIPT_DIR/shogunate_mod/watcher/inbox_watcher\.sh|\$SCRIPT_DIR/shogunate_mod/watcher/supervisor\.sh|\$SCRIPT_DIR/shogunate_mod/runtime/shogun_to_karo_bridge_daemon\.sh|\$SCRIPT_DIR/shogunate_mod/runtime/karo_done_to_shogun_bridge_daemon\.sh|inotifywait\.\*\$\{SCRIPT_DIR\}/queue/inbox|\$SCRIPT_DIR/shogunate_mod/notify/listener\.sh|\$SCRIPT_DIR/shogunate_mod/view/goza_layout_autosave\.sh' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh" "$PROJECT_ROOT/shogunate_mod/runtime/lifecycle.sh" "$PROJECT_ROOT/shogunate_mod/runtime/daemon.sh" "$PROJECT_ROOT/shogunate_mod/runtime/goza.sh" "$PROJECT_ROOT/shogunate_mod/watcher/supervisor.sh"
     [ "$status" -eq 0 ]
 }
 

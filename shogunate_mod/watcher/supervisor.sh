@@ -26,9 +26,9 @@ else
     mkdir -p queue/inbox
 fi
 
-if [ -f "$SCRIPT_DIR/lib/cli_adapter.sh" ]; then
+if [ -f "$SCRIPT_DIR/shogunate_mod/cli/adapter.sh" ]; then
     # shellcheck source=/dev/null
-    source "$SCRIPT_DIR/lib/cli_adapter.sh"
+    source "$SCRIPT_DIR/shogunate_mod/cli/adapter.sh"
 fi
 
 if [ -f "$SCRIPT_DIR/shogunate_mod/watcher/file_watch.sh" ]; then
@@ -304,7 +304,7 @@ watcher_shell_command() {
     printf -v shell_cmd \
         'cd %q && env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=1 ASW_DISABLE_NORMAL_NUDGE=0 bash %q %q %q %q %q >> %q 2>&1' \
         "$SCRIPT_DIR" \
-        "$SCRIPT_DIR/scripts/inbox_watcher.sh" \
+        "$SCRIPT_DIR/shogunate_mod/watcher/inbox_watcher.sh" \
         "$agent" \
         "$pane" \
         "$cli" \
@@ -470,6 +470,10 @@ start_watcher_if_missing() {
             pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh ${agent} " >/dev/null 2>&1 || true
             sleep 0.2
         fi
+        if pgrep -f "$SCRIPT_DIR/shogunate_mod/watcher/inbox_watcher.sh ${agent} " >/dev/null 2>&1; then
+            pkill -f "$SCRIPT_DIR/shogunate_mod/watcher/inbox_watcher.sh ${agent} " >/dev/null 2>&1 || true
+            sleep 0.2
+        fi
 
         tmux new-window -d -t "$WATCHER_RUNTIME_SESSION" -n "$window_name" "$shell_cmd" >/dev/null 2>&1
         tmux set-option -w -t "$window_target" @watch_agent "$agent" >/dev/null 2>&1 || true
@@ -500,7 +504,12 @@ cleanup_stale_watchers() {
             agent_is_supervised "$agent" && continue
             kill "$pid" >/dev/null 2>&1 || true
         fi
-    done < <(pgrep -af "$SCRIPT_DIR/scripts/inbox_watcher.sh" || true)
+    done < <(
+        {
+            pgrep -af "$SCRIPT_DIR/scripts/inbox_watcher.sh" || true
+            pgrep -af "$SCRIPT_DIR/shogunate_mod/watcher/inbox_watcher.sh" || true
+        } | sort -u
+    )
 }
 
 supervisor_tick() {

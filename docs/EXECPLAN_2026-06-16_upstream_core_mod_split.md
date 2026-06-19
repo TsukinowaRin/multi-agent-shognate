@@ -63,6 +63,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] 旧 `setup.sh` の互換処理を `shogunate_mod/runtime/setup_compat.sh` へ移動し、root `setup.sh` を exec 互換入口化した。
 - [x] inbox writer policy を `shogunate_mod/inbox/write.sh` へ移動し、旧 `scripts/inbox_write.sh` を薄い互換入口化。
 - [x] watcher supervisor を `shogunate_mod/watcher/supervisor.sh` へ移動し、旧 `scripts/watcher_supervisor.sh` を薄い互換入口化。
+- [x] MOD watcher supervisor の CLI adapter source と inbox watcher 起動を root wrapper 経由から `shogunate_mod/cli/adapter.sh` / `shogunate_mod/watcher/inbox_watcher.sh` 直接参照へ寄せた。
 - [x] inbox watcher を `shogunate_mod/watcher/inbox_watcher.sh` へ移動し、旧 `scripts/inbox_watcher.sh` を source/exec 互換入口化。
 - [x] CLI adapter を `shogunate_mod/cli/adapter.sh` へ移動し、旧 `lib/cli_adapter.sh` を source 互換入口化。
 - [x] inbox path normalization を `shogunate_mod/inbox/path.sh` へ移動し、旧 `lib/inbox_path.sh` を source 互換入口化。
@@ -1613,6 +1614,12 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bats tests/unit/test_mux_parity.bats` ran 72 mux parity tests after changing runtime daemon watcher/Gunkan starts to MOD canonical sources.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 143 package distribution contract tests after changing runtime daemon watcher/Gunkan starts to MOD canonical sources.
 - PASS: `make package-check` after committing runtime daemon MOD helper dispatch; prepublish source syntax checks, 143 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_watcher_supervisor_starts_mod_canonical_helpers tests.unit.test_package_distribution.PackageDistributionContractTests.test_compatibility_wrappers_delegate_to_shogunate_mod` after changing watcher supervisor CLI adapter source and inbox watcher starts to MOD canonical sources.
+- PASS: `bash -n shogunate_mod/watcher/supervisor.sh shogunate_mod/watcher/inbox_watcher.sh` after changing watcher supervisor helper dispatch.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py`, `diff -q tests/unit/test_mux_parity.bats shogunate_mod/tests/unit/test_mux_parity.bats`, and `git diff --check` after changing watcher supervisor helper dispatch.
+- PASS: `bats tests/unit/test_watcher_supervisor.bats tests/unit/test_mux_parity.bats` ran 82 watcher/mux tests after changing watcher supervisor helper dispatch.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 144 package distribution contract tests after changing watcher supervisor helper dispatch.
+- PASS: `make package-check` after committing watcher supervisor MOD helper dispatch; prepublish source syntax checks, 144 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
 
 ## 復旧
 

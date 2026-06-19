@@ -811,6 +811,14 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn('bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh"', normalized)
         self.assertNotIn('python3 "$SCRIPT_DIR/scripts/gunkan_light_watch.py"', normalized)
 
+    def test_watcher_supervisor_starts_mod_canonical_helpers(self):
+        text = (ROOT / "shogunate_mod" / "watcher" / "supervisor.sh").read_text(encoding="utf-8")
+
+        self.assertIn("shogunate_mod/cli/adapter.sh", text)
+        self.assertIn("shogunate_mod/watcher/inbox_watcher.sh", text)
+        self.assertNotIn('source "$SCRIPT_DIR/lib/cli_adapter.sh"', text)
+        self.assertNotIn('"$SCRIPT_DIR/scripts/inbox_watcher.sh" \\', text)
+
     def test_representative_wrapper_smoke_cases_are_manifest_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))

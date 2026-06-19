@@ -5,7 +5,7 @@ const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
 const repoRawBase = "https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/main";
-const bootstrapUrl = `${repoRawBase}/scripts/shogunate_package_bootstrap.sh`;
+const bootstrapUrl = `${repoRawBase}/shogunate_mod/package/bootstrap.sh`;
 
 function usage() {
   console.log(`Usage:
@@ -20,7 +20,7 @@ Commands:
   run       Run the Shogunate MOD runtime launcher for the current project directory.
   pair      Pair Android app over USB auto + Tailscale/LAN for the current project.
 
-The npm package is a thin wrapper. The canonical install path is:
+The npm package is a thin wrapper. Its install command runs the MOD package bootstrap:
   curl -fsSL ${bootstrapUrl} | bash
 Set SHOGUNATE_PAIR_PASSWORD to require a fixed local approval password.
 `);

@@ -2586,7 +2586,7 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual(["scripts/shogunate_package_bootstrap.sh"], remote_wrappers)
 
-    def test_npm_wrapper_points_to_curl_bootstrap(self):
+    def test_npm_wrapper_points_to_mod_package_bootstrap(self):
         package = (ROOT / "package.json").read_text(encoding="utf-8")
         gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
         wrapper = (ROOT / "bin/shogunate.js").read_text(encoding="utf-8")
@@ -2713,7 +2713,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("!shogunate_mod/watcher/*.sh", gitignore)
         self.assertIn("shogunate_mod/**/__pycache__/", gitignore)
         self.assertIn("shogunate_mod/package/npm_cli.js", wrapper)
-        self.assertIn("shogunate_package_bootstrap.sh", npm_cli)
+        self.assertIn("shogunate_mod/package/bootstrap.sh", npm_cli)
+        self.assertNotIn("scripts/shogunate_package_bootstrap.sh", npm_cli)
         self.assertIn("shogunate_mod/runtime/runtime_launcher.sh", npm_cli)
         self.assertIn("shogunate_mod/pair/server.py", npm_cli)
         self.assertNotIn('path.join(root, "Shogunate-Runtime.sh")', npm_cli)

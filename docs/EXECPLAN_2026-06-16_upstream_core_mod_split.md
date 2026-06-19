@@ -1806,6 +1806,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `bats tests/unit/test_runtime_launchers.bats --timing`, targeted package distribution contract, root/MOD runtime launcher test sync, root/MOD package distribution test sync, and `git diff --check` after moving Windows launcher internals to MOD canonical runtime launchers. Windows batch files were contract-verified on Linux; real Windows execution remains covered by the normal Windows launcher surface.
 - Package first setup の実行権限設定も MOD 正本 launcher を first-class にした。root `setup.sh` / `shutsujin_departure.sh` / `first_setup.sh` と MOD `shogunate_mod/package/first_setup.sh` は互換として残しつつ、`shogunate_mod/runtime/entrypoint.sh`, `runtime_launcher.sh`, `shutsujin_launcher.sh`, `setup_compat.sh`, `shogunate_mod/shell/install_aliases.sh` も chmod 対象にした。
 - PASS: targeted package distribution contract, `bash -n shogunate_mod/package/first_setup.sh shogunate_mod/runtime/entrypoint.sh shogunate_mod/runtime/runtime_launcher.sh shogunate_mod/runtime/shutsujin_launcher.sh shogunate_mod/runtime/setup_compat.sh shogunate_mod/shell/install_aliases.sh`, root/MOD package distribution test sync, and `git diff --check` after adding MOD canonical launcher chmod coverage.
+- npm CLI の `install` 導線も remote `scripts/shogunate_package_bootstrap.sh` 互換入口経由から、remote `shogunate_mod/package/bootstrap.sh` 正本を直接 `curl | bash` する形へ寄せた。README / release note の public cURL は既存互換 URL として維持する。
+- PASS: `node bin/shogunate.js --help`, `node shogunate_mod/package/npm_cli.js --help`, targeted package distribution contracts for npm CLI MOD bootstrap / run / pair dispatch, root/MOD package distribution test sync, and `git diff --check` after moving npm install bootstrap guidance to the MOD package bootstrap.
 
 ## 復旧
 

@@ -794,6 +794,14 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertLess(text.index(local_delegate), text.index(remote_exec))
         self.assertNotIn("/scripts/shogunate_package_bootstrap.sh", text)
 
+    def test_runtime_startup_uses_mod_canonical_helpers(self):
+        text = (ROOT / "shogunate_mod" / "runtime" / "startup.sh").read_text(encoding="utf-8")
+
+        self.assertIn("shogunate_mod/configure/sync_opencode_config.py", text)
+        self.assertIn("shogunate_mod/instructions/ensure_generated.sh", text)
+        self.assertNotIn("scripts/sync_opencode_config.py", text)
+        self.assertNotIn("scripts/ensure_generated_instructions.sh", text)
+
     def test_representative_wrapper_smoke_cases_are_manifest_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))

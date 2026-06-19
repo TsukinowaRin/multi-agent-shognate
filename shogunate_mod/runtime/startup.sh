@@ -88,7 +88,7 @@ select_runtime_python_or_die() {
 }
 
 sync_opencode_like_workspace_settings() {
-    local sync_script="$SCRIPT_DIR/scripts/sync_opencode_config.py"
+    local sync_script="$SCRIPT_DIR/shogunate_mod/configure/sync_opencode_config.py"
     if [ ! -x "$sync_script" ]; then
         return 0
     fi
@@ -164,7 +164,7 @@ log_war() {
 }
 
 ensure_generated_instructions() {
-    local ensure_script="$SCRIPT_DIR/scripts/ensure_generated_instructions.sh"
+    local ensure_script="$SCRIPT_DIR/shogunate_mod/instructions/ensure_generated.sh"
     if [ ! -f "$ensure_script" ]; then
         log_info "⚠️  指示書再生成スクリプトが見つからないため、既存 generated を使用します"
         return 0

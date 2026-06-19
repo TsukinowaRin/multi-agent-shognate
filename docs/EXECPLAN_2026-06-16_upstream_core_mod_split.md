@@ -46,6 +46,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Startup-time ASCII banner rendering を `shogunate_mod/runtime/banner.sh` へ移動。
 - [x] Runtime options/help parsing を `shogunate_mod/runtime/options.sh` へ移動。
 - [x] Runtime topology resolution を `shogunate_mod/runtime/topology.sh` へ移動。
+- [x] Runtime startup の generated instruction freshness / OpenCode-Kilo config sync 呼び出しを root wrapper 経由から `shogunate_mod/instructions/ensure_generated.sh` / `shogunate_mod/configure/sync_opencode_config.py` 直接参照へ寄せた。
 - [x] Runtime departure entrypoint orchestration を `shogunate_mod/runtime/departure.sh` へ移動し、root `shutsujin_departure.sh` を薄い互換入口化。
 - [x] Runtime launcher shared setup を `shogunate_mod/runtime/launcher.sh` へ移動し、root `Shogunate-Runtime.sh` / `Shutsujin.sh` を薄い互換入口へさらに寄せた。
 - [x] Runtime shell launchers を `shogunate_mod/runtime/runtime_launcher.sh` / `shutsujin_launcher.sh` へ移動し、root `Shogunate-Runtime.sh` / `Shutsujin.sh` を exec 互換入口化。
@@ -1600,6 +1601,11 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` and `git diff --check` after adding source/archive/npm package smoke for npm CLI dispatch.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 141 package distribution contract tests after adding source/archive/npm package smoke for npm CLI dispatch.
 - PASS: `make package-check` after committing npm CLI source/archive/npm package dispatch smoke; prepublish source syntax checks, 141 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_runtime_startup_uses_mod_canonical_helpers tests.unit.test_package_distribution.PackageDistributionContractTests.test_compatibility_wrappers_delegate_to_shogunate_mod` after changing runtime startup helper calls to MOD canonical sources.
+- PASS: `bash -n shogunate_mod/runtime/startup.sh shogunate_mod/runtime/departure.sh shutsujin_departure.sh` after changing runtime startup helper calls to MOD canonical sources.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` and `git diff --check` after changing runtime startup helper calls to MOD canonical sources.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 142 package distribution contract tests after changing runtime startup helper calls to MOD canonical sources.
+- PASS: `make package-check` after committing runtime startup MOD helper dispatch; prepublish source syntax checks, 142 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
 
 ## 復旧
 

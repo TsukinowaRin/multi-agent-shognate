@@ -1789,6 +1789,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - Public README の開発者向け出荷前チェックを個別 root wrapper syntax check から `make package-check` へ寄せた。`make package-check` は MOD 正本 `shogunate_mod/package/prepublish_check.sh` を通じて source syntax / package distribution contract / MOD behavior unit tests / generated freshness / dirty gate をまとめて実行する。
 - CONTRIBUTING の新規 script 追加例と Bats 例も root `scripts/*` ではなく `shogunate_mod/example/new_helper.sh` と `shogunate_mod/inbox/write.sh` を使う形へ変更した。root `CONTRIBUTING.md` は GitHub/npm 互換コピー、`shogunate_mod/docs/CONTRIBUTING.md` は MOD docs 正本として同期を維持する。
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_readmes_have_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_community_docs_have_mod_canonical_copy` after adding contracts that forbid the old development-check and contributing examples.
+- MOD mux parity smoke の setup-only runtime 起動を root `shutsujin_departure.sh` wrapper から MOD 正本 `shogunate_mod/runtime/entrypoint.sh` 直接実行へ寄せた。`ROOT_DIR` も `shogunate_mod/` ではなく repo root へ解決するよう修正し、dry-run / actual run の両方を MOD entrypoint に固定した。
+- mux parity smoke の成功時終了コードが、setup 成功後も初期値のまま失敗扱いになる不具合を修正した。Bats では fake `tmux` / fake runtime entrypoint で setup 成功時に exit 0 になることを固定した。
+- PASS: `bats tests/unit/test_mux_parity_smoke.bats`, targeted package distribution contract, shell syntax / root-MOD test sync / `git diff --check` after moving mux parity smoke to the MOD runtime entrypoint.
+- PASS: actual setup-only smoke `SHOGUNATE_SESSION_NAME=shogunate-mux-mod-entrypoint-20260619222130-3484114 GOZA_SESSION_NAME=shogunate-mux-mod-entrypoint-20260619222130-3484114 SHOGUNATE_PROJECT_DIR=<runtime_sandboxes/.../project> bash shogunate_mod/runtime/mux_parity_smoke.sh --tmux-only --clean` completed with exit 0 and created `goza` window with 8 panes.
 
 ## 復旧
 

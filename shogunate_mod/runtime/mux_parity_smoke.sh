@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 RUN_TMUX=1
@@ -20,7 +20,7 @@ Usage:
 Options:
   --tmux-only      tmux のみ検証（既定）
   --dry-run        実行せずコマンド表示のみ
-  --clean          shutsujin_departure.sh に -c を追加
+  --clean          shogunate_mod/runtime/entrypoint.sh に -c を追加
   -h, --help       ヘルプ
 USAGE
 }
@@ -54,7 +54,7 @@ run_setup_mode() {
   local log_file="logs/mux_parity_${mode}.log"
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[DRY-RUN] MAS_MULTIPLEXER=${mode} bash shutsujin_departure.sh ${SETUP_ARGS[*]} > ${log_file}"
+    echo "[DRY-RUN] MAS_MULTIPLEXER=${mode} bash shogunate_mod/runtime/entrypoint.sh ${SETUP_ARGS[*]} > ${log_file}"
     return 0
   fi
 
@@ -65,7 +65,7 @@ run_setup_mode() {
 
   echo "[INFO] setup-only start: ${mode}"
 
-  if MAS_MULTIPLEXER="$mode" bash shutsujin_departure.sh "${SETUP_ARGS[@]}" >"$log_file" 2>&1; then
+  if MAS_MULTIPLEXER="$mode" bash shogunate_mod/runtime/entrypoint.sh "${SETUP_ARGS[@]}" >"$log_file" 2>&1; then
     :
   else
     echo "[ERROR] ${mode} setup-only failed. log: ${log_file}" >&2
@@ -97,7 +97,11 @@ run_setup_mode() {
 tmux_rc=3
 
 if [[ "$RUN_TMUX" -eq 1 ]]; then
-  run_setup_mode "tmux" || tmux_rc=$?
+  if run_setup_mode "tmux"; then
+    tmux_rc=0
+  else
+    tmux_rc=$?
+  fi
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then

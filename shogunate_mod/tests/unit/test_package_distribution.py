@@ -924,6 +924,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             ],
             "shogunate_mod/runtime/mux_parity_smoke.sh": [
                 "shogunate_mod/runtime/mux_parity_smoke.sh",
+                "shogunate_mod/runtime/entrypoint.sh",
             ],
             "shogunate_mod/cli/adapter.sh": [
                 "shogunate_mod/cli/antigravity_keyring.sh",
@@ -1015,6 +1016,10 @@ class PackageDistributionContractTests(unittest.TestCase):
                     self.assertIn(needle, text)
                 for needle in forbidden:
                     self.assertNotIn(needle, text)
+
+        mux_parity_smoke = (ROOT / "shogunate_mod/runtime/mux_parity_smoke.sh").read_text(encoding="utf-8")
+        self.assertIn("bash shogunate_mod/runtime/entrypoint.sh", mux_parity_smoke)
+        self.assertNotIn("MAS_MULTIPLEXER=${mode} bash shutsujin_departure.sh", mux_parity_smoke)
 
     def test_representative_wrapper_smoke_cases_are_manifest_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")

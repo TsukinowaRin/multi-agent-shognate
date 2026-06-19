@@ -276,9 +276,7 @@ bash shutsujin_departure.sh
 出荷前の基本確認:
 
 ```bash
-bash -n scripts/shogunate_package_bootstrap.sh shutsujin_departure.sh
-python3 -m unittest tests.unit.test_package_distribution
-git diff --check
+make package-check
 ```
 
 Android build:

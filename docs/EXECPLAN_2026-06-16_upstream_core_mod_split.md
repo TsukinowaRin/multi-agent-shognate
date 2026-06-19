@@ -1780,6 +1780,9 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct root/MOD sync checks for `skills/shogun-model-switch`, `skills/shogun-agent-status`, `skills/shogun-bloom-config`, and `.cursor/skills/inbox-write` after moving skill guidance to MOD canonical commands.
 - CoDD / Gunkan design docs の `source_files` と本文も root `scripts/gunkan_codd_audit.py` / `scripts/gunkan_light_watch.py` / `scripts/watcher_supervisor.sh` から MOD 正本 `shogunate_mod/gunkan/codd_audit.py` / `shogunate_mod/gunkan/light_watch.py` / `shogunate_mod/watcher/supervisor.sh` / `shogunate_mod/runtime/entrypoint.sh` へ寄せた。root `docs/codd/` は public design docs、`shogunate_mod/gunkan/docs/` は MOD 正本として同期を維持する。
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_codd_docs_have_mod_canonical_copy` after adding contracts that forbid the old root Gunkan script paths in CoDD design docs and require the MOD canonical paths.
+- Public README の開発者向け出荷前チェックを個別 root wrapper syntax check から `make package-check` へ寄せた。`make package-check` は MOD 正本 `shogunate_mod/package/prepublish_check.sh` を通じて source syntax / package distribution contract / MOD behavior unit tests / generated freshness / dirty gate をまとめて実行する。
+- CONTRIBUTING の新規 script 追加例と Bats 例も root `scripts/*` ではなく `shogunate_mod/example/new_helper.sh` と `shogunate_mod/inbox/write.sh` を使う形へ変更した。root `CONTRIBUTING.md` は GitHub/npm 互換コピー、`shogunate_mod/docs/CONTRIBUTING.md` は MOD docs 正本として同期を維持する。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_readmes_have_mod_canonical_copy tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_community_docs_have_mod_canonical_copy` after adding contracts that forbid the old development-check and contributing examples.
 
 ## 復旧
 

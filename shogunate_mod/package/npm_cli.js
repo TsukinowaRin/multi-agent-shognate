@@ -12,6 +12,7 @@ function usage() {
   shogunate install [-- --version v5.0.0.12 --prefix ~/.shogunate/shogunate]
   shogunate run [args...]
   shogunate pair [args...]
+  shogunate help
   shogunate --help
 
 Commands:
@@ -43,7 +44,7 @@ function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   const command = args.shift();
   const root = path.resolve(__dirname, "../..");
 
-  if (!command || command === "-h" || command === "--help") {
+  if (!command || command === "help" || command === "-h" || command === "--help") {
     usage();
     process.exit(0);
   }

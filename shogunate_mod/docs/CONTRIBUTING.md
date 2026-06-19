@@ -137,17 +137,17 @@ multi-agent-shogun/
 **Before adding a new file to git, you MUST add it to the .gitignore whitelist:**
 
 ```bash
-# Example: Adding a new script to git
+# Example: Adding a new Shogunate MOD helper to git
 
 # 1. Create your file
-touch scripts/new_script.sh
+touch shogunate_mod/example/new_helper.sh
 
 # 2. Edit .gitignore and add the whitelist entry
-echo '!scripts/new_script.sh' >> .gitignore
+echo '!shogunate_mod/example/new_helper.sh' >> .gitignore
 
 # 3. Now git will track it
-git add scripts/new_script.sh
-git commit -m "feat: add new_script.sh"
+git add shogunate_mod/example/new_helper.sh
+git commit -m "feat: add new_helper.sh"
 ```
 
 ### What Gets Excluded by Default
@@ -311,7 +311,7 @@ teardown() {
 }
 
 @test "inbox_write.sh creates inbox file" {
-    run bash scripts/inbox_write.sh karo "test message" cmd_new shogun
+    run bash shogunate_mod/inbox/write.sh karo "test message" cmd_new shogun
     [ "$status" -eq 0 ]
     [ -f "queue/inbox/karo.yaml" ]
 }

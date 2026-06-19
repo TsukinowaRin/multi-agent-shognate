@@ -739,6 +739,10 @@ def npm_cli_dispatch_smoke_cases() -> list[tuple[list[str], str]]:
             "Usage: ./Shogunate-Runtime.sh",
         ),
         (
+            ["node", "bin/shogunate.js", "help"],
+            "The npm package is a thin wrapper.",
+        ),
+        (
             ["node", "bin/shogunate.js", "pair", "--help"],
             "Run the Shogunate Android pairing server.",
         ),
@@ -3436,6 +3440,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             self.assertIn("shogunate_mod/instructions/ensure_generated.sh", text, path)
             self.assertNotIn("scripts/ensure_antigravity_keyring.sh", text, path)
             self.assertNotIn("scripts/ensure_generated_instructions.sh", text, path)
+            self.assertIn("make package-check", text, path)
+            self.assertNotIn("bash -n scripts/shogunate_package_bootstrap.sh shutsujin_departure.sh", text, path)
         pinned_tags = set()
         for path, text in readmes.items():
             self.assertIn(latest_curl, text, path)
@@ -3494,6 +3500,12 @@ class PackageDistributionContractTests(unittest.TestCase):
             )
             self.assertIn(filename, files)
             self.assertIn(f"shogunate_mod/docs/{filename}", files)
+
+        contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+        self.assertIn("touch shogunate_mod/example/new_helper.sh", contributing)
+        self.assertIn("bash shogunate_mod/inbox/write.sh karo", contributing)
+        self.assertNotIn("touch scripts/new_script.sh", contributing)
+        self.assertNotIn("bash scripts/inbox_write.sh karo", contributing)
 
     def test_codd_config_has_mod_canonical_copy(self):
         root_codd = (ROOT / ".codd" / "codd.yaml").read_text(encoding="utf-8")

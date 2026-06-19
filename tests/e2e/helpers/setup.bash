@@ -32,6 +32,16 @@ setup_e2e_session() {
     chmod +x "$E2E_QUEUE/scripts/inbox_write.sh"
     chmod +x "$E2E_QUEUE/scripts/inbox_watcher.sh"
 
+    # Root scripts are compatibility wrappers; copy the MOD canonical helpers
+    # they delegate/source so the isolated E2E queue matches a packaged checkout.
+    for mod_dir in inbox watcher cli status; do
+        if [ -d "$PROJECT_ROOT/shogunate_mod/$mod_dir" ]; then
+            mkdir -p "$E2E_QUEUE/shogunate_mod/$mod_dir"
+            cp "$PROJECT_ROOT/shogunate_mod/$mod_dir"/*.sh "$E2E_QUEUE/shogunate_mod/$mod_dir/" 2>/dev/null || true
+            chmod +x "$E2E_QUEUE/shogunate_mod/$mod_dir"/*.sh 2>/dev/null || true
+        fi
+    done
+
     # Copy lib/ helpers needed by inbox_watcher and its sourced modules.
     if [ -d "$PROJECT_ROOT/lib" ]; then
         mkdir -p "$E2E_QUEUE/lib"

@@ -235,6 +235,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] npm package tarball を実際に展開した状態でも、代表的な互換 wrapper（Pair server / shell aliases / agent status command）が MOD 正本へ到達して直接実行できることを package distribution contract で固定した。
 - [x] npm CLI entrypoint `bin/shogunate.js` も source checkout / cURL release archive / npm package tarball の3面で `--help` 実行でき、MOD 正本 `shogunate_mod/package/npm_cli.js` へ到達することを package distribution contract で固定した。
 - [x] MOD 正本 npm CLI の `run` / `pair` dispatch を root wrapper 経由から `shogunate_mod/runtime/runtime_launcher.sh` / `shogunate_mod/pair/server.py` 直接委譲へ寄せ、npm 導線でも Shogunate-only 実装が MOD 側正本から起動することを contract で固定した。
+- [x] npm CLI の `run --help` / `pair --help` も source checkout / cURL release archive / npm package tarball の3面で実行し、配布後も MOD runtime launcher / Pair server へ到達することを package distribution contract で固定した。
 - [x] 代表 wrapper smoke の command list を package distribution contract 内で共有 helper 化し、source checkout / cURL release archive / npm package tarball の3面で同じ entrypoint set を検査するようにした。
 - [x] 代表 wrapper smoke の command list が manifest `compatibility_wrappers` に宣言された実在 wrapper だけを指すことを package distribution contract で固定し、smoke 対象と MOD 境界 manifest の drift を検出できるようにした。
 - [x] 代表 wrapper smoke の各 wrapper が単一の実在 MOD delegate を持つことを package distribution contract で固定し、smoke 対象が root-only 実装へ戻る事故を検出できるようにした。
@@ -1595,6 +1596,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` and `git diff --check` after changing MOD npm CLI dispatch.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 139 package distribution contract tests after changing MOD npm CLI dispatch.
 - PASS: `make package-check` after committing the MOD npm CLI dispatch change; prepublish source syntax checks, 139 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_cli_run_and_pair_dispatch_to_mod_sources tests.unit.test_package_distribution.PackageDistributionContractTests.test_release_archive_npm_cli_run_and_pair_dispatch_to_mod_sources tests.unit.test_package_distribution.PackageDistributionContractTests.test_npm_package_npm_cli_run_and_pair_dispatch_to_mod_sources` after adding source/archive/npm package smoke for npm CLI `run --help` / `pair --help`.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` and `git diff --check` after adding source/archive/npm package smoke for npm CLI dispatch.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 141 package distribution contract tests after adding source/archive/npm package smoke for npm CLI dispatch.
+- PASS: `make package-check` after committing npm CLI source/archive/npm package dispatch smoke; prepublish source syntax checks, 141 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
 
 ## 復旧
 

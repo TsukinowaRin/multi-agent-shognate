@@ -732,6 +732,19 @@ def representative_wrapper_smoke_cases() -> list[tuple[list[str], str]]:
     ]
 
 
+def npm_cli_dispatch_smoke_cases() -> list[tuple[list[str], str]]:
+    return [
+        (
+            ["node", "bin/shogunate.js", "run", "--help"],
+            "Usage: ./Shogunate-Runtime.sh",
+        ),
+        (
+            ["node", "bin/shogunate.js", "pair", "--help"],
+            "Run the Shogunate Android pairing server.",
+        ),
+    ]
+
+
 class PackageDistributionContractTests(unittest.TestCase):
     def test_curl_bootstrap_is_release_package_aware(self):
         text = BOOTSTRAP.read_text(encoding="utf-8")
@@ -2431,18 +2444,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("process.cwd()", npm_cli)
 
     def test_npm_cli_run_and_pair_dispatch_to_mod_sources(self):
-        cases = [
-            (
-                ["node", "bin/shogunate.js", "run", "--help"],
-                "Usage: ./Shogunate-Runtime.sh",
-            ),
-            (
-                ["node", "bin/shogunate.js", "pair", "--help"],
-                "Run the Shogunate Android pairing server.",
-            ),
-        ]
-
-        for command, expected in cases:
+        for command, expected in npm_cli_dispatch_smoke_cases():
             with self.subTest(command=command):
                 result = subprocess.run(
                     command,
@@ -2454,6 +2456,85 @@ class PackageDistributionContractTests(unittest.TestCase):
                 output = result.stdout + result.stderr
                 self.assertEqual(0, result.returncode, output)
                 self.assertIn(expected, output)
+
+    def test_release_archive_npm_cli_run_and_pair_dispatch_to_mod_sources(self):
+        result = subprocess.run(
+            ["git", "archive", "--worktree-attributes", "--format=tar", "HEAD"],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise AssertionError(
+                "git archive failed:\n"
+                f"STDOUT:\n{result.stdout.decode('utf-8', errors='replace')}\n"
+                f"STDERR:\n{result.stderr.decode('utf-8', errors='replace')}"
+            )
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_root = Path(tmp)
+            extract = subprocess.run(
+                ["tar", "-xf", "-", "-C", str(archive_root)],
+                input=result.stdout,
+                capture_output=True,
+                check=False,
+            )
+            if extract.returncode != 0:
+                raise AssertionError(
+                    "tar extraction failed:\n"
+                    f"STDOUT:\n{extract.stdout.decode('utf-8', errors='replace')}\n"
+                    f"STDERR:\n{extract.stderr.decode('utf-8', errors='replace')}"
+                )
+            for command, expected in npm_cli_dispatch_smoke_cases():
+                with self.subTest(command=command):
+                    smoke = subprocess.run(
+                        command,
+                        cwd=archive_root,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    output = smoke.stdout + smoke.stderr
+                    self.assertEqual(0, smoke.returncode, output)
+                    self.assertIn(expected, output)
+
+    def test_npm_package_npm_cli_run_and_pair_dispatch_to_mod_sources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package_dir = Path(tmp)
+            pack = subprocess.run(
+                ["npm", "pack", "--pack-destination", str(package_dir)],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if pack.returncode != 0:
+                raise AssertionError(f"npm pack failed:\nSTDOUT:\n{pack.stdout}\nSTDERR:\n{pack.stderr}")
+            packages = sorted(package_dir.glob("*.tgz"))
+            self.assertEqual(1, len(packages), pack.stdout + pack.stderr)
+            extract = subprocess.run(
+                ["tar", "-xzf", str(packages[0]), "-C", str(package_dir)],
+                capture_output=True,
+                check=False,
+            )
+            if extract.returncode != 0:
+                raise AssertionError(
+                    "npm tar extraction failed:\n"
+                    f"STDOUT:\n{extract.stdout.decode('utf-8', errors='replace')}\n"
+                    f"STDERR:\n{extract.stderr.decode('utf-8', errors='replace')}"
+                )
+            package_root = package_dir / "package"
+            for command, expected in npm_cli_dispatch_smoke_cases():
+                with self.subTest(command=command):
+                    smoke = subprocess.run(
+                        command,
+                        cwd=package_root,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    output = smoke.stdout + smoke.stderr
+                    self.assertEqual(0, smoke.returncode, output)
+                    self.assertIn(expected, output)
 
     def test_package_json_has_mod_canonical_copy(self):
         root_package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))

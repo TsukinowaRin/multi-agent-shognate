@@ -1645,6 +1645,13 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - EXPECTED FAIL before commit: full `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` reached release archive HEAD checks and reported the new proxy files missing from `git archive HEAD`; this is expected until the new files are committed, because the contract intentionally validates committed release assets.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 package distribution contract tests after committing the Android tmux proxy, proving the new MOD canonical proxy and root wrapper are included in committed release archives and npm package surfaces.
 - PASS: `make package-check` after committing the Android tmux proxy; prepublish source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, and generated instruction freshness all passed.
+- MOD 内部 utility の残存 root wrapper 呼び出しを追加削減した。role configurator launcher は `shogunate_mod/configure/runtime_roles.py`、first setup の alias sync は `shogunate_mod/shell/install_aliases.sh`、Android setup helper の Pair server は `shogunate_mod/pair/server.py`、development Makefile の instruction build / CoDD commands は `shogunate_mod/instructions/build.sh` / `shogunate_mod/gunkan/codd_check.sh` を直接呼ぶ。branch policy notification は `shogunate_mod/notify/send.sh` を正本として使い、root `scripts/ntfy.sh` fallback を削除した。
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_mod_runtime_helpers_call_mod_canonical_sources tests.unit.test_package_distribution.PackageDistributionContractTests.test_makefile_has_mod_canonical_copy` after moving the remaining MOD utility calls to MOD canonical paths.
+- PASS: `bash -n shogunate_mod/git/branch_policy.sh shogunate_mod/configure/role_launcher.sh shogunate_mod/package/first_setup.sh shogunate_mod/mobile/android/tools/setup_android_ssh.sh android/tools/setup_android_ssh.sh` after the MOD utility call cleanup.
+- PASS: `bats tests/unit/test_configure_role_launchers.bats tests/unit/test_branch_policy_scripts.bats tests/unit/test_shell_aliases.bats` after the MOD utility call cleanup.
+- PASS: direct sync checks for `Makefile`, Android setup helper, and root/MOD package distribution tests after the MOD utility call cleanup.
+- PASS: `git diff --check` after the MOD utility call cleanup.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 package distribution contract tests after adding contracts for these MOD canonical utility calls.
 
 ## 復旧
 

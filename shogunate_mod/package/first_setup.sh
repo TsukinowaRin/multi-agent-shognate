@@ -809,15 +809,15 @@ log_step "STEP 10: alias設定"
 # alias追加対象ファイル
 BASHRC_FILE="$HOME/.bashrc"
 
-if [ -f "$SCRIPT_DIR/scripts/install_shell_aliases.sh" ]; then
-    bash "$SCRIPT_DIR/scripts/install_shell_aliases.sh" "$BASHRC_FILE"
+if [ -f "$SCRIPT_DIR/shogunate_mod/shell/install_aliases.sh" ]; then
+    bash "$SCRIPT_DIR/shogunate_mod/shell/install_aliases.sh" "$BASHRC_FILE"
     log_success "Shogunate view aliases を同期しました（cgo/csa/csg/csk/ckr/csm/cma）"
     log_warn "alias を反映するには、以下のいずれかを実行してください："
     log_info "  1. source ~/.bashrc"
     log_info "  2. PowerShell で 'wsl --shutdown' してからターミナルを開き直す"
     log_info "  ※ ウィンドウを閉じるだけでは WSL が終了しないため反映されません"
 else
-    log_warn "scripts/install_shell_aliases.sh が見つからないため alias 同期をスキップしました"
+    log_warn "shogunate_mod/shell/install_aliases.sh が見つからないため alias 同期をスキップしました"
 fi
 
 RESULTS+=("alias設定: OK")

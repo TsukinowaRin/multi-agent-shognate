@@ -473,7 +473,7 @@ pair_usb() {
   echo "[PAIRING] Android app で USB を選ぶか Tailscale/LAN IP を入力し、接続を押してください。"
   echo "[PAIRING] USB が接続されていれば自動で adb reverse を設定します。"
   echo "[PAIRING] PC 側に表示される端末名を確認し、Password を入力すると公開鍵が登録されます。"
-  exec python3 "$ROOT_DIR/scripts/shogunate_pair_server.py" \
+  exec python3 "$ROOT_DIR/shogunate_mod/pair/server.py" \
     --adb "$ADB_BIN" \
     --ssh-port "$HOST_SSH_PORT" \
     --usb-ssh-port "$ANDROID_USB_PORT" \
@@ -494,7 +494,7 @@ pair_wireless() {
   echo
   echo "[PAIRING] Android app で Tailscale/LAN IP を入力し、接続を押してください。"
   echo "[PAIRING] PC 側に表示される端末名を確認し、Password を入力すると公開鍵が登録されます。"
-  exec python3 "$ROOT_DIR/scripts/shogunate_pair_server.py" \
+  exec python3 "$ROOT_DIR/shogunate_mod/pair/server.py" \
     --ssh-port "$HOST_SSH_PORT" \
     --project-root "$PROJECT_PATH" \
     --user "$SSH_USER"

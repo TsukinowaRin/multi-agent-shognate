@@ -843,6 +843,15 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/git/branch_policy.sh": [
                 "shogunate_mod/notify/send.sh",
             ],
+            "shogunate_mod/configure/role_launcher.sh": [
+                "shogunate_mod/configure/runtime_roles.py",
+            ],
+            "shogunate_mod/package/first_setup.sh": [
+                "shogunate_mod/shell/install_aliases.sh",
+            ],
+            "shogunate_mod/mobile/android/tools/setup_android_ssh.sh": [
+                "shogunate_mod/pair/server.py",
+            ],
             "shogunate_mod/hooks/stop_hook_inbox.sh": [
                 "shogunate_mod/inbox/write.sh",
             ],
@@ -888,6 +897,10 @@ class PackageDistributionContractTests(unittest.TestCase):
             'scripts/branch_drift_check.sh',
             'scripts/auto_merge_short_lived.sh',
             'scripts/ntfy_send.sh',
+            'scripts/ntfy.sh',
+            'scripts/configure_runtime_roles.py',
+            'scripts/install_shell_aliases.sh',
+            'scripts/shogunate_pair_server.py',
             'SCRIPT_DIR}/scripts/android_tmux_proxy.py',
         ]
 
@@ -3238,8 +3251,10 @@ class PackageDistributionContractTests(unittest.TestCase):
 
         self.assertEqual(root_makefile, mod_makefile)
         text = mod_makefile.decode("utf-8")
-        self.assertIn("scripts/build_instructions.sh", text)
-        self.assertIn("scripts/codd_check.sh gunkan", text)
+        self.assertIn("shogunate_mod/instructions/build.sh", text)
+        self.assertIn("shogunate_mod/gunkan/codd_check.sh gunkan", text)
+        self.assertNotIn("bash scripts/build_instructions.sh", text)
+        self.assertNotIn("bash scripts/codd_check.sh", text)
         self.assertIn("mod-check", text)
         self.assertIn("mod-check: package-check package-curl-smoke source-smoke android-check", text)
         self.assertIn("package-check", text)

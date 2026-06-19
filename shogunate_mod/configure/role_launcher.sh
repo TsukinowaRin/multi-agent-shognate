@@ -32,8 +32,6 @@ echo ""
 
 if [[ -f "shogunate_mod/configure/runtime_roles.py" ]]; then
   CONFIGURATOR="shogunate_mod/configure/runtime_roles.py"
-elif [[ -f "scripts/configure_runtime_roles.py" ]]; then
-  CONFIGURATOR="scripts/configure_runtime_roles.py"
 else
   exit_with_error "role configurator not found."
 fi

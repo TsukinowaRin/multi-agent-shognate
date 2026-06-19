@@ -56,10 +56,10 @@ test-all: test test-int
 # Build instructions (Phase 2 feature)
 build:
 	@echo "Building instruction files..."
-	@if [ -f scripts/build_instructions.sh ]; then \
-		bash scripts/build_instructions.sh; \
+	@if [ -f shogunate_mod/instructions/build.sh ]; then \
+		bash shogunate_mod/instructions/build.sh; \
 	else \
-		echo "WARNING: scripts/build_instructions.sh not found"; \
+		echo "WARNING: shogunate_mod/instructions/build.sh not found"; \
 		echo "This will be available in Phase 2 (template generation)"; \
 	fi
 
@@ -84,7 +84,7 @@ lint:
 # Build + diff check (CI equivalent)
 check: build
 	@echo "Checking for uncommitted instruction changes..."
-	@if [ -f scripts/build_instructions.sh ] && [ -d instructions/generated ] && [ -d .opencode/agents ]; then \
+	@if [ -f shogunate_mod/instructions/build.sh ] && [ -d instructions/generated ] && [ -d .opencode/agents ]; then \
 		if git diff --exit-code instructions/generated/ .opencode/agents/; then \
 			echo "✓ Generated instructions and OpenCode agents are in sync"; \
 		else \
@@ -141,19 +141,19 @@ package-check:
 	bash shogunate_mod/package/prepublish_check.sh
 
 codd:
-	bash scripts/codd_check.sh validate
+	bash shogunate_mod/gunkan/codd_check.sh validate
 
 codd-install:
-	bash scripts/codd_check.sh install
+	bash shogunate_mod/gunkan/codd_check.sh install
 
 codd-scan:
-	bash scripts/codd_check.sh scan
+	bash shogunate_mod/gunkan/codd_check.sh scan
 
 codd-validate:
-	bash scripts/codd_check.sh validate
+	bash shogunate_mod/gunkan/codd_check.sh validate
 
 codd-gunkan:
-	bash scripts/codd_check.sh gunkan
+	bash shogunate_mod/gunkan/codd_check.sh gunkan
 
 # Install test dependencies
 install-deps:

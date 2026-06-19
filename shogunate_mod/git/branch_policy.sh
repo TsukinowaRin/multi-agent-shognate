@@ -121,11 +121,6 @@ branch_policy_notify() {
         return $?
     fi
 
-    if [[ -x "$BRANCH_POLICY_ROOT/scripts/ntfy.sh" ]]; then
-        bash "$BRANCH_POLICY_ROOT/scripts/ntfy.sh" "$message"
-        return $?
-    fi
-
     local topic
     topic="$(branch_policy_query ntfy_topic)"
     if [[ -z "$topic" ]]; then

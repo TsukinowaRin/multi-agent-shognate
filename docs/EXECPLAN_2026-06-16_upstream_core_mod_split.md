@@ -1686,6 +1686,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 tests on the current `HEAD`, revalidating the manifest / root wrapper / MOD canonical source / npm package / cURL release archive contracts after the runtime and Android Pair proof commits.
 - PASS: `bats tests/unit/test_cli_adapter.bats tests/unit/test_sync_runtime_cli_preferences.bats tests/unit/test_sync_opencode_config.bats` ran 144 tests on the current `HEAD`. This covers representative Codex / OpenCode / Antigravity command construction, role-local CLI state isolation, Codex shared auth behavior, OpenCode TUI config and project config generation, Antigravity keyring/preflight command handling, and runtime CLI preference sync safeguards.
 - PASS: `make package-check` passed on clean current `HEAD` after the runtime / Android Pair / package and CLI contract proof commits. It ran source syntax checks, 145 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness checks, and the dirty worktree release gate.
+- PASS: `make mod-check` passed on clean current `HEAD`. This reran `package-check`, then verified local release archive install through the cURL package smoke, detached source checkout setup-only runtime smoke, and Android `testDebugUnitTest assembleDebug`. The source smoke used a temporary `source-runtime-smoke-20260619141749` worktree/session and cleaned them up after success; the worktree remained clean afterward.
 
 ## 復旧
 

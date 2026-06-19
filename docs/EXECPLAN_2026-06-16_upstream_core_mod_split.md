@@ -316,6 +316,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Runtime cleanup / watcher stale cleanup を MOD 正本プロセス対応へ補強した。clean start と runtime daemon restart は旧 `scripts/` watcher だけでなく `shogunate_mod/watcher/inbox_watcher.sh` も掃除し、Gunkan light watch は旧 wrapper / MOD 正本の両方を掃除する。watcher supervisor の stale process 検出も旧 `scripts/inbox_watcher.sh` と MOD 正本 `shogunate_mod/watcher/inbox_watcher.sh` の両方を同じ agent 判定で扱う。
 - [x] Claude Code hook settings の command を root `scripts/session_start_hook.sh` / `scripts/stop_hook_inbox.sh` 互換入口から、MOD 正本 `shogunate_mod/hooks/session_start_hook.sh` / `shogunate_mod/hooks/stop_hook_inbox.sh` 直接実行へ寄せた。root `.claude/settings.json` は Claude Code が読む互換コピーとして MOD 正本 `shogunate_mod/hooks/claude_settings.json` と同期する。
 - [x] Runtime help / MCP health check の案内文を root `scripts/` 互換入口から MOD 正本 path へ寄せた。`shogunate_mod/runtime/options.sh` は `shogunate_mod/configure/agents.sh` と `shogunate_mod/view/*` を案内し、`shogunate_mod/runtime/mcp_health_check.sh` は `shogunate_mod/configure/switch_cli.sh` を案内する。`shogunate_mod/configure/switch_cli.sh` 自身の Usage コメントも MOD 正本 path に揃えた。
+- [x] generated instruction freshness guard の tracked source から root `scripts/build_instructions.sh` 互換 wrapper を外し、MOD 正本 `shogunate_mod/instructions/build.sh` / `ensure_generated.sh` を追うようにした。互換 wrapper 変更で生成 freshness が揺れず、MOD builder 変更だけが正しく gate される。
 
 ## 判断
 

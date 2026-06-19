@@ -813,6 +813,13 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("scripts/sync_opencode_config.py", text)
         self.assertNotIn("scripts/ensure_generated_instructions.sh", text)
 
+    def test_generated_instruction_freshness_tracks_mod_builder(self):
+        text = (ROOT / "shogunate_mod" / "instructions" / "ensure_generated.sh").read_text(encoding="utf-8")
+
+        self.assertIn("shogunate_mod/instructions/build.sh", text)
+        self.assertIn("shogunate_mod/instructions/ensure_generated.sh", text)
+        self.assertNotIn("scripts/build_instructions.sh", text)
+
     def test_runtime_daemon_starts_mod_canonical_helpers(self):
         text = (ROOT / "shogunate_mod" / "runtime" / "daemon.sh").read_text(encoding="utf-8")
         normalized = text.replace('\\"', '"')

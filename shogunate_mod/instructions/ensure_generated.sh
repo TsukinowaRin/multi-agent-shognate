@@ -36,7 +36,6 @@ done < <(
         find "${SOURCE_DIR}" -type f
         printf '%s\n' "${AUTOLOAD_CLAUDE_MD}"
         printf '%s\n' "${ROOT_DIR}/shogunate_mod/configure/opencode-permissions.yaml"
-        printf '%s\n' "${ROOT_DIR}/scripts/build_instructions.sh"
         printf '%s\n' "${ROOT_DIR}/shogunate_mod/instructions/build.sh"
         printf '%s\n' "${ROOT_DIR}/shogunate_mod/instructions/ensure_generated.sh"
     } | sort -u

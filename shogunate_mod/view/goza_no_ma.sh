@@ -197,7 +197,7 @@ fi
 if ! resolve_goza_session; then
   if [[ "$ENSURE_BACKEND" != true ]]; then
     echo "[ERROR] ${GOZA_SESSION} session が存在しません。" >&2
-    echo "        先に: bash shutsujin_departure.sh" >&2
+    echo "        先に: bash shogunate_mod/runtime/entrypoint.sh" >&2
     echo "        あるいは: bash shogunate_mod/view/goza_no_ma.sh --ensure-backend" >&2
     exit 1
   fi
@@ -205,7 +205,7 @@ if ! resolve_goza_session; then
   if [[ "$SETUP_ONLY" == true ]]; then
     START_ARGS=("-s" "${START_ARGS[@]}")
   fi
-  GOZA_SESSION_NAME="$GOZA_SESSION" bash "$ROOT_DIR/shutsujin_departure.sh" "${START_ARGS[@]}"
+  GOZA_SESSION_NAME="$GOZA_SESSION" bash "$ROOT_DIR/shogunate_mod/runtime/entrypoint.sh" "${START_ARGS[@]}"
   resolve_goza_session || true
 fi
 

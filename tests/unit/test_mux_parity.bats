@@ -93,7 +93,7 @@ setup_file() {
 }
 
 @test "goza helper は Shogunate session へ attach/switch し legacy へ fallback する" {
-    run bats_search 'SHOGUNATE_SESSION_NAME|LEGACY_GOZA_SESSION|resolve_goza_session|switch-client -t "\$GOZA_SESSION"|attach-session -t "\$GOZA_SESSION"|shutsujin_departure\.sh' "$PROJECT_ROOT/shogunate_mod/view/goza_no_ma.sh"
+    run bats_search 'SHOGUNATE_SESSION_NAME|LEGACY_GOZA_SESSION|resolve_goza_session|switch-client -t "\$GOZA_SESSION"|attach-session -t "\$GOZA_SESSION"|shogunate_mod/runtime/entrypoint\.sh' "$PROJECT_ROOT/shogunate_mod/view/goza_no_ma.sh"
     [ "$status" -eq 0 ]
 }
 

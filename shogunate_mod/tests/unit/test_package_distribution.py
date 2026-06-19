@@ -961,6 +961,7 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "shogunate_mod/view/goza_no_ma.sh",
             ],
             "shogunate_mod/view/goza_no_ma.sh": [
+                "shogunate_mod/runtime/entrypoint.sh",
                 "shogunate_mod/view/focus_agent_pane.sh",
                 "shogunate_mod/view/goza_no_ma.sh",
             ],
@@ -1004,6 +1005,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             'scripts/stop_and_apply_update.sh',
             'scripts/mux_parity_smoke.sh',
             'source lib/agent_status.sh',
+            'bash "$ROOT_DIR/shutsujin_departure.sh"',
         ]
 
         for rel, required in checks.items():

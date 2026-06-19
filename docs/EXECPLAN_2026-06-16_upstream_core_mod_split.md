@@ -321,6 +321,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] macOS runtime launcher の MOD 正本 `shogunate_mod/macos/runtime_launcher.command` が root `./Shogunate-Runtime.sh` wrapper へ戻らず、`shogunate_mod/runtime/runtime_launcher.sh` を直接呼ぶようにした。root `Shogunate-Runtime.command` は互換入口として MOD macOS launcher へ委譲し続ける。Bats と package distribution contract でこの境界を固定した。
 - [x] Android Pair server の pair 成功後 runtime 起動を root `Shogunate-Runtime.sh` wrapper から MOD 正本 `shogunate_mod/runtime/runtime_launcher.sh --resume --no-attach` 直接起動へ寄せた。`start_runtime()` の unit test で起動 command / cwd / `SHOGUNATE_PROJECT_DIR` を固定し、Pair server の既存 pairing tests も通した。
 - [x] update apply command の `--restart` 経路を root `shutsujin_departure.sh` wrapper から MOD 正本 `shogunate_mod/runtime/entrypoint.sh` 直接実行へ寄せた。root `scripts/stop_and_apply_update.sh` は互換入口として MOD update command へ委譲し続け、package distribution contract で restart 先が root wrapper へ戻らないことを固定した。
+- [x] Goza view helper の `--ensure-backend` 経路を root `shutsujin_departure.sh` wrapper から MOD 正本 `shogunate_mod/runtime/entrypoint.sh` 直接実行へ寄せた。`shogunate_mod/view/goza_no_ma.sh` は attach/fallback view helper のまま、backend 起動だけを MOD runtime entrypoint に向け、Bats と package distribution contract で戻り参照を検出するようにした。
 
 ## 判断
 

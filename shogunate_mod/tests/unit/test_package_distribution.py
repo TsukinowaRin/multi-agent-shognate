@@ -3375,6 +3375,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         text = mod_makefile.decode("utf-8")
         self.assertIn("shogunate_mod/instructions/build.sh", text)
         self.assertIn("shogunate_mod/gunkan/codd_check.sh gunkan", text)
+        self.assertIn("Run shellcheck on shogunate_mod/, lib/, and scripts/", text)
+        self.assertIn("find shogunate_mod -path shogunate_mod/tests -prune -o -name '*.sh' -type f -exec shellcheck {} \\;", text)
         self.assertNotIn("bash scripts/build_instructions.sh", text)
         self.assertNotIn("bash scripts/codd_check.sh", text)
         self.assertIn("mod-check", text)
@@ -4313,6 +4315,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("shogunate_mod/instructions/build.sh", mod_workflow)
         self.assertIn("bash shogunate_mod/instructions/build.sh", mod_workflow)
         self.assertIn("Run MOD instruction build", mod_workflow)
+        self.assertIn("Run shellcheck on Shogunate MOD", mod_workflow)
+        self.assertIn("find shogunate_mod -path shogunate_mod/tests -prune -o -name '*.sh' -type f -exec shellcheck -x -S error {} +", mod_workflow)
         self.assertNotIn("Run build_instructions.sh", mod_workflow)
         self.assertNotIn("bash scripts/build_instructions.sh", mod_workflow)
 

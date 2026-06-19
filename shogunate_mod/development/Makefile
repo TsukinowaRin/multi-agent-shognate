@@ -8,7 +8,7 @@ help:
 	@echo "  make test          - Run bats unit tests"
 	@echo "  make test-int      - Run bats integration tests"
 	@echo "  make build         - Run build_instructions.sh"
-	@echo "  make lint          - Run shellcheck on lib/ and scripts/"
+	@echo "  make lint          - Run shellcheck on shogunate_mod/, lib/, and scripts/"
 	@echo "  make check         - Run build + diff check (CI equivalent)"
 	@echo "  make mod-check     - Run package checks + cURL smoke + source smoke + Android check"
 	@echo "  make package-check - Run package prepublish checks"
@@ -70,6 +70,10 @@ lint:
 		echo "ERROR: shellcheck not installed"; \
 		echo "Install: sudo apt-get install shellcheck (Linux) or brew install shellcheck (Mac)"; \
 		exit 1; \
+	fi
+	@echo "Checking shogunate_mod/..."
+	@if [ -d shogunate_mod ]; then \
+		find shogunate_mod -path shogunate_mod/tests -prune -o -name '*.sh' -type f -exec shellcheck {} \; ; \
 	fi
 	@echo "Checking lib/..."
 	@if [ -d lib ]; then \

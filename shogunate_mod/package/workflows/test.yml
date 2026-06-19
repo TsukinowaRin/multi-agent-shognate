@@ -217,6 +217,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y shellcheck
 
+      - name: Run shellcheck on Shogunate MOD
+        run: |
+          if [ -d shogunate_mod ]; then
+            find shogunate_mod -path shogunate_mod/tests -prune -o -name '*.sh' -type f -exec shellcheck -x -S error {} +
+          else
+            echo "::warning::shogunate_mod/ directory not found"
+          fi
+
       - name: Run shellcheck on lib/
         run: |
           if [ -d lib ]; then

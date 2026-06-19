@@ -1795,6 +1795,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: actual setup-only smoke `SHOGUNATE_SESSION_NAME=shogunate-mux-mod-entrypoint-20260619222130-3484114 GOZA_SESSION_NAME=shogunate-mux-mod-entrypoint-20260619222130-3484114 SHOGUNATE_PROJECT_DIR=<runtime_sandboxes/.../project> bash shogunate_mod/runtime/mux_parity_smoke.sh --tmux-only --clean` completed with exit 0 and created `goza` window with 8 panes.
 - CoDD graph config の scan / verify 対象を root wrapper surface 中心から MOD 正本中心へ寄せた。`shogunate_mod/gunkan/codd.yaml` と互換コピー `.codd/codd.yaml` の `scan.source_dirs` に `shogunate_mod/` を追加し、`verify.typecheck_command` は `find shogunate_mod scripts lib -name '*.sh' -print0 | xargs -0 bash -n && bash -n shutsujin_departure.sh` で MOD 正本と互換 wrapper の両方を検査する。
 - PASS: targeted package distribution contract, `bats tests/unit/test_gunkan_audit.bats`, actual CoDD typecheck command, root/MOD CoDD config sync, root/MOD package distribution test sync, and `git diff --check` after moving CoDD config coverage to MOD canonical source.
+- Development `make lint` と GitHub Actions shellcheck job の対象を root `lib/` / `scripts/` 中心から MOD 正本込みへ広げた。root `Makefile` と MOD 正本 `shogunate_mod/development/Makefile` は `shogunate_mod/`（`shogunate_mod/tests` 除外）、`lib/`, `scripts/` を shellcheck 対象にし、root `.github/workflows/test.yml` と MOD 正本 workflow も同じ MOD shellcheck step を持つ。
+- PASS: targeted package distribution contract, root/MOD Makefile sync, root/MOD workflow sync, workflow YAML parse, MOD/source shell `bash -n`, and `git diff --check` after adding MOD source shellcheck coverage. Local `shellcheck` binary was not installed, so actual ShellCheck execution was left to CI / environments with shellcheck.
 
 ## 復旧
 

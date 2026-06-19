@@ -147,9 +147,9 @@ def is_loopback_host(host: str, source: str) -> bool:
 
 
 def start_runtime(project_root: Path, target_project: Path) -> tuple[bool, str]:
-    runtime = project_root / "Shogunate-Runtime.sh"
+    runtime = project_root / "shogunate_mod" / "runtime" / "runtime_launcher.sh"
     if not runtime.is_file():
-        return False, "Shogunate-Runtime.sh not found"
+        return False, "shogunate_mod/runtime/runtime_launcher.sh not found"
     env = os.environ.copy()
     env["SHOGUNATE_PROJECT_DIR"] = str(target_project)
     try:

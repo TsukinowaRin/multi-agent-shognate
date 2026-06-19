@@ -8,6 +8,7 @@ import threading
 import tempfile
 import unittest
 import urllib.request
+from unittest import mock
 from pathlib import Path
 
 
@@ -194,6 +195,25 @@ class ShogunatePairServerTests(unittest.TestCase):
 
         self.assertEqual(args.shogun_target, "shogunate-demo-1234:goza.0")
         self.assertEqual(args.agents_target, "shogunate-demo-1234:goza")
+
+    def test_start_runtime_uses_mod_runtime_launcher(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project_root = Path(tmp)
+            launcher = project_root / "shogunate_mod" / "runtime" / "runtime_launcher.sh"
+            target_project = project_root / "target-project"
+            launcher.parent.mkdir(parents=True)
+            launcher.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+
+            with mock.patch.object(pair_server.subprocess, "Popen") as popen:
+                ok, message = pair_server.start_runtime(project_root, target_project)
+
+            self.assertTrue(ok)
+            self.assertEqual(message, "started")
+            popen.assert_called_once()
+            args, kwargs = popen.call_args
+            self.assertEqual(["bash", str(launcher), "--resume", "--no-attach"], args[0])
+            self.assertEqual(str(project_root), kwargs["cwd"])
+            self.assertEqual(str(target_project), kwargs["env"]["SHOGUNATE_PROJECT_DIR"])
 
     def test_pair_server_stops_after_success_by_default(self):
         with tempfile.TemporaryDirectory() as tmp:

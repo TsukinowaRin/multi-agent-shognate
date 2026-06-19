@@ -88,6 +88,8 @@ require_directory_files_synced() {
   done < <(find "$root_dir" -type f \
     ! -path '*/__pycache__/*' \
     ! -path '*/.system/*' \
+    ! -path '*/test_helper/bats-assert/*' \
+    ! -path '*/test_helper/bats-support/*' \
     ! -name '*.pyc' \
     ! -name '*.pyo' \
     | sort)
@@ -101,6 +103,8 @@ require_directory_files_synced() {
   done < <(find "$mod_dir" -type f \
     ! -path '*/__pycache__/*' \
     ! -path '*/.system/*' \
+    ! -path '*/test_helper/bats-assert/*' \
+    ! -path '*/test_helper/bats-support/*' \
     ! -name '*.pyc' \
     ! -name '*.pyo' \
     | sort)

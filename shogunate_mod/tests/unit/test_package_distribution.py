@@ -802,6 +802,15 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("scripts/sync_opencode_config.py", text)
         self.assertNotIn("scripts/ensure_generated_instructions.sh", text)
 
+    def test_runtime_daemon_starts_mod_canonical_helpers(self):
+        text = (ROOT / "shogunate_mod" / "runtime" / "daemon.sh").read_text(encoding="utf-8")
+        normalized = text.replace('\\"', '"')
+
+        self.assertIn('bash "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh"', normalized)
+        self.assertIn('python3 "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py"', normalized)
+        self.assertNotIn('bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh"', normalized)
+        self.assertNotIn('python3 "$SCRIPT_DIR/scripts/gunkan_light_watch.py"', normalized)
+
     def test_representative_wrapper_smoke_cases_are_manifest_wrappers(self):
         manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
         wrappers = set(manifest_list_values(manifest, "compatibility_wrappers"))

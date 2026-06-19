@@ -63,12 +63,12 @@ ensure_tmux_runtime_daemon_window() {
 ensure_gunkan_light_watch_daemon_started() {
     local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
 
-    [ -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" ] || return 0
+    [ -f "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py" ] || return 0
     mkdir -p "$SCRIPT_DIR/logs" "$SCRIPT_DIR/queue/runtime"
     ensure_tmux_runtime_daemon_window \
         "$session_name" \
         "gunkan-watch" \
-        "env MAS_GUNKAN_WATCH_INTERVAL=\"${MAS_GUNKAN_WATCH_INTERVAL:-20}\" MAS_GUNKAN_WATCH_COOLDOWN=\"${MAS_GUNKAN_WATCH_COOLDOWN:-300}\" python3 \"$SCRIPT_DIR/scripts/gunkan_light_watch.py\" --daemon >> \"$SCRIPT_DIR/logs/gunkan_light_watch.log\" 2>&1"
+        "env MAS_GUNKAN_WATCH_INTERVAL=\"${MAS_GUNKAN_WATCH_INTERVAL:-20}\" MAS_GUNKAN_WATCH_COOLDOWN=\"${MAS_GUNKAN_WATCH_COOLDOWN:-300}\" python3 \"$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py\" --daemon >> \"$SCRIPT_DIR/logs/gunkan_light_watch.log\" 2>&1"
 }
 
 restart_tmux_runtime_daemon_session() {
@@ -83,7 +83,7 @@ restart_tmux_runtime_daemon_session() {
         start_tmux_runtime_daemon_window \
             "$session_name" \
             "watcher" \
-            "while true; do env $session_env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION=\"$session_name\" MUX_TYPE=tmux bash \"$SCRIPT_DIR/scripts/watcher_supervisor.sh\" >> \"$SCRIPT_DIR/logs/watcher_supervisor.log\" 2>&1 || true; sleep \"${WATCHER_SUPERVISOR_INTERVAL:-5}\"; done"
+            "while true; do env $session_env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION=\"$session_name\" MUX_TYPE=tmux bash \"$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh\" >> \"$SCRIPT_DIR/logs/watcher_supervisor.log\" 2>&1 || true; sleep \"${WATCHER_SUPERVISOR_INTERVAL:-5}\"; done"
         started=1
     fi
 
@@ -111,7 +111,7 @@ restart_tmux_runtime_daemon_session() {
         started=1
     fi
 
-    if [ -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" ]; then
+    if [ -f "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py" ]; then
         ensure_gunkan_light_watch_daemon_started "$session_name"
         started=1
     fi
@@ -132,6 +132,7 @@ start_runtime_watchers_and_bridges() {
 
     pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh " 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/watcher_supervisor.sh" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
@@ -139,16 +140,17 @@ start_runtime_watchers_and_bridges() {
     pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/cli_pref_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py" 2>/dev/null || true
     tmux kill-session -t "$RUNTIME_DAEMON_SESSION" 2>/dev/null || true
     pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
     sleep 1
 
     if command -v inotifywait >/dev/null 2>&1; then
-        env $(build_runtime_session_env_args) WATCHER_SUPERVISOR_ONCE=1 MUX_TYPE=tmux bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
+        env $(build_runtime_session_env_args) WATCHER_SUPERVISOR_ONCE=1 MUX_TYPE=tmux bash "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh" \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
         restart_tmux_runtime_daemon_session "$RUNTIME_DAEMON_SESSION" || true
         env $(build_runtime_session_env_args) WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION="$RUNTIME_DAEMON_SESSION" MUX_TYPE=tmux \
-            bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh" \
+            bash "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh" \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
         if [ -x "$SCRIPT_DIR/shogunate_mod/runtime/cli_pref_daemon.sh" ]; then
             sleep 1
@@ -157,11 +159,11 @@ start_runtime_watchers_and_bridges() {
                 "runtime-pref" \
                 "env MAS_RUNTIME_PREF_SYNC_INTERVAL=\"${MAS_RUNTIME_PREF_SYNC_INTERVAL:-1}\" MAS_RUNTIME_PREF_SYNC_LOG=\"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" bash \"$SCRIPT_DIR/shogunate_mod/runtime/cli_pref_daemon.sh\" >> \"$SCRIPT_DIR/logs/runtime_cli_pref_sync.log\" 2>&1"
         fi
-        if [ -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" ]; then
+        if [ -f "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py" ]; then
             ensure_tmux_runtime_daemon_window \
                 "$RUNTIME_DAEMON_SESSION" \
                 "gunkan-watch" \
-                "env MAS_GUNKAN_WATCH_INTERVAL=\"${MAS_GUNKAN_WATCH_INTERVAL:-20}\" MAS_GUNKAN_WATCH_COOLDOWN=\"${MAS_GUNKAN_WATCH_COOLDOWN:-300}\" python3 \"$SCRIPT_DIR/scripts/gunkan_light_watch.py\" --daemon >> \"$SCRIPT_DIR/logs/gunkan_light_watch.log\" 2>&1"
+                "env MAS_GUNKAN_WATCH_INTERVAL=\"${MAS_GUNKAN_WATCH_INTERVAL:-20}\" MAS_GUNKAN_WATCH_COOLDOWN=\"${MAS_GUNKAN_WATCH_COOLDOWN:-300}\" python3 \"$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py\" --daemon >> \"$SCRIPT_DIR/logs/gunkan_light_watch.log\" 2>&1"
         fi
         _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"

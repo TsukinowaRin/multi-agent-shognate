@@ -330,7 +330,7 @@ setup_file() {
 }
 
 @test "tmux 起動は CLI launch 時刻を記録し、起動直後の shell-return recovery を抑止する" {
-    run bats_search 'mark_cli_launch_attempt_tmux|@cli_launch_epoch|CLI_STARTUP_GRACE_SECONDS|runtime_start_epoch|RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh" "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh" "$PROJECT_ROOT/scripts/watcher_supervisor.sh"
+    run bats_search 'mark_cli_launch_attempt_tmux|@cli_launch_epoch|CLI_STARTUP_GRACE_SECONDS|runtime_start_epoch|RUNTIME_STARTUP_RECOVERY_GRACE_SECONDS' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh" "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh" "$PROJECT_ROOT/shogunate_mod/watcher/supervisor.sh"
     [ "$status" -eq 0 ]
 }
 

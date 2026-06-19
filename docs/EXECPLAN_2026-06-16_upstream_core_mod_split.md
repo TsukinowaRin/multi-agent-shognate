@@ -40,6 +40,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Goza tmux session construction を `shogunate_mod/runtime/goza.sh` へ移動。
 - [x] Agent CLI launch flow を `shogunate_mod/runtime/launch.sh` へ移動。
 - [x] Watcher / bridge startup orchestration を `shogunate_mod/runtime/daemon.sh` へ移動。
+- [x] Runtime daemon の watcher supervisor / Gunkan light watch 起動を root wrapper 経由から `shogunate_mod/watcher/supervisor.sh` / `shogunate_mod/gunkan/light_watch.py` 直接参照へ寄せた。
 - [x] Completion summary / Windows Terminal tab rendering を `shogunate_mod/runtime/summary.sh` へ移動。
 - [x] Runtime lifecycle setup を `shogunate_mod/runtime/lifecycle.sh` へ移動。
 - [x] Startup bootstrap delivery flow を `shogunate_mod/runtime/bootstrap.sh` へ移動。
@@ -1606,6 +1607,12 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py` and `git diff --check` after changing runtime startup helper calls to MOD canonical sources.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 142 package distribution contract tests after changing runtime startup helper calls to MOD canonical sources.
 - PASS: `make package-check` after committing runtime startup MOD helper dispatch; prepublish source syntax checks, 142 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_runtime_daemon_starts_mod_canonical_helpers tests.unit.test_package_distribution.PackageDistributionContractTests.test_compatibility_wrappers_delegate_to_shogunate_mod` after changing runtime daemon watcher/Gunkan starts to MOD canonical sources.
+- PASS: `bash -n shogunate_mod/runtime/daemon.sh shogunate_mod/runtime/state.sh` after changing runtime daemon watcher/Gunkan starts to MOD canonical sources.
+- PASS: direct `diff -q tests/unit/test_package_distribution.py shogunate_mod/tests/unit/test_package_distribution.py`, `diff -q tests/unit/test_mux_parity.bats shogunate_mod/tests/unit/test_mux_parity.bats`, and `git diff --check` after changing runtime daemon watcher/Gunkan starts to MOD canonical sources.
+- PASS: `bats tests/unit/test_mux_parity.bats` ran 72 mux parity tests after changing runtime daemon watcher/Gunkan starts to MOD canonical sources.
+- PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 143 package distribution contract tests after changing runtime daemon watcher/Gunkan starts to MOD canonical sources.
+- PASS: `make package-check` after committing runtime daemon MOD helper dispatch; prepublish source syntax checks, 143 package distribution contract tests, 34 MOD behavior unit tests, generated instruction freshness, and dirty worktree gate all passed.
 
 ## 復旧
 

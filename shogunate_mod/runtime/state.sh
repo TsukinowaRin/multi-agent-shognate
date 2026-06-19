@@ -33,12 +33,14 @@ cleanup_existing_runtime_sessions() {
     tmux_kill_session_exact "$RUNTIME_DAEMON_SESSION" && log_info "  └─ runtime監視陣、撤収完了" || log_info "  └─ runtime監視陣は存在せず"
     pkill -f "$SCRIPT_DIR/scripts/inbox_watcher.sh " 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/watcher_supervisor.sh" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/shogun_to_karo_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/karo_done_to_shogun_bridge_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/runtime_cli_pref_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/cli_pref_daemon.sh" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py" 2>/dev/null || true
     pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
     tmux_kill_session_exact multiagent && log_info "  └─ multiagent陣、撤収完了" || log_info "  └─ multiagent陣は存在せず"
     tmux_kill_session_exact shogun && log_info "  └─ shogun本陣、撤収完了" || log_info "  └─ shogun本陣は存在せず"

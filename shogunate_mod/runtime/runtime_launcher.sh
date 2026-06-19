@@ -37,7 +37,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       cat <<'EOF'
-Usage: ./Shogunate-Runtime.sh [--clean|--resume] [--no-attach] [shutsujin args...]
+Usage: bash shogunate_mod/runtime/runtime_launcher.sh [--clean|--resume] [--no-attach] [shutsujin args...]
 
 Defaults:
   --clean      Start with bash shogunate_mod/runtime/entrypoint.sh -c
@@ -45,10 +45,10 @@ Defaults:
   project      Use the caller's current directory as the target project
 
 Examples:
-  ./Shogunate-Runtime.sh
-  ./Shogunate-Runtime.sh --resume
-  ./Shogunate-Runtime.sh --project /path/to/project
-  ./Shogunate-Runtime.sh --clean --no-attach
+  bash shogunate_mod/runtime/runtime_launcher.sh
+  bash shogunate_mod/runtime/runtime_launcher.sh --resume
+  bash shogunate_mod/runtime/runtime_launcher.sh --project /path/to/project
+  bash shogunate_mod/runtime/runtime_launcher.sh --clean --no-attach
 EOF
       exit 0
       ;;

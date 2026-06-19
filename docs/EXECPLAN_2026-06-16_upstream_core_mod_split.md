@@ -1828,6 +1828,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct root/MOD package distribution test sync and `git diff --check` after the MOD bootstrap help update.
 - MOD bootstrap の first setup 表記も、generic な `first_setup.sh` ではなく優先実行する `shogunate_mod/package/first_setup.sh` を正本として示すようにした。legacy root `first_setup.sh` は古い archive/install 互換 fallback としてだけ log に残す。
 - PASS: `bash shogunate_mod/package/bootstrap.sh --help`, `bash -n shogunate_mod/package/bootstrap.sh`, and targeted package distribution contracts after changing the MOD first setup wording.
+- `shogunate run --help` / npm CLI dispatch で見える runtime launcher help も root `./Shogunate-Runtime.sh` ではなく MOD 正本 `bash shogunate_mod/runtime/runtime_launcher.sh` を Usage / Examples に出すようにした。root `Shogunate-Runtime.*` は互換 launcher として残す。
+- PASS: `node bin/shogunate.js run --help`, `bats tests/unit/test_runtime_launchers.bats --timing`, targeted package distribution contracts, root/MOD test sync, and `git diff --check` after the runtime launcher help update.
 
 ## 復旧
 

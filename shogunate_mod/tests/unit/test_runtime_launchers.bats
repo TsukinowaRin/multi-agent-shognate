@@ -44,6 +44,12 @@ setup() {
   run grep -F "bash shogunate_mod/runtime/entrypoint.sh" "$PROJECT_ROOT/shogunate_mod/runtime/runtime_launcher.sh"
   [ "$status" -eq 0 ]
 
+  run grep -F "Usage: bash shogunate_mod/runtime/runtime_launcher.sh" "$PROJECT_ROOT/shogunate_mod/runtime/runtime_launcher.sh"
+  [ "$status" -eq 0 ]
+
+  run grep -F "Usage: ./Shogunate-Runtime.sh" "$PROJECT_ROOT/shogunate_mod/runtime/runtime_launcher.sh"
+  [ "$status" -ne 0 ]
+
   run grep -F "bash shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/runtime_launcher.sh"
   [ "$status" -ne 0 ]
 

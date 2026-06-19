@@ -743,7 +743,7 @@ def npm_cli_dispatch_smoke_cases() -> list[tuple[list[str], str]]:
     return [
         (
             ["node", "bin/shogunate.js", "run", "--help"],
-            "Usage: ./Shogunate-Runtime.sh",
+            "Usage: bash shogunate_mod/runtime/runtime_launcher.sh",
         ),
         (
             ["node", "bin/shogunate.js", "help"],
@@ -990,6 +990,10 @@ class PackageDistributionContractTests(unittest.TestCase):
             ],
             "shogunate_mod/runtime/shutsujin_launcher.sh": [
                 "shogunate_mod/shell/aliases.sh",
+            ],
+            "shogunate_mod/runtime/runtime_launcher.sh": [
+                "shogunate_mod/runtime/runtime_launcher.sh",
+                "shogunate_mod/runtime/entrypoint.sh",
             ],
             "shogunate_mod/runtime/options.sh": [
                 "shogunate_mod/configure/agents.sh",

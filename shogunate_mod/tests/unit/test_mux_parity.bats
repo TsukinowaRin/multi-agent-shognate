@@ -51,7 +51,7 @@ setup_file() {
 }
 
 @test "軍師 attach alias csg と御座の間 alias cgo を案内する" {
-    run bats_search "shell_aliases\.sh|install_shell_aliases\.sh|alias csg='bash .*focus_agent_pane\.sh gunshi'|alias cgo='bash .*goza_no_ma\.sh'|または: csg|cgo" "$PROJECT_ROOT/scripts/shell_aliases.sh" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shogunate_mod/package/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
+    run bats_search "shell_aliases\.sh|install_shell_aliases\.sh|alias csg='bash .*focus_agent_pane\.sh gunshi'|alias cgo='bash .*goza_no_ma\.sh'|または: csg|cgo" "$PROJECT_ROOT/scripts/shell_aliases.sh" "$PROJECT_ROOT/shogunate_mod/shell/aliases.sh" "$PROJECT_ROOT/first_setup.sh" "$PROJECT_ROOT/shogunate_mod/package/first_setup.sh" "$PROJECT_ROOT/shutsujin_departure.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -270,7 +270,7 @@ setup_file() {
 }
 
 @test "Shutsujin は完了後に cgo/CMA を打てる command shell へ移動できる" {
-    run bats_search 'create_goza_command_window|goza_command_shell\.bashrc|scripts/shell_aliases\.sh|cgo/CGO for Goza|CMA/cma for Multiagent|MAS_GOZA_FINISH_TARGET=command' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh" "$PROJECT_ROOT/Shutsujin.sh"
+    run bats_search 'create_goza_command_window|goza_command_shell\.bashrc|shogunate_mod/shell/aliases\.sh|cgo/CGO for Goza|CMA/cma for Multiagent|MAS_GOZA_FINISH_TARGET=command' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh" "$PROJECT_ROOT/Shutsujin.sh"
     [ "$status" -eq 0 ]
 }
 

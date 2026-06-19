@@ -347,7 +347,7 @@ case "\$command_name" in
         shift || true
         parse_project_args "\$@"
         run_in_project_runtime
-        printf 'source %q/scripts/shell_aliases.sh\n' "\$SHOGUNATE_WORKSPACE_DIR"
+        printf 'source %q/shogunate_mod/shell/aliases.sh\n' "\$SHOGUNATE_WORKSPACE_DIR"
         ;;
     install)
         shift || true

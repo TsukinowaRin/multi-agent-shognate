@@ -380,7 +380,7 @@ create_goza_command_window() {
         if command -v shogunate_mod_shell_aliases_path >/dev/null 2>&1; then
             printf 'source %q\n' "$(shogunate_mod_shell_aliases_path "$SCRIPT_DIR")"
         else
-            printf 'source %q/scripts/shell_aliases.sh\n' "$SCRIPT_DIR"
+            printf 'source %q/shogunate_mod/shell/aliases.sh\n' "$SCRIPT_DIR"
         fi
         printf 'cd %q\n' "$SHOGUNATE_PROJECT_DIR"
         printf 'echo "[Shogunate] Ready. Type cgo/CGO for Goza, CMA/cma for Multiagent, csa/CSA for Ashigaru."\n'

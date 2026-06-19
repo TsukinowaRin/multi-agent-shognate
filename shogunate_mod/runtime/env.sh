@@ -62,5 +62,5 @@ initialize_goza_runtime_vars() {
 
 shogunate_mod_shell_aliases_path() {
     local runtime_root="$1"
-    printf '%s/scripts/shell_aliases.sh\n' "$runtime_root"
+    printf '%s/shogunate_mod/shell/aliases.sh\n' "$runtime_root"
 }

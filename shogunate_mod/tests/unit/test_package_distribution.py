@@ -723,7 +723,7 @@ def representative_wrapper_smoke_cases() -> list[tuple[list[str], str]]:
         ),
         (
             ["bash", "scripts/shell_aliases.sh"],
-            "scripts/install_shell_aliases.sh",
+            "shogunate_mod/shell/install_aliases.sh",
         ),
         (
             ["bash", "scripts/agent_status.sh", "--help"],
@@ -849,6 +849,10 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/package/first_setup.sh": [
                 "shogunate_mod/shell/install_aliases.sh",
             ],
+            "shogunate_mod/shell/aliases.sh": [
+                "shogunate_mod/view/focus_agent_pane.sh",
+                "shogunate_mod/view/goza_no_ma.sh",
+            ],
             "shogunate_mod/mobile/android/tools/setup_android_ssh.sh": [
                 "shogunate_mod/pair/server.py",
             ],
@@ -882,6 +886,15 @@ class PackageDistributionContractTests(unittest.TestCase):
             "shogunate_mod/runtime/android_compat.sh": [
                 "shogunate_mod/runtime/android_tmux_proxy.py",
             ],
+            "shogunate_mod/runtime/env.sh": [
+                "shogunate_mod/shell/aliases.sh",
+            ],
+            "shogunate_mod/runtime/launch.sh": [
+                "shogunate_mod/shell/aliases.sh",
+            ],
+            "shogunate_mod/runtime/shutsujin_launcher.sh": [
+                "shogunate_mod/shell/aliases.sh",
+            ],
         }
 
         forbidden = [
@@ -901,6 +914,8 @@ class PackageDistributionContractTests(unittest.TestCase):
             'scripts/configure_runtime_roles.py',
             'scripts/install_shell_aliases.sh',
             'scripts/shogunate_pair_server.py',
+            'scripts/focus_agent_pane.sh',
+            'scripts/goza_no_ma.sh',
             'SCRIPT_DIR}/scripts/android_tmux_proxy.py',
         ]
 

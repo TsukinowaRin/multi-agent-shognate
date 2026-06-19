@@ -1652,6 +1652,13 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: direct sync checks for `Makefile`, Android setup helper, and root/MOD package distribution tests after the MOD utility call cleanup.
 - PASS: `git diff --check` after the MOD utility call cleanup.
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution` ran 145 package distribution contract tests after adding contracts for these MOD canonical utility calls.
+- Shell alias 正本をさらに MOD 側へ寄せた。`scripts/shell_aliases.sh` は互換入口のまま残しつつ、定義される `cgo` / `css` / `cgn` / `csg` / `csk` / `ckr` / `csa` / `cma` などの実行先を `shogunate_mod/view/` 正本へ変更した。command shell / `Shutsujin` launcher / `shogunate aliases` が読み込む alias source も `shogunate_mod/shell/aliases.sh` へ寄せた。
+- PASS: `bats tests/unit/test_shell_aliases.bats tests/unit/test_runtime_launchers.bats tests/unit/test_mux_parity.bats` after moving alias command targets and runtime alias loading to MOD canonical paths.
+- PASS: `bash -n shogunate_mod/shell/aliases.sh scripts/shell_aliases.sh shogunate_mod/runtime/env.sh shogunate_mod/runtime/launch.sh shogunate_mod/runtime/shutsujin_launcher.sh` after moving alias loading to MOD canonical paths.
+- PASS: targeted package distribution contracts for representative wrapper smoke and MOD canonical helper calls after updating alias expectations.
+- PASS: direct sync checks for root/MOD package distribution, shell alias, mux parity, and runtime launcher tests after the alias canonicalization.
+- PASS: `git diff --check` after the alias canonicalization.
+- EXPECTED FAIL before commit: `test_release_archive_representative_wrappers_execute_mod_sources` still saw the previous `scripts/install_shell_aliases.sh` message from `git archive HEAD`; the release archive contract is expected to pass after committing because it intentionally validates committed release assets.
 
 ## 復旧
 

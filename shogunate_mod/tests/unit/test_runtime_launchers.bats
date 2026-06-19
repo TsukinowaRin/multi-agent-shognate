@@ -88,7 +88,7 @@ setup() {
   run grep -F 'tmux attach-session -t "$SHOGUNATE_SESSION_NAME"' "$PROJECT_ROOT/shogunate_mod/runtime/shutsujin_launcher.sh"
   [ "$status" -eq 0 ]
 
-  run grep -F "scripts/shell_aliases.sh" "$PROJECT_ROOT/shogunate_mod/runtime/shutsujin_launcher.sh"
+  run grep -F "shogunate_mod/shell/aliases.sh" "$PROJECT_ROOT/shogunate_mod/runtime/shutsujin_launcher.sh"
   [ "$status" -eq 0 ]
 
   run grep -F "cgo/CGO = Goza View" "$PROJECT_ROOT/shogunate_mod/runtime/shutsujin_launcher.sh"

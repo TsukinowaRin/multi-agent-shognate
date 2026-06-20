@@ -64,7 +64,7 @@ parse_runtime_options() {
     SHOGUN_NO_THINKING=false
     SILENT_MODE=false
     SHELL_OVERRIDE=""
-    PERMISSION_FLAG="--dangerously-skip-permissions"
+    PERMISSION_FLAG="--setting-sources local --permission-mode dontAsk"
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -89,12 +89,12 @@ parse_runtime_options() {
                 shift
                 ;;
             --auto-mode-on)
-                PERMISSION_FLAG="--permission-mode auto-approved"
+                PERMISSION_FLAG="--setting-sources local --permission-mode auto"
                 shift
                 ;;
             --permission-mode)
                 if [[ -n "$2" && "$2" != -* ]]; then
-                    PERMISSION_FLAG="--permission-mode $2"
+                    PERMISSION_FLAG="--setting-sources local --permission-mode $2"
                     shift 2
                 else
                     echo "エラー: --permission-mode オプションにはモード名を指定してください"

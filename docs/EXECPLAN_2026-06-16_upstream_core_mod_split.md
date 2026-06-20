@@ -6,7 +6,7 @@
 
 Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行する。既存体験を維持しつつ、本家更新時に衝突しやすい Shogunate-only 機能を `shogunate_mod/` 側へ集約する。
 
-2026-06-20 の goal 変更により、完了判定は構造分離の進捗だけではなく、Shogunate が実際に安定動作することを最優先にする。完了前に structure-check / package / runtime / Android Pair / cURL+npm 配布 / root compatibility wrapper の主要導線を検証し、既知の再現バグまたは高リスク未検証範囲が残る場合は完了扱いにしない。
+2026-06-20 の goal 変更により、完了判定は構造分離の進捗だけではなく、Shogunate が実際に安定動作することを最優先にする。さらに、本家 `upstream/main` を差し替え更新しても Shogunate MOD overlay が動く水準を目指す。完了前に structure-check / upstream-overlay-smoke / package / runtime / Android Pair / cURL+npm 配布 / root compatibility wrapper の主要導線を検証し、既知の再現バグまたは高リスク未検証範囲が残る場合は完了扱いにしない。
 
 ## 進捗
 
@@ -318,6 +318,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] Runtime cleanup / watcher stale cleanup を MOD 正本プロセス対応へ補強した。clean start と runtime daemon restart は旧 `scripts/` watcher だけでなく `shogunate_mod/watcher/inbox_watcher.sh` も掃除し、Gunkan light watch は旧 wrapper / MOD 正本の両方を掃除する。watcher supervisor の stale process 検出も旧 `scripts/inbox_watcher.sh` と MOD 正本 `shogunate_mod/watcher/inbox_watcher.sh` の両方を同じ agent 判定で扱う。
 - [x] Claude Code hook settings の command を root `scripts/session_start_hook.sh` / `scripts/stop_hook_inbox.sh` 互換入口から、MOD 正本 `shogunate_mod/hooks/session_start_hook.sh` / `shogunate_mod/hooks/stop_hook_inbox.sh` 直接実行へ寄せた。root `.claude/settings.json` は Claude Code が読む互換コピーとして MOD 正本 `shogunate_mod/hooks/claude_settings.json` と同期する。
 - [x] Runtime help / MCP health check の案内文を root `scripts/` 互換入口から MOD 正本 path へ寄せた。`shogunate_mod/runtime/options.sh` は `shogunate_mod/configure/agents.sh` と `shogunate_mod/view/*` を案内し、`shogunate_mod/runtime/mcp_health_check.sh` は `shogunate_mod/configure/switch_cli.sh` を案内する。`shogunate_mod/configure/switch_cli.sh` 自身の Usage コメントも MOD 正本 path に揃えた。
+- [x] `upstream/main` の detached worktree に `shogunate_mod/` と manifest `compatibility_wrappers` だけを overlay し、root wrapper 経由で runtime setup-only 起動が成立することを `make upstream-overlay-smoke` で検証した。実測: upstream `431b86a` worktree 上で session `shogunate-mod-upstream-overlay-smoke-20260620152058` が起動し、Goza / shogun / gunkan / karo / gunshi / ashigaru1 / `agent_cli.tsv` / dashboard / Gunkan queue/report を確認。
 - [x] generated instruction freshness guard の tracked source から root `scripts/build_instructions.sh` 互換 wrapper を外し、MOD 正本 `shogunate_mod/instructions/build.sh` / `ensure_generated.sh` を追うようにした。互換 wrapper 変更で生成 freshness が揺れず、MOD builder 変更だけが正しく gate される。
 - [x] Python unit tests の repo root 解決を固定 `parents[2]` から manifest 探索へ変更し、`shogunate_mod/tests/unit` から直接 discover しても MOD 正本 / root 互換面を正しく検証できるようにした。`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s shogunate_mod/tests/unit -p 'test_*.py'` は 186 tests OK。
 - [x] macOS runtime launcher の MOD 正本 `shogunate_mod/macos/runtime_launcher.command` が root `./Shogunate-Runtime.sh` wrapper へ戻らず、`shogunate_mod/runtime/runtime_launcher.sh` を直接呼ぶようにした。root `Shogunate-Runtime.command` は互換入口として MOD macOS launcher へ委譲し続ける。Bats と package distribution contract でこの境界を固定した。

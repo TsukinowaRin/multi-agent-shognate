@@ -1,4 +1,4 @@
-.PHONY: test build lint check mod-check structure-check package-check package-curl-smoke source-smoke android-check help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
+.PHONY: test build lint check mod-check structure-check upstream-overlay-smoke package-check package-curl-smoke source-smoke android-check help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
 
 # Default target
 help:
@@ -12,6 +12,7 @@ help:
 	@echo "  make check         - Run build + diff check (CI equivalent)"
 	@echo "  make mod-check     - Run structure/package checks + cURL smoke + source smoke + Android check"
 	@echo "  make structure-check - Verify root surface is only MOD wrappers or declared compatibility touchpoints"
+	@echo "  make upstream-overlay-smoke - Run Shogunate MOD on an upstream/main core worktree"
 	@echo "  make package-check - Run package prepublish checks"
 	@echo "  make package-curl-smoke - Install release package through cURL in a temp HOME"
 	@echo "  make source-smoke  - Run detached source checkout runtime smoke"
@@ -102,7 +103,7 @@ check: build
 		echo "Skipping diff check (Phase 2 feature)"; \
 	fi
 
-mod-check: structure-check package-check package-curl-smoke source-smoke android-check
+mod-check: structure-check upstream-overlay-smoke package-check package-curl-smoke source-smoke android-check
 
 structure-check:
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest \
@@ -117,6 +118,9 @@ structure-check:
 		tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrappers_stay_thin \
 		tests.unit.test_package_distribution.PackageDistributionContractTests.test_shell_compatibility_wrappers_exec_unless_sourced \
 		tests.unit.test_package_distribution.PackageDistributionContractTests.test_only_package_bootstrap_wrapper_has_remote_fallback
+
+upstream-overlay-smoke:
+	bash shogunate_mod/runtime/upstream_overlay_smoke.sh
 
 package-curl-smoke:
 	bash -euo pipefail -c '\

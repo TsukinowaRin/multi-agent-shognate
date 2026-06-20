@@ -111,6 +111,7 @@ canonical_paths:
   runtime_summary: shogunate_mod/runtime/summary.sh
   runtime_sync_cli_preferences: shogunate_mod/runtime/sync_cli_preferences.py
   runtime_topology: shogunate_mod/runtime/topology.sh
+  runtime_upstream_overlay_smoke: shogunate_mod/runtime/upstream_overlay_smoke.sh
   security_gitleaks: shogunate_mod/security/gitleaks.toml
   shell_install_aliases: shogunate_mod/shell/install_aliases.sh
   shell_aliases: shogunate_mod/shell/aliases.sh

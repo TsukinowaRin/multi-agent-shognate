@@ -112,6 +112,7 @@ is Shogunate-only.
 	  MCP health checks,
 	  mux parity smoke checks,
 	  source checkout runtime smoke checks,
+	  upstream core overlay smoke checks,
 	  `agent_cli.tsv` emission, startup bootstrap delivery helpers and delivery
 	  flow, agent CLI launch flow, runtime lifecycle setup, startup-window helpers,
 	  startup lock/update/logging helpers, runtime-blocked relays and dashboard

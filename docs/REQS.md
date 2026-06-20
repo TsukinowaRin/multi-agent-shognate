@@ -3,6 +3,23 @@
 最終更新: 2026-06-20
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
 
+## 追補（2026-06-20: 本家差し替え耐性）
+
+### 要求
+
+1. 本家 `yohey-w/multi-agent-shogun` の `upstream/main` を差し替え更新しても、Shogunate MOD overlay が既存機能を維持できる構造を目指す。
+2. Shogunate-only 実装は `shogunate_mod/` を正本にし、root 側は本家 core、互換 wrapper、CLI/Android/GitHub が要求する同期・生成 surface に限定する。
+3. 完了判定は、manifest 分類だけでなく、実際の upstream core worktree に MOD と互換 wrapper だけを重ねた runtime 起動で確認する。
+4. 実機利用してよい水準に近づけるため、cURL package、source runtime、Android build/unit、可能な場合は Android 実機インストール/起動も確認する。
+
+### 受け入れ条件（観測可能）
+
+1. `make upstream-overlay-smoke` が PASS し、`upstream/main` worktree 上で `shogunate_mod/` と manifest `compatibility_wrappers` だけを overlay して Shogunate runtime が起動する。
+2. overlay 直後、runtime 起動前の upstream worktree の変更は `shogunate_mod/` と manifest `compatibility_wrappers` に限定される。
+3. overlay runtime smoke で tmux session / Goza / shogun・gunkan・karo・gunshi・ashigaru pane / `agent_cli.tsv` / dashboard / Gunkan queue/report が確認できる。
+4. `make mod-check` は `structure-check` の後に `upstream-overlay-smoke` を実行し、その後 package / cURL / source runtime / Android を確認する。
+5. 本家差し替え検証、package配布検証、runtime検証、Android検証のいずれかで再現バグが残る場合は「Goal完了」としない。
+
 ## 追補（2026-06-20: 安定動作最優先）
 
 ### 要求

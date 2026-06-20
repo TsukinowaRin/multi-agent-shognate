@@ -657,6 +657,9 @@ YAML
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "shogun")
     assert_cli_state_isolated "$result" "claude" "shogun"
+    assert_cli_host_dir_link "$result" ".claude" "claude" "shogun"
+    assert_cli_host_auth_link "$result" ".claude.json" "claude" "shogun"
+    assert_cli_host_dir_link "$result" ".config/claude" "claude" "shogun"
     assert_cli_host_auth_link "$result" ".claude/.credentials.json" "claude" "shogun"
     [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --model opus --dangerously-skip-permissions" ]]
 }

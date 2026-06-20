@@ -6,7 +6,7 @@
 
 Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行する。既存体験を維持しつつ、本家更新時に衝突しやすい Shogunate-only 機能を `shogunate_mod/` 側へ集約する。
 
-2026-06-20 の goal 変更により、完了判定は構造分離の進捗だけではなく、Shogunate が実際に安定動作することを最優先にする。さらに、本家 `upstream/main` を差し替え更新しても Shogunate MOD overlay が動く水準を目指す。完了前に structure-check / upstream-overlay-smoke / package / runtime / Android Pair / cURL+npm 配布 / root compatibility wrapper の主要導線を検証し、既知の再現バグまたは高リスク未検証範囲が残る場合は完了扱いにしない。
+2026-06-20 の goal 変更により、完了判定は構造分離の進捗だけではなく、Shogunate が実際に安定動作することを最優先にする。さらに、本家 `upstream/main` を差し替え更新しても Shogunate MOD overlay が動く水準を目指す。完了前に structure-check / upstream-overlay-smoke / package / runtime / Android Pair / cURL+npm 配布 / root compatibility wrapper の主要導線を検証し、既知の再現バグまたは高リスク未検証範囲が残る場合は完了扱いにしない。追加で、Smoke / mock ではなく実端末と本物AI CLIを使う隔離 project 実機検証も行い、実利用可否を確認する。
 
 ## 進捗
 
@@ -321,6 +321,10 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - [x] `upstream/main` の detached worktree に `shogunate_mod/` と manifest `compatibility_wrappers` だけを overlay し、root wrapper 経由で runtime setup-only 起動が成立することを `make upstream-overlay-smoke` で検証した。実測: upstream `431b86a` worktree 上で session `shogunate-mod-upstream-overlay-smoke-20260620152058` が起動し、Goza / shogun / gunkan / karo / gunshi / ashigaru1 / `agent_cli.tsv` / dashboard / Gunkan queue/report を確認。
 - [x] clean HEAD `0937bfb` で `make mod-check` を実行し、`structure-check` -> `upstream-overlay-smoke` -> `package-check` -> `package-curl-smoke` -> `source-smoke` -> `android-check` が PASS した。実測: upstream overlay session `shogunate-mod-upstream-overlay-smoke-20260620152259`、source runtime session `shogunate-mod-source-runtime-smoke-20260620152543`。
 - [x] Android 実機 `661ecd40` へ debug APK を `installDebug` で再インストールし、`com.shogun.android/.MainActivity` の cold start と app process `20305` を確認した。
+- [ ] 実AI CLI availability を確認し、秘密情報を読まずに本物AI応答を取得する。
+- [ ] 隔離 project で Shogunate runtime を実AI CLI 付きで起動し、役職 pane / queue / watcher / dashboard の実動作を確認する。
+- [ ] 実AIへ小タスクを渡し、隔離 project 内の成果物生成または更新を確認する。
+- [ ] Android 実機で APK install / app 起動に加え、可能な範囲で Pair / SSH / dashboard 接続を確認する。
 - [x] generated instruction freshness guard の tracked source から root `scripts/build_instructions.sh` 互換 wrapper を外し、MOD 正本 `shogunate_mod/instructions/build.sh` / `ensure_generated.sh` を追うようにした。互換 wrapper 変更で生成 freshness が揺れず、MOD builder 変更だけが正しく gate される。
 - [x] Python unit tests の repo root 解決を固定 `parents[2]` から manifest 探索へ変更し、`shogunate_mod/tests/unit` から直接 discover しても MOD 正本 / root 互換面を正しく検証できるようにした。`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s shogunate_mod/tests/unit -p 'test_*.py'` は 186 tests OK。
 - [x] macOS runtime launcher の MOD 正本 `shogunate_mod/macos/runtime_launcher.command` が root `./Shogunate-Runtime.sh` wrapper へ戻らず、`shogunate_mod/runtime/runtime_launcher.sh` を直接呼ぶようにした。root `Shogunate-Runtime.command` は互換入口として MOD macOS launcher へ委譲し続ける。Bats と package distribution contract でこの境界を固定した。

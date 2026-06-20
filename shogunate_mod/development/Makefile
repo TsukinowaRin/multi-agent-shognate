@@ -1,4 +1,4 @@
-.PHONY: test build lint check mod-check package-check package-curl-smoke source-smoke android-check help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
+.PHONY: test build lint check mod-check structure-check package-check package-curl-smoke source-smoke android-check help install-deps clean codd codd-install codd-scan codd-validate codd-gunkan
 
 # Default target
 help:
@@ -10,7 +10,8 @@ help:
 	@echo "  make build         - Run build_instructions.sh"
 	@echo "  make lint          - Run shellcheck on shogunate_mod/, lib/, and scripts/"
 	@echo "  make check         - Run build + diff check (CI equivalent)"
-	@echo "  make mod-check     - Run package checks + cURL smoke + source smoke + Android check"
+	@echo "  make mod-check     - Run structure/package checks + cURL smoke + source smoke + Android check"
+	@echo "  make structure-check - Verify root surface is only MOD wrappers or declared compatibility touchpoints"
 	@echo "  make package-check - Run package prepublish checks"
 	@echo "  make package-curl-smoke - Install release package through cURL in a temp HOME"
 	@echo "  make source-smoke  - Run detached source checkout runtime smoke"
@@ -101,7 +102,21 @@ check: build
 		echo "Skipping diff check (Phase 2 feature)"; \
 	fi
 
-mod-check: package-check package-curl-smoke source-smoke android-check
+mod-check: structure-check package-check package-curl-smoke source-smoke android-check
+
+structure-check:
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_current_core_touchpoints_stay_on_root_surface \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_core_touchpoints_are_actionable_and_not_wrappers \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_core_touchpoint_next_steps_use_operational_classes \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_target_direction_keeps_core_mod_boundary \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_tracked_root_wrapper_surface_matches_manifest \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_root_shogunate_surfaces_are_classified_by_manifest \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_tracked_root_code_like_files_are_classified_by_manifest \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_non_synchronized_core_touchpoints_are_explicitly_classified \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_manifest_compatibility_wrappers_stay_thin \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_shell_compatibility_wrappers_exec_unless_sourced \
+		tests.unit.test_package_distribution.PackageDistributionContractTests.test_only_package_bootstrap_wrapper_has_remote_fallback
 
 package-curl-smoke:
 	bash -euo pipefail -c '\

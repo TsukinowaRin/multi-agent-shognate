@@ -13,11 +13,12 @@
 
 ### 受け入れ条件（観測可能）
 
-1. `make package-check` が clean `HEAD` で PASS し、package distribution contract / MOD behavior unit tests / generated freshness / dirty gate が通る。
-2. source checkout runtime smoke またはそれ以上の runtime 実行検証で、MOD runtime entrypoint から tmux session / Goza / role panes / runtime metadata / queue 初期化が成立する。
-3. Android app は少なくとも `testDebugUnitTest assembleDebug` が PASS し、Pair server unit tests が Pair 成功・SSH destination 返却・成功後停止を確認する。
-4. cURL release archive / npm package / root compatibility wrapper の代表コマンドが直接実行でき、MOD 正本への委譲が contract で守られている。
-5. 完了報告時点で、再現済みの未修正バグまたは高リスク未検証導線が残っている場合は「完了」としない。
+1. `make structure-check` が PASS し、root 側に残る Shogunate surface が MOD wrapper または明示された互換 touchpoint だけであることを確認できる。
+2. `make package-check` が clean `HEAD` で PASS し、package distribution contract / MOD behavior unit tests / generated freshness / dirty gate が通る。
+3. source checkout runtime smoke またはそれ以上の runtime 実行検証で、MOD runtime entrypoint から tmux session / Goza / role panes / runtime metadata / queue 初期化が成立する。
+4. Android app は少なくとも `testDebugUnitTest assembleDebug` が PASS し、Pair server unit tests が Pair 成功・SSH destination 返却・成功後停止を確認する。
+5. cURL release archive / npm package / root compatibility wrapper の代表コマンドが直接実行でき、MOD 正本への委譲が contract で守られている。
+6. 完了報告時点で、再現済みの未修正バグまたは高リスク未検証導線が残っている場合は「完了」としない。
 
 ## 追補（2026-06-16: cwd-first project runtime / parallel Shogunate）
 

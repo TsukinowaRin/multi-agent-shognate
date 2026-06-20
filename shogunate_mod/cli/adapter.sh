@@ -506,7 +506,6 @@ _cli_adapter_host_auth_links_cmd() {
             _cli_adapter_link_host_dir_cmd ".claude" "$state_home"
             _cli_adapter_link_host_file_cmd ".claude.json" "$state_home"
             _cli_adapter_link_host_dir_cmd ".config/claude" "$state_home"
-            _cli_adapter_link_host_file_cmd ".claude/.credentials.json" "$state_home"
             ;;
         antigravity)
             _cli_adapter_link_host_file_cmd ".gemini/antigravity-cli/auth.json" "$state_home"

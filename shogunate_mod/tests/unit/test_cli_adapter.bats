@@ -653,14 +653,14 @@ YAML
 # build_cli_command テスト
 # =============================================================================
 
-@test "build_cli_command: claude + model → claude --model opus --setting-sources local --permission-mode dontAsk" {
+@test "build_cli_command: claude + model → claude --model opus --setting-sources local --permission-mode auto" {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "shogun")
     assert_cli_state_isolated "$result" "claude" "shogun"
     assert_cli_host_dir_link "$result" ".claude" "claude" "shogun"
     assert_cli_host_auth_link "$result" ".claude.json" "claude" "shogun"
     assert_cli_host_dir_link "$result" ".config/claude" "claude" "shogun"
-    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --model opus --setting-sources local --permission-mode dontAsk" ]]
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --model opus --setting-sources local --permission-mode auto" ]]
 }
 
 @test "build_cli_command: claude は host PATH の実行ファイルを絶対パスで使う" {
@@ -668,7 +668,7 @@ YAML
     make_fake_cli claude
     result=$(PATH="${TEST_TMP}/bin:/usr/bin:/bin" build_cli_command "shogun")
     assert_cli_state_isolated "$result" "claude" "shogun"
-    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun ${TEST_TMP}/bin/claude --model opus --setting-sources local --permission-mode dontAsk" ]]
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun ${TEST_TMP}/bin/claude --model opus --setting-sources local --permission-mode auto" ]]
 }
 
 @test "build_cli_command: claude は PERMISSION_FLAG を反映する" {
@@ -691,7 +691,7 @@ YAML
     load_adapter_with "${TEST_TMP}/settings_claude_auto.yaml"
     result=$(build_cli_command "shogun")
     assert_cli_state_isolated "$result" "claude" "shogun"
-    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --setting-sources local --permission-mode dontAsk" ]]
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --setting-sources local --permission-mode auto" ]]
 }
 
 @test "build_cli_command: codex → NO_UPDATE_NOTIFIER=1 付きで起動" {
@@ -908,7 +908,7 @@ YAML
     load_adapter_with "${TEST_TMP}/settings_shogun_claude_default.yaml"
     result=$(build_cli_command "shogun")
     assert_cli_state_isolated "$result" "claude" "shogun"
-    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --model opus --setting-sources local --permission-mode dontAsk" ]]
+    [[ "$result" == *"MAX_THINKING_TOKENS=0 AGENT_ID=shogun "*claude" --model opus --setting-sources local --permission-mode auto" ]]
 }
 
 @test "build_cli_command: antigravity executable の agy を使用" {
@@ -1117,7 +1117,7 @@ PY
     load_adapter_with "${TEST_TMP}/settings_with_models.yaml"
     result=$(build_cli_command_with_startup_prompt "karo" "claude" "ready:karo")
     assert_cli_state_isolated "$result" "claude" "karo"
-    [[ "$result" == *"AGENT_ID=karo "*claude" --model sonnet --setting-sources local --permission-mode dontAsk ready:karo" ]]
+    [[ "$result" == *"AGENT_ID=karo "*claude" --model sonnet --setting-sources local --permission-mode auto ready:karo" ]]
 }
 
 @test "build_cli_command_with_startup_prompt: antigravity は startup prompt を起動引数に畳み込まない" {
@@ -1149,14 +1149,14 @@ PY
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(build_cli_command "ashigaru1")
     assert_cli_state_isolated "$result" "claude" "ashigaru1"
-    [[ "$result" == *"AGENT_ID=ashigaru1 "*claude*"--setting-sources local --permission-mode dontAsk"* ]]
+    [[ "$result" == *"AGENT_ID=ashigaru1 "*claude*"--setting-sources local --permission-mode auto"* ]]
 }
 
 @test "build_cli_command: settings読取失敗 → claude フォールバック" {
     load_adapter_with "/nonexistent/settings.yaml"
     result=$(build_cli_command "ashigaru1")
     assert_cli_state_isolated "$result" "claude" "ashigaru1"
-    [[ "$result" == *"AGENT_ID=ashigaru1 "*claude*"--setting-sources local --permission-mode dontAsk"* ]]
+    [[ "$result" == *"AGENT_ID=ashigaru1 "*claude*"--setting-sources local --permission-mode auto"* ]]
 }
 
 # =============================================================================

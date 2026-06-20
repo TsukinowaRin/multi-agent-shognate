@@ -915,7 +915,7 @@ build_cli_command_with_type() {
     fi
     local reasoning_effort
     reasoning_effort="$(get_agent_reasoning_effort "$agent_id")"
-    local permission_flag="${PERMISSION_FLAG:---setting-sources local --permission-mode dontAsk}"
+    local permission_flag="${PERMISSION_FLAG:---setting-sources local --permission-mode auto}"
     if [[ -n "$agent_id" ]]; then
         agent_env_prefix="AGENT_ID=$(_cli_adapter_shell_quote "$agent_id") "
     fi

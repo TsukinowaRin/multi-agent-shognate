@@ -64,7 +64,7 @@ parse_runtime_options() {
     SHOGUN_NO_THINKING=false
     SILENT_MODE=false
     SHELL_OVERRIDE=""
-    PERMISSION_FLAG="--setting-sources local --permission-mode dontAsk"
+    PERMISSION_FLAG="--setting-sources local --permission-mode auto"
 
     while [[ $# -gt 0 ]]; do
         case $1 in

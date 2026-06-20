@@ -43,6 +43,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
     val connectionTest by settingsViewModel.connectionTest.collectAsState()
+    val appliedConnectionSettings by settingsViewModel.appliedConnectionSettings.collectAsState()
 
     var host by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST) }
     var port by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR) ?: Defaults.SSH_PORT_STR) }
@@ -148,6 +149,22 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
 
     LaunchedEffect(endpointText, port) {
         validateEndpointInput(commit = false)
+    }
+
+    LaunchedEffect(appliedConnectionSettings) {
+        val applied = appliedConnectionSettings ?: return@LaunchedEffect
+        host = applied.host
+        port = applied.port
+        user = applied.user
+        keyPath = applied.keyPath
+        projectPath = applied.projectPath
+        shogunSession = applied.shogunTarget
+        agentsSession = applied.agentsTarget
+        endpointText = applied.host
+        if (applied.host != Defaults.USB_SSH_HOST) {
+            rememberWirelessEndpoint(applied.host, applied.port)
+        }
+        saved = true
     }
 
     fun connectWithCurrentEndpoint() {

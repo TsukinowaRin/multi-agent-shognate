@@ -3,6 +3,22 @@
 最終更新: 2026-06-20
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
 
+## 追補（2026-06-20: Android UI 実機E2E完走）
+
+### 要求
+
+1. 実Android端末のアプリUIで「接続」ボタンを押し、初回Pair、SSH接続、tmux target確認、dashboard表示まで確認する。
+2. 実AI runtimeにAndroidアプリから命令を送り、Shogun→Karo→Ashigaruの実役職paneを通って target project に成果物が生成されることを確認する。
+3. 実機E2Eで見つかったUI状態同期、ADB duplicate、役職優先順位の問題は修正し、回帰テストまたは再実機確認で証明する。
+
+### 受け入れ条件（観測可能）
+
+1. Android設定画面に `Pair: OK`、`接続: OK`、`tmux: OK`、`Project: OK`、`将軍 target: OK`、`エージェント target: OK`、`dashboard.md: OK` が表示される。
+2. Android戦況タブのWebViewに `dashboard.md` が表示され、完了した実タスクが戦果欄に表示される。
+3. Android将軍タブから送った命令が target project 内の成果物を作り、成果物内容をローカルファイルとdashboardの両方で確認できる。
+4. Pair成功後の返却設定は画面上の接続stateにも反映され、同じ画面で再接続しても空のuser/keyで上書きしない。
+5. ADBに同じ端末がUSBとWireless Debuggingの2件で見える場合でも、USB候補が1件なら `shogunate pair` はUSB reverseを張れる。
+
 ## 追補（2026-06-20: 実機・本物AI検証）
 
 ### 要求

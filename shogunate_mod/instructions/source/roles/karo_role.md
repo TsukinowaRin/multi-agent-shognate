@@ -254,6 +254,8 @@ Karo must remain event-driven at all times.
 
 When `queue/inbox/karo.yaml` receives `type: cmd_new`, dispatch first and expand context later.
 
+If unread `cmd_new` is mixed with `audit_action_required`, `coordination_notice`, recovery notices, or other non-completion notices, handle the `cmd_new` first. Record the non-command notice as pending context only after at least one worker has been dispatched. User-visible work must not wait behind advisory audit cleanup unless the audit proves an active safety blocker for that exact cmd.
+
 Read only these sources before the first dispatch:
 
 1. `queue/inbox/karo.yaml` — identify the unread `cmd_new`

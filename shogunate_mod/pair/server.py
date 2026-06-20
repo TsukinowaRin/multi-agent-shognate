@@ -118,27 +118,44 @@ def find_adb(adb: str) -> str:
     return shutil.which(adb) or adb
 
 
+def active_adb_devices(devices_stdout: str) -> list[str]:
+    devices: list[str] = []
+    for line in devices_stdout.splitlines():
+        fields = line.split()
+        if len(fields) >= 2 and fields[1] == "device":
+            devices.append(fields[0])
+    return devices
+
+
+def is_wireless_adb_serial(serial: str) -> bool:
+    return serial.startswith("adb-") or "._adb-tls-connect._tcp" in serial
+
+
+def select_usb_adb_device(devices: list[str]) -> str:
+    if len(devices) == 1:
+        return devices[0]
+    usb_candidates = [serial for serial in devices if not is_wireless_adb_serial(serial)]
+    if len(usb_candidates) == 1:
+        return usb_candidates[0]
+    raise RuntimeError("USB debugging must show exactly one authorized Android device")
+
+
 def setup_usb_reverse(adb: str, pair_port: int, usb_ssh_port: int, host_ssh_port: int) -> None:
     adb_bin = find_adb(adb)
     devices = subprocess.run(
-        [adb_bin, "devices"],
+        [adb_bin, "devices", "-l"],
         check=False,
         capture_output=True,
         text=True,
     )
     if devices.returncode != 0:
         raise RuntimeError("adb devices failed; install adb and allow USB debugging")
-    active_devices = [
-        line.split()[0]
-        for line in devices.stdout.splitlines()
-        if line.strip().endswith("\tdevice")
-    ]
-    if len(active_devices) != 1:
-        raise RuntimeError("USB debugging must show exactly one authorized Android device")
-    subprocess.run([adb_bin, "reverse", "--remove", f"tcp:{pair_port}"], check=False)
-    subprocess.run([adb_bin, "reverse", "--remove", f"tcp:{usb_ssh_port}"], check=False)
-    subprocess.run([adb_bin, "reverse", f"tcp:{pair_port}", f"tcp:{pair_port}"], check=True)
-    subprocess.run([adb_bin, "reverse", f"tcp:{usb_ssh_port}", f"tcp:{host_ssh_port}"], check=True)
+    selected = select_usb_adb_device(active_adb_devices(devices.stdout))
+    adb_target = [adb_bin, "-s", selected]
+    subprocess.run([*adb_target, "reverse", "--remove", f"tcp:{pair_port}"], check=False)
+    subprocess.run([*adb_target, "reverse", "--remove", f"tcp:{usb_ssh_port}"], check=False)
+    subprocess.run([*adb_target, "reverse", f"tcp:{pair_port}", f"tcp:{pair_port}"], check=True)
+    subprocess.run([*adb_target, "reverse", f"tcp:{usb_ssh_port}", f"tcp:{host_ssh_port}"], check=True)
 
 
 def is_loopback_host(host: str, source: str) -> bool:

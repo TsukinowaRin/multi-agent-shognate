@@ -18,6 +18,16 @@ data class ConnectionTestState(
     val message: String = ""
 )
 
+data class AppliedConnectionSettings(
+    val host: String,
+    val port: String,
+    val user: String,
+    val keyPath: String,
+    val projectPath: String,
+    val shogunTarget: String,
+    val agentsTarget: String
+)
+
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
@@ -49,6 +59,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _connectionTest = MutableStateFlow(ConnectionTestState())
     val connectionTest: StateFlow<ConnectionTestState> = _connectionTest
+
+    private val _appliedConnectionSettings = MutableStateFlow<AppliedConnectionSettings?>(null)
+    val appliedConnectionSettings: StateFlow<AppliedConnectionSettings?> = _appliedConnectionSettings
 
     fun setNotificationEnabled(value: Boolean) {
         _notificationEnabled.value = value
@@ -162,6 +175,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     .putString(PrefsKeys.SHOGUN_SESSION, activeShogunTargetInput)
                     .putString(PrefsKeys.AGENTS_SESSION, activeAgentsTargetInput)
                     .apply()
+                _appliedConnectionSettings.value = AppliedConnectionSettings(
+                    host = activeHost,
+                    port = activePort.toString(),
+                    user = activeUser,
+                    keyPath = activeKeyPath,
+                    projectPath = activeProject,
+                    shogunTarget = activeShogunTargetInput,
+                    agentsTarget = activeAgentsTargetInput
+                )
                 lines += "Pair: OK"
                 if (paired.targetProject.isNotBlank()) {
                     lines += "作業対象: ${paired.targetProject}"

@@ -122,6 +122,21 @@ class ShogunatePairServerTests(unittest.TestCase):
         self.assertEqual(state.port_for_client("127.0.0.1", "127.0.0.1"), 2222)
         self.assertEqual(state.port_for_client("100.71.16.5", "100.71.16.10"), 2223)
 
+    def test_usb_reverse_selects_usb_serial_when_wireless_debugging_duplicate_exists(self):
+        devices_stdout = """List of devices attached
+661ecd40               device product:OnePlus9Pro_IND model:LE2121 device:OnePlus9Pro transport_id:1
+adb-661ecd40-mRVvMc._adb-tls-connect._tcp device product:OnePlus9Pro_IND model:LE2121 device:OnePlus9Pro transport_id:2
+"""
+
+        self.assertEqual(
+            pair_server.select_usb_adb_device(pair_server.active_adb_devices(devices_stdout)),
+            "661ecd40",
+        )
+
+    def test_usb_reverse_remains_ambiguous_with_multiple_usb_devices(self):
+        with self.assertRaises(RuntimeError):
+            pair_server.select_usb_adb_device(["device-a", "device-b"])
+
     def test_wireless_client_port_prefers_reachable_host_banner(self):
         state = pair_server.PairingState(
             argparse.Namespace(

@@ -1,7 +1,23 @@
 # Requirements (Normalized)
 
-最終更新: 2026-06-17
+最終更新: 2026-06-20
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
+
+## 追補（2026-06-20: 安定動作最優先）
+
+### 要求
+
+1. repo 構造は「本家 Shogun core + Shogunate MOD」に寄せるが、構造分離そのものよりも、実際に Shogunate が正常動作することを最優先にする。
+2. Shogunate 独自処理を MOD 側正本へ移す場合も、既存の cURL / npm / package install / cwd-first runtime / Android Pair / Gunkan / watcher / update / docs 導線を退行させない。
+3. 完了時は、実施した検証、残リスク、未検証範囲を報告し、その時点で作業を停止する。
+
+### 受け入れ条件（観測可能）
+
+1. `make package-check` が clean `HEAD` で PASS し、package distribution contract / MOD behavior unit tests / generated freshness / dirty gate が通る。
+2. source checkout runtime smoke またはそれ以上の runtime 実行検証で、MOD runtime entrypoint から tmux session / Goza / role panes / runtime metadata / queue 初期化が成立する。
+3. Android app は少なくとも `testDebugUnitTest assembleDebug` が PASS し、Pair server unit tests が Pair 成功・SSH destination 返却・成功後停止を確認する。
+4. cURL release archive / npm package / root compatibility wrapper の代表コマンドが直接実行でき、MOD 正本への委譲が contract で守られている。
+5. 完了報告時点で、再現済みの未修正バグまたは高リスク未検証導線が残っている場合は「完了」としない。
 
 ## 追補（2026-06-16: cwd-first project runtime / parallel Shogunate）
 

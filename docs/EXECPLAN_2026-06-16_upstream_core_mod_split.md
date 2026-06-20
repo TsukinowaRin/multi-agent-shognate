@@ -1,10 +1,12 @@
 # ExecPlan: upstream core + Shogunate MOD split
 
-最終更新: 2026-06-19
+最終更新: 2026-06-20
 
 ## 目的
 
 Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行する。既存体験を維持しつつ、本家更新時に衝突しやすい Shogunate-only 機能を `shogunate_mod/` 側へ集約する。
+
+2026-06-20 の goal 変更により、完了判定は構造分離の進捗だけではなく、Shogunate が実際に安定動作することを最優先にする。完了前に package / runtime / Android Pair / cURL+npm 配布 / root compatibility wrapper の主要導線を検証し、既知の再現バグまたは高リスク未検証範囲が残る場合は完了扱いにしない。
 
 ## 進捗
 
@@ -1832,6 +1834,7 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - PASS: `node bin/shogunate.js run --help`, `bats tests/unit/test_runtime_launchers.bats --timing`, targeted package distribution contracts, root/MOD test sync, and `git diff --check` after the runtime launcher help update.
 - Public community docs の current contribution/security guidance も MOD 正本境界へ寄せた。`CONTRIBUTING.md` の project structure は `shogunate_mod/` を canonical implementation として示し、`scripts/` / `lib/` / top-level launchers は compatibility surface と説明する。`SECURITY.md` の scope と script review 例も MOD implementation sources と `shogunate_mod/package/bootstrap.sh` / `shogunate_mod/runtime/entrypoint.sh` を確認対象にした。root docs は GitHub/npm 互換コピーとして MOD docs と同期する。
 - PASS: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.unit.test_package_distribution.PackageDistributionContractTests.test_public_community_docs_have_mod_canonical_copy`, root/MOD community docs sync checks, root/MOD package distribution test sync, `git diff --check`, and targeted old-guidance search after moving community docs to MOD canonical guidance.
+- Goal を「本家 Shogun + Shogunate MOD 形式」だけでなく「きちんと動作し、既知の再現バグを残さないこと最優先」へ更新した。完了条件は clean `HEAD` の `make package-check`、runtime smoke、Android build / Pair server tests、cURL / npm / wrapper representative commands の検証で証明する。
 
 ## 復旧
 

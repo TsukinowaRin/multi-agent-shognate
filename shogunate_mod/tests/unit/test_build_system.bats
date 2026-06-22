@@ -16,8 +16,21 @@
 
 # --- セットアップ ---
 
+find_project_root() {
+    local dir
+    dir="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
+    while [ "$dir" != "/" ]; do
+        if [ -f "$dir/scripts/build_instructions.sh" ]; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    return 1
+}
+
 setup_file() {
-    export PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+    export PROJECT_ROOT="$(find_project_root)"
     export BUILD_SCRIPT="$PROJECT_ROOT/scripts/build_instructions.sh"
     export OUTPUT_DIR="$PROJECT_ROOT/instructions/generated"
 
@@ -31,7 +44,7 @@ setup_file() {
 }
 
 setup() {
-    PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+    PROJECT_ROOT="$(find_project_root)"
     BUILD_SCRIPT="$PROJECT_ROOT/scripts/build_instructions.sh"
     OUTPUT_DIR="$PROJECT_ROOT/instructions/generated"
 }
@@ -72,6 +85,41 @@ setup() {
     [[ "$output" == *"Source directory: $PROJECT_ROOT/shogunate_mod/instructions/source"* ]]
     [[ "$output" == *"Auto-load source: $PROJECT_ROOT/shogunate_mod/instructions/autoload/CLAUDE.md"* ]]
     grep -q "shogunate_mod/instructions/source/roles/shogun_role.md" "$PROJECT_ROOT/.opencode/agents/shogun.md"
+}
+
+@test "build: generated instructions include MOD-owned role and CLI harnesses" {
+    grep -q "Shogunate Role Harness" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "Optimization Advisory Harness" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "Role Harness: Gunkan" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "CLI Harness: Codex" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "CLI Harness: Claude" "$OUTPUT_DIR/gunkan.md"
+    grep -q "CLI Harness: OpenCode" "$OUTPUT_DIR/opencode-karo.md"
+    grep -q "CLI Harness: Antigravity" "$OUTPUT_DIR/antigravity-shogun.md"
+    grep -q "CLI Harness: Cursor" "$OUTPUT_DIR/cursor-shogun.md"
+    grep -q "CLI Harness: Copilot" "$OUTPUT_DIR/copilot-shogun.md"
+    grep -q "CLI Harness: Kimi" "$OUTPUT_DIR/kimi-shogun.md"
+    grep -q "CLI Harness: Kilo" "$OUTPUT_DIR/kilo-shogun.md"
+    grep -q "CLI Harness: LocalAPI" "$OUTPUT_DIR/localapi-shogun.md"
+    grep -q "Role Harness: Ashigaru" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Role Harness: Gunshi" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Role Harness: Karo" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Role Harness: Shogun" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Optimization Advisory Harness" "$PROJECT_ROOT/.opencode/agents/gunkan.md"
+}
+
+@test "build: role harnesses preserve samurai persona and packet discipline" {
+    grep -q "Persona Preservation" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Harness Packet" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Command Packet" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Task Packet" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Report Packet" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Advice Packet" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Audit Packet" "$OUTPUT_DIR/codex-gunkan.md"
+    grep -q "Speak as Shogun" "$OUTPUT_DIR/codex-shogun.md"
+    grep -q "Speak as Karo" "$OUTPUT_DIR/codex-karo.md"
+    grep -q "Speak as Ashigaru" "$OUTPUT_DIR/codex-ashigaru.md"
+    grep -q "Speak as Gunshi" "$OUTPUT_DIR/codex-gunshi.md"
+    grep -q "Speak as Gunkan" "$OUTPUT_DIR/codex-gunkan.md"
 }
 
 # =============================================================================

@@ -74,6 +74,7 @@ run_shutsujin_departure() {
 
     if [ "$SETUP_ONLY" = false ]; then
         launch_all_agent_clis_tmux
+        ensure_runtime_daemons_for_bootstrap
 
         log_war "📜 各エージェントに指示書を読み込ませ中..."
         echo ""

@@ -237,7 +237,11 @@ def main() -> int:
     target_agent = os.environ.get("MAS_SHOGUN_TARGET_AGENT", "shogun")
     source_agent = os.environ.get("MAS_KARO_DONE_FROM_AGENT") or read_lead_karo(runtime_dir) or "karo"
 
-    cmds = collect_commands(dashboard, cmd_file, archive_file)
+    command_sources = [cmd_file]
+    include_archive = os.environ.get("MAS_KARO_DONE_INCLUDE_ARCHIVE", "").strip().lower()
+    if include_archive in {"1", "true", "yes", "on"}:
+        command_sources.append(archive_file)
+    cmds = collect_commands(dashboard, *command_sources)
     shogun_inbox.parent.mkdir(parents=True, exist_ok=True)
     if not shogun_inbox.exists():
         shogun_inbox.write_text("messages: []\n", encoding="utf-8")

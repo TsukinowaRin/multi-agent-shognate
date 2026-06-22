@@ -122,6 +122,26 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
+@test "runtime launchers: daemon watchers are started before bootstrap delivery" {
+  run grep -n "launch_all_agent_clis_tmux" "$PROJECT_ROOT/shogunate_mod/runtime/departure.sh"
+  [ "$status" -eq 0 ]
+  launch_line="${output%%:*}"
+
+  run grep -n "ensure_runtime_daemons_for_bootstrap" "$PROJECT_ROOT/shogunate_mod/runtime/departure.sh"
+  [ "$status" -eq 0 ]
+  daemon_line="${output%%:*}"
+
+  run grep -n "run_startup_bootstrap_delivery_flow" "$PROJECT_ROOT/shogunate_mod/runtime/departure.sh"
+  [ "$status" -eq 0 ]
+  bootstrap_line="${output%%:*}"
+
+  [ "$launch_line" -lt "$daemon_line" ]
+  [ "$daemon_line" -lt "$bootstrap_line" ]
+
+  run grep -F "restart_tmux_runtime_daemon_session" "$PROJECT_ROOT/shogunate_mod/runtime/daemon.sh"
+  [ "$status" -eq 0 ]
+}
+
 @test "runtime launchers: Windows wrapper runs shutsujin through Ubuntu WSL and attaches" {
   run grep -F "shogunate_mod\\windows\\runtime_launcher.bat" "$PROJECT_ROOT/Shogunate-Runtime.bat"
   [ "$status" -eq 0 ]

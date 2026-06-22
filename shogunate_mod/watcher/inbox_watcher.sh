@@ -107,6 +107,9 @@ LAST_MISSING_REPORT_RECOVERY_TS=${LAST_MISSING_REPORT_RECOVERY_TS:-0}
 MISSING_REPORT_RECOVERY_COOLDOWN=${MISSING_REPORT_RECOVERY_COOLDOWN:-120}
 GUNKAN_AUDIT_NUDGE_COOLDOWN=${GUNKAN_AUDIT_NUDGE_COOLDOWN:-180}
 LAST_GUNKAN_AUDIT_NUDGE_TS=${LAST_GUNKAN_AUDIT_NUDGE_TS:-0}
+NUDGE_REPEAT_COOLDOWN=${NUDGE_REPEAT_COOLDOWN:-120}
+LAST_NUDGE_SIGNATURE=${LAST_NUDGE_SIGNATURE:-}
+LAST_NUDGE_TS=${LAST_NUDGE_TS:-0}
 
 # ─── Phase feature flags (cmd_107 Phase 1/2/3) ───
 # ASW_PHASE:
@@ -668,7 +671,7 @@ bootstrap_acknowledged_in_pane() {
     local ack_token=""
     ack_token="ready:${AGENT_ID}"
     [[ -n "$pane_text" && -n "$ack_token" ]] || return 1
-    printf '%s\n' "$pane_text" | grep -F "$ack_token" | grep -vq '【初動命令】'
+    printf '%s\n' "$pane_text" | grep -Eq "^[[:space:]]*([•●][[:space:]]*)?${ack_token}[[:space:]]*$"
 }
 
 mark_bootstrap_delivered_from_ack() {
@@ -813,11 +816,32 @@ bootstrap_ready_pattern() {
         copilot) printf '%s\n' '(copilot|GitHub Copilot|/model)' ;;
         kimi) printf '%s\n' '(kimi|moonshot|/model)' ;;
         localapi) printf '%s\n' '(localapi|LocalAPI|ready:|\\$)' ;;
-        opencode) printf '%s\n' '(opencode|OpenCode|/model|ready:)' ;;
+        opencode) printf '%s\n' '(opencode|OpenCode|Ask anything|ctrl\+p commands|/model|ready:)' ;;
         kilo) printf '%s\n' '(kilo|Kilo|/model|ready:)' ;;
         cursor) printf '%s\n' '(cursor|Cursor|cursor-agent|/model|ready:|ctrl\\+c to stop)' ;;
         *) printf '%s\n' '(claude|codex|antigravity|agy|copilot|kimi|localapi|opencode|kilo|cursor|ready:)' ;;
     esac
+}
+
+opencode_update_prompt_detected() {
+    local pane_text="${1:-}"
+
+    printf '%s' "$pane_text" | grep -qiE 'Update Available|A new release .* is available|Would you like to update now\?|Skip[[:space:]]+Confirm'
+}
+
+skip_opencode_update_prompt_if_present() {
+    local effective_cli="${1:-$(get_effective_cli_type)}"
+    local pane_text=""
+
+    [ "$effective_cli" = "opencode" ] || return 0
+
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -100 || true)
+    if opencode_update_prompt_detected "$pane_text"; then
+        echo "[$(date)] [SEND-KEYS] Skipping OpenCode update prompt for $AGENT_ID" >&2
+        mux_send_enter || return 1
+        return 0
+    fi
+    return 0
 }
 
 codex_ready_prompt_detected() {
@@ -861,11 +885,15 @@ codex_bootstrap_input_visible() {
     printf '%s' "$pane_text" | grep -qiE "【初動命令】あなたは${AGENT_ID}|【初動命令】|イベント駆動規則|連携順序:|準備が整ったら未読inbox監視へ戻れ"
 }
 
-codex_bootstrap_delivery_prompt() {
+bootstrap_delivery_prompt() {
     local bootstrap_file="$1"
 
-    printf "【初動命令】あなたは%s。まず 'ready:%s' を1行で即時送信し、次に %s を読み、その内容を Codex 用の正本指示として即適用せよ。比較・diff・読み比べは不要。以後はイベント駆動規則に従え。" \
-        "$AGENT_ID" "$AGENT_ID" "$bootstrap_file"
+    printf "【初動命令】あなたは%s。詳細正本は %s に保存済み。起動直後は読まず、実タスク/未読inbox/直接指示を受けた時だけ必要最小範囲を読め。今は追加探索せず ready:%s を1行だけ送信し、イベント駆動で待機せよ。" \
+        "$AGENT_ID" "$bootstrap_file" "$AGENT_ID"
+}
+
+codex_bootstrap_delivery_prompt() {
+    bootstrap_delivery_prompt "$@"
 }
 
 codex_bootstrap_activity_visible() {
@@ -947,6 +975,10 @@ deliver_pending_bootstrap_if_ready() {
         accept_codex_hooks_prompt_if_present "$effective_cli" || true
         pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
     fi
+    if [[ "$effective_cli" == "opencode" ]]; then
+        skip_opencode_update_prompt_if_present "$effective_cli" || true
+        pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
+    fi
     if [[ "$effective_cli" == "codex" ]] && ! codex_process_running; then
         return 0
     fi
@@ -964,11 +996,8 @@ deliver_pending_bootstrap_if_ready() {
         fi
     fi
 
-    msg=$(cat "$bootstrap_file" 2>/dev/null || true)
+    msg=$(bootstrap_delivery_prompt "$bootstrap_file")
     [ -n "$msg" ] || return 0
-    if [[ "$effective_cli" == "codex" ]]; then
-        msg=$(codex_bootstrap_delivery_prompt "$bootstrap_file")
-    fi
 
     if ! send_literal_text_and_enter "$msg" "bootstrap retry"; then
         return 1
@@ -1262,9 +1291,15 @@ try:
             )
         os.replace(tmp_path, inbox)
 
-    normal_count = len(unread) - len(specials)
+    normal = [m for m in unread if m.get("type") not in special_types]
+    normal_count = len(normal)
+    signature = "|".join(
+        f"{m.get('id', '')}:{m.get('type', '')}:{m.get('timestamp', '')}"
+        for m in normal
+    )
     payload = {
         "count": normal_count,
+        "signature": signature,
         "specials": [{"type": m.get("type", ""), "content": m.get("content", "")} for m in specials],
     }
     print(json.dumps(payload))
@@ -1297,9 +1332,34 @@ try:
         "runtime_blocked",
         "emergency_stop_requested",
     }
+    direct_types = {
+        "direct_message",
+        "message",
+        "question",
+        "chat",
+        "user_message",
+    }
+    direct_senders = {"shogun", "lord", "user", "human", "tono"}
+    passive_types = {"report_received", "cmd_done"}
+    has_roll_call = any((m.get("type") or "") == "roll_call" for m in unread)
     if agent_id == "gunkan":
         has_audit_event = any((m.get("type") or "") in audit_types for m in unread)
-        print("gunkan_audit_event" if has_audit_event else "gunkan_passive")
+        has_direct_message = any(
+            (m.get("type") or "") in direct_types
+            or (
+                (m.get("from") or "") in direct_senders
+                and (m.get("type") or "") not in passive_types
+            )
+            for m in unread
+        )
+        if has_audit_event:
+            print("gunkan_audit_event")
+        elif has_roll_call:
+            print("roll_call")
+        elif has_direct_message:
+            print("gunkan_direct_message")
+        else:
+            print("gunkan_passive")
         raise SystemExit(0)
     has_cmd_done = any((m.get("type") or "") == "cmd_done" for m in unread)
     has_runtime_blocked = any((m.get("type") or "") == "runtime_blocked" for m in unread)
@@ -1319,6 +1379,8 @@ try:
         print("cmd_new")
     elif has_report_received:
         print("report_received")
+    elif has_roll_call:
+        print("roll_call")
     elif has_auto_recovery:
         print("auto_recovery_task")
     elif has_task_assigned:
@@ -1335,7 +1397,20 @@ PY
             echo "queue/inbox/gunkan.yaml に未読の監査イベントがある。queue/runtime/gunkan_events.yaml と関連 queue/report を読み、必要なら python3 shogunate_mod/gunkan/codd_audit.py を実行し、queue/reports/gunkan_report.yaml に監査結果を書け。処理後は発火元 message を read:true にせよ。通常の中間報告取得や進行管理は行うな。"
             return 0
         fi
+        if [[ "$decision" == "roll_call" ]]; then
+            echo "queue/inbox/gunkan.yaml に未読の点呼がある。内容を読み、発火元 message を read:true にして、送信元へ現在状態を簡潔に返答せよ。監査は依頼されている場合だけ行え。"
+            return 0
+        fi
+        if [[ "$decision" == "gunkan_direct_message" ]]; then
+            echo "queue/inbox/gunkan.yaml に未読の直接メッセージがある。内容を読み、発火元 message を read:true にして、軍監として必要最小限に返答せよ。監査・検証・リスク確認・質問への回答はよいが、通常の進行管理や足軽への割当は行うな。"
+            return 0
+        fi
         echo "__gunkan_passive__"
+        return 0
+    fi
+
+    if [[ "$decision" == "roll_call" ]]; then
+        echo "queue/inbox/${AGENT_ID}.yaml に未読の点呼がある。内容を読み、処理した message を read:true にして、送信元へ現在状態を簡潔に返答せよ。"
         return 0
     fi
 
@@ -1721,6 +1796,21 @@ send_wakeup() {
     return 1
 }
 
+same_unread_recently_nudged() {
+    local signature="${1:-}"
+    local now
+
+    [ -n "$signature" ] || return 1
+    now=$(date +%s)
+    if [ "$signature" = "${LAST_NUDGE_SIGNATURE:-}" ] && [ "${LAST_NUDGE_TS:-0}" -gt 0 ] && [ $((now - LAST_NUDGE_TS)) -lt "${NUDGE_REPEAT_COOLDOWN:-120}" ]; then
+        echo "[$(date)] [SKIP] same unread set already nudged for $AGENT_ID; waiting for read/change/cooldown" >&2
+        return 0
+    fi
+    LAST_NUDGE_SIGNATURE="$signature"
+    LAST_NUDGE_TS="$now"
+    return 1
+}
+
 # ─── Send wake-up nudge with Escape prefix ───
 # Phase 2 escalation: send Escape×2 + C-c to clear stuck input, then nudge.
 # Addresses the "echo last tool call" cursor position bug and stale input.
@@ -1876,6 +1966,8 @@ for s in data.get('specials', []):
     # Send wake-up nudge for normal messages (with escalation)
     local normal_count
     normal_count=$(echo "$info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null)
+    local normal_signature
+    normal_signature=$(echo "$info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('signature',''))" 2>/dev/null)
 
     if [ "$normal_count" -gt 0 ] 2>/dev/null; then
         local now
@@ -1903,6 +1995,8 @@ for s in data.get('specials', []):
             echo "[$(date)] $normal_count unread for $AGENT_ID (escalation disabled)" >&2
             if disable_normal_nudge; then
                 echo "[$(date)] [SKIP] disable_normal_nudge=1, no normal nudge for $AGENT_ID" >&2
+            elif same_unread_recently_nudged "$normal_signature"; then
+                :
             else
                 send_wakeup "$normal_count"
             fi
@@ -1916,6 +2010,8 @@ for s in data.get('specials', []):
             echo "[$(date)] $normal_count unread for $AGENT_ID (${age}s)" >&2
             if disable_normal_nudge; then
                 echo "[$(date)] [SKIP] disable_normal_nudge=1, deferring to escalation-only path" >&2
+            elif same_unread_recently_nudged "$normal_signature"; then
+                :
             else
                 send_wakeup "$normal_count"
             fi
@@ -1942,6 +2038,8 @@ for s in data.get('specials', []):
             echo "[$(date)] All messages read for $AGENT_ID — escalation reset" >&2
         fi
         FIRST_UNREAD_SEEN=0
+        LAST_NUDGE_SIGNATURE=""
+        LAST_NUDGE_TS=0
 
         if ! agent_is_busy; then
             if recover_missing_ashigaru_report_if_idle; then

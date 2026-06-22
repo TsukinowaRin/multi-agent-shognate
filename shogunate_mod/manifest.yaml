@@ -108,6 +108,7 @@ canonical_paths:
   runtime_source_smoke: shogunate_mod/runtime/source_smoke.sh
   runtime_startup: shogunate_mod/runtime/startup.sh
   runtime_state: shogunate_mod/runtime/state.sh
+  runtime_sync_state: shogunate_mod/runtime/sync_state.py
   runtime_summary: shogunate_mod/runtime/summary.sh
   runtime_sync_cli_preferences: shogunate_mod/runtime/sync_cli_preferences.py
   runtime_topology: shogunate_mod/runtime/topology.sh

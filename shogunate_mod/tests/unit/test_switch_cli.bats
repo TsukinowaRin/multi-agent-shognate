@@ -7,6 +7,9 @@
 setup() {
     TEST_TMP="$(mktemp -d)"
     PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+    while [[ "$PROJECT_ROOT" != "/" && ! -f "${PROJECT_ROOT}/lib/cli_adapter.sh" ]]; do
+        PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+    done
 
     # テスト用settings.yaml
     cat > "${TEST_TMP}/settings.yaml" << 'YAML'
@@ -225,7 +228,7 @@ PYEOF
 
     result=$(build_cli_command "ashigaru1")
     [[ "$result" == *"claude-opus-4-6"* ]]
-    [[ "$result" == *"--dangerously-skip-permissions"* ]]
+    [[ "$result" == *"--permission-mode auto"* ]]
 }
 
 @test "update_settings: thinking:false後のbuild_cli_commandにMAX_THINKING_TOKENS=0" {

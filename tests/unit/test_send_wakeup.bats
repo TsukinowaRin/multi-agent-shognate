@@ -51,6 +51,9 @@
 
 setup_file() {
     export PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+    while [[ "$PROJECT_ROOT" != "/" && ! -f "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh" ]]; do
+        PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+    done
     export WATCHER_SCRIPT="$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh"
     [ -f "$WATCHER_SCRIPT" ] || return 1
     python3 -c "import yaml" 2>/dev/null || return 1
@@ -404,6 +407,50 @@ YAML
 
     ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
     ! grep -q "queue/inbox/gunkan.yaml に未読の監査イベント" "$MOCK_LOG"
+}
+
+@test "T-SW-010bh2: gunkan roll_call unread wakes explicitly" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: shogun
+    type: roll_call
+    content: "点呼につき応答されたし。"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="gunkan"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/gunkan.yaml に未読の点呼がある。" "$MOCK_LOG"
+    grep -q "送信元へ現在状態を簡潔に返答せよ" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
+}
+
+@test "T-SW-010bh3: gunkan direct message unread wakes conversationally" {
+    cat > "$TEST_INBOX_DIR/test_agent.yaml" <<'YAML'
+messages:
+  - id: msg_1
+    from: shogun
+    type: direct_message
+    content: "軍監として、この状況をどう見る？"
+    read: false
+YAML
+
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        AGENT_ID="gunkan"
+        send_wakeup 1
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "queue/inbox/gunkan.yaml に未読の直接メッセージがある。" "$MOCK_LOG"
+    grep -q "軍監として必要最小限に返答せよ" "$MOCK_LOG"
+    ! grep -q "send-keys.*inbox1" "$MOCK_LOG"
 }
 
 @test "T-SW-010bi: gunkan audit nudge is rate limited" {
@@ -1431,6 +1478,29 @@ YAML
 
     [[ "$output" == *"Hard Codex usage-limit prompt detected"* ]]
     [[ "$output" != *"1 unread for test_agent"* ]]
+}
+
+@test "T-CODEX-015g2: process_unread は同じ未読集合へのnudgeを短時間で連打しない" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        cat > "$INBOX" <<'"'"'YAML'"'"'
+messages:
+  - id: msg_same
+    from: shogun
+    type: cmd_new
+    read: false
+    timestamp: "2026-04-09T00:00:00+09:00"
+    content: "cmd_new"
+YAML
+        ASW_DISABLE_ESCALATION=1
+        NUDGE_REPEAT_COOLDOWN=120
+        process_unread timeout
+        process_unread timeout
+    '
+    [ "$status" -eq 0 ]
+
+    [ "$(grep -c "send-keys -l -t test:0.0" "$MOCK_LOG")" -eq 1 ]
+    [[ "$output" == *"same unread set already nudged"* ]]
 }
 
 @test "T-CODEX-015h: watcher は Codex pasted content が残っていたら Enter を追送する" {

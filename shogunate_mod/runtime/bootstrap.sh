@@ -26,7 +26,7 @@ generate_bootstrap_file() {
     local delivered_file="$bootstrap_dir/bootstrap_${agent_id}.delivered"
     local role_instruction_file=""
     local optimized_instruction_file=""
-    local lang_rule="" event_rule="" report_rule="" linkage_rule="" tone_rule="" startup_fastpath=""
+    local lang_rule="" event_rule="" report_rule="" linkage_rule="" tone_rule="" startup_fastpath="" instruction_ref_rule=""
 
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
@@ -54,12 +54,13 @@ generate_bootstrap_file() {
     report_rule="$(reporting_chain_directive "$agent_id")"
     tone_rule="$(role_tone_directive "$agent_id")"
     startup_fastpath="$(startup_fastpath_directive "$agent_id")"
+    instruction_ref_rule="正本参照: project側AGENTS.md、${SCRIPT_DIR}/AGENTS.md、${SCRIPT_DIR}/${optimized_instruction_file} を役職・CLI別の正本として扱え。ただし起動直後にこれらを全文読込しない。実タスク、未読inbox、直接指示を処理する時だけ必要な最小範囲を読むこと。"
 
     local startup_msg
     if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
-        startup_msg="【初動命令】あなたは${agent_id}。作業対象projectは ${SHOGUNATE_PROJECT_DIR}、Shogunate runtime rootは ${SCRIPT_DIR} である。project側のAGENTS.mdがあれば尊重し、続けて ${SCRIPT_DIR}/AGENTS.md と ${SCRIPT_DIR}/${optimized_instruction_file} を読み、その内容を ${cli_type} 用の正本指示として即適用せよ。queue/dashboard/logs は ${SCRIPT_DIR} 配下を正とする。${SCRIPT_DIR}/${role_instruction_file} との比較・diff・読み比べは不要。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。作業対象projectは ${SHOGUNATE_PROJECT_DIR}、Shogunate runtime rootは ${SCRIPT_DIR} である。この初動命令を ${cli_type} 用の正本指示として即適用せよ。${instruction_ref_rule} queue/dashboard/logs は ${SCRIPT_DIR} 配下を正とする。${SCRIPT_DIR}/${role_instruction_file} との比較・diff・読み比べは不要。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、追加探索せず未読inbox監視へ戻れ。"
     else
-        startup_msg="【初動命令】あなたは${agent_id}。作業対象projectは ${SHOGUNATE_PROJECT_DIR}、Shogunate runtime rootは ${SCRIPT_DIR} である。project側のAGENTS.mdがあれば尊重し、続けて ${SCRIPT_DIR}/AGENTS.md と ${SCRIPT_DIR}/${role_instruction_file} を読み、役割・口調・禁止事項を適用せよ。queue/dashboard/logs は ${SCRIPT_DIR} 配下を正とする。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。作業対象projectは ${SHOGUNATE_PROJECT_DIR}、Shogunate runtime rootは ${SCRIPT_DIR} である。この初動命令を役割・口調・禁止事項の正本指示として即適用せよ。${instruction_ref_rule} queue/dashboard/logs は ${SCRIPT_DIR} 配下を正とする。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、追加探索せず未読inbox監視へ戻れ。"
     fi
 
     mkdir -p "$bootstrap_dir"
@@ -86,7 +87,7 @@ bootstrap_acknowledged_tmux() {
     if [ -z "$screen_content" ]; then
         screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
     fi
-    printf '%s\n' "$screen_content" | grep -F "$ack_token" | grep -vq '【初動命令】'
+    printf '%s\n' "$screen_content" | grep -Eq "^[[:space:]]*([•●][[:space:]]*)?${ack_token}[[:space:]]*$"
 }
 
 startup_fastpath_directive() {
@@ -125,7 +126,7 @@ wait_for_cli_ready_tmux() {
         antigravity)  ready_pattern='(agy|antigravity|Antigravity|type your message|Working|esc to interrupt|Initializing the Agent)' ;;
         copilot) ready_pattern='(copilot|GitHub Copilot|/model)' ;;
         kimi)    ready_pattern='(kimi|moonshot|/model)' ;;
-        opencode) ready_pattern='(opencode|OpenCode|/model|ready:)' ;;
+        opencode) ready_pattern='(opencode|OpenCode|Ask anything|ctrl\\+p commands|/model|ready:)' ;;
         kilo)    ready_pattern='(kilo|Kilo|/model|ready:)' ;;
         localapi) ready_pattern='(localapi|LocalAPI|ready:|\$)' ;;
         *)       ready_pattern='(claude|codex|antigravity|agy|copilot|kimi|opencode|kilo|localapi|ready:)' ;;
@@ -136,6 +137,10 @@ wait_for_cli_ready_tmux() {
     screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
     if [ "$cli_type" = "opencode" ] && opencode_project_prompt_detected_tmux "$pane_target"; then
         auto_accept_opencode_project_prompt_tmux "$pane_target" "startup" || true
+        screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+    fi
+    if [ "$cli_type" = "opencode" ] && opencode_update_prompt_detected_tmux "$screen_content"; then
+        auto_skip_opencode_update_prompt_tmux "$pane_target" "startup" "$cli_type" || true
         screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
     fi
     if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
@@ -154,6 +159,10 @@ wait_for_cli_ready_tmux() {
         screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
         if [ "$cli_type" = "opencode" ] && opencode_project_prompt_detected_tmux "$pane_target"; then
             auto_accept_opencode_project_prompt_tmux "$pane_target" "startup" || true
+            continue
+        fi
+        if [ "$cli_type" = "opencode" ] && opencode_update_prompt_detected_tmux "$screen_content"; then
+            auto_skip_opencode_update_prompt_tmux "$pane_target" "startup" "$cli_type" || true
             continue
         fi
         if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
@@ -269,10 +278,7 @@ deliver_bootstrap_tmux() {
     fi
 
     local msg
-    msg="$(cat "$bootstrap_file")"
-    if [ "$cli_type" = "codex" ]; then
-        msg="$(codex_bootstrap_delivery_prompt_tmux "$agent_id" "$bootstrap_file")"
-    fi
+    msg="$(bootstrap_delivery_prompt_tmux "$agent_id" "$bootstrap_file")"
     # -l: リテラル送信（日本語・特殊文字をキーシーケンスと誤解釈させない）
     # sleep: CLI がテキストをバッファに受け取ってから Enter を送る
     if ! tmux_send_text_and_enter "$pane_target" "$msg" "bootstrap delivery" "1"; then
@@ -466,5 +472,5 @@ should_embed_startup_prompt_in_cli_command() {
         esac
     fi
 
-    return 0
+    return 1
 }

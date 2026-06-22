@@ -50,6 +50,8 @@
 !instructions/roles/*.md
 !instructions/common/
 !instructions/common/*.md
+!instructions/harnesses/
+!instructions/harnesses/**/*.md
 
 # Multi-CLI: Generated instruction files (built by build_instructions.sh)
 !instructions/generated/
@@ -175,6 +177,8 @@
 !shogunate_mod/instructions/source/common/*.md
 !shogunate_mod/instructions/source/cli_specific/
 !shogunate_mod/instructions/source/cli_specific/*.md
+!shogunate_mod/instructions/source/harnesses/
+!shogunate_mod/instructions/source/harnesses/**/*.md
 !shogunate_mod/localapi/
 !shogunate_mod/localapi/*.py
 !shogunate_mod/macos/

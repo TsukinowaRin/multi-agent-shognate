@@ -96,12 +96,16 @@ codex_bootstrap_input_visible_tmux() {
     printf '%s' "$screen_content" | grep -qiE "【初動命令】あなたは${agent_id}|【初動命令】|イベント駆動規則|連携順序:|準備が整ったら未読inbox監視へ戻れ"
 }
 
-codex_bootstrap_delivery_prompt_tmux() {
+bootstrap_delivery_prompt_tmux() {
     local agent_id="$1"
     local bootstrap_file="$2"
 
-    printf "【初動命令】あなたは%s。%s を読み、その内容を Codex 用の正本指示として即適用せよ。比較・diff・読み比べは不要。適用完了後に 'ready:%s' を1行で送信し、以後はイベント駆動規則に従え。" \
+    printf "【初動命令】あなたは%s。詳細正本は %s に保存済み。起動直後は読まず、実タスク/未読inbox/直接指示を受けた時だけ必要最小範囲を読め。今は追加探索せず ready:%s を1行だけ送信し、イベント駆動で待機せよ。" \
         "$agent_id" "$bootstrap_file" "$agent_id"
+}
+
+codex_bootstrap_delivery_prompt_tmux() {
+    bootstrap_delivery_prompt_tmux "$@"
 }
 
 codex_bootstrap_activity_visible_tmux() {
@@ -223,6 +227,34 @@ auto_skip_codex_update_prompt_tmux() {
             fi
             log_info "  └─ ${agent_id}: Codex update prompt を自動スキップ"
             sleep 1
+            return 0
+        fi
+        sleep 1
+    done
+    return 0
+}
+
+opencode_update_prompt_detected_tmux() {
+    local screen_content="${1:-}"
+
+    printf '%s' "$screen_content" | grep -qiE 'Update Available|A new release .* is available|Would you like to update now\?|Skip[[:space:]]+Confirm'
+}
+
+auto_skip_opencode_update_prompt_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local i
+    local pane_text
+
+    [ "$cli_type" = "opencode" ] || return 0
+
+    for i in {1..20}; do
+        pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -100 || true)"
+        if opencode_update_prompt_detected_tmux "$pane_text"; then
+            tmux_send_enter_only "$pane_target" "OpenCode update prompt" || return 1
+            log_info "  └─ ${agent_id}: OpenCode update prompt を自動スキップ"
+            sleep 2
             return 0
         fi
         sleep 1
@@ -352,7 +384,7 @@ opencode_project_prompt_detected_tmux() {
     local pane_text
 
     pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
-    echo "$pane_text" | grep -qiE "What is .*project\\?|OpenCode.*Go|project\\?\"|╹.*Go"
+    echo "$pane_text" | grep -qiE "What is this project\\?|What is the project\\?|project\\?\""
 }
 
 auto_accept_opencode_project_prompt_tmux() {

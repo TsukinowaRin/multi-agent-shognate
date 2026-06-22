@@ -326,6 +326,7 @@ launch_all_agent_clis_tmux() {
         auto_accept_codex_workspace_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_codex_hooks_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_dismiss_codex_rate_limit_prompt_tmux "$_pane" "$_agent" "$_cli"
+        auto_skip_opencode_update_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_antigravity_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_retry_antigravity_busy_tmux "$_pane" "$_agent" "$_cli"
     }

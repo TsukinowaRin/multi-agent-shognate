@@ -111,6 +111,33 @@ PY
   [[ "$output" =~ "already_notified=cmd_200" ]]
 }
 
+@test "shogun_to_karo_bridge: timestampなしの手動 cmd_new も既通知として扱う" {
+  python3 - <<'PY' "$MAS_KARO_INBOX_FILE"
+import sys, yaml
+path = sys.argv[1]
+data = {
+    "messages": [
+        {
+            "id": "msg_existing_manual",
+            "from": "shogun",
+            "type": "cmd_new",
+            "content": "cmd_200を書いた。全員点呼を実行せよ。",
+            "read": False,
+        }
+    ]
+}
+with open(path, "w", encoding="utf-8") as fh:
+    yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
+PY
+
+  run python3 "$PROJECT_ROOT/scripts/shogun_to_karo_bridge.py"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "already_notified=cmd_200" ]]
+
+  run bats_search "殿の新規命令が queue/shogun_to_karo.yaml に追加された" "$MAS_KARO_INBOX_FILE"
+  [ "$status" -eq 1 ]
+}
+
 @test "shogun_to_karo_bridge: commands key 形式でも pending cmd を検知する" {
   run python3 "$PROJECT_ROOT/scripts/shogun_to_karo_bridge.py"
   [ "$status" -eq 0 ]

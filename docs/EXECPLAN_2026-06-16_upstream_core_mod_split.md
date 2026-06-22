@@ -1850,6 +1850,8 @@ Shogunate repo を「本家 Shogun core + Shogunate MOD」の構成へ移行す�
 - Goal を「本家 Shogun + Shogunate MOD 形式」だけでなく「きちんと動作し、既知の再現バグを残さないこと最優先」へ更新した。完了条件は clean `HEAD` の `make package-check`、runtime smoke、Android build / Pair server tests、cURL / npm / wrapper representative commands の検証で証明する。
 - `make structure-check` を追加し、root 側に残る Shogunate surface が MOD wrapper または明示された互換 touchpoint だけであること、wrapper が薄いこと、未分類 root code-like file がないことを `mod-check` の最初に検査するようにした。
 - PASS: `make structure-check`, targeted Makefile contract, root/MOD Makefile sync, root/MOD package distribution test sync, and `git diff --check` after adding the explicit structure-separation gate.
+- 2026-06-21: `git fetch upstream --prune` で本家 `yohey-w/multi-agent-shogun` の最新 `upstream/main` を取得した。最新 commit は `431b86a chore: stop tracking seo_qc scripts (personal tooling)`。`git rev-list --left-right --count HEAD...upstream/main` は `598 0`、`git merge-base --is-ancestor upstream/main HEAD` は exit 0 で、この branch は fetch 時点の upstream/main を既に祖先に含んでおり追加 merge は不要だった。
+- 軍監の役割を、セキュリティチェック、システム監視、違反チェック、危険操作検知、報告矛盾検出を主務とする独立監査 role として明文化した。`shogunate_mod/instructions/source/roles/gunkan_role.md`、`docs/REQS.md`、`docs/INDEX.md` を更新し、`shogunate_mod/instructions/ensure_generated.sh` で generated instruction / CLI auto-load files へ反映した。
 
 ## 復旧
 

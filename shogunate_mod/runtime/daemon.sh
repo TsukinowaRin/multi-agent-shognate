@@ -76,6 +76,17 @@ ensure_gunkan_light_watch_daemon_started() {
         "env MAS_GUNKAN_WATCH_INTERVAL=\"${MAS_GUNKAN_WATCH_INTERVAL:-20}\" MAS_GUNKAN_WATCH_COOLDOWN=\"${MAS_GUNKAN_WATCH_COOLDOWN:-300}\" python3 \"$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py\" --daemon >> \"$SCRIPT_DIR/logs/gunkan_light_watch.log\" 2>&1"
 }
 
+ensure_runtime_sync_daemon_started() {
+    local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
+
+    [ -f "$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py" ] || return 0
+    mkdir -p "$SCRIPT_DIR/logs" "$SCRIPT_DIR/queue/runtime"
+    ensure_tmux_runtime_daemon_window \
+        "$session_name" \
+        "runtime-sync" \
+        "env MAS_RUNTIME_SYNC_INTERVAL=\"${MAS_RUNTIME_SYNC_INTERVAL:-5}\" python3 \"$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py\" --daemon >> \"$SCRIPT_DIR/logs/runtime_sync.log\" 2>&1"
+}
+
 restart_tmux_runtime_daemon_session() {
     local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
     local session_env=""
@@ -121,7 +132,22 @@ restart_tmux_runtime_daemon_session() {
         started=1
     fi
 
+    if [ -f "$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py" ]; then
+        ensure_runtime_sync_daemon_started "$session_name"
+        started=1
+    fi
+
     [ "$started" -eq 1 ]
+}
+
+ensure_runtime_daemons_for_bootstrap() {
+    [ "$SETUP_ONLY" = false ] || return 0
+    log_info "🛡️  bootstrap中断に備えて runtime daemon を先行起動中..."
+    if restart_tmux_runtime_daemon_session "$RUNTIME_DAEMON_SESSION"; then
+        log_success "  └─ runtime daemon 先行起動完了（tmux daemon session: ${RUNTIME_DAEMON_SESSION}）"
+    else
+        log_info "⚠️  runtime daemon 先行起動に失敗しました。bootstrap後に再試行します"
+    fi
 }
 
 start_runtime_watchers_and_bridges() {
@@ -147,6 +173,7 @@ start_runtime_watchers_and_bridges() {
     pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/cli_pref_daemon.sh" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/scripts/gunkan_light_watch.py" 2>/dev/null || true
     pkill -f "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py" 2>/dev/null || true
+    pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py" 2>/dev/null || true
     tmux_kill_runtime_daemon_session_exact "$RUNTIME_DAEMON_SESSION" || true
     pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
     sleep 1
@@ -171,6 +198,9 @@ start_runtime_watchers_and_bridges() {
                 "gunkan-watch" \
                 "env MAS_GUNKAN_WATCH_INTERVAL=\"${MAS_GUNKAN_WATCH_INTERVAL:-20}\" MAS_GUNKAN_WATCH_COOLDOWN=\"${MAS_GUNKAN_WATCH_COOLDOWN:-300}\" python3 \"$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py\" --daemon >> \"$SCRIPT_DIR/logs/gunkan_light_watch.log\" 2>&1"
         fi
+        if [ -f "$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py" ]; then
+            ensure_runtime_sync_daemon_started "$RUNTIME_DAEMON_SESSION"
+        fi
         _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
         log_success "  └─ watcher_supervisor 起動完了（tmux daemon session: ${RUNTIME_DAEMON_SESSION}）"
@@ -191,5 +221,10 @@ start_runtime_watchers_and_bridges() {
     if [ -x "$SCRIPT_DIR/shogunate_mod/runtime/cli_pref_daemon.sh" ]; then
         log_info "💾 live CLI設定の自動同期を起動中..."
         log_success "  └─ runtime_cli_pref_daemon 起動完了（tmux daemon session）"
+    fi
+
+    if [ -f "$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py" ]; then
+        log_info "🔄 runtime状態同期を起動中..."
+        log_success "  └─ runtime_sync 起動完了（tmux daemon session）"
     fi
 }

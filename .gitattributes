@@ -12,6 +12,8 @@ shogunate_mod/mobile/android export-ignore
 shogunate_mod/mobile/android/** export-ignore
 images export-ignore
 images/** export-ignore
+instructions/harnesses export-ignore
+instructions/harnesses/** export-ignore
 reports export-ignore
 reports/** export-ignore
 tests export-ignore

@@ -1,7 +1,50 @@
 # Requirements (Normalized)
 
-最終更新: 2026-06-20
+最終更新: 2026-06-21
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
+
+## 追補（2026-06-21: Optimization / role / CLI harnesses をMOD側に実装）
+
+### 要求
+
+1. 最適化処理は自動編集ではなく、Shogunate の役職境界を守った advisory harness として実装する。
+2. Shogunate が対応する AI CLI（Claude / Codex / Copilot / Kimi / Antigravity / Cursor / LocalAPI / OpenCode / Kilo）ごとに、公式・現行運用に沿った CLI harness を用意する。
+3. Shogun / Karo / Ashigaru / Gunshi / Gunkan の各 role harness を、最新の agentic coding best practices に合わせて MOD 側正本として追加する。
+4. 生成 instruction と OpenCode agent 定義は、MOD 側 harness を含む。
+5. Gunkan はセキュリティ監査・違反監視に加え、明示依頼または監査中の重大リスクに限って最適化助言を出せる。ただし足軽への直接割当や自動編集はしない。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate_mod/instructions/source/harnesses/` に common / role / CLI harness が存在する。
+2. `bash scripts/build_instructions.sh` 後、`instructions/generated/*` に `Shogunate Role Harness`、`Optimization Advisory Harness`、該当 role harness、該当 CLI harness が含まれる。
+3. `.opencode/agents/*.md` にも OpenCode 用 harness が含まれる。
+4. `codex-gunkan.md` は `optimization_requested` と structured optimization advisory を説明する。
+5. role harness は侍・戦国 persona を維持しつつ、command / task / report / advice / audit packet と検証証跡を明示する。
+6. build system の Bats test が、全 CLI / role harness と persona / packet discipline の生成契約を検証する。
+
+### 実機検証追補（2026-06-21）
+
+1. Harness refresh 後の generated instruction が、実機の source checkout / package / Android / tmux runtime 導線で破綻しないことを確認する。
+2. 可能な範囲で実Android端末、実tmux session、実AI CLIの存在を使って確認する。
+3. 失敗した検証は、原因、影響、次の修正対象を明記する。
+
+## 追補（2026-06-21: runtime同期最適化をMOD側に実装）
+
+### 要求
+
+1. 実AI runtime検証で再現した同期不整合を、Shogunate MOD側の機能として修正する。
+2. `karo_done_to_shogun_bridge` は通常運転で active command queue のみを完了通知対象にし、古い archive の同一 `cmd_id` を現在の完了として誤通知しない。
+3. 足軽reportが揃ったら、MOD側runtime同期が task status / command status / dashboard / Gunkan監査依頼を揃える。
+4. Gunkan最終監査reportが返った後に command を `done` にし、将軍への `cmd_done` 通知bridgeへ渡す。
+5. archive参照が必要な互換運用は明示環境変数でのみ有効にする。
+
+### 受け入れ条件（観測可能）
+
+1. active queue にない archive の `done` command は既定では `cmd_done` として将軍inboxへ送られない。
+2. `MAS_KARO_DONE_INCLUDE_ARCHIVE=1` を指定した場合だけ、従来どおり archive 側の完了通知を扱える。
+3. active command の足軽reportが全て `done` のとき、runtime同期は該当 task を `done` に更新し、command を `audit_requested` にし、Gunkan inboxへ `audit_requested` を1回だけ送る。
+4. `queue/reports/gunkan_report.yaml` に同じ `parent_cmd` の `passed` / `warn` / `done` report があると、runtime同期は command を `done` にし、dashboardの戦果へ反映する。
+5. 追加・変更した同期処理は `shogunate_mod/` を正本にし、daemon起動もMOD側実装を参照する。
 
 ## 追補（2026-06-20: Android UI 実機E2E完走）
 
@@ -293,10 +336,10 @@
 1. Shogunate 独自要素として `gunkan`（軍監）ロールを追加する。
 2. 軍監は将軍直属の独立監査ラインで、家老の配下ではない。ただし実務上は家老と並列に置き、通常の作業指揮は家老に残す。
 3. 軍師は家老配下の参謀・高度QC役とし、軍監とは分離する。
-4. 軍監は作業ログ、queue、reports、dashboard、runtime 状態を横断監査し、`queue/reports/gunkan_report.yaml` と必要な inbox 通知で将軍/家老へ報告する。
+4. 軍監は作業ログ、queue、reports、dashboard、runtime 状態を横断監査し、セキュリティチェック、システム監視、違反チェック、危険操作検知、報告矛盾検出を担当する。結果は `queue/reports/gunkan_report.yaml` と必要な inbox 通知で将軍/家老へ報告する。
 5. 軍監は通常の中間報告取得を担当しない。中間報告は従来どおり `将軍 -> 家老` で取り寄せる。
-6. 軍監LLMは常時ポーリングでトークンを消費しない。通常メッセージは非LLMの軽量イベントログへ記録し、軍監LLMは `audit_requested` / `audit_failed` / `runtime_blocked` / `emergency_stop_requested` などの監査イベントでのみ起動する event-driven 監査役とする。
-7. ただし、不正・破壊操作・報告矛盾のリアルタイム検知のため、非LLMの軽量軍監 watcher を常駐させる。軽量 watcher は queue / reports / dashboard / git diff / CoDD 設定を低コストに検査し、異常時だけ軍監 inbox へ `audit_requested` を送る。
+6. 軍監LLMは常時ポーリングでトークンを消費しない。通常メッセージは非LLMの軽量イベントログへ記録し、軍監LLMは `audit_requested` / `audit_failed` / `runtime_blocked` / `emergency_stop_requested` などの監査イベントと、ユーザーまたは将軍からの `direct_message` / `question` / `message` / `chat` 等の直接会話で起動する event-driven 監査役とする。
+7. ただし、不正・破壊操作・secret/credential 露出・権限逸脱・報告矛盾のリアルタイム検知のため、非LLMの軽量軍監 watcher を常駐させる。軽量 watcher は queue / reports / dashboard / git diff / CoDD 設定を低コストに検査し、異常時だけ軍監 inbox へ `audit_requested` を送る。
 8. 軍監は CoDD をオンデマンド監査ツールとして使う。`codd` CLI がない環境では組み込み整合性チェックへフォールバックし、runtime 常駐や周期実行はしない。
 8. CLI 種別は既存の簡単設定 CUI/CLI で選択でき、デフォルトは他ロール同様 `codex` とする。
 9. Codex / Claude / OpenCode / Antigravity / Kilo / Kimi / Copilot / LocalAPI の生成済み instruction と OpenCode agent 定義に軍監を追加する。

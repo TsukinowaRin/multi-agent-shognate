@@ -90,8 +90,7 @@ def inbox_already_mentions(inbox_path: Path, cmd: dict) -> bool:
         content = str(msg.get("content", ""))
         if not cmd_id or cmd_id not in content:
             continue
-        if not timestamp or timestamp in content:
-            return True
+        return True
     return False
 
 

@@ -5,6 +5,9 @@ source "$BATS_TEST_DIRNAME/../helpers/search_helper.bash"
 setup_file() {
     export PROJECT_ROOT
     PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+    while [[ "$PROJECT_ROOT" != "/" && ! -f "$PROJECT_ROOT/shutsujin_departure.sh" ]]; do
+        PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+    done
 }
 
 @test "tmux起動は inbox 正規化ヘルパーを利用する" {
@@ -204,7 +207,16 @@ setup_file() {
 }
 
 @test "tmux 起動は OpenCode/Kilo を ready 判定し bootstrap 待ちを短縮する" {
-    run bats_search 'opencode\) ready_pattern=.*OpenCode|kilo\)    ready_pattern=.*Kilo|MAS_OPENCODE_BOOTSTRAP_READY_WAIT:-5|MAS_KILO_BOOTSTRAP_READY_WAIT:-5|after \$\{ready_wait\}s' "$PROJECT_ROOT/shogunate_mod/runtime/bootstrap.sh"
+    run bats_search 'opencode\) ready_pattern=.*OpenCode.*Ask anything.*ctrl\\\\\+p commands|kilo\)    ready_pattern=.*Kilo|MAS_OPENCODE_BOOTSTRAP_READY_WAIT:-5|MAS_KILO_BOOTSTRAP_READY_WAIT:-5|after \$\{ready_wait\}s' "$PROJECT_ROOT/shogunate_mod/runtime/bootstrap.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は OpenCode 通常待機画面を project prompt と誤判定しない" {
+    run bash -c '
+        grep -Fq "What is this project\\\\?|What is the project\\\\?|project\\\\?\\\"" "$1" &&
+        ! grep -q "OpenCode.*Go" "$1" &&
+        ! grep -q "╹.*Go" "$1"
+    ' _ "$PROJECT_ROOT/shogunate_mod/runtime/prompts.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -223,13 +235,18 @@ setup_file() {
     [ "$status" -eq 0 ]
 }
 
-@test "tmux 起動は Codex bootstrap を短いファイル参照promptで送る" {
-    run bats_search 'codex_bootstrap_delivery_prompt_tmux|codex_bootstrap_delivery_prompt|bootstrap_file.*正本指示|比較・diff・読み比べは不要' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/prompts.sh" "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh"
+@test "tmux 起動は bootstrap を短いファイル参照promptで送る" {
+    run bats_search 'bootstrap_delivery_prompt_tmux|bootstrap_delivery_prompt|詳細正本は %s|追加探索せず ready:%s' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/prompts.sh" "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "tmux 起動は Codex workspace trust prompt を update prompt と分離して自動承認する" {
     run bats_search 'auto_accept_codex_workspace_trust_prompt_tmux|Do you trust the contents of this directory|1\\. Yes, continue|Would you like to update' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/prompts.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "tmux 起動は OpenCode update prompt を自動スキップする" {
+    run bats_search 'auto_skip_opencode_update_prompt_tmux|opencode_update_prompt_detected_tmux|skip_opencode_update_prompt_if_present|OpenCode update prompt' "$PROJECT_ROOT/shogunate_mod/runtime/prompts.sh" "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh" "$PROJECT_ROOT/shogunate_mod/runtime/bootstrap.sh" "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -249,8 +266,8 @@ setup_file() {
     [[ "$output" != *'差分を適用せよ'* ]]
 }
 
-@test "tmux 起動は Codex だけ初動命令を起動引数に直載せせず通常TUIを優先する" {
-    run bats_search 'should_embed_startup_prompt_in_cli_command|MAS_CODEX_STARTUP_PROMPT_MODE|build_cli_command_with_startup_prompt|bootstrap_message_text' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/bootstrap.sh"
+@test "tmux 起動は初動命令を起動引数に直載せせず通常TUIを優先する" {
+    run bats_search 'should_embed_startup_prompt_in_cli_command|MAS_CODEX_STARTUP_PROMPT_MODE|build_cli_command_with_startup_prompt|bootstrap_message_text|return 1' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/bootstrap.sh"
     [ "$status" -eq 0 ]
 }
 
@@ -260,7 +277,7 @@ setup_file() {
 }
 
 @test "tmux 起動と watcher は ready:agent を見たら pending bootstrap を掃除する" {
-    run bats_search "bootstrap_acknowledged_tmux|bootstrap_acknowledged_in_pane|bootstrap acknowledged|grep -vq '【初動命令】'" "$PROJECT_ROOT/shogunate_mod/runtime/bootstrap.sh" "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh"
+    run bats_search "bootstrap_acknowledged_tmux|bootstrap_acknowledged_in_pane|\\[•●\\]|bootstrap acknowledged|grep -vq '【初動命令】'" "$PROJECT_ROOT/shogunate_mod/runtime/bootstrap.sh" "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh"
     [ "$status" -eq 0 ]
 }
 

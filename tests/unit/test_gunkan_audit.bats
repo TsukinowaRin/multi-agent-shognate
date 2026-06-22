@@ -334,6 +334,32 @@ assert "report_worker_mismatch" not in kinds
 PY
 }
 
+@test "gunkan_light_watch: artifact path check resolves target project basename prefix" {
+  mkdir -p "$TEST_TMP/target-project"
+  printf 'console.log("ok")\n' > "$TEST_TMP/target-project/app.js"
+  printf '%s\n' "$TEST_TMP/target-project" > "$TEST_TMP/queue/runtime/target_project"
+  cat > "$TEST_TMP/queue/reports/ashigaru1_report.yaml" <<'YAML'
+worker_id: ashigaru1
+status: done
+parent_cmd: cmd_target_project_path
+verification: node --check target-project/app.js passed
+artifacts:
+  - target-project/app.js
+YAML
+
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  [ "$status" -eq 0 ]
+
+  "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'
+import sys
+import yaml
+
+watch = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+kinds = {f["kind"] for f in watch["findings"]}
+assert "done_report_missing_artifact" not in kinds
+PY
+}
+
 @test "gunkan_light_watch: done report with missing explicit artifact path is detected" {
   cat > "$TEST_TMP/queue/reports/ashigaru1_report.yaml" <<'YAML'
 worker_id: ashigaru1

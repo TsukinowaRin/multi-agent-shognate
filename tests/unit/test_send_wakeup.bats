@@ -786,6 +786,22 @@ YAML
     [ "$status" -eq 0 ]
 }
 
+@test "T-BUSY-001d: agent_is_busy records long busy runtime notice" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="◦ Working on task (12s • esc to interrupt)"
+        LONG_BUSY_NOTICE_THRESHOLD=0
+        LONG_BUSY_NOTICE_COOLDOWN=0
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR"
+        agent_is_busy
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "agent=test_agent" "$TEST_TMPDIR/project/queue/runtime/long_busy_agents.tsv"
+    grep -q "busy_seconds=" "$TEST_TMPDIR/project/queue/runtime/long_busy_agents.tsv"
+}
+
 # --- T-BUSY-002: agent_is_busy returns 1 when idle ---
 
 @test "T-BUSY-002: agent_is_busy returns 1 when pane is idle" {
@@ -1123,6 +1139,19 @@ YAML
     [ "$status" -eq 0 ]
 
     grep -q "send-keys -t test:0.0 t" "$MOCK_LOG"
+}
+
+@test "T-AGY-001: watcher は Antigravity feedback prompt を 0 でスキップする" {
+    run bash -c '
+        MOCK_PANE_CLI="antigravity"
+        MOCK_CAPTURE_PANE="Help us improve the CLI experience [0] Skip"
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 0" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
 @test "T-CODEX-010b0: send_wakeup は Codex 通常画面では no-prompt を許容して nudge する" {
@@ -1511,6 +1540,18 @@ YAML
         submit_codex_pending_paste_if_needed "bootstrap retry"
     '
     [ "$status" -ne 0 ]
+}
+
+@test "T-CODEX-015h2: runtime prompt maintenance でも Codex pasted content に Enter を追送する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE="[Pasted Content 1442 chars]"
+        source "'"$TEST_HARNESS"'"
+        maintain_codex_runtime_prompt
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
 @test "T-CODEX-015a: watcher は auth prompt 中の pending bootstrap を dashboard 通知へ記録する" {

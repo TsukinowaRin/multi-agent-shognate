@@ -156,7 +156,7 @@ setup_file() {
 }
 
 @test "tmux 起動は prompt自動処理と bootstrap 配信で text+Enter の両方を確認する" {
-    run bats_search 'tmux_send_text_and_enter|bootstrap-send-failed|Codex update prompt: Enter send failed|Codex workspace trust prompt|Codex rate-limit prompt|Antigravity trust prompt' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh" "$PROJECT_ROOT/shogunate_mod/runtime/bootstrap.sh" "$PROJECT_ROOT/shogunate_mod/runtime/prompts.sh"
+    run bats_search 'tmux_send_text_and_enter|bootstrap-send-failed|Codex update prompt: Enter send failed|Codex workspace trust prompt|Codex rate-limit prompt|Antigravity trust prompt|Antigravity feedback prompt' "$PROJECT_ROOT/shutsujin_departure.sh" "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh" "$PROJECT_ROOT/shogunate_mod/runtime/bootstrap.sh" "$PROJECT_ROOT/shogunate_mod/runtime/prompts.sh"
     [ "$status" -eq 0 ]
 }
 

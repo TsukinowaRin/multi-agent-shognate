@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-06-21
+最終更新: 2026-06-22
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
 
 ## 追補（2026-06-22: 長時間安定性の実機E2E）
@@ -19,6 +19,25 @@
 3. queue の command/task/report/dashboard が矛盾なく進む、または停止した場合は停止箇所と原因を説明できる。
 4. 少なくとも30分以上、可能なら60分程度の観察で、watcher / bridge / sync daemon が落ちていないことを確認する。
 5. テスト結果、未確認範囲、残リスクを ExecPlan に記録する。
+
+## 追補（2026-06-22: 長時間E2E後の安定性改善）
+
+### 要求
+
+1. 長時間E2Eで見つかった実利用上の詰まりを、非エンジニアにも分かる形で改善する。
+2. Gunkan light watch は target project 内成果物を runtime root 基準で誤検知しない。
+3. Codex の初動命令・長文命令 paste が composer に残った場合、自動で Enter 追送または分かる通知を行う。
+4. 起動時 ready 表示は実際の role pane 数と一致させる。
+5. Antigravity の作業後 feedback prompt は自動 skip し、次の指示を塞がない。
+6. Karo などが長時間 `Working` のままでも、runtime が進行中なのか詰まりなのかを dashboard / runtime notice で観測できる。
+
+### 受け入れ条件（観測可能）
+
+1. artifact path が `target-project/app.js` のような target project 相対表現でも、実在する場合は Gunkan light watch が欠落扱いしない。
+2. Codex pane に pasted content / 初動命令が残ったとき、watcher または bootstrap retry が Enter を追送する契約テストがある。
+3. 8 role pane 構成では起動ログ上の ready count も 8 件基準になる。
+4. Antigravity feedback prompt を `0` でskipする契約テストがある。
+5. 長時間 busy pane の状態が `queue/runtime` または dashboard notice へ記録され、ユーザーが「生きているが作業中」と判断できる。
 
 ## 追補（2026-06-21: Optimization / role / CLI harnesses をMOD側に実装）
 

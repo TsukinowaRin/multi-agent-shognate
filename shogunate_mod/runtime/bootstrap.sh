@@ -143,6 +143,10 @@ wait_for_cli_ready_tmux() {
         auto_skip_opencode_update_prompt_tmux "$pane_target" "startup" "$cli_type" || true
         screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
     fi
+    if [ "$cli_type" = "antigravity" ] && antigravity_feedback_prompt_detected_tmux "$screen_content"; then
+        auto_skip_antigravity_feedback_prompt_tmux "$pane_target" "startup" "$cli_type" || true
+        screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+    fi
     if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
         return 2
     fi
@@ -163,6 +167,10 @@ wait_for_cli_ready_tmux() {
         fi
         if [ "$cli_type" = "opencode" ] && opencode_update_prompt_detected_tmux "$screen_content"; then
             auto_skip_opencode_update_prompt_tmux "$pane_target" "startup" "$cli_type" || true
+            continue
+        fi
+        if [ "$cli_type" = "antigravity" ] && antigravity_feedback_prompt_detected_tmux "$screen_content"; then
+            auto_skip_antigravity_feedback_prompt_tmux "$pane_target" "startup" "$cli_type" || true
             continue
         fi
         if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
@@ -319,8 +327,6 @@ wait_for_bootstrap_ready_tmux() {
         [ -n "$pane_target" ] || continue
         delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.delivered"
         pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.pending"
-        # 未配信のものは auth / readiness 待ちとして watcher に任せ、この待機対象から外す。
-        [ -f "$delivered_file" ] || [ ! -f "$pending_file" ] || continue
         total=$((total + 1))
     done
 
@@ -339,7 +345,6 @@ wait_for_bootstrap_ready_tmux() {
             [ -n "$pane_target" ] || continue
             delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.delivered"
             pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.pending"
-            [ -f "$delivered_file" ] || [ ! -f "$pending_file" ] || continue
             if bootstrap_acknowledged_tmux "$pane_target" "$agent"; then
                 ready=$((ready + 1))
             fi

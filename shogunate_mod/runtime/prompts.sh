@@ -200,6 +200,34 @@ auto_retry_antigravity_busy_tmux() {
     return 0
 }
 
+antigravity_feedback_prompt_detected_tmux() {
+    local screen_content="${1:-}"
+
+    printf '%s' "$screen_content" | grep -qiE "How'?s the CLI experience so far|Help us|\\[0\\][[:space:]]*Skip|0[.)[:space:]]+Skip"
+}
+
+auto_skip_antigravity_feedback_prompt_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local i
+    local pane_text
+
+    [ "$cli_type" = "antigravity" ] || return 0
+
+    for i in {1..20}; do
+        pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -100 || true)"
+        if antigravity_feedback_prompt_detected_tmux "$pane_text"; then
+            tmux_send_text_and_enter "$pane_target" "0" "Antigravity feedback prompt" || return 1
+            log_info "  └─ ${agent_id}: Antigravity feedback prompt を自動スキップ"
+            sleep 1
+            return 0
+        fi
+        sleep 1
+    done
+    return 0
+}
+
 auto_skip_codex_update_prompt_tmux() {
     local pane_target="$1"
     local agent_id="$2"

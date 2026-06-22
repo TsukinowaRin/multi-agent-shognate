@@ -601,6 +601,15 @@ maintain_codex_runtime_prompt() {
         effective_cli=$(get_effective_cli_type)
     fi
 
+    skip_antigravity_feedback_prompt_if_present "$effective_cli" || true
+    if [[ "$effective_cli" == "antigravity" ]]; then
+        return 0
+    fi
+
+    if [[ "$effective_cli" == "codex" ]]; then
+        submit_codex_pending_paste_if_needed "Codex pasted content runtime prompt" || true
+    fi
+
     accept_codex_hooks_prompt_if_present "$effective_cli" || prompt_rc=$?
     case "$prompt_rc" in
         0)
@@ -808,6 +817,47 @@ recover_shell_returned_codex_if_needed() {
     recover_shell_returned_cli_if_needed "$@"
 }
 
+BUSY_SINCE_TS=${BUSY_SINCE_TS:-0}
+LAST_LONG_BUSY_NOTICE_TS=${LAST_LONG_BUSY_NOTICE_TS:-0}
+LONG_BUSY_NOTICE_THRESHOLD=${LONG_BUSY_NOTICE_THRESHOLD:-600}
+LONG_BUSY_NOTICE_COOLDOWN=${LONG_BUSY_NOTICE_COOLDOWN:-300}
+
+record_agent_busy_observation() {
+    local effective_cli="${1:-unknown}"
+    local now elapsed runtime_dir notice_file
+
+    now=$(date +%s)
+    if [ "${BUSY_SINCE_TS:-0}" -le 0 ] 2>/dev/null; then
+        BUSY_SINCE_TS=$now
+    fi
+    elapsed=$((now - BUSY_SINCE_TS))
+    [[ "$LONG_BUSY_NOTICE_THRESHOLD" =~ ^[0-9]+$ ]] || LONG_BUSY_NOTICE_THRESHOLD=600
+    [[ "$LONG_BUSY_NOTICE_COOLDOWN" =~ ^[0-9]+$ ]] || LONG_BUSY_NOTICE_COOLDOWN=300
+    [ "$elapsed" -ge "$LONG_BUSY_NOTICE_THRESHOLD" ] || return 0
+    if [ "${LAST_LONG_BUSY_NOTICE_TS:-0}" -gt 0 ] && [ $((now - LAST_LONG_BUSY_NOTICE_TS)) -lt "$LONG_BUSY_NOTICE_COOLDOWN" ]; then
+        return 0
+    fi
+
+    runtime_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/queue/runtime"
+    notice_file="$runtime_dir/long_busy_agents.tsv"
+    mkdir -p "$runtime_dir" 2>/dev/null || true
+    printf '%s\tagent=%s\tcli=%s\tbusy_seconds=%s\tpane=%s\n' \
+        "$(date -Iseconds)" \
+        "${AGENT_ID:-unknown}" \
+        "$effective_cli" \
+        "$elapsed" \
+        "${PANE_TARGET:-unknown}" >> "$notice_file"
+    LAST_LONG_BUSY_NOTICE_TS=$now
+    echo "[$(date)] [INFO] Agent $AGENT_ID has been busy for ${elapsed}s; recorded $notice_file" >&2
+    return 0
+}
+
+clear_agent_busy_observation() {
+    BUSY_SINCE_TS=0
+    LAST_LONG_BUSY_NOTICE_TS=0
+    return 0
+}
+
 bootstrap_ready_pattern() {
     case "${1:-}" in
         claude) printf '%s\n' '(claude code|Claude Code|╰|/model|for shortcuts)' ;;
@@ -839,6 +889,27 @@ skip_opencode_update_prompt_if_present() {
     if opencode_update_prompt_detected "$pane_text"; then
         echo "[$(date)] [SEND-KEYS] Skipping OpenCode update prompt for $AGENT_ID" >&2
         mux_send_enter || return 1
+        return 0
+    fi
+    return 0
+}
+
+antigravity_feedback_prompt_detected() {
+    local pane_text="${1:-}"
+
+    printf '%s' "$pane_text" | grep -qiE "How'?s the CLI experience so far|Help us|\\[0\\][[:space:]]*Skip|0[.)[:space:]]+Skip"
+}
+
+skip_antigravity_feedback_prompt_if_present() {
+    local effective_cli="${1:-$(get_effective_cli_type)}"
+    local pane_text=""
+
+    [ "$effective_cli" = "antigravity" ] || return 0
+
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -100 || true)
+    if antigravity_feedback_prompt_detected "$pane_text"; then
+        echo "[$(date)] [SEND-KEYS] Skipping Antigravity feedback prompt for $AGENT_ID" >&2
+        send_text_and_enter "0" "Antigravity feedback prompt" || return 1
         return 0
     fi
     return 0
@@ -977,6 +1048,10 @@ deliver_pending_bootstrap_if_ready() {
     fi
     if [[ "$effective_cli" == "opencode" ]]; then
         skip_opencode_update_prompt_if_present "$effective_cli" || true
+        pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
+    fi
+    if [[ "$effective_cli" == "antigravity" ]]; then
+        skip_antigravity_feedback_prompt_if_present "$effective_cli" || true
         pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -120 || true)
     fi
     if [[ "$effective_cli" == "codex" ]] && ! codex_process_running; then
@@ -1687,19 +1762,22 @@ agent_is_busy() {
     if declare -F agent_is_busy_check >/dev/null 2>&1; then
         agent_is_busy_check "$PANE_TARGET"
         case $? in
-            0) return 0 ;;
-            1|2) return 1 ;;
+            0) record_agent_busy_observation "$effective_cli"; return 0 ;;
+            1|2) clear_agent_busy_observation; return 1 ;;
         esac
     fi
 
     if [ "${LAST_CLEAR_TS:-0}" -gt 0 ] && [ "$now" -lt "$clear_busy_until" ]; then
+        record_agent_busy_observation "$effective_cli"
         return 0
     fi
 
     if [[ "$effective_cli" == "claude" ]] && [ -n "${IDLE_FLAG_DIR:-}" ]; then
         if [ -f "$idle_flag" ]; then
+            clear_agent_busy_observation
             return 1
         fi
+        record_agent_busy_observation "$effective_cli"
         return 0
     fi
 
@@ -1707,22 +1785,28 @@ agent_is_busy() {
 
     # ── Idle check (takes priority) ──
     if echo "$pane_tail" | grep -qE '(\? for shortcuts|context left)'; then
+        clear_agent_busy_observation
         return 1  # idle — Codex idle prompt
     fi
     if echo "$pane_tail" | grep -qE '^(❯|›)\s*$'; then
+        clear_agent_busy_observation
         return 1  # idle — Claude Code or Codex bare prompt
     fi
 
     # ── Busy markers (bottom 5 lines only) ──
     if echo "$pane_tail" | grep -qiF 'esc to interrupt'; then
+        record_agent_busy_observation "$effective_cli"
         return 0  # busy
     fi
     if echo "$pane_tail" | grep -qiF 'background terminal running'; then
+        record_agent_busy_observation "$effective_cli"
         return 0  # busy
     fi
     if echo "$pane_tail" | grep -qiE '(Working|Thinking|Planning|Sending|Processing|Analyzing|Generating|Executing|task is in progress|Compacting conversation|thought for|思考中|考え中|計画中|送信中|処理中|実行中|解析中|生成中)'; then
+        record_agent_busy_observation "$effective_cli"
         return 0  # busy
     fi
+    clear_agent_busy_observation
     return 1  # idle
 }
 

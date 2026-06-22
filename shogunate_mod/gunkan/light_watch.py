@@ -289,6 +289,38 @@ def is_project_relative_path(value: str) -> bool:
     return "/" in text or "." in Path(text).name
 
 
+def load_target_project_root(root: Path) -> Path | None:
+    path = root / "queue" / "runtime" / "target_project"
+    if not path.exists():
+        return None
+    try:
+        value = path.read_text(encoding="utf-8", errors="ignore").strip()
+    except Exception:
+        return None
+    if not value:
+        return None
+    candidate = Path(value).expanduser()
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    return candidate
+
+
+def declared_path_exists(root: Path, rel_path: str, target_project_root: Path | None = None) -> bool:
+    normalized = rel_path.lstrip("./")
+    if not normalized:
+        return False
+
+    candidates: list[Path] = []
+    if target_project_root is not None:
+        candidates.append(target_project_root / normalized)
+        parts = Path(normalized).parts
+        if parts and parts[0] == target_project_root.name:
+            candidates.append(target_project_root.joinpath(*parts[1:]))
+    candidates.append(root / normalized)
+
+    return any(path.exists() for path in candidates)
+
+
 def collect_declared_paths(value: Any, key_hint: str = "") -> list[str]:
     paths: list[str] = []
     if isinstance(value, dict):
@@ -345,6 +377,7 @@ def yaml_parse_findings(root: Path) -> list[Finding]:
 def report_findings(root: Path, report_records: list[dict[str, Any]] | None = None) -> list[Finding]:
     findings: list[Finding] = []
     records = report_records if report_records is not None else collect_report_records(root)
+    target_project_root = load_target_project_root(root)
 
     for record in records:
         rel = str(record["rel"])
@@ -412,7 +445,7 @@ def report_findings(root: Path, report_records: list[dict[str, Any]] | None = No
         missing_paths = [
             rel_path
             for rel_path in declared_paths
-            if not (root / rel_path.lstrip("./")).exists()
+            if not declared_path_exists(root, rel_path, target_project_root)
         ]
         if missing_paths:
             findings.append(

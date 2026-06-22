@@ -17,6 +17,7 @@
 - `docs/EXECPLAN_2026-06-21_runtime_sync_mod.md` - 実AI runtimeで見つかった command/report/dashboard/Gunkan 同期不整合をMOD側で直す計画。
 - `docs/EXECPLAN_2026-06-21_optimization_harnesses.md` - 最適化 advisory と role/CLI harness をMOD正本へ追加する計画。
 - `docs/EXECPLAN_2026-06-21_real_machine_harness_test.md` - harness refresh 後の source/package/runtime/Android 実機検証計画。
+- `docs/EXECPLAN_2026-06-22_long_running_real_ai_e2e.md` - 実AI混在構成で複雑タスクを長時間走らせる安定性検証計画。
 - `docs/EXECPLAN_2026-05-30_android_setup.md` - Android app の SSH / tmux target 設定改善計画。
 - `docs/EXECPLAN_2026-05-31_android_host_setup.md` - Android app の USB/無線 SSH セットアップと将軍単体表示計画。
 

@@ -3,6 +3,23 @@
 最終更新: 2026-06-21
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
 
+## 追補（2026-06-22: 長時間安定性の実機E2E）
+
+### 要求
+
+1. Smoke ではなく、実AI CLIを載せた Shogunate runtime に複雑で大きめのタスクを与え、長時間安定性を観察する。
+2. 既存 repo や secrets を壊さないよう、隔離 target project と専用 tmux session で実施する。
+3. 観察対象は、pane ready、bootstrap、watcher wakeup、command/task/report/dashboard/Gunkan audit 同期、成果物生成、途中停止・詰まり・誤通知の有無とする。
+4. 問題が出た場合は、原因を特定し、修正できるものは修正し、再発防止テストまたは観測手順を残す。
+
+### 受け入れ条件（観測可能）
+
+1. 実AI混在構成で runtime が起動し、対象 pane が ready になる。
+2. 将軍へ大きめの開発タスクを投入し、target project 内に複数ファイルの成果物が生成される。
+3. queue の command/task/report/dashboard が矛盾なく進む、または停止した場合は停止箇所と原因を説明できる。
+4. 少なくとも30分以上、可能なら60分程度の観察で、watcher / bridge / sync daemon が落ちていないことを確認する。
+5. テスト結果、未確認範囲、残リスクを ExecPlan に記録する。
+
 ## 追補（2026-06-21: Optimization / role / CLI harnesses をMOD側に実装）
 
 ### 要求

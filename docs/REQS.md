@@ -39,6 +39,25 @@
 4. Antigravity feedback prompt を `0` でskipする契約テストがある。
 5. 長時間 busy pane の状態が `queue/runtime` または dashboard notice へ記録され、ユーザーが「生きているが作業中」と判断できる。
 
+## 追補（2026-06-22: Shogunate App 構想）
+
+### 要求
+
+1. 現行Androidアプリを置き換える新しい `Shogunate App` を設計する。
+2. 対象は Windows / Linux / macOS / Android とする。
+3. Codex App のように、チャット、実行状況、成果物、接続先、セッションを扱える体験を、Shogunate 経由で任意の対応AIエージェントへ提供する。
+4. 特定AI CLI専用ではなく、Codex / Claude / OpenCode / Antigravity などを Shogunate の role / agent abstraction 経由で扱う。
+5. 既存の Pair / SSH / tmux / dashboard / agent target 機能は失わず、desktop/mobile 共通の接続・セッションモデルへ整理する。
+6. 既存Android app のテスト・ビルドを確認し、壊れている箇所があれば小さく修正する。
+7. テストと修正が終わったら、結果を報告し、設計上の確認質問をユーザーへ出す。
+
+### 受け入れ条件（初期設計フェーズ）
+
+1. 既存Android app の機能棚卸し、残す機能、置き換える機能が ExecPlan に整理されている。
+2. Windows / Linux / macOS / Android の共通アーキテクチャ案があり、接続方式、UI、runtime API 境界、配布方針が説明されている。
+3. 既存Android app の unit/build check を実行し、失敗があれば原因と修正結果を記録する。
+4. すぐ実装する範囲と、ユーザー判断が必要な設計選択が分かれている。
+
 ## 追補（2026-06-21: Optimization / role / CLI harnesses をMOD側に実装）
 
 ### 要求

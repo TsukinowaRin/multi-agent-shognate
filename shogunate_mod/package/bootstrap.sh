@@ -138,6 +138,13 @@ Usage:
   shogunate pair [opts]     Pair Android app over USB auto + Tailscale/LAN
   shogunate configure       Open role/CLI configuration
   shogunate where           Show this project's engine/runtime/session paths
+  shogunate projects        List registered projects
+  shogunate projects add DIR [--name NAME] [--select]
+  shogunate projects select NAME_OR_ID
+  shogunate projects current
+  shogunate open NAME_OR_ID  Select a registered project and resume it
+  shogunate battlefield      List/start/stop registered project runtimes
+  shogunate app              App-facing JSON API for hosts/projects/sessions/roles
   shogunate status          Show package update status
   shogunate aliases         Print shell alias setup command
   shogunate install [opts]  Run package bootstrap again
@@ -146,6 +153,7 @@ Usage:
 
 Project options:
   --project DIR             Use DIR instead of the current directory
+  --project @NAME_OR_ID      Use a registered project
 
 Pair options are forwarded to shogunate_mod/pair/server.py.
 Set SHOGUNATE_PAIR_PASSWORD to require a fixed local approval password.
@@ -161,17 +169,32 @@ fail() {
 PROJECT_DIR="\$(pwd -P)"
 RUNTIME_ARGS=()
 
+project_registry() {
+    python3 "\$SHOGUNATE_INSTALL_DIR/shogunate_mod/projects/registry.py" "\$@"
+}
+
+resolve_registered_project_ref() {
+    local ref resolved
+    ref="\$1"
+    if [[ "\$ref" == @* ]]; then
+        resolved="\$(project_registry resolve "\${ref#@}")" || fail "registered project not found: \$ref"
+        printf '%s\n' "\$resolved"
+    else
+        printf '%s\n' "\$ref"
+    fi
+}
+
 parse_project_args() {
     RUNTIME_ARGS=()
     while [ "\$#" -gt 0 ]; do
         case "\$1" in
             --project)
                 [ "\${2:-}" ] || fail "--project requires a directory"
-                PROJECT_DIR="\$2"
+                PROJECT_DIR="\$(resolve_registered_project_ref "\$2")"
                 shift 2
                 ;;
             --project=*)
-                PROJECT_DIR="\${1#--project=}"
+                PROJECT_DIR="\$(resolve_registered_project_ref "\${1#--project=}")"
                 shift
                 ;;
             *)
@@ -209,6 +232,7 @@ resolve_project_dir() {
 prepare_project_runtime() {
     local project slug hash workspace_home runtime_dir
     project="\$(resolve_project_dir)"
+    project_registry add "\$project" >/dev/null 2>&1 || true
     slug="\$(project_slug "\$project")"
     hash="\$(project_hash "\$project")"
     workspace_home="\${SHOGUNATE_WORKSPACE_HOME:-\$HOME/.shogunate/workspaces}"
@@ -286,10 +310,10 @@ print_project_info() {
 
 if [ "\${1:-}" = "--project" ]; then
     [ "\${2:-}" ] || fail "--project requires a directory"
-    PROJECT_DIR="\$2"
+    PROJECT_DIR="\$(resolve_registered_project_ref "\$2")"
     shift 2
 elif [[ "\${1:-}" == --project=* ]]; then
-    PROJECT_DIR="\${1#--project=}"
+    PROJECT_DIR="\$(resolve_registered_project_ref "\${1#--project=}")"
     shift
 fi
 
@@ -337,6 +361,33 @@ case "\$command_name" in
         shift || true
         parse_project_args "\$@"
         print_project_info
+        ;;
+    projects|project)
+        shift || true
+        exec python3 "\$SHOGUNATE_INSTALL_DIR/shogunate_mod/projects/registry.py" "\$@"
+        ;;
+    battlefield|battlefields|app)
+        shift || true
+        export SHOGUNATE_ENGINE_DIR="\$SHOGUNATE_INSTALL_DIR"
+        export SHOGUNATE_COMMAND="\${SHOGUNATE_COMMAND:-\$0}"
+        exec python3 "\$SHOGUNATE_INSTALL_DIR/shogunate_mod/battlefield/api.py" "\$@"
+        ;;
+    open|use)
+        shift || true
+        [ "\${1:-}" ] || fail "\$command_name requires a registered project name, id, or path"
+        if [ -d "\$1" ]; then
+            PROJECT_DIR="\$1"
+            shift
+            project_registry add "\$PROJECT_DIR" --select >/dev/null
+        else
+            selector="\${1#@}"
+            PROJECT_DIR="\$(resolve_registered_project_ref "@\$selector")"
+            shift
+            project_registry select "\$PROJECT_DIR" >/dev/null
+        fi
+        RUNTIME_ARGS=("\$@")
+        run_in_project_runtime
+        exec bash shogunate_mod/runtime/runtime_launcher.sh --resume "\${RUNTIME_ARGS[@]}"
         ;;
     status)
         shift || true

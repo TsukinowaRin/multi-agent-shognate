@@ -794,6 +794,13 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("cd <project> && shogunate", text)
         self.assertIn("SHOGUNATE_WORKSPACE_HOME", text)
         self.assertIn("shogunate where", text)
+        self.assertIn("shogunate projects", text)
+        self.assertIn("shogunate open NAME_OR_ID", text)
+        self.assertIn("shogunate battlefield", text)
+        self.assertIn("shogunate app", text)
+        self.assertIn("--project @NAME_OR_ID", text)
+        self.assertIn("shogunate_mod/projects/registry.py", text)
+        self.assertIn("shogunate_mod/battlefield/api.py", text)
 
     def test_curl_bootstrap_installs_command_before_first_setup(self):
         text = BOOTSTRAP.read_text(encoding="utf-8")
@@ -811,11 +818,165 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("exec python3 scripts/shogunate_pair_server.py", text)
         self.assertIn("prepare_project_runtime", text)
         self.assertIn("default_session_name", text)
+        self.assertIn("project_registry()", text)
+        self.assertIn("resolve_registered_project_ref()", text)
+        self.assertIn("projects|project)", text)
+        self.assertIn("battlefield|battlefields|app)", text)
+        self.assertIn("open|use)", text)
         self.assertIn("SHOGUNATE_PROJECT_DIR", text)
         self.assertIn("--target-project", text)
         self.assertIn("config/settings.yaml", text)
         self.assertIn("queue/runtime/session_name", text)
         self.assertIn("print_project_info", text)
+
+    def test_project_registry_supports_registered_project_selection(self):
+        registry_script = ROOT / "shogunate_mod" / "projects" / "registry.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            project = tmp_path / "project one"
+            project.mkdir()
+            env = {
+                **os.environ,
+                "SHOGUNATE_PROJECT_REGISTRY": str(tmp_path / "projects.json"),
+            }
+
+            def run(*args: str) -> subprocess.CompletedProcess[str]:
+                return subprocess.run(
+                    ["python3", str(registry_script), *args],
+                    cwd=ROOT,
+                    env=env,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+
+            add = run("add", str(project), "--name", "demo", "--select")
+            self.assertEqual(0, add.returncode, add.stdout + add.stderr)
+            self.assertIn("registered", add.stdout)
+
+            listing = run("list")
+            self.assertEqual(0, listing.returncode, listing.stdout + listing.stderr)
+            self.assertIn("* ", listing.stdout)
+            self.assertIn("demo", listing.stdout)
+
+            current = run("current", "--path")
+            self.assertEqual(0, current.returncode, current.stdout + current.stderr)
+            self.assertEqual(str(project.resolve()), current.stdout.strip())
+
+            resolve = run("resolve", "@demo")
+            self.assertEqual(0, resolve.returncode, resolve.stdout + resolve.stderr)
+            self.assertEqual(str(project.resolve()), resolve.stdout.strip())
+
+            remove = run("remove", "demo")
+            self.assertEqual(0, remove.returncode, remove.stdout + remove.stderr)
+            self.assertIn("removed", remove.stdout)
+
+    def test_battlefield_api_lists_projects_and_tracks_app_sessions(self):
+        registry_script = ROOT / "shogunate_mod" / "projects" / "registry.py"
+        battlefield_script = ROOT / "shogunate_mod" / "battlefield" / "api.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            project = tmp_path / "project one"
+            workspace = tmp_path / "workspaces"
+            project.mkdir()
+            env = {
+                **os.environ,
+                "SHOGUNATE_PROJECT_REGISTRY": str(tmp_path / "projects.json"),
+                "SHOGUNATE_WORKSPACE_HOME": str(workspace),
+            }
+            add = subprocess.run(
+                ["python3", str(registry_script), "add", str(project), "--name", "demo", "--select"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, add.returncode, add.stdout + add.stderr)
+
+            listing = subprocess.run(
+                ["python3", str(battlefield_script), "list", "--json"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, listing.returncode, listing.stdout + listing.stderr)
+            payload = json.loads(listing.stdout)
+            self.assertEqual("demo", payload["projects"][0]["name"])
+            self.assertEqual("stopped", payload["projects"][0]["runtime"]["status"])
+
+            create = subprocess.run(
+                ["python3", str(battlefield_script), "session-create", "demo", "--title", "Mobile chat", "--json"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, create.returncode, create.stdout + create.stderr)
+            session = json.loads(create.stdout)["session"]
+            self.assertEqual("Mobile chat", session["title"])
+
+            transcript = subprocess.run(
+                ["python3", str(battlefield_script), "transcript", "demo", "--json"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, transcript.returncode, transcript.stdout + transcript.stderr)
+            self.assertEqual(session["id"], json.loads(transcript.stdout)["session"])
+
+    def test_battlefield_api_start_delegates_to_registered_project_runtime(self):
+        registry_script = ROOT / "shogunate_mod" / "projects" / "registry.py"
+        battlefield_script = ROOT / "shogunate_mod" / "battlefield" / "api.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            project = tmp_path / "project one"
+            workspace = tmp_path / "workspaces"
+            log = tmp_path / "fake-shogunate-args.json"
+            fake = tmp_path / "fake-shogunate"
+            project.mkdir()
+            fake.write_text(
+                "#!/usr/bin/env python3\n"
+                "import json, pathlib, sys\n"
+                f"pathlib.Path({str(log)!r}).write_text(json.dumps(sys.argv[1:]), encoding='utf-8')\n"
+                "print('fake runtime started')\n",
+                encoding="utf-8",
+            )
+            fake.chmod(0o755)
+            env = {
+                **os.environ,
+                "SHOGUNATE_PROJECT_REGISTRY": str(tmp_path / "projects.json"),
+                "SHOGUNATE_WORKSPACE_HOME": str(workspace),
+                "SHOGUNATE_COMMAND": str(fake),
+            }
+            add = subprocess.run(
+                ["python3", str(registry_script), "add", str(project), "--name", "demo", "--select"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, add.returncode, add.stdout + add.stderr)
+
+            start = subprocess.run(
+                ["python3", str(battlefield_script), "start", "demo", "--resume", "--json"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, start.returncode, start.stdout + start.stderr)
+            payload = json.loads(start.stdout)
+            self.assertIn("fake runtime started", payload["stdout"])
+            delegated_args = json.loads(log.read_text(encoding="utf-8"))
+            self.assertEqual(["--project", f"@{payload['project']['id']}", "resume", "--no-attach"], delegated_args)
 
     def test_package_bootstrap_wrapper_prefers_mod_source(self):
         text = (ROOT / "scripts" / "shogunate_package_bootstrap.sh").read_text(encoding="utf-8")
@@ -1218,6 +1379,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         shutsujin_resume_wrapper = (ROOT / "Shutsujin-Resume.bat").read_text(encoding="utf-8")
         shutsujin_resume_mod = (ROOT / "shogunate_mod" / "windows" / "shutsujin_resume.bat").read_text(encoding="utf-8")
         npm_wrapper = (ROOT / "bin" / "shogunate.js").read_text(encoding="utf-8")
+        npm_cli_mod = (ROOT / "shogunate_mod" / "package" / "npm_cli.js").read_text(encoding="utf-8")
         pair_wrapper = (ROOT / "scripts" / "shogunate_pair_server.py").read_text(encoding="utf-8")
         antigravity_keyring_wrapper = (ROOT / "scripts" / "ensure_antigravity_keyring.sh").read_text(encoding="utf-8")
         aliases_wrapper = (ROOT / "scripts" / "shell_aliases.sh").read_text(encoding="utf-8")
@@ -1285,6 +1447,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("run_shutsujin_departure", runtime_entrypoint)
         self.assertNotIn('exec bash "$SCRIPT_DIR/shutsujin_departure.sh"', setup_compat)
         self.assertIn("shogunate_mod/package/first_setup.sh", manifest)
+        self.assertIn("shogunate_mod/battlefield/", manifest)
+        self.assertIn("shogunate_mod/projects/", manifest)
         self.assertIn("shogunate_mod/runtime/setup_compat.sh", manifest)
         self.assertIn("shogunate_mod/package/package.json", manifest)
         self.assertIn("shogunate_mod/package/package-lock.json", manifest)
@@ -1350,6 +1514,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("shogunate_mod/windows/shutsujin_clean.bat", manifest)
         self.assertIn("shogunate_mod/windows/shutsujin_resume.bat", manifest)
         self.assertIn("shogunate_mod/package/npm_cli.js", npm_wrapper)
+        self.assertIn("shogunate_mod/battlefield/api.py", npm_cli_mod)
+        self.assertIn("shogunate_mod/projects/registry.py", npm_cli_mod)
         self.assertIn("shogunate_mod", pair_wrapper)
         self.assertIn('"pair" / "server.py"', pair_wrapper)
         self.assertIn("shogunate_mod/cli/antigravity_keyring.sh", antigravity_keyring_wrapper)
@@ -1518,6 +1684,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("shogunate_mod/watcher/supervisor.sh", watcher_supervisor_wrapper)
         self.assertIn("shogunate_mod/watcher/supervisor.sh", manifest)
         self.assertIn("shogunate_mod/package/npm_cli.js", manifest)
+        self.assertIn("battlefield_api: shogunate_mod/battlefield/", manifest)
+        self.assertIn("projects_registry: shogunate_mod/projects/", manifest)
         self.assertIn("shogunate_mod/runtime/android_compat.sh", manifest)
         self.assertIn("shogunate_mod/runtime/agent_cli.sh", manifest)
         self.assertIn("shogunate_mod/runtime/banner.sh", manifest)
@@ -3580,7 +3748,8 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "delegate into shogunate_mod/" in text or "shogunate_mod/ へ委譲" in text,
                 path,
             )
-            self.assertIn("shogunate_mod/\n    gunkan/", text, path)
+            self.assertIn("shogunate_mod/\n    battlefield/", text, path)
+            self.assertIn("    gunkan/", text, path)
             self.assertIn("    watcher/", text, path)
             self.assertIn("    view/", text, path)
             self.assertNotIn("scripts/gunkan_*.py", text, path)

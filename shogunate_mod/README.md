@@ -15,6 +15,9 @@ is Shogunate-only.
 
 ## Boundaries
 
+- `battlefield/` owns the Shogunate App-facing battlefield API for registered
+  project discovery, runtime start/stop, app sessions, transcripts, role
+  listing, and role message delivery.
 - `cli/` owns the Multi-CLI adapter used to build role-specific Claude,
   Codex, OpenCode, Kilo, Antigravity, Copilot, Kimi, LocalAPI, and Cursor
   launch commands, plus CLI-specific preflight helpers such as Antigravity
@@ -61,6 +64,9 @@ is Shogunate-only.
   `saytask/streaks.yaml.sample` remain compatibility locations synchronized
   from MOD sources.
 - `pair/` owns Android Pair and SSH public-key registration.
+- `projects/` owns the registered project registry used by cwd-first package
+  runtime, `shogunate projects`, `shogunate open`, and Shogunate App project
+  selection.
 - `queue/` owns queue maintenance utilities such as YAML slimming, history
   book generation, and archive compaction for commands, tasks, reports, and
   inboxes.

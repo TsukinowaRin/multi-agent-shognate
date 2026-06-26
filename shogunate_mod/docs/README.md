@@ -89,6 +89,9 @@ shogunate resume          # resume this project's runtime state
 shogunate attach          # attach to this project's tmux session
 shogunate configure       # choose CLI per role for this project
 shogunate where           # show project/runtime/engine/session paths
+shogunate projects        # list registered projects
+shogunate battlefield     # list/start/stop registered project runtimes
+shogunate app             # JSON API for mobile and desktop apps
 shogunate status          # show package/update metadata
 shogunate aliases         # print shell alias source command
 shogunate help            # show command help
@@ -100,6 +103,34 @@ Target another project explicitly:
 shogunate --project /path/to/another-project
 shogunate attach --project /path/to/another-project
 ```
+
+Register projects you open often and select them by name:
+
+```bash
+shogunate projects add /path/to/your-project --name myapp --select
+shogunate projects
+shogunate --project @myapp resume
+shogunate open myapp
+```
+
+The registry is stored at `~/.shogunate/projects.json` by default. Running `shogunate` from a directory automatically remembers that directory, and the Android Battlefield tab also syncs opened remote projects into the same registry when the installed host command supports it.
+
+Apps should use the battlefield API instead of guessing SSH shell commands or tmux pane names:
+
+```bash
+shogunate app capabilities --json
+shogunate battlefield list --json
+shogunate battlefield status myapp --json
+shogunate battlefield start myapp --resume
+shogunate battlefield start myapp --new
+shogunate battlefield stop myapp
+shogunate battlefield send myapp --role shogun "Implement the next task"
+shogunate battlefield roles myapp --json
+shogunate battlefield sessions myapp --json
+shogunate battlefield transcript myapp --json
+```
+
+This gives mobile and desktop clients the intended hierarchy: host connection, registered project battlefield, app chat session, and role chat target.
 
 Parallel Shogunate is supported. Start Shogunate from two different project directories and each project gets its own runtime copy and `tmux` session name.
 
@@ -133,7 +164,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 Pin an exact release only when you need reproducible installs:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.8/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.8
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.9/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.9
 ```
 
 Each GitHub Release page includes the version-pinned cURL command for that tag.
@@ -181,9 +212,11 @@ upstream-facing compatibility surface
 
 Shogunate MOD canonical sources
   shogunate_mod/
+    battlefield/ app-facing host/project/session/role API
     gunkan/    independent auditor and CoDD helpers
     package/   cURL package install and cwd-first workspace management
     pair/      Android Pair server
+    projects/  registered project registry for CLI and app launchers
     runtime/   cwd/project/session helpers used by thin runtime entrypoints
     shell/     Shogunate view aliases
     status/    agent and rate-limit status commands
@@ -331,6 +364,7 @@ v5.2.0.5
 v5.2.0.6
 v5.2.0.7
 v5.2.0.8
+v5.2.0.9
 ```
 
 Each release may include:

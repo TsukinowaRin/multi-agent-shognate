@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.shogun.android.ssh.SshManager
 import com.shogun.android.util.Defaults
 import com.shogun.android.util.PrefsKeys
+import com.shogun.android.util.ShogunateCampProfile
+import com.shogun.android.util.ShogunateCampProfileStore
 import com.shogun.android.util.WirelessPairingClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,13 +27,16 @@ data class AppliedConnectionSettings(
     val keyPath: String,
     val projectPath: String,
     val shogunTarget: String,
-    val agentsTarget: String
+    val agentsTarget: String,
+    val campId: String = "",
+    val campName: String = ""
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
     private val sshManager = SshManager.getInstance()
+    private val campStore = ShogunateCampProfileStore(prefs)
 
     private val _notificationEnabled = MutableStateFlow(prefs.getBoolean(PrefsKeys.NOTIFICATION_ENABLED, true))
     val notificationEnabled: StateFlow<Boolean> = _notificationEnabled
@@ -62,6 +67,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val _appliedConnectionSettings = MutableStateFlow<AppliedConnectionSettings?>(null)
     val appliedConnectionSettings: StateFlow<AppliedConnectionSettings?> = _appliedConnectionSettings
+
+    private val _campProfiles = MutableStateFlow(campStore.profiles())
+    val campProfiles: StateFlow<List<ShogunateCampProfile>> = _campProfiles
+
+    private val _activeCampId = MutableStateFlow(campStore.activeProfile()?.id ?: "")
+    val activeCampId: StateFlow<String> = _activeCampId
 
     fun setNotificationEnabled(value: Boolean) {
         _notificationEnabled.value = value
@@ -101,6 +112,36 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setNotifyAgentResponse(value: Boolean) {
         _notifyAgentResponse.value = value
         prefs.edit().putBoolean(PrefsKeys.NOTIFY_AGENT_RESPONSE, value).apply()
+    }
+
+    fun selectCamp(id: String) {
+        campStore.select(id)?.let { applyProfile(it) }
+    }
+
+    fun saveCampFromFields(
+        name: String,
+        host: String,
+        portText: String,
+        user: String,
+        keyPath: String,
+        password: String,
+        projectPath: String,
+        shogunTargetInput: String,
+        agentsTargetInput: String
+    ) {
+        val profile = campStore.profileFromFields(
+            name = name,
+            host = host,
+            port = portText,
+            user = user,
+            keyPath = keyPath,
+            password = password,
+            projectPath = projectPath,
+            shogunTarget = shogunTargetInput,
+            agentsTarget = agentsTargetInput
+        )
+        campStore.upsert(profile)
+        applyProfile(profile)
     }
 
     fun testConnection(
@@ -175,15 +216,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     .putString(PrefsKeys.SHOGUN_SESSION, activeShogunTargetInput)
                     .putString(PrefsKeys.AGENTS_SESSION, activeAgentsTargetInput)
                     .apply()
-                _appliedConnectionSettings.value = AppliedConnectionSettings(
+                val pairedProfile = campStore.profileFromFields(
+                    name = paired.targetProject.trimEnd('/').substringAfterLast('/'),
                     host = activeHost,
                     port = activePort.toString(),
                     user = activeUser,
                     keyPath = activeKeyPath,
+                    password = "",
                     projectPath = activeProject,
                     shogunTarget = activeShogunTargetInput,
                     agentsTarget = activeAgentsTargetInput
                 )
+                campStore.upsert(pairedProfile)
+                applyProfile(pairedProfile)
                 lines += "Pair: OK"
                 if (paired.targetProject.isNotBlank()) {
                     lines += "作業対象: ${paired.targetProject}"
@@ -226,12 +271,45 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
 
             val success = tmuxOk && shogunOk && agentsOk && (trimmedProject.isBlank() || projectOk)
+            val connectedProfile = campStore.profileFromFields(
+                name = "",
+                host = activeHost,
+                port = activePort.toString(),
+                user = activeUser,
+                keyPath = activeKeyPath,
+                password = password,
+                projectPath = activeProject,
+                shogunTarget = activeShogunTargetInput,
+                agentsTarget = activeAgentsTargetInput
+            )
+            campStore.upsert(connectedProfile)
+            applyProfile(connectedProfile)
             _connectionTest.value = ConnectionTestState(
                 running = false,
                 success = success,
                 message = lines.joinToString("\n")
             )
         }
+    }
+
+    private fun applyProfile(profile: ShogunateCampProfile) {
+        _appliedConnectionSettings.value = AppliedConnectionSettings(
+            host = profile.host,
+            port = profile.port,
+            user = profile.user,
+            keyPath = profile.keyPath,
+            projectPath = profile.projectPath,
+            shogunTarget = profile.shogunTarget,
+            agentsTarget = profile.agentsTarget,
+            campId = profile.id,
+            campName = profile.name
+        )
+        refreshCampProfiles()
+    }
+
+    private fun refreshCampProfiles() {
+        _campProfiles.value = campStore.profiles()
+        _activeCampId.value = campStore.activeProfile()?.id ?: ""
     }
 
     private suspend fun remoteOk(testCommand: String): Boolean {

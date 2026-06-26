@@ -44,7 +44,10 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
     val connectionTest by settingsViewModel.connectionTest.collectAsState()
     val appliedConnectionSettings by settingsViewModel.appliedConnectionSettings.collectAsState()
+    val campProfiles by settingsViewModel.campProfiles.collectAsState()
+    val activeCampId by settingsViewModel.activeCampId.collectAsState()
 
+    var campName by remember { mutableStateOf("") }
     var host by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST) }
     var port by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR) ?: Defaults.SSH_PORT_STR) }
     var user by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_USER, "") ?: "") }
@@ -112,6 +115,17 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             .putString(PrefsKeys.SHOGUN_SESSION, shogunSession.trim())
             .putString(PrefsKeys.AGENTS_SESSION, agentsSession.trim())
             .apply()
+        settingsViewModel.saveCampFromFields(
+            name = campName,
+            host = host,
+            portText = port,
+            user = user,
+            keyPath = keyPath,
+            password = password,
+            projectPath = projectPath,
+            shogunTargetInput = shogunSession,
+            agentsTargetInput = agentsSession
+        )
         saved = true
     }
 
@@ -160,6 +174,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         projectPath = applied.projectPath
         shogunSession = applied.shogunTarget
         agentsSession = applied.agentsTarget
+        campName = applied.campName
         endpointText = applied.host
         if (applied.host != Defaults.USB_SSH_HOST) {
             rememberWirelessEndpoint(applied.host, applied.port)
@@ -237,6 +252,12 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                     tapCount = 0
                 }
             }
+        )
+
+        CampProfilesSection(
+            profiles = campProfiles,
+            activeCampId = activeCampId,
+            onSelectProfile = { settingsViewModel.selectCamp(it) }
         )
 
         Card(
@@ -366,6 +387,74 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
                 text = "設定を保存しました",
                 color = MaterialTheme.colorScheme.primary
             )
+        }
+    }
+}
+
+@Composable
+private fun CampProfilesSection(
+    profiles: List<com.shogun.android.util.ShogunateCampProfile>,
+    activeCampId: String,
+    onSelectProfile: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Sumi),
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("陣営", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+            if (profiles.isEmpty()) {
+                Text(
+                    "保存済みの陣営はありません。",
+                    color = Color(0xFFAABBCC),
+                    fontSize = 12.sp
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    profiles.forEach { profile ->
+                        val selected = profile.id == activeCampId
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(6.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (selected) Tetsukon else Shikkoku
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelectProfile(profile.id) }
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Text(
+                                    text = profile.displayName,
+                                    color = if (selected) Kinpaku else Color(0xFFE6EEF8),
+                                    maxLines = 1,
+                                    fontSize = 15.sp
+                                )
+                                Text(
+                                    text = "${profile.user}@${profile.host}:${profile.port} / ${profile.projectPath.ifBlank { "project未設定" }}",
+                                    color = Color(0xFFAABBCC),
+                                    fontSize = 11.sp,
+                                    maxLines = 1
+                                )
+                                if (selected) {
+                                    Text(
+                                        text = "選択中",
+                                        color = Kinpaku,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

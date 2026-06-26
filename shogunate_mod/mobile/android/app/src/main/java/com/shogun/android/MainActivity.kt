@@ -41,6 +41,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.shogun.android.ui.AgentsScreen
+import com.shogun.android.ui.BattlefieldScreen
 import com.shogun.android.ui.DashboardScreen
 import com.shogun.android.ui.SettingsScreen
 import com.shogun.android.ui.ShogunScreen
@@ -50,12 +51,14 @@ import com.shogun.android.util.parseShogunateSetupUri
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Shogun : Screen("shogun", "将軍", Icons.Default.Star)
+    object Battlefield : Screen("battlefield", "司令台", Icons.Default.List)
     object Agents : Screen("agents", "エージェント", Icons.Default.List)
     object Dashboard : Screen("dashboard", "戦況", Icons.Default.Home)
     object Settings : Screen("settings", "設定", Icons.Default.Settings)
 }
 
 val bottomNavItems = listOf(
+    Screen.Battlefield,
     Screen.Shogun,
     Screen.Agents,
     Screen.Dashboard,
@@ -274,7 +277,7 @@ fun ShogunApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Shogun.route,
+            startDestination = Screen.Battlefield.route,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Shogun.route) {
@@ -291,6 +294,7 @@ fun ShogunApp() {
                     }
                 )
             }
+            composable(Screen.Battlefield.route) { BattlefieldScreen() }
             composable(Screen.Agents.route) { AgentsScreen() }
             composable(Screen.Dashboard.route) { DashboardScreen() }
             composable(Screen.Settings.route) { SettingsScreen() }

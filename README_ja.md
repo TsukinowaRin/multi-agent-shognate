@@ -89,6 +89,9 @@ shogunate resume          # この project の前回状態から resume
 shogunate attach          # この project の tmux session に attach
 shogunate configure       # この project の役職ごとの CLI を選ぶ
 shogunate where           # project/runtime/engine/session の場所を表示
+shogunate projects        # 登録済み project を一覧表示
+shogunate battlefield     # 登録済み project runtime の一覧・起動・終了
+shogunate app             # mobile / desktop app 用 JSON API
 shogunate status          # package/update metadata を表示
 shogunate aliases         # shell alias の source コマンドを表示
 shogunate help            # help
@@ -100,6 +103,34 @@ shogunate help            # help
 shogunate --project /path/to/another-project
 shogunate attach --project /path/to/another-project
 ```
+
+よく開く project は登録して、名前で選べます。
+
+```bash
+shogunate projects add /path/to/your-project --name myapp --select
+shogunate projects
+shogunate --project @myapp resume
+shogunate open myapp
+```
+
+registry は既定で `~/.shogunate/projects.json` に保存されます。directory から `shogunate` を実行すると、その directory は自動で登録されます。Android の戦場タブも、host 側の `shogunate` が対応していれば、開いた remote project を同じ registry へ同期します。
+
+スマホアプリやデスクトップアプリは、SSH shell や tmux pane 名を推測せず、本体APIを使います。
+
+```bash
+shogunate app capabilities --json
+shogunate battlefield list --json
+shogunate battlefield status myapp --json
+shogunate battlefield start myapp --resume
+shogunate battlefield start myapp --new
+shogunate battlefield stop myapp
+shogunate battlefield send myapp --role shogun "次のタスクを進めて"
+shogunate battlefield roles myapp --json
+shogunate battlefield sessions myapp --json
+shogunate battlefield transcript myapp --json
+```
+
+このAPIは、接続先PC、登録済みprojectの戦場、app上の会話session、話しかける役職、という階層を前提にしています。
 
 並列 Shogunate も可能です。別々の project directory から起動すると、それぞれ専用の runtime copy と `tmux` session 名が割り当てられます。
 
@@ -133,7 +164,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 再現性のために固定 release を入れたい場合だけ、version tag を指定します。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.8/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.8
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.9/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.9
 ```
 
 各 GitHub Release ページには、その tag 固定の cURL も載せています。
@@ -181,9 +212,11 @@ upstream-facing compatibility surface
 
 Shogunate MOD canonical sources
   shogunate_mod/
+    battlefield/ app が使う host / project / session / role API
     gunkan/    independent auditor / CoDD helper
     package/   cURL package install と cwd-first workspace 管理
     pair/      Android Pair server
+    projects/  CLI と app launcher が使う登録済み project registry
     runtime/   cwd/project/session helper
     shell/     Shogunate view aliases
     status/    agent / rate-limit status command
@@ -331,6 +364,7 @@ v5.2.0.5
 v5.2.0.6
 v5.2.0.7
 v5.2.0.8
+v5.2.0.9
 ```
 
 各 release には必要に応じて以下を置きます。

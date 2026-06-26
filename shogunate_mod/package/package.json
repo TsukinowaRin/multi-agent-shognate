@@ -1,6 +1,6 @@
 {
   "name": "@tsukinowarin/shogunate",
-  "version": "5.2.0-8",
+  "version": "5.2.0-9",
   "description": "Package bootstrap wrapper for multi-agent-shognate.",
   "bin": {
     "shogunate": "bin/shogunate.js"
@@ -134,6 +134,7 @@
     "lib/topology_adapter.sh",
     "memory/MEMORY.md.sample",
     "saytask/streaks.yaml.sample",
+    "shogunate_mod/battlefield/",
     "shogunate_mod/cli/",
     "shogunate_mod/configure/",
     "shogunate_mod/context/",
@@ -153,6 +154,7 @@
     "shogunate_mod/opencode/",
     "shogunate_mod/package/",
     "shogunate_mod/pair/server.py",
+    "shogunate_mod/projects/",
     "shogunate_mod/queue/",
     "shogunate_mod/runtime/",
     "shogunate_mod/security/",

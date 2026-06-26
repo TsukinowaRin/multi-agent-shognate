@@ -61,6 +61,7 @@ class SshManager private constructor() {
         if (onDisconnect != null) disconnectCallback = onDisconnect
 
         sshMutex.withLock {
+            val targetChanged = lastHost != host || lastPort != port || lastUser != user
             lastHost = host
             lastPort = port
             lastUser = user
@@ -68,6 +69,11 @@ class SshManager private constructor() {
             lastPassword = password
 
             val existing = session
+            if (targetChanged && existing?.isConnected == true) {
+                AppLogger.log("SSH", "Switching SSH target to $host:$port user=$user")
+                existing.disconnect()
+                session = null
+            }
             if (existing?.isConnected == true) {
                 val probe = execCommandInternal(existing, "echo ssh_alive")
                 if (probe.isSuccess && probe.getOrDefault("").trim() == "ssh_alive") {

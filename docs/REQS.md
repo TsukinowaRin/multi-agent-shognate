@@ -1,7 +1,116 @@
 # Requirements (Normalized)
 
-最終更新: 2026-06-22
+最終更新: 2026-06-26
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
+
+## 追補（2026-06-23: Shogunate 本体の登録済み project）
+
+### 要求
+
+1. Shogunate 本体に「登録済み project」の概念を持たせる。
+2. `cd <project> && shogunate` の cwd-first 導線は維持しつつ、よく使う project を登録・一覧・選択・削除できる。
+3. `shogunate --project @name` や `shogunate open name` で登録済み project を選んで起動できる。
+4. Android app の戦場タブで開いた remote project は、host 側 `shogunate` が対応していれば同じ registry に同期する。
+5. registry は package install / npm wrapper / manifest / README に含まれ、配布物から落ちない。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate projects add DIR --name NAME --select`、`shogunate projects`、`shogunate projects current`、`shogunate projects remove NAME` が使える。
+2. `shogunate --project @NAME where` は登録済み project の runtime/session 情報を表示する。
+3. `shogunate open NAME` は登録済み project を選択し、その project runtime を resume 起動する。
+4. registry の正本は `shogunate_mod/projects/` で、package `files` と `manifest.yaml` に含まれる。
+5. package distribution contract と registry direct smoke が PASS する。
+
+## 追補（2026-06-23: Shogunate App向け本体API）
+
+### 要求
+
+1. スマホ/デスクトップアプリは、SSH shell で `cd` したり tmux pane 名を推測したりせず、Shogunate 本体の安定APIを使う。
+2. 本体APIは「接続先PC -> 登録済みprojectの戦場 -> app会話session -> 話しかける役職」という階層に合う。
+3. 登録済みprojectごとの遠隔起動、遠隔終了、起動状況、役職一覧、会話session一覧、新規session作成、transcript取得、役職への送信を提供する。
+4. 既存の `cd <project> && shogunate` と `shogunate projects` は維持する。
+5. APIは package install / npm wrapper / manifest / README に含まれ、Android/desktop appから同じコマンドを使える。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate app capabilities --json` が host と対応機能を返す。
+2. `shogunate battlefield list --json` が登録済みprojectごとの status / runtime / app session summary を返す。
+3. `shogunate battlefield start NAME --resume` と `--new` が、登録済みprojectを対象に起動し、app session を作る。
+4. `shogunate battlefield stop NAME` が対象projectの Shogunate tmux session / daemon session を停止できる。
+5. `shogunate battlefield send NAME --role shogun "..."` が対象runtimeの inbox に送信し、app transcript に user message を残す。
+6. `shogunate battlefield roles NAME --json`、`sessions NAME --json`、`transcript NAME --json` が app UI 用の情報を返す。
+
+## 追補（2026-06-24: Android app 司令台への作り直し）
+
+### 要求
+
+1. Android app は単体の将軍pane管理専用ではなく、接続先PC上の登録済み Shogunate project を一覧管理する「司令台」を入口にする。
+2. 司令台は `shogunate app capabilities --json` と `shogunate battlefield ... --json` を使い、app側が tmux pane 名や起動コマンド詳細を推測しない。
+3. 司令台から、登録済みprojectの表示、遠隔project登録、続きから起動、新規起動、終了、会話session選択/作成、役職選択、役職への送信、transcript表示を扱える。
+4. 下タブは `司令台 / 将軍 / エージェント / 戦況 / 設定` とし、起動直後は司令台を表示する。
+5. root Android source と `shogunate_mod/mobile/android` の MOD canonical copy を同期する。
+
+### 受け入れ条件（観測可能）
+
+1. `BattlefieldScreen` が司令台として Host -> Battlefield(project) -> App Session -> Role Chat の階層を表示する。
+2. `BattlefieldViewModel` が Shogunate App API 経由で project list / role list / session list / transcript を取得し、start/stop/send/session-create を実行する。
+3. `cd android && ./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process -Pkotlin.compiler.execution.strategy=in-process testDebugUnitTest assembleDebug` が PASS する。
+4. Android root / MOD copy の同期契約テスト `test_android_source_has_mod_canonical_copy` が PASS する。
+
+## 追補（2026-06-26: Android app 複数PCオンライン表示）
+
+### 要求
+
+1. 複数PCに Shogunate が入っている場合、Android app の司令台で保存済みPCを一覧表示する。
+2. 各PCについて、SSH接続できるかどうかを生存チェックし、オンライン/オフラインを表示する。
+3. オンラインPCでは、そのPCに登録済みの Shogunate project を表示する。
+4. project の起動、終了、会話session、role送信は、選択したprojectが属するPCへ接続してから実行する。
+5. 別PCへ切り替えるとき、既存SSHセッションが生きていても接続先が違えば張り替える。
+
+### 受け入れ条件（観測可能）
+
+1. 司令台に `PC` 一覧があり、各PCのオンライン/オフライン、SSH接続先、project数が表示される。
+2. `生存チェック` で選択中PCのSSH到達性を確認できる。
+3. `戦場` 一覧は選択中PCのprojectだけを表示する。
+4. `SshManager.connect()` は host / port / user が変わった場合、既存接続を使い回さず再接続する。
+5. Android unit/build と Android root/MOD copy contract が PASS する。
+
+## 追補（2026-06-23: Android app 複数陣営管理）
+
+### 要求
+
+1. Android app は SSH 接続できるだけでなく、複数の Shogunate runtime / project を「陣営」として保存・切替できる。
+2. 陣営は host / port / user / key path / project path / shogun target / agents target を1セットとして扱う。
+3. `shogunate pair` で接続成功した場合も、返却された project 固有 target を陣営として保存し、並列 Shogunate の別 project へ誤接続しない。
+4. 既存のワンタッチ接続、USB/無線切替、Pair fallback、マニュアル設定、dashboard/agent target 診断は維持する。
+5. root Android source と `shogunate_mod/mobile/android` の MOD canonical copy を同期する。
+
+### 受け入れ条件（観測可能）
+
+1. 設定画面に陣営名入力と保存済み陣営一覧があり、選択すると接続設定欄へ反映される。
+2. 既存単一接続設定は初回利用時に陣営プロファイルへ移行される。
+3. 新しい host / port / user / project の組み合わせは別陣営として保存され、同じ組み合わせの更新では既存陣営名を保持する。
+4. `cd android && ./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process -Pkotlin.compiler.execution.strategy=in-process testDebugUnitTest assembleDebug` が PASS する。
+5. Android root / MOD copy の同期契約テスト `test_android_source_has_mod_canonical_copy` が PASS する。
+
+## 追補（2026-06-23: Android app 戦場タブ）
+
+### 要求
+
+1. Android app の下タブを 4 から 5 にし、`戦場` タブを追加する。
+2. `戦場` では遠隔PC上の既存 project path を開ける。
+3. 一度開いた project は履歴として記録し、再選択できる。
+4. 選択した project で、遠隔PC側の Shogunate を起動できる。
+5. 起動した project は陣営プロファイルにも反映し、将軍/エージェント/戦況タブがその project を使えるようにする。
+
+### 受け入れ条件（観測可能）
+
+1. OnePlus 実機の下タブに `将軍 / 戦場 / エージェント / 戦況 / 設定` が表示される。
+2. `戦場` タブで project path、`開く`、`起動`、履歴一覧が表示される。
+3. `開く` は SSH 経由で remote directory の存在確認を行い、成功した path を履歴へ保存する。
+4. `起動` は SSH 経由で remote project 内の Shogunate を resume/no-attach 起動し、成功時に session を表示する。
+5. 非ログイン SSH の PATH でも `~/.local/bin` と nvm の node bin を探索し、起動直後の `not found` / unknown command は成功扱いしない。
+6. Android unit/build、Android root/MOD copy contract、OnePlus USB実機 install/起動/戦場タブ操作が PASS する。
 
 ## 追補（2026-06-22: 長時間安定性の実機E2E）
 

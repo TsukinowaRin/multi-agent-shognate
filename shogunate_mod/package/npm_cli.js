@@ -13,6 +13,9 @@ function usage() {
   shogunate install [-- --version v5.0.0.12 --prefix ~/.shogunate/shogunate]
   shogunate run [args...]
   shogunate pair [args...]
+  shogunate projects [list|add|select|current|remove]
+  shogunate battlefield [list|status|start|stop|send|sessions|transcript]
+  shogunate app [capabilities|list|status|start|stop|send]
   shogunate help
   shogunate --help
 
@@ -20,6 +23,9 @@ Commands:
   install   Run the cURL-based package bootstrap.
   run       Run the Shogunate MOD runtime launcher for the current project directory.
   pair      Pair Android app over USB auto + Tailscale/LAN for the current project.
+  projects  Manage the registered project list.
+  battlefield  Manage registered project runtimes.
+  app       JSON-friendly API for mobile and desktop apps.
 
 The npm package is a thin wrapper. Its install command runs the MOD package bootstrap:
   curl -fsSL ${bootstrapUrl} | bash
@@ -72,6 +78,20 @@ function main(argv = process.argv.slice(2), cwd = process.cwd()) {
       cwd,
       ...args,
     ]);
+  }
+
+  if (command === "projects" || command === "project") {
+    run("python3", [path.join(root, "shogunate_mod/projects/registry.py"), ...args]);
+  }
+
+  if (command === "battlefield" || command === "battlefields" || command === "app") {
+    run("python3", [path.join(root, "shogunate_mod/battlefield/api.py"), ...args], {
+      env: {
+        ...process.env,
+        SHOGUNATE_ENGINE_DIR: root,
+        SHOGUNATE_COMMAND: process.argv[1],
+      },
+    });
   }
 
   console.error(`Unknown command: ${command}`);

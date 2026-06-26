@@ -6,6 +6,7 @@ canonical_paths:
   mod_readme: shogunate_mod/README.md
   agent_status: shogunate_mod/status/agent_status.sh
   agent_status_command: shogunate_mod/status/command.sh
+  battlefield_api: shogunate_mod/battlefield/
   agent_registry: shogunate_mod/topology/agent_registry.sh
   branch_auto_merge_short_lived: shogunate_mod/git/auto_merge_short_lived.sh
   branch_drift_check: shogunate_mod/git/branch_drift_check.sh
@@ -73,6 +74,7 @@ canonical_paths:
   package_saytask_streaks_template: shogunate_mod/package/templates/saytask/streaks.yaml.sample
   package_test_workflow: shogunate_mod/package/workflows/test.yml
   pair_server: shogunate_mod/pair/server.py
+  projects_registry: shogunate_mod/projects/
   queue_history_book: shogunate_mod/queue/history_book.sh
   queue_slim_yaml: shogunate_mod/queue/slim_yaml.py
   queue_slim_yaml_wrapper: shogunate_mod/queue/slim_yaml.sh

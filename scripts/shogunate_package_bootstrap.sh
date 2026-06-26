@@ -5,7 +5,11 @@ REPO_OWNER="${SHOGUNATE_REPO_OWNER:-TsukinowaRin}"
 REPO_NAME="${SHOGUNATE_REPO_NAME:-multi-agent-shognate}"
 VERSION="latest"
 
-SCRIPT_SOURCE="${BASH_SOURCE[0]:-}"
+if [ "${BASH_SOURCE+x}" = x ] && [ "${#BASH_SOURCE[@]}" -gt 0 ]; then
+    SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+else
+    SCRIPT_SOURCE=""
+fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" >/dev/null 2>&1 && pwd || true)"
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/../shogunate_mod/package/bootstrap.sh" ]; then
     exec bash "$SCRIPT_DIR/../shogunate_mod/package/bootstrap.sh" "$@"

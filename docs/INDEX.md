@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-06-21
+最終更新: 2026-06-30
 
 ## Must-read
 
@@ -41,4 +41,5 @@
 - Shogunate 本体の登録済み project registry は MOD 正本 `shogunate_mod/projects/registry.py`。既定保存先は `~/.shogunate/projects.json`。`shogunate projects add /path --name name --select`、`shogunate projects`、`shogunate --project @name resume`、`shogunate open name` を package command と npm wrapper から使える。
 - Shogunate App向け本体APIは MOD 正本 `shogunate_mod/battlefield/api.py`。`shogunate app capabilities --json`、`shogunate battlefield list/status/start/stop/send/roles/sessions/transcript` を使い、接続先PC -> 登録済みprojectの戦場 -> app会話session -> 役職chat の階層をアプリに提供する。Android/desktop app は tmux pane 名を直接推測するより、このAPIを優先する。
 - README / README_ja は package install 前提の導入正本。固定導入例は最新 release tag の cURL command を使い、通常 release tag は `v5.2.0.1`, `v5.2.0.2`, `v5.2.0.3` のように `-preview` なしで進める。
+- Shogunate role harness と workspace instructions は別scope。`AGENTS.md` など project 側の指示は repository 規約・test command・coding style には従うが、Shogunate の役職、命令系統、queue protocol、安全ルール、報告責任は上書きしない。衝突時は role harness を優先し、role channel で衝突を報告する。
 - `shogunate pair` は Android app の初回 setup 用。既定で呼び出し元 cwd の project runtime を対象にし、USB reverse を自動試行しつつ Tailscale/LAN でも待ち受ける。`shogunate pair --usb` は廃止し、package command は `shogunate pair` に統一する。Android app は app 内秘密鍵を保持し、PC 側は端末名確認後の Pair Password prompt 承認で公開鍵だけを `~/.ssh/authorized_keys` へ追加する。成功後は PC 側が best-effort でその project の Shogunate runtime を起動し、以後は登録済み SSH 鍵で直接接続する。Pair response の `project` は Android dashboard 用の runtime root、`target_project` は実作業 directory。既定では1台成功後に `Pairing complete` を表示して自動終了し、複数端末を続けて登録する場合だけ `--keep-running` を使う。SSH port は TCP open だけでなく SSH banner で検出し、壊れた Windows portproxy / stale forwarding を避ける。USB は `127.0.0.1`、無線は app が入力した PC address に対して SSH banner を返す port を選び、Pair terminal は app へ返した `user@host:port` を表示する。

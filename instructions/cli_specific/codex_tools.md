@@ -59,6 +59,8 @@ Codex reads `AGENTS.md` files automatically before doing any work. Discovery ord
 
 Files are merged root-downward (closer directories override earlier guidance).
 
+In Shogunate, that merge order applies only to project-local coding guidance. A workspace `AGENTS.md` can refine repository conventions and test commands, but it must not replace Shogunate role identity, chain of command, queue protocol, or forbidden actions from the role harness.
+
 **Key constraints**:
 - Combined size cap: `project_doc_max_bytes` (default 32 KiB, configurable in `config.toml`)
 - Empty files are skipped; only one file per directory is included

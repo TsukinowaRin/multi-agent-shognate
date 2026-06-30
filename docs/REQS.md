@@ -3,6 +3,22 @@
 最終更新: 2026-06-26
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
 
+## 追補（2026-06-30: workspace AGENTS.md と Shogunate role harness の優先順位）
+
+### 要求
+
+1. Shogunate agent が target project の `AGENTS.md` / `CLAUDE.md` 等を読んでも、Shogunate の役職、命令系統、queue protocol、安全ルール、報告責任が上書きされない。
+2. target project の workspace instructions は、repository 規約、coding style、test command、project 固有制約として扱う。
+3. 衝突時は Shogunate role harness を優先し、適切な role channel で衝突を報告する。
+4. この優先順位を role harness、Codex AGENTS.md 説明、README に明記する。
+
+### 受け入れ条件（観測可能）
+
+1. 生成された role instruction に `Instruction Scope and Priority` が含まれる。
+2. 生成された Codex role instruction に、workspace `AGENTS.md` は Shogunate role identity / chain of command を置換しない旨が含まれる。
+3. README / README_ja に、Shogunate role harness と workspace instructions の scope 分離が記載される。
+4. build system unit test と prepublish check が PASS する。
+
 ## 追補（2026-06-23: Shogunate 本体の登録済み project）
 
 ### 要求

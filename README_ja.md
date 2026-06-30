@@ -43,6 +43,15 @@ shogunate
 
 installer は最新の GitHub Release package を取得し、engine を `~/.shogunate/shogunate` に展開し、`~/.local/bin/shogunate` を登録します。project directory で `shogunate` を実行すると、project 専用 runtime が `~/.shogunate/workspaces/` 配下に作られるため、queue、logs、dashboard、`tmux` session は project ごとに分離されます。
 
+### Workspace Instructions
+
+Shogunate agent は、2種類の指示を分けて扱います。
+
+- Shogunate role harness: 役職、命令系統、queue protocol、安全ルール、報告責任。
+- `AGENTS.md` などの workspace instructions: その repository の規約、coding style、test command、project 固有の制約。
+
+project 側の `AGENTS.md` と Shogunate role harness が衝突した場合、役職と命令系統については Shogunate role harness を優先します。project 側の指示は、その repository 内の通常作業ルールとして扱います。
+
 `shogunate` が見つからない場合は shell を開き直すか、PATH を追加してください。
 
 ```bash

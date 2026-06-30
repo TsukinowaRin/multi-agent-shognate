@@ -43,6 +43,15 @@ shogunate
 
 The installer downloads the latest GitHub Release package, expands the engine to `~/.shogunate/shogunate`, and registers `~/.local/bin/shogunate`. When you run `shogunate` from a project directory, it creates a project-specific runtime under `~/.shogunate/workspaces/`, so queues, logs, dashboard state, and `tmux` sessions do not mix across projects.
 
+### Workspace Instructions
+
+Shogunate agents keep two instruction scopes separate:
+
+- Shogunate role harness: role identity, chain of command, queue protocol, safety rules, and reporting duties.
+- Workspace instructions such as `AGENTS.md`: repository conventions, coding style, test commands, and project-local constraints.
+
+If a project `AGENTS.md` conflicts with the Shogunate role harness, the role harness wins for role identity and command flow. The project file still applies to ordinary work inside that repository.
+
 If the command is not found, reload your shell or add this to your shell profile:
 
 ```bash

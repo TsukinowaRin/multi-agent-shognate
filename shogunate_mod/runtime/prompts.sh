@@ -57,7 +57,7 @@ codex_hooks_review_prompt_detected_tmux() {
 
 codex_ready_prompt_detected_tmux() {
     local screen_content="${1:-}"
-    printf '%s' "$screen_content" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left)'
+    printf '%s' "$screen_content" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left|gpt-[0-9][^[:space:]]*[[:space:]]+default)'
 }
 
 codex_pasted_content_pending_tmux() {

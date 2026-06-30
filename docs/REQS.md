@@ -19,6 +19,21 @@
 3. README / README_ja に、Shogunate role harness と workspace instructions の scope 分離が記載される。
 4. build system unit test と prepublish check が PASS する。
 
+## 追補（2026-06-30: 実機 Codex 起動での bootstrap retry）
+
+### 要求
+
+1. 実機の Codex TUI が `Run /review on my current changes` などの idle placeholder を表示している場合も、Shogunate は Codex を ready と判定できる。
+2. 初回 startup delivery で一部 role の bootstrap が pending になっても、watcher retry により `ready:<role>` まで到達する。
+3. project `AGENTS.md` が Shogunate 役職を無視せよと指示しても、Shogun / Gunkan / Karo / Ashigaru は role harness を優先する。
+
+### 受け入れ条件（観測可能）
+
+1. `tests/unit/test_send_wakeup.bats` に Codex idle placeholder 画面から pending bootstrap を再配信する test がある。
+2. `tests/unit/test_mux_parity.bats` の Codex ready / bootstrap 関連 test が PASS する。
+3. 実機 WSL で all-Codex 構成の Shogunate を clean 起動し、全 role が `ready:<role>` を返す。
+4. 衝突する project `AGENTS.md` を置いた実 project で、Shogun / Gunkan / Karo / Ashigaru が Shogunate role harness を優先すると回答する。
+
 ## 追補（2026-06-23: Shogunate 本体の登録済み project）
 
 ### 要求

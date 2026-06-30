@@ -124,6 +124,8 @@ tmux() {
     if echo "\$*" | grep -q "show-options"; then
         if echo "\$*" | grep -q "@cli_launch_epoch"; then
             echo "\${MOCK_SHOW_OPTION_VALUE:-}"
+        elif echo "\$*" | grep -q "@agent_cli_running"; then
+            echo "\${MOCK_AGENT_CLI_RUNNING:-}"
         else
             echo "\${MOCK_PANE_CLI:-}"
         fi
@@ -1450,6 +1452,30 @@ MOCK
     run bash -c '
         MOCK_PANE_CLI="codex"
         MOCK_CAPTURE_PANE=$'"'"'╭────────────────────────╮\n│ >_ OpenAI Codex (v0.118.0) │\n│ model: gpt-5.4 high   /model to change │\n│ context left │\nRan bootstrap ack'"'"'
+        source "'"$TEST_HARNESS"'"
+        SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
+        mkdir -p "$SCRIPT_DIR/queue/runtime"
+        printf "%s\n" "【初動命令】ready:test_agent FULL_BOOTSTRAP_BODY_SHOULD_NOT_BE_PASTED" > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.md"
+        : > "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        deliver_pending_bootstrap_if_ready
+        test ! -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.pending"
+        test -f "$SCRIPT_DIR/queue/runtime/bootstrap_test_agent.delivered"
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -l -t test:0.0" "$MOCK_LOG"
+    grep -q "bootstrap_test_agent.md" "$MOCK_LOG"
+    ! grep -q "FULL_BOOTSTRAP_BODY_SHOULD_NOT_BE_PASTED" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-CODEX-015i: watcher は Codex idle placeholder 画面でも pending bootstrap を再配信する" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_PANE_CURRENT_COMMAND="bash"
+        MOCK_AGENT_CLI_RUNNING="1"
+        MOCK_SHOW_OPTION_VALUE=""
+        MOCK_CAPTURE_PANE=$'"'"'Tip: GPT-5.5 is now available in Codex.\n\n• You have 1 usage limit reset available.\nRun /usage to use one.\n\n\n› Run /review on my current changes\n\n  gpt-5.5 default · <workspace>/…'"'"'
         source "'"$TEST_HARNESS"'"
         SCRIPT_DIR="'"$TEST_TMPDIR"'/project"
         mkdir -p "$SCRIPT_DIR/queue/runtime"

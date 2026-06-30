@@ -861,7 +861,7 @@ clear_agent_busy_observation() {
 bootstrap_ready_pattern() {
     case "${1:-}" in
         claude) printf '%s\n' '(claude code|Claude Code|╰|/model|for shortcuts)' ;;
-        codex) printf '%s\n' '(openai codex|context left|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left)' ;;
+        codex) printf '%s\n' '(openai codex|context left|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|gpt-[0-9][^[:space:]]*[[:space:]]+default)' ;;
         antigravity) printf '%s\n' '(agy|antigravity|Antigravity|type your message|Working|esc to interrupt|Initializing the Agent)' ;;
         copilot) printf '%s\n' '(copilot|GitHub Copilot|/model)' ;;
         kimi) printf '%s\n' '(kimi|moonshot|/model)' ;;
@@ -918,7 +918,7 @@ skip_antigravity_feedback_prompt_if_present() {
 codex_ready_prompt_detected() {
     local pane_text="${1:-}"
 
-    printf '%s' "$pane_text" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left)'
+    printf '%s' "$pane_text" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left|gpt-[0-9][^[:space:]]*[[:space:]]+default)'
 }
 
 codex_pasted_content_pending() {

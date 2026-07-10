@@ -93,4 +93,17 @@ stub 方法: テスト用の偽 skill_dir(`scripts/send.sh` が引数をログ�
 
 ## 検証記録
 
-(実施後に追記)
+### 2026-07-10 実エージェント E2E(Phase 1 構成)
+
+- 構成: `transport.mode: yaml` + `bridge_agents: [ashigaru3]`、agmsg delivery=both(monitor 主体 + Stop hook)。inbox_watcher は**起動せず**(nudge なしの純 agmsg 配信を検証)。
+- 手順: tmux で ashigaru3(claude-code)を実起動 → SessionStart hook が Monitor(watch.sh)を起動 → karo として `write.sh ashigaru3 ... task_assigned karo` を送信。
+- 結果:
+  - 1回目: 送信 23:16:32 → inbox YAML 全既読 23:16:56 以前(≤24秒)
+  - 2回目: **送信→read:true まで 22 秒**(agmsg monitor 配信 + エージェントの turn 処理込み)
+  - YAML 経路は無傷(メッセージは queue/inbox に永続化されたまま処理された)
+  - Stop hook 共存: pane 表示「running stop hooks… 1/2」— 既存 hook と agmsg check-inbox が併走し衝突なし
+- 発見事項:
+  1. **入れ子 CLAUDE.md の trust prompt**: フォークは表層ハーネスの子ディレクトリにあるため、起動時に「親の CLAUDE.md external imports を許可するか」の確認で停止する。自動起動フローでは `--dangerously-skip-permissions` でも出るため、初回起動時の許可操作(または trust 設定の事前投入)が必要。
+  2. **agmsg 側の read_at が未設定のまま残る**: monitor 配信されても messages.db の read_at は NULL のまま(YAML 側の read:true とは独立)。ポインタ通知なので再配信されても実害は小さい(inbox 全既読なら no-op)が、未読が蓄積するため、定期 cleanup か受信側での既読化を Phase 3 で検討する。
+  3. 遅延 22 秒の内訳はおよそ「monitor 配信 ~5s + エージェント turn(YAML 読取 + Edit)」。分単位のタスクサイクルでは十分実用的。
+- 判定: **Phase 1 受け入れ条件を満たす。** hook 同居 OK、nudge なし配信 OK、遅延実用域。

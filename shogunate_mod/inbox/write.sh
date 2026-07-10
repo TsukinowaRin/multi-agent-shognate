@@ -193,6 +193,11 @@ while [ $attempt -lt $max_attempts ]; do
                 --message-id "$MSG_ID" \
                 --timestamp "$TIMESTAMP" >/dev/null 2>&1 || true
         fi
+        # shellcheck source=shogunate_mod/transport/agmsg_bridge.sh
+        if source "$SCRIPT_DIR/shogunate_mod/transport/agmsg_bridge.sh" 2>/dev/null \
+            && agmsg_bridge_enabled "$TARGET"; then
+            agmsg_bridge_send "$TARGET" "$TYPE" "$FROM"
+        fi
         exit 0
     else
         # Lock timeout or error

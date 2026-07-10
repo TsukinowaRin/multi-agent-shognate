@@ -42,3 +42,9 @@ preserve_paths:
 - instructions/local/
 - skills/local/
 - memory/global_context.md
+transport:
+  mode: yaml          # yaml | agmsg | both (yaml = current behavior)
+  agmsg:
+    team: shogunate
+    skill_dir: ""      # empty = ~/.agents/skills/agmsg
+    bridge_agents: []   # agents that also get agmsg wake-ups while mode=yaml

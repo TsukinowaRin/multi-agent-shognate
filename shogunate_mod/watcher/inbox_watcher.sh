@@ -40,6 +40,20 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
 
     INBOX="$SCRIPT_DIR/queue/inbox/${AGENT_ID}.yaml"
     LOCKFILE="${INBOX}.lock"
+    TRANSPORT_MODE="$(python3 - "$SCRIPT_DIR/config/settings.yaml" <<'PY' 2>/dev/null || echo yaml
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+
+    config = yaml.safe_load(Path(sys.argv[1]).read_text(encoding="utf-8")) or {}
+    mode = str((config.get("transport") or {}).get("mode") or "yaml").strip().lower()
+    print(mode if mode in {"yaml", "agmsg", "both"} else "yaml")
+except Exception:
+    print("yaml")
+PY
+)"
 
     if [ -z "$AGENT_ID" ] || [ -z "$PANE_TARGET" ]; then
         echo "Usage: inbox_watcher.sh <agent_id> <pane_target> [cli_type]" >&2
@@ -160,7 +174,7 @@ EOF
 }
 
 disable_normal_nudge() {
-    [ "${ASW_DISABLE_NORMAL_NUDGE:-0}" = "1" ]
+    [ "${ASW_DISABLE_NORMAL_NUDGE:-0}" = "1" ] || [ "${TRANSPORT_MODE:-yaml}" = "agmsg" ]
 }
 
 is_valid_cli_type() {

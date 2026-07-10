@@ -38,6 +38,11 @@ Special cases (CLI commands sent via watcher transport):
 - `type: clear_command` → sends `/clear` + Enter via send-keys
 - `type: model_switch` → sends the /model command via send-keys
 
+### Safety note (shogun)
+
+- If the Shogun pane is active (the Lord is typing), `shogunate_mod/watcher/inbox_watcher.sh` must not inject keystrokes. It should use tmux `display-message` only.
+- Escalation keystrokes (`Escape×2`, context reset, `C-u`) must be suppressed for the Shogun pane to avoid clobbering human input.
+
 ## Agent Self-Watch Phase Policy (cmd_107)
 
 Phase migration is controlled by watcher flags:
@@ -57,8 +62,12 @@ Read-cost controls:
 | Elapsed | Action | Trigger |
 |---------|--------|---------|
 | 0〜2 min | Standard pty nudge | Normal delivery |
-| 2〜4 min | Escape×2 + nudge | Cursor position bug workaround |
+| 2〜4 min | Escape×2 + nudge | Copilot/Kimi use Escape×2 + Ctrl-C + nudge. Claude/Codex/OpenCode use a plain nudge instead |
 | 4 min+ | `/clear` sent (max once per 5 min) | Force session reset + YAML re-read |
+
+**Per-CLI escalation nuance:**
+- The Escape×2 + Ctrl-C combo at 2〜4 min is for Copilot/Kimi only; Claude/Codex/OpenCode escalate with a plain nudge instead.
+- The 4 min+ context reset (`/clear`) is skipped for Codex, whose context reset is `/new`, delivered separately by the watcher's `clear_command` path.
 
 ## Inbox Processing Protocol (karo/ashigaru/gunshi)
 

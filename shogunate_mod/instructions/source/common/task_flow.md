@@ -106,3 +106,43 @@ If the report has modified code/files but lacks reproducible verification metada
 date "+%Y-%m-%d %H:%M"       # For dashboard.md
 date "+%Y-%m-%dT%H:%M:%S"    # For YAML (ISO 8601)
 ```
+
+## Status Reference (Single Source)
+
+Fixed status vocabulary (do not invent others without updating this section):
+
+- `queue/shogun_to_karo.yaml`: `pending`, `in_progress`, `done`, `cancelled`
+- `queue/tasks/ashigaruN.yaml`: `assigned`, `blocked`, `done`, `failed`
+- `queue/tasks/pending.yaml`: `pending_blocked` (holding area; do not dispatch to ashigaru from here)
+- `queue/ntfy_inbox.yaml`: `pending`, `processed`
+
+Any other status value (e.g., `completed`, `active`, `superseded`) is forbidden. Normalize to the canonical set above when found during archive.
+
+### Per-status forbidden actions
+
+| Status | Forbidden action | Use instead |
+|--------|------------------|-------------|
+| `pending` (cmd) | Dispatch subtasks while still pending | Move to `in_progress` first |
+| `in_progress` | Editing acceptance_criteria, or marking `done` without meeting all criteria | Keep criteria stable; rework until met |
+| `done` (cmd) | Editing the old cmd to "reopen" | Open a new cmd |
+| `cancelled` | Continuing work under this cmd | Open a new cmd |
+| `blocked` | Nudging the agent or starting work | Resolve the blocker; wait event-driven |
+| `failed` (ashigaru) | Silent failure | Report the failure explicitly, then escalate |
+| `done` (ashigaru) | Reusing the task_id for a redo | Use the Redo Protocol with a new task_id |
+| `pending_blocked` | Pre-assigning to ashigaru before ready | Keep in `pending_blocked` until ready |
+| `pending` (ntfy) | Leaving it pending without a reason | Process or annotate the reason |
+| `processed` (ntfy) | Flipping back to pending without a new entry | Create a new entry |
+
+`status: idle` is allowed only when `task_id: null` (the clean-start template written by `shutsujin_departure.sh --clean`).
+
+## Pre-Commit Gate (CI-Aligned)
+
+Before any commit, run the same checks GitHub Actions will run. Commit only when green.
+
+```bash
+bats tests/*.bats tests/unit/*.bats          # local unit suite (no SKIP allowed)
+bash shogunate_mod/instructions/build.sh     # regenerate instructions
+git diff --exit-code instructions/generated/ # build output must match checked-in source
+```
+
+Ask the Lord before any `git push`. A local `git push` without explicit Lord approval is forbidden (see F007).

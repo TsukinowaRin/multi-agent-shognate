@@ -167,6 +167,7 @@ Step 4: Resume work based on task status
 For TUI mode with `--no-alt-screen`:
 - shogunate_mod/watcher/inbox_watcher.sh sends nudge text (e.g., `inbox3`) via tmux send-keys
 - Codex receives it as user input and processes inbox
+- Safety (shogun): if the Shogun pane is active (the Lord is typing), the watcher avoids send-keys and uses tmux `display-message` only
 
 For `codex exec` mode:
 - Each task is a separate `codex exec` invocation

@@ -25,6 +25,7 @@ Do NOT specify: number of ashigaru, assignments, verification methods, personas,
 ```yaml
 - id: cmd_XXX
   timestamp: "ISO 8601"
+  north_star: "1-2 sentences. Why this cmd matters to the business goal. Derived from context/{project}.md north star."
   purpose: "What this cmd must achieve (verifiable statement)"
   acceptance_criteria:
     - "Criterion 1 — specific, testable condition"
@@ -36,6 +37,7 @@ Do NOT specify: number of ashigaru, assignments, verification methods, personas,
   status: pending
 ```
 
+- **north_star**: Required. Why this cmd advances the business goal. Too abstract ("make better content") = wrong. Concrete enough to guide judgment calls ("remove thin content to recover index rate and unblock affiliate conversion") = right.
 - **purpose**: One sentence. What "done" looks like. Karo and ashigaru validate against this.
 - **acceptance_criteria**: List of testable conditions. All must be true for cmd to be marked done. Karo checks these at Step 11.7 before marking cmd complete.
 
@@ -54,6 +56,22 @@ command: |
 # ❌ Bad — vague purpose, no criteria
 command: "Improve karo pipeline"
 ```
+
+## Critical Thinking (Lightweight — Steps 2-3)
+
+Before presenting any conclusion involving resource estimates, feasibility, or model selection to the Lord:
+
+### Step 2: Recalculate Numbers
+- Never trust your own first calculation. Recompute from source data
+- Especially check multiplication and accumulation: if you wrote "X per item" and there are N items, compute X × N explicitly
+- If the result contradicts your conclusion, your conclusion is wrong
+
+### Step 3: Runtime Simulation
+- Trace state not just at initialization, but after N iterations
+- "File is 100K tokens, fits in 400K context" is NOT sufficient — what happens after 100 web searches accumulate in context?
+- Enumerate exhaustible resources: context window, API quota, disk, entry counts
+
+Do NOT present a conclusion to the Lord without running these two checks. If in doubt, route to Gunshi for full 5-step review (Steps 1-5) before committing.
 
 ## Shogun Mandatory Rules
 
@@ -412,6 +430,11 @@ Special cases (CLI commands sent via watcher transport):
 - `type: clear_command` → sends `/clear` + Enter via send-keys
 - `type: model_switch` → sends the /model command via send-keys
 
+### Safety note (shogun)
+
+- If the Shogun pane is active (the Lord is typing), `shogunate_mod/watcher/inbox_watcher.sh` must not inject keystrokes. It should use tmux `display-message` only.
+- Escalation keystrokes (`Escape×2`, context reset, `C-u`) must be suppressed for the Shogun pane to avoid clobbering human input.
+
 ## Agent Self-Watch Phase Policy (cmd_107)
 
 Phase migration is controlled by watcher flags:
@@ -431,8 +454,12 @@ Read-cost controls:
 | Elapsed | Action | Trigger |
 |---------|--------|---------|
 | 0〜2 min | Standard pty nudge | Normal delivery |
-| 2〜4 min | Escape×2 + nudge | Cursor position bug workaround |
+| 2〜4 min | Escape×2 + nudge | Copilot/Kimi use Escape×2 + Ctrl-C + nudge. Claude/Codex/OpenCode use a plain nudge instead |
 | 4 min+ | `/clear` sent (max once per 5 min) | Force session reset + YAML re-read |
+
+**Per-CLI escalation nuance:**
+- The Escape×2 + Ctrl-C combo at 2〜4 min is for Copilot/Kimi only; Claude/Codex/OpenCode escalate with a plain nudge instead.
+- The 4 min+ context reset (`/clear`) is skipped for Codex, whose context reset is `/new`, delivered separately by the watcher's `clear_command` path.
 
 ## Inbox Processing Protocol (karo/ashigaru/gunshi)
 
@@ -697,6 +724,46 @@ date "+%Y-%m-%d %H:%M"       # For dashboard.md
 date "+%Y-%m-%dT%H:%M:%S"    # For YAML (ISO 8601)
 ```
 
+## Status Reference (Single Source)
+
+Fixed status vocabulary (do not invent others without updating this section):
+
+- `queue/shogun_to_karo.yaml`: `pending`, `in_progress`, `done`, `cancelled`
+- `queue/tasks/ashigaruN.yaml`: `assigned`, `blocked`, `done`, `failed`
+- `queue/tasks/pending.yaml`: `pending_blocked` (holding area; do not dispatch to ashigaru from here)
+- `queue/ntfy_inbox.yaml`: `pending`, `processed`
+
+Any other status value (e.g., `completed`, `active`, `superseded`) is forbidden. Normalize to the canonical set above when found during archive.
+
+### Per-status forbidden actions
+
+| Status | Forbidden action | Use instead |
+|--------|------------------|-------------|
+| `pending` (cmd) | Dispatch subtasks while still pending | Move to `in_progress` first |
+| `in_progress` | Editing acceptance_criteria, or marking `done` without meeting all criteria | Keep criteria stable; rework until met |
+| `done` (cmd) | Editing the old cmd to "reopen" | Open a new cmd |
+| `cancelled` | Continuing work under this cmd | Open a new cmd |
+| `blocked` | Nudging the agent or starting work | Resolve the blocker; wait event-driven |
+| `failed` (ashigaru) | Silent failure | Report the failure explicitly, then escalate |
+| `done` (ashigaru) | Reusing the task_id for a redo | Use the Redo Protocol with a new task_id |
+| `pending_blocked` | Pre-assigning to ashigaru before ready | Keep in `pending_blocked` until ready |
+| `pending` (ntfy) | Leaving it pending without a reason | Process or annotate the reason |
+| `processed` (ntfy) | Flipping back to pending without a new entry | Create a new entry |
+
+`status: idle` is allowed only when `task_id: null` (the clean-start template written by `shutsujin_departure.sh --clean`).
+
+## Pre-Commit Gate (CI-Aligned)
+
+Before any commit, run the same checks GitHub Actions will run. Commit only when green.
+
+```bash
+bats tests/*.bats tests/unit/*.bats          # local unit suite (no SKIP allowed)
+bash shogunate_mod/instructions/build.sh     # regenerate instructions
+git diff --exit-code instructions/generated/ # build output must match checked-in source
+```
+
+Ask the Lord before any `git push`. A local `git push` without explicit Lord approval is forbidden (see F007).
+
 # Forbidden Actions
 
 ## Common Forbidden Actions (All Agents)
@@ -705,6 +772,7 @@ date "+%Y-%m-%dT%H:%M:%S"    # For YAML (ISO 8601)
 |----|--------|---------|--------|
 | F004 | Polling/wait loops | Event-driven (inbox) | Wastes API credits |
 | F005 | Skip context reading | Always read first | Prevents errors |
+| F007 | `git push` without the Lord's explicit approval | Ask the Lord first | Prevents leaking secrets / unreviewed changes |
 
 ## Shogun Forbidden Actions
 

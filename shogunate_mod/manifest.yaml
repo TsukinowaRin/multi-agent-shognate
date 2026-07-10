@@ -303,6 +303,9 @@ current_core_touchpoints:
   - path: docs/codd/
     reason: "CoDD frontmatter/design docs remain under root docs for readers and graph tooling, while Gunkan/CoDD design content is MOD-owned."
     next_step: "Keep root docs/codd synchronized as compatibility copies of shogunate_mod/gunkan/docs/."
+  - path: docs/AGMSG_BRIDGE_DESIGN.md
+    reason: "The agmsg transport bridge design and verification record stays under root docs for readers, while the bridge design source is MOD-owned next to the transport implementation."
+    next_step: "Keep root docs/AGMSG_BRIDGE_DESIGN.md synchronized as a compatibility copy of shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md."
   - path: skills/ and .cursor/skills/
     reason: "Claude Code and Cursor load skills from root-compatible paths, while Shogunate skill sources are MOD-owned."
     next_step: "Keep root skill directories synchronized as compatibility copies of shogunate_mod/skills/."

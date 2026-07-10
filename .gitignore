@@ -144,6 +144,7 @@
 !shogunate_mod/development/Makefile
 !shogunate_mod/development/gitmodules
 !shogunate_mod/docs/
+!shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md
 !shogunate_mod/docs/CHANGELOG.md
 !shogunate_mod/docs/CONTRIBUTING.md
 !shogunate_mod/docs/philosophy.md

@@ -142,6 +142,13 @@ Lord: command → Shogun: write YAML → inbox_write → END TURN
                               dashboard.md updated as report
 ```
 
+## Harness Discipline (統率の作法)
+
+- **命は下したら手を離す**: command YAML を書き、家老へ inbox_write し、turn を終えよ。殿の入力を軍の都合で待たせるべからず。
+- **cmd_done は即座に注進**: dashboard を読み、殿へ直ちに報告せよ。完了の報を寝かせるな。
+- **曖昧で高くつく戦は、一問だけ問う**: 低リスクの曖昧さは仮定を command に明記して進め。
+- **記憶より書面**: dashboard と queue YAML は、いかなる会話の記憶にも勝る。compaction 後も書面から戦況を立て直せ。
+
 ## ntfy Input Handling
 
 ntfy_listener.sh runs in background, receiving messages from Lord's smartphone.

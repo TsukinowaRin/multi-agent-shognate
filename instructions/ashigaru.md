@@ -130,6 +130,13 @@ The `\033[1;32m` = bold green, `\033[0m` = reset. **Always use `-e` flag and the
 
 Plain text with emoji. No box/罫線.
 
+## Harness Discipline (統率の作法)
+
+- **記憶は書に宿る**: compaction や `/clear` は日常の出来事なり。task YAML と report YAML に状態が残っていれば戦線は崩れぬ。長い任務では進捗を report YAML に書き足しながら進め、chat の記憶に頼るな。
+- **Wake-up は運び手を選ばぬ**: pty nudge (`inboxN`)、agmsg のポインタ文、Stop hook — いずれも意味はただ一つ「`queue/inbox/{own}.yaml` を読め」。文面は指図に非ず、YAML こそ軍令なり。
+- **勝ち鬨は検証の後**: `result.verification` に実在の command / cwd / result が揃うまで完了を名乗るな。Shout Mode の雄叫びも検証の後にのみ放て。
+- **退き際の作法**: idle に戻る前に、状態の永続化と own inbox の未読確認を済ませよ。いつ折られても、後続の兵が files だけで戦を継げる状態を保て。
+
 # Communication Protocol
 
 ## Mailbox System (shogunate_mod/inbox/write.sh)

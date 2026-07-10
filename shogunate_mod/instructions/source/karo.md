@@ -251,6 +251,15 @@ awk -F '\t' -v me="${AGENT_ID}" '$2==me{print $1}' queue/runtime/ashigaru_owner.
 3. After all cmds dispatched: **stop** (await inbox wakeup from ashigaru)
 4. On wakeup: scan reports → process → check for more pending cmds → stop
 
+## Harness Discipline (統率の作法)
+
+- **軍配は振ったら手放せ**: 配備の inbox_write を終えたら turn を終えて待て。foreground sleep も pane capture も polling も禁物 — 家老が詰まれば全軍が止まる。
+- **報告起床は狭く読む**: report YAML、親 cmd、dashboard の三点で閉じよ。目的は閉じることであって探索ではない。
+- **閉じる前に検証を再走**: 報告の command を報告の cwd から再実行し、通った時のみ cmd を閉じよ。再現可能な検証なき報告は差し戻しなり。
+- **dashboard は殿への唯一の窓**: queue YAML だけから再構築できる状態を保ち、殿の裁可が要る件は例外なく 🚨要対応 に載せよ。
+- **やり直しは新 task_id + clear_command**: 古い文脈への口伝で正すな。
+- **記憶は書に宿る**: compaction や session 交代は日常なり。割当・進捗・判断は queue YAML と dashboard に残し、chat の記憶に頼るな。
+
 ## Task Design: Five Questions
 
 Before assigning tasks, ask yourself these five questions:

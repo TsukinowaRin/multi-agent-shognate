@@ -144,6 +144,54 @@ YAML
     assert_yaml_message ashigaru1
 }
 
+@test "agmsg_setup skips unsupported cli types and joins only supported agents" {
+    cat > "$AGMSG_SKILL_DIR/scripts/join.sh" <<'JOIN'
+#!/usr/bin/env bash
+printf '%s\t%s\t%s\n' "$2" "$3" "$4" >> "${AGMSG_JOIN_LOG:?AGMSG_JOIN_LOG must point to the join call log}"
+exit 0
+JOIN
+    chmod +x "$AGMSG_SKILL_DIR/scripts/join.sh"
+
+    export AGMSG_JOIN_LOG="$TEST_ROOT/agmsg-joins.tsv"
+    : > "$AGMSG_JOIN_LOG"
+
+    cat > "$TEST_ROOT/config/settings.yaml" <<'YAML'
+transport:
+  mode: both
+  agmsg:
+    team: shogunate
+    skill_dir: ""
+    bridge_agents: []
+cli:
+  agents:
+    shogun:
+      type: codex
+    karo:
+      type: kimi
+    ashigaru1:
+      type: claude
+topology:
+  active_ashigaru:
+    - 1
+YAML
+
+    run env \
+        AGMSG_SKILL_DIR="$AGMSG_SKILL_DIR" \
+        AGMSG_JOIN_LOG="$AGMSG_JOIN_LOG" \
+        SHOGUN_SETTINGS_FILE="$TEST_ROOT/config/settings.yaml" \
+        SHOGUNATE_REPO_ROOT="$TEST_ROOT" \
+        bash "$PROJECT_ROOT/shogunate_mod/transport/agmsg_setup.sh"
+
+    [ "$status" -eq 0 ]
+
+    echo "$output" | grep -Fq "[agmsg_setup] skip karo: no agmsg driver for cli type 'kimi'"
+
+    [ "$(wc -l < "$AGMSG_JOIN_LOG")" -eq 2 ]
+    grep -Eq $'^shogun\tcodex\t' "$AGMSG_JOIN_LOG"
+    grep -Eq $'^ashigaru1\tclaude-code\t' "$AGMSG_JOIN_LOG"
+    ! grep -Fq 'karo' "$AGMSG_JOIN_LOG"
+}
+
 @test "agmsg send failure is fail-open and leaves the YAML message unread" {
     cat > "$TEST_ROOT/config/settings.yaml" <<'YAML'
 transport:

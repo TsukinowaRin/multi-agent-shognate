@@ -48,7 +48,7 @@ transport:
 
 ### 新規: `shogunate_mod/transport/agmsg_setup.sh`
 
-- settings.yaml の `topology.active_ashigaru` + shogun/gunkan/gunshi/karo を、`cli.agents.<name>.type` を agmsg の type(codex→codex, claude→claude-code, opencode→opencode, antigravity→antigravity, gemini→gemini, copilot→copilot, cursor→cursor)にマップして `join.sh <team> <agent> <type> <このリポジトリの絶対パス>` で参加させる。kimi は agmsg driver がないため未対応(setup が明示エラーで停止する)。
+- settings.yaml の `topology.active_ashigaru` + shogun/gunkan/gunshi/karo を、`cli.agents.<name>.type` を agmsg の type(codex→codex, claude→claude-code, opencode→opencode, antigravity→antigravity, gemini→gemini, copilot→copilot, cursor→cursor)にマップして `join.sh <team> <agent> <type> <このリポジトリの絶対パス>` で参加させる。未対応 type(kimi / kilo / localapi 等)や type 空/欠落のエージェントは `[agmsg_setup] skip <agent>: no agmsg driver for cli type '<type>'` 警告を stderr に出して**スキップ**し、残りのエージェントの join を続行する。対応 type が 1 体も join できなかった場合のみ exit 1 とする。
 - 冪等であること(再実行してもエラーにしない。join.sh が重複でエラーを返すなら無視して続行)。
 
 ### 変更: `shogunate_mod/inbox/write.sh`

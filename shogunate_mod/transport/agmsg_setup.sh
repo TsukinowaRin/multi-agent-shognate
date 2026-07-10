@@ -59,20 +59,22 @@ type_map = {
 }
 
 rows = []
-invalid = False
 for agent in agents:
     details = configured.get(agent) or {}
     cli_type = str(details.get("type") or "").strip().lower()
     if cli_type not in type_map:
         print(
-            f"[agmsg_setup] unsupported or missing cli.agents.{agent}.type: {cli_type or '<empty>'}",
+            f"[agmsg_setup] skip {agent}: no agmsg driver for cli type '{cli_type}'",
             file=sys.stderr,
         )
-        invalid = True
         continue
     rows.append((agent, type_map[cli_type]))
 
-if invalid:
+if not rows:
+    print(
+        "[agmsg_setup] no supported agents joined; no agmsg driver available for any configured cli type",
+        file=sys.stderr,
+    )
     raise SystemExit(1)
 for agent, agmsg_type in rows:
     print(f"{agent}\t{agmsg_type}")

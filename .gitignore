@@ -255,6 +255,8 @@ shogunate_mod/mobile/android/release/*.apk
 !shogunate_mod/tests/e2e/mock_behaviors/
 !shogunate_mod/tests/e2e/mock_behaviors/*.sh
 !shogunate_mod/tests/e2e/mock_cli.sh
+!shogunate_mod/transport/
+!shogunate_mod/transport/*.sh
 !shogunate_mod/skills/
 !shogunate_mod/skills/claude/
 !shogunate_mod/skills/claude/**

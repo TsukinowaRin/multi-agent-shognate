@@ -179,6 +179,19 @@ build_instruction_file "claude" "ashigaru" "ashigaru.md"
 build_instruction_file "claude" "gunshi" "gunshi.md"
 build_instruction_file "claude" "gunkan" "gunkan.md"
 
+# Claude Code agents read instructions/{role}.md (referenced from CLAUDE.md).
+# Historically these were frozen v1 monoliths: they embedded Codex tool docs
+# even for Claude agents, and gunshi/gunkan bodies were empty scaffolds.
+# Serve the claude build output instead so Claude gets the same
+# role + harness + common stack as every other CLI, with claude_tools.
+# Must run after sync_root_instruction_compatibility_sources (which copies the
+# legacy source monolith to the same path) so this final copy wins; the source
+# monolith body remains only as the YAML front-matter donor.
+for claude_role in shogun karo ashigaru gunshi gunkan; do
+    cp "$OUTPUT_DIR/${claude_role}.md" "$ROOT_DIR/instructions/${claude_role}.md"
+    echo "  ✅ Published: instructions/${claude_role}.md (claude build)"
+done
+
 # Build Codex instruction files
 build_instruction_file "codex" "shogun" "codex-shogun.md"
 build_instruction_file "codex" "karo" "codex-karo.md"

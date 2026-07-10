@@ -59,6 +59,16 @@ require_instruction_sources_synced() {
 
   while IFS= read -r root_path; do
     rel="${root_path#instructions/}"
+    case "$rel" in
+      shogun.md|karo.md|ashigaru.md|gunshi.md|gunkan.md)
+        # Claude Code reads these top-level files. build.sh publishes the
+        # claude build output here (role + harness + common + claude_tools);
+        # the legacy source monolith is only the YAML front-matter donor.
+        cmp -s "$root_path" "instructions/generated/${rel}" \
+          || fail "$root_path must match instructions/generated/${rel}"
+        continue
+        ;;
+    esac
     mod_path="shogunate_mod/instructions/source/${rel}"
     [[ -f "$mod_path" ]] || fail "missing MOD instruction source: $mod_path"
     cmp -s "$root_path" "$mod_path" \
@@ -68,6 +78,14 @@ require_instruction_sources_synced() {
   while IFS= read -r mod_source_path; do
     rel="${mod_source_path#shogunate_mod/instructions/source/}"
     root_path="instructions/${rel}"
+    case "$rel" in
+      shogun.md|karo.md|ashigaru.md|gunshi.md|gunkan.md)
+        # Covered above: the root copy is the published claude build, not
+        # a byte copy of the front-matter donor monolith.
+        [[ -f "$root_path" ]] || fail "missing published claude instruction: $root_path"
+        continue
+        ;;
+    esac
     [[ -f "$root_path" ]] || fail "missing root instruction compatibility copy: $root_path"
     cmp -s "$root_path" "$mod_source_path" \
       || fail "$root_path must match $mod_source_path"

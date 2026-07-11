@@ -8,6 +8,7 @@ canonical_paths:
   agent_status_command: shogunate_mod/status/command.sh
   battlefield_api: shogunate_mod/battlefield/
   app_reply: shogunate_mod/app/reply.sh
+  app_server: shogunate_mod/app/server.py
   agent_registry: shogunate_mod/topology/agent_registry.sh
   branch_auto_merge_short_lived: shogunate_mod/git/auto_merge_short_lived.sh
   branch_drift_check: shogunate_mod/git/branch_drift_check.sh

@@ -795,7 +795,7 @@ def cmd_sessions(args: argparse.Namespace) -> int:
 
 def cmd_session_create(args: argparse.Namespace) -> int:
     project = resolve_project(args.selector)
-    session = create_app_session(runtime_dir(project), mode="new", title=args.title or "")
+    session = create_app_session(runtime_dir(project), mode=getattr(args, "mode", "new"), title=args.title or "")
     if args.json:
         json_print({"project": project_summary(project), "session": session})
     else:
@@ -822,6 +822,13 @@ def cmd_transcript(args: argparse.Namespace) -> int:
 
 def add_json_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", action="store_true")
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    # import を遅延し、従来 CLI の起動経路に HTTP server の初期化を持ち込まない。
+    from shogunate_mod.app import server
+
+    return server.main(["--port", str(args.port), "--bind", args.bind])
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -894,6 +901,11 @@ def build_parser() -> argparse.ArgumentParser:
     transcript.add_argument("--session", default="")
     add_json_arg(transcript)
     transcript.set_defaults(func=cmd_transcript)
+
+    serve = sub.add_parser("serve", help="serve the app API over HTTP JSON")
+    serve.add_argument("--port", type=int, default=8787)
+    serve.add_argument("--bind", default="127.0.0.1")
+    serve.set_defaults(func=cmd_serve)
 
     return parser
 

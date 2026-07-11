@@ -135,6 +135,7 @@
     "memory/MEMORY.md.sample",
     "saytask/streaks.yaml.sample",
     "shogunate_mod/app/",
+    "shogunate_mod/app/server.py",
     "shogunate_mod/battlefield/",
     "shogunate_mod/cli/",
     "shogunate_mod/configure/",

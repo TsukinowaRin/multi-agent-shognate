@@ -72,6 +72,19 @@ done
 command -v curl >/dev/null 2>&1 || fail "curl is required"
 command -v tar >/dev/null 2>&1 || fail "tar is required"
 
+prepend_path_if_dir() {
+    [ -d "$1" ] || return 0
+    case ":$PATH:" in
+        *":$1:"*) ;;
+        *) PATH="$1:$PATH" ;;
+    esac
+    export PATH
+}
+
+prepend_path_if_dir "/opt/homebrew/opt/coreutils/libexec/gnubin"
+prepend_path_if_dir "/opt/homebrew/bin"
+prepend_path_if_dir "/usr/local/bin"
+
 if [ "$VERSION" = "latest" ]; then
     PACKAGE_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/latest/download/${REPO_NAME}-package.tar.gz"
     VERSION_LABEL="latest"
@@ -95,6 +108,10 @@ curl -fL "$PACKAGE_URL" -o "$PACKAGE_PATH"
 mkdir -p "$PREFIX"
 log "extract: $PREFIX"
 tar -xzf "$PACKAGE_PATH" -C "$PREFIX" --strip-components=1
+
+if [ -d "$PREFIX/.venv/bin" ]; then
+    export PATH="$PREFIX/.venv/bin:$PATH"
+fi
 
 # Remove deprecated installer files from older installs. Runtime launchers remain.
 rm -f \
@@ -126,6 +143,21 @@ if [ "${SHOGUNATE_SKIP_BIN:-0}" != "1" ]; then
 set -euo pipefail
 
 SHOGUNATE_INSTALL_DIR=${PREFIX_QUOTED}
+prepend_path_if_dir() {
+    [ -d "\$1" ] || return 0
+    case ":\$PATH:" in
+        *":\$1:"*) ;;
+        *) PATH="\$1:\$PATH" ;;
+    esac
+    export PATH
+}
+
+prepend_path_if_dir "/opt/homebrew/opt/coreutils/libexec/gnubin"
+prepend_path_if_dir "/opt/homebrew/bin"
+prepend_path_if_dir "/usr/local/bin"
+if [ -d "\$SHOGUNATE_INSTALL_DIR/.venv/bin" ]; then
+    prepend_path_if_dir "\$SHOGUNATE_INSTALL_DIR/.venv/bin"
+fi
 
 usage() {
     cat <<'USAGE'
@@ -239,20 +271,24 @@ prepare_project_runtime() {
     runtime_dir="\$workspace_home/\${slug}-\${hash}"
     mkdir -p "\$runtime_dir"
     if command -v rsync >/dev/null 2>&1; then
-        rsync -a --delete \
+        rsync -a --checksum --delete \
             --exclude '/.git/' \
+            --exclude '/.shogunate/' \
             --exclude '/.venv/' \
             --exclude '/config/settings.yaml' \
             --exclude '/config/projects.yaml' \
+            --exclude '/dashboard.md' \
             --exclude '/logs/' \
             --exclude '/queue/' \
             "\$SHOGUNATE_INSTALL_DIR"/ "\$runtime_dir"/
     else
         (cd "\$SHOGUNATE_INSTALL_DIR" && tar \
             --exclude='./.git' \
+            --exclude='./.shogunate' \
             --exclude='./.venv' \
             --exclude='./config/settings.yaml' \
             --exclude='./config/projects.yaml' \
+            --exclude='./dashboard.md' \
             --exclude='./logs' \
             --exclude='./queue' \
             -cf - .) | (cd "\$runtime_dir" && tar -xf -)
@@ -296,9 +332,12 @@ run_in_project_runtime() {
 }
 
 print_project_info() {
-    local runtime_dir project session
-    runtime_dir="\$(prepare_project_runtime)"
+    local runtime_dir project session slug hash workspace_home
     project="\$(resolve_project_dir)"
+    slug="\$(project_slug "\$project")"
+    hash="\$(project_hash "\$project")"
+    workspace_home="\${SHOGUNATE_WORKSPACE_HOME:-\$HOME/.shogunate/workspaces}"
+    runtime_dir="\$workspace_home/\${slug}-\${hash}"
     session="\${SHOGUNATE_SESSION_NAME:-\$(default_session_name)}"
     printf 'Shogunate project runtime\n'
     printf '  Project:  %s\n' "\$project"

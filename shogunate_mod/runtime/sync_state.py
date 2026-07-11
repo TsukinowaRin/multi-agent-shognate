@@ -133,6 +133,36 @@ def gunkan_audit_report(queue_dir: Path, parent_cmd: str) -> tuple[Path, dict[st
     return None
 
 
+def audit_gate_roles(cmd: dict[str, Any]) -> list[str]:
+    if "audit_gate" not in cmd:
+        return []
+    raw = cmd.get("audit_gate") or []
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+    return [str(role).strip() for role in raw if str(role).strip()]
+
+
+def audit_gate_satisfied(queue_dir: Path, cmd: dict[str, Any]) -> bool:
+    roles = audit_gate_roles(cmd)
+    if not roles:
+        return True
+
+    cmd_id = command_id(cmd)
+    reports_dir = queue_dir / "reports"
+    for role in roles:
+        path = reports_dir / f"{role}_report.yaml"
+        matched = False
+        for report in normalize_records(load_yaml(path, {}), "reports"):
+            if str(report.get("parent_cmd", "")).strip() == cmd_id and record_status(report) in DONE_STATUSES:
+                matched = True
+                break
+        if not matched:
+            return False
+    return True
+
+
 def update_task_file(path: Path, wanted_task_id: str, status: str, completed_at: str) -> bool:
     data = load_yaml(path, {})
     records = normalize_records(data, "tasks")
@@ -417,6 +447,9 @@ def sync_once(root: Path) -> list[str]:
                 reaudit_key = f"{cid}:{latest_worker_report}"
                 reaudit_requested = set(state.get("gunkan_reaudit_requested", []) or [])
                 if latest_worker_report > audit_mtime and reaudit_key not in reaudit_requested:
+                    if not audit_gate_satisfied(queue_dir, command):
+                        events.append(f"audit_gated\t{cid}")
+                        continue
                     if request_gunkan_audit(
                         root,
                         queue_dir,
@@ -443,6 +476,10 @@ def sync_once(root: Path) -> list[str]:
                     events.append(f"review_requested\t{cid}")
                 else:
                     events.append(f"review_pending\t{cid}")
+                continue
+
+            if not audit_gate_satisfied(queue_dir, command):
+                events.append(f"audit_gated\t{cid}")
                 continue
 
             command["status"] = "audit_requested"

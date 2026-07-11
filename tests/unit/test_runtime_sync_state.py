@@ -172,6 +172,41 @@ class RuntimeSyncStateTest(unittest.TestCase):
         self.assertEqual("audit_requested", inbox["messages"][-1]["type"])
         self.assertIn("再監査", inbox["messages"][-1]["content"])
 
+    def test_audit_gate_blocks_final_audit_without_gunshi_report(self) -> None:
+        commands = self.read_yaml("queue/shogun_to_karo.yaml")
+        commands[0]["audit_gate"] = ["gunshi"]
+        (self.root / "queue" / "shogun_to_karo.yaml").write_text(
+            yaml.safe_dump(commands, allow_unicode=True, sort_keys=False), encoding="utf-8"
+        )
+
+        result = self.run_sync()
+        self.assertIn("audit_gated\tcmd_001", result.stdout)
+
+        commands = self.read_yaml("queue/shogun_to_karo.yaml")
+        self.assertEqual("in_progress", commands[0]["status"])
+        inbox = self.read_yaml("queue/inbox/gunkan.yaml")
+        self.assertEqual([], inbox["messages"])
+        self.assertNotIn("`cmd_001`: audit_requested", (self.root / "dashboard.md").read_text(encoding="utf-8"))
+
+    def test_audit_gate_allows_final_audit_after_gunshi_report_done(self) -> None:
+        commands = self.read_yaml("queue/shogun_to_karo.yaml")
+        commands[0]["audit_gate"] = ["gunshi"]
+        (self.root / "queue" / "shogun_to_karo.yaml").write_text(
+            yaml.safe_dump(commands, allow_unicode=True, sort_keys=False), encoding="utf-8"
+        )
+        (self.root / "queue" / "reports" / "gunshi_report.yaml").write_text(
+            "parent_cmd: cmd_001\nstatus: done\nsummary: reviewed sequence\n", encoding="utf-8"
+        )
+
+        result = self.run_sync()
+        self.assertIn("audit_requested\tcmd_001", result.stdout)
+
+        commands = self.read_yaml("queue/shogun_to_karo.yaml")
+        self.assertEqual("audit_requested", commands[0]["status"])
+        inbox = self.read_yaml("queue/inbox/gunkan.yaml")
+        self.assertEqual(1, len(inbox["messages"]))
+        self.assertEqual("audit_requested", inbox["messages"][0]["type"])
+
 
 if __name__ == "__main__":
     unittest.main()

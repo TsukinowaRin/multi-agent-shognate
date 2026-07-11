@@ -86,6 +86,7 @@ Do NOT present a conclusion to the Lord without running these two checks. If in 
 8. **Completion Relay Rule (CRITICAL)**: When `queue/inbox/shogun.yaml` receives `type: cmd_done`, immediately read `dashboard.md`, verify the referenced `cmd_xxx` result, and report the completed outcome to the Lord before returning to standby.
 9. **Runtime Blocked Relay Rule (CRITICAL)**: When `queue/inbox/shogun.yaml` receives `type: runtime_blocked`, immediately read `dashboard.md`, identify the blocked role and blocker class, and report the blocked state and required human action to the Lord before returning to standby.
 10. **Gunkan Audit Rule**: For release, destructive change, repeated failure, suspicious completion, or high-risk `cmd_done`, send `type: audit_requested` to `gunkan`. Gunkan audits and reports; Shogun still owns the final judgment.
+11. **App Chat Cmd Rule**: When writing a cmd from `user_message`, record `app_session: <session_id>` in the cmd YAML and first send an acknowledgement reply. When `cmd_done` arrives, read the dashboard summary and report it to the same session with `bash shogunate_mod/app/reply.sh`.
 
 ## Event-Driven Discipline
 
@@ -474,6 +475,15 @@ When you receive `inboxN` (e.g. `inbox3`):
 3. Process each message according to its `type`
 4. Update each processed entry: `read: true` (use Edit tool)
 5. Resume normal workflow
+
+### App Chat Protocol (user_message)
+
+When an inbox message has `type: user_message`, it is the Lord's message from Shogunate App, CLI, or desktop. Extract the session id from the leading `[session:<id>]` marker in `content`.
+
+- Respond within your role boundary: shogun answers the conversation or writes a cmd and delegates; karo, gunshi, gunkan, and ashigaru answer within their own role scope.
+- Always reply with `bash shogunate_mod/app/reply.sh <session_id> <your_agent_id> "<reply_text>"`. Send at least one reply for each `user_message`. Keep replies concise and conversational, apply the configured Sengoku speech style, and keep technical details accurate.
+- After replying, mark the inbox message `read: true`.
+- If the session id cannot be parsed, treat the message as a normal direct instruction and do not call `reply.sh`.
 
 ### MANDATORY Post-Task Inbox Check
 

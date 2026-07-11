@@ -316,12 +316,13 @@ def deliver_message(runtime: Path, message: dict[str, Any]) -> subprocess.Comple
     writer = inbox_writer(runtime)
     if not writer.exists():
         raise FileNotFoundError(str(writer))
+    content = f"[session:{message['session']}] {message['content']}"
     return subprocess.run(
         [
             "bash",
             str(writer),
             str(message["role"]),
-            str(message["content"]),
+            str(content),
             "user_message",
             "lord",
         ],

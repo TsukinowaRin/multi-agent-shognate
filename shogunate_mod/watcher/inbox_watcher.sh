@@ -202,6 +202,10 @@ mux_send_enter() {
     timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null
 }
 
+mux_send_carriage_return() {
+    timeout 5 tmux send-keys -t "$PANE_TARGET" C-m 2>/dev/null
+}
+
 mux_send_ctrl_c() {
     timeout 5 tmux send-keys -t "$PANE_TARGET" C-c 2>/dev/null
 }
@@ -253,6 +257,45 @@ send_literal_text_and_enter() {
         return 1
     fi
 
+    return 0
+}
+
+tui_nudge_verify_enabled() {
+    case "${1:-}" in
+        claude|codex|antigravity|opencode|kilo|cursor) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+verify_nudge_submitted() {
+    local text="$1"
+    local effective_cli="${2:-}"
+    local action_label="${3:-nudge}"
+    local prefix=""
+    local pane_text=""
+    local attempt
+
+    tui_nudge_verify_enabled "$effective_cli" || return 0
+    prefix="$(printf '%s' "$text" | cut -c1-16)"
+    [ -n "$prefix" ] || return 0
+
+    for attempt in 1 2; do
+        sleep 1
+        pane_text="$(mux_capture_pane_tail || true)"
+        if ! printf '%s\n' "$pane_text" | grep -Fq -- "$prefix"; then
+            return 0
+        fi
+        echo "[$(date)] [nudge-verify] ${action_label} still visible for $AGENT_ID after Enter; resending C-m (${attempt}/2)" >&2
+        if ! mux_send_carriage_return; then
+            echo "[$(date)] [nudge-verify] C-m resend failed for $AGENT_ID (${attempt}/2)" >&2
+            return 0
+        fi
+    done
+
+    pane_text="$(mux_capture_pane_tail || true)"
+    if printf '%s\n' "$pane_text" | grep -Fq -- "$prefix"; then
+        echo "[$(date)] [nudge-verify] ${action_label} remains visible for $AGENT_ID after max C-m retries" >&2
+    fi
     return 0
 }
 
@@ -1886,6 +1929,7 @@ send_wakeup() {
     # 優先度3: tmux send-keys（テキストとEnterを分離 — Codex TUI対策）
     echo "[$(date)] [SEND-KEYS] Sending nudge to $PANE_TARGET for $AGENT_ID" >&2
     if send_text_and_enter "$nudge" "send-keys" "1"; then
+        verify_nudge_submitted "$nudge" "$effective_cli" "send-keys"
         echo "[$(date)] Wake-up sent to $AGENT_ID (${unread_count} unread)" >&2
         return 0
     fi
@@ -1977,6 +2021,7 @@ send_wakeup_with_escape() {
         c_ctrl_state="sent"
     fi
     if send_text_and_enter "$nudge" "Escape+nudge" "1"; then
+        verify_nudge_submitted "$nudge" "$effective_cli" "Escape+nudge"
         echo "[$(date)] Escape+nudge sent to $AGENT_ID (${unread_count} unread, cli=$effective_cli, C-c=$c_ctrl_state)" >&2
         return 0
     fi

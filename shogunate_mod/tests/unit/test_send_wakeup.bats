@@ -7,6 +7,7 @@
 #   T-SW-001: send_wakeup — active self-watch → skip nudge
 #   T-SW-002: send_wakeup — no self-watch → tmux send-keys
 #   T-SW-003: send_wakeup — literal send-keys content is "inboxN" + Enter (separated)
+#   T-SW-003b: send_wakeup — Codex nudge verifier resends C-m when Enter is ignored
 #   T-SW-004: send_wakeup — send-keys failure → return 1
 #   T-SW-005: send_wakeup — no paste-buffer or set-buffer used
 #   T-SW-006: agent_has_self_watch — detects inotifywait process
@@ -195,6 +196,21 @@ MOCK
     # Text and Enter are sent as separate send-keys calls (Codex TUI compatibility)
     grep -q "send-keys -l -t test:0.0 inbox3" "$MOCK_LOG"
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+}
+
+@test "T-SW-003b: Codex nudge verifier resends C-m when first Enter is ignored" {
+    run bash -c '
+        MOCK_PANE_CLI="codex"
+        MOCK_CAPTURE_PANE=$'"'"'> inbox6'"'"'
+        source "'"$TEST_HARNESS"'"
+        send_wakeup 6
+    '
+    [ "$status" -eq 0 ]
+
+    grep -q "send-keys -l -t test:0.0 inbox6" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
+    grep -q "send-keys -t test:0.0 C-m" "$MOCK_LOG"
+    echo "$output" | grep -q "\[nudge-verify\]"
 }
 
 # --- T-SW-004: send-keys failure → return 1 ---

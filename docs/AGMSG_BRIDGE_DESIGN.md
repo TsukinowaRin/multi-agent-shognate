@@ -107,3 +107,12 @@ stub 方法: テスト用の偽 skill_dir(`scripts/send.sh` が引数をログ�
   2. **agmsg 側の read_at が未設定のまま残る**: monitor 配信されても messages.db の read_at は NULL のまま(YAML 側の read:true とは独立)。ポインタ通知なので再配信されても実害は小さい(inbox 全既読なら no-op)が、未読が蓄積するため、定期 cleanup か受信側での既読化を Phase 3 で検討する。
   3. 遅延 22 秒の内訳はおよそ「monitor 配信 ~5s + エージェント turn(YAML 読取 + Edit)」。分単位のタスクサイクルでは十分実用的。
 - 判定: **Phase 1 受け入れ条件を満たす。** hook 同居 OK、nudge なし配信 OK、遅延実用域。
+
+### 2026-07-11 クロスベンダー E2E(opencode / GLM-5.2)
+
+- 構成: `transport.mode: yaml` + `bridge_agents: [ashigaru3, ashigaru1]`、opencode は agmsg delivery=turn(`.opencode/rules/agmsg.md` 経由)。実運用同型の nudge(`inbox1`)で turn を起動。
+- 結果: karo → ashigaru1(GLM-5.2)送信後、**nudge から 10 秒で inbox YAML 全既読**(コスト $0.03)。YAML 併送・処理はクロスベンダーで機能。
+- 発見事項:
+  1. opencode は turn 配信のため、idle エージェントの起床には従来どおり watcher nudge が必要(agmsg は併送保証+将来の monitor 型 CLI 向け)。
+  2. agmsg DB の read_at は opencode 経路でも NULL のまま — 未読蓄積の Phase 3 課題はクロスベンダー共通。
+- 判定: **クロスベンダー配信 OK。** 全 CLI 対応は「monitor 型(claude)は nudge レス、turn 型(codex/copilot/opencode)は nudge 併用」という二層構成で成立する。

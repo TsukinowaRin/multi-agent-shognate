@@ -215,6 +215,7 @@ upstream-facing compatibility surface
 
 Shogunate MOD canonical sources
   shogunate_mod/
+    app/        app chat transcript reply helper
     battlefield/ app が使う host / project / session / role API
     gunkan/    independent auditor / CoDD helper
     package/   cURL package install と cwd-first workspace 管理

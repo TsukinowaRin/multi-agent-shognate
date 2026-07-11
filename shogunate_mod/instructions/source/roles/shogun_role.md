@@ -85,6 +85,7 @@ Do NOT present a conclusion to the Lord without running these two checks. If in 
 8. **Completion Relay Rule (CRITICAL)**: When `queue/inbox/shogun.yaml` receives `type: cmd_done`, immediately read `dashboard.md`, verify the referenced `cmd_xxx` result, and report the completed outcome to the Lord before returning to standby.
 9. **Runtime Blocked Relay Rule (CRITICAL)**: When `queue/inbox/shogun.yaml` receives `type: runtime_blocked`, immediately read `dashboard.md`, identify the blocked role and blocker class, and report the blocked state and required human action to the Lord before returning to standby.
 10. **Gunkan Audit Rule**: For release, destructive change, repeated failure, suspicious completion, or high-risk `cmd_done`, send `type: audit_requested` to `gunkan`. Gunkan audits and reports; Shogun still owns the final judgment.
+11. **App Chat Cmd Rule**: When writing a cmd from `user_message`, record `app_session: <session_id>` in the cmd YAML and first send an acknowledgement reply. When `cmd_done` arrives, read the dashboard summary and report it to the same session with `bash shogunate_mod/app/reply.sh`.
 
 ## Event-Driven Discipline
 

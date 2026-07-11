@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import unittest
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -32,6 +33,34 @@ class BattlefieldApiProcessDetectionTest(unittest.TestCase):
 
     def test_active_pane_command_keeps_raw_command_without_descendant(self) -> None:
         self.assertEqual("bash", api.active_pane_command("100", "bash", {100: (1, "bash")}))
+
+    def test_deliver_message_prefixes_content_with_session_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = Path(tmp)
+            writer = runtime / "shogunate_mod" / "inbox" / "write.sh"
+            log = runtime / "writer.log"
+            writer.parent.mkdir(parents=True)
+            writer.write_text(
+                "#!/usr/bin/env bash\n"
+                f"printf '%s|%s|%s|%s\\n' \"$1\" \"$2\" \"$3\" \"$4\" >> {str(log)!r}\n",
+                encoding="utf-8",
+            )
+            writer.chmod(0o755)
+
+            result = api.deliver_message(
+                runtime,
+                {
+                    "session": "chat-20260711-120000",
+                    "role": "shogun",
+                    "content": "hello",
+                },
+            )
+
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(
+                "shogun|[session:chat-20260711-120000] hello|user_message|lord\n",
+                log.read_text(encoding="utf-8"),
+            )
 
 
 if __name__ == "__main__":

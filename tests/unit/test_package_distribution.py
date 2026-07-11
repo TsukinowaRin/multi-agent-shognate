@@ -1089,6 +1089,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             send_payload = json.loads(send.stdout)
             self.assertTrue(send_payload["queued"])
             self.assertEqual(1, send_payload["project"]["sessions"]["pending_messages"])
+            session_id = send_payload["session"]["id"]
 
             outbox = subprocess.run(
                 ["python3", str(battlefield_script), "outbox", "demo", "--json"],
@@ -1122,7 +1123,10 @@ class PackageDistributionContractTests(unittest.TestCase):
             start_payload = json.loads(start.stdout)
             self.assertEqual(1, start_payload["pending_delivery"]["delivered"])
             self.assertEqual(0, start_payload["pending_delivery"]["remaining"])
-            self.assertIn("shogun|hello from road|user_message|lord", writer_log.read_text(encoding="utf-8"))
+            self.assertIn(
+                f"shogun|[session:{session_id}] hello from road|user_message|lord",
+                writer_log.read_text(encoding="utf-8"),
+            )
 
             transcript = subprocess.run(
                 ["python3", str(battlefield_script), "transcript", "demo", "--json"],
@@ -1161,7 +1165,10 @@ class PackageDistributionContractTests(unittest.TestCase):
             )
             self.assertEqual(0, send_start.returncode, send_start.stdout + send_start.stderr)
             self.assertFalse(json.loads(send_start.stdout)["queued"])
-            self.assertIn("shogun|second message|user_message|lord", writer_log.read_text(encoding="utf-8"))
+            self.assertIn(
+                f"shogun|[session:{session_id}] second message|user_message|lord",
+                writer_log.read_text(encoding="utf-8"),
+            )
 
     def test_package_bootstrap_wrapper_prefers_mod_source(self):
         text = (ROOT / "scripts" / "shogunate_package_bootstrap.sh").read_text(encoding="utf-8")
@@ -3937,7 +3944,8 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "delegate into shogunate_mod/" in text or "shogunate_mod/ へ委譲" in text,
                 path,
             )
-            self.assertIn("shogunate_mod/\n    battlefield/", text, path)
+            self.assertIn("shogunate_mod/\n    app/", text, path)
+            self.assertIn("    battlefield/", text, path)
             self.assertIn("    gunkan/", text, path)
             self.assertIn("    watcher/", text, path)
             self.assertIn("    view/", text, path)

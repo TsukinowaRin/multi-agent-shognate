@@ -219,6 +219,8 @@ shogunate_mod/mobile/android/release/*.apk
 !shogunate_mod/package/workflows/*.yml
 !shogunate_mod/pair/
 !shogunate_mod/pair/*.py
+!shogunate_mod/app/
+!shogunate_mod/app/*.sh
 !shogunate_mod/battlefield/
 !shogunate_mod/battlefield/*.py
 !shogunate_mod/projects/

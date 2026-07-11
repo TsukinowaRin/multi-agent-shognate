@@ -15,6 +15,8 @@ is Shogunate-only.
 
 ## Boundaries
 
+- `app/` owns Shogunate App chat transcript reply helpers used by roles to
+  append replies back into the originating app session.
 - `battlefield/` owns the Shogunate App-facing battlefield API for registered
   project discovery, runtime start/stop, app sessions, transcripts, role
   listing, and role message delivery.

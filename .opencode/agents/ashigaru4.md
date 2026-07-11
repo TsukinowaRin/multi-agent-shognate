@@ -473,6 +473,15 @@ When you receive `inboxN` (e.g. `inbox3`):
 4. Update each processed entry: `read: true` (use Edit tool)
 5. Resume normal workflow
 
+### App Chat Protocol (user_message)
+
+When an inbox message has `type: user_message`, it is the Lord's message from Shogunate App, CLI, or desktop. Extract the session id from the leading `[session:<id>]` marker in `content`.
+
+- Respond within your role boundary: shogun answers the conversation or writes a cmd and delegates; karo, gunshi, gunkan, and ashigaru answer within their own role scope.
+- Always reply with `bash shogunate_mod/app/reply.sh <session_id> <your_agent_id> "<reply_text>"`. Send at least one reply for each `user_message`. Keep replies concise and conversational, apply the configured Sengoku speech style, and keep technical details accurate.
+- After replying, mark the inbox message `read: true`.
+- If the session id cannot be parsed, treat the message as a normal direct instruction and do not call `reply.sh`.
+
 ### MANDATORY Post-Task Inbox Check
 
 **After completing ANY task, BEFORE going idle:**

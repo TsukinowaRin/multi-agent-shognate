@@ -1,8 +1,8 @@
 # OpenCode role-specific permission matrix.
 #
-# This file is consumed by scripts/build_instructions.sh to generate
-# `.opencode/agents/*.md` permission frontmatter at build time. Keep the matrix
-# focused on file boundaries that matter for role separation.
+# Root compatibility copy consumed by generated OpenCode agent frontmatter and
+# historical docs. The Shogunate MOD canonical source lives at
+# `shogunate_mod/configure/opencode-permissions.yaml`.
 
 common:
   edit_deny:

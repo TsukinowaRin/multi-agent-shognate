@@ -96,34 +96,34 @@ Always include: 1) Agent role (shogun/karo/ashigaru) 2) Forbidden actions list 3
 
 # Communication Protocol
 
-## Mailbox System (inbox_write.sh)
+## Mailbox System (shogunate_mod/inbox/write.sh)
 
 Agent-to-agent communication uses file-based mailbox:
 
 ```bash
-bash scripts/inbox_write.sh <target_agent> "<message>" <type> <from>
+bash shogunate_mod/inbox/write.sh <target_agent> "<message>" <type> <from>
 ```
 
 Examples:
 ```bash
 # Shogun → Karo
-bash scripts/inbox_write.sh karo "cmd_048を書いた。実行せよ。" cmd_new shogun
+bash shogunate_mod/inbox/write.sh karo "cmd_048を書いた。実行せよ。" cmd_new shogun
 
 # Ashigaru → Karo
-bash scripts/inbox_write.sh karo "足軽5号、任務完了。報告YAML確認されたし。" report_received ashigaru5
+bash shogunate_mod/inbox/write.sh karo "足軽5号、任務完了。報告YAML確認されたし。" report_received ashigaru5
 
 # Karo → Ashigaru
-bash scripts/inbox_write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
+bash shogunate_mod/inbox/write.sh ashigaru3 "タスクYAMLを読んで作業開始せよ。" task_assigned karo
 ```
 
-Delivery is handled by `inbox_watcher.sh` (infrastructure layer).
+Delivery is handled by `shogunate_mod/watcher/inbox_watcher.sh` (infrastructure layer).
 **Agents NEVER call tmux send-keys directly.**
 
 ## Delivery Mechanism
 
 Two layers:
-1. **Message persistence**: `inbox_write.sh` writes to `queue/inbox/{agent}.yaml` with flock. Guaranteed.
-2. **Wake-up signal**: `inbox_watcher.sh` detects file change via `lib/file_watch.sh` (`inotifywait` on Linux/WSL, `fswatch` on macOS, polling fallback) → wakes agent:
+1. **Message persistence**: `shogunate_mod/inbox/write.sh` writes to `queue/inbox/{agent}.yaml` with flock. Guaranteed.
+2. **Wake-up signal**: `shogunate_mod/watcher/inbox_watcher.sh` detects file change via `shogunate_mod/watcher/file_watch.sh` (`inotifywait` on Linux/WSL, `fswatch` on macOS, polling fallback) → wakes agent:
    - **優先度1**: Agent self-watch (agent's own native watcher on its inbox) → no nudge needed
    - **優先度2**: `tmux send-keys` — short nudge only (text and Enter sent separately, 0.3s gap)
 

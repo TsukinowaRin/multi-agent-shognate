@@ -1,0 +1,50 @@
+language: ja
+shell: bash
+multiplexer:
+  default: tmux
+topology:
+  active_ashigaru:
+  - ashigaru1
+  - ashigaru2
+  - ashigaru3
+  - ashigaru4
+cli:
+  default: codex
+  codex:
+    shared_auth: true
+    shared_auth_file: .shogunate/codex/shared/auth.json
+  agents:
+    shogun:
+      type: codex
+    gunkan:
+      type: codex
+    gunshi:
+      type: codex
+    karo:
+      type: codex
+    ashigaru1:
+      type: opencode
+    ashigaru2:
+      type: opencode
+    ashigaru3:
+      type: codex
+    ashigaru4:
+      type: gemini
+update:
+  startup_check: true
+  auto_apply_release: false
+preserve_paths:
+- .codex/
+- .shogunate/
+- .claude/
+- projects/
+- context/local/
+- instructions/local/
+- skills/local/
+- memory/global_context.md
+transport:
+  mode: yaml          # yaml | agmsg | both (yaml = current behavior)
+  agmsg:
+    team: shogunate
+    skill_dir: ""      # empty = ~/.agents/skills/agmsg
+    bridge_agents: []   # agents that also get agmsg wake-ups while mode=yaml

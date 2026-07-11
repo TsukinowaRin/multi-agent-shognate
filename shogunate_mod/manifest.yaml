@@ -1,0 +1,324 @@
+name: shogunate-mod
+upstream: yohey-w/multi-agent-shogun
+purpose: "Shogunate-specific package, mobile, cwd-first, Gunkan, and runtime extensions."
+canonical_paths:
+  mod_manifest: shogunate_mod/manifest.yaml
+  mod_readme: shogunate_mod/README.md
+  agent_status: shogunate_mod/status/agent_status.sh
+  agent_status_command: shogunate_mod/status/command.sh
+  battlefield_api: shogunate_mod/battlefield/
+  agent_registry: shogunate_mod/topology/agent_registry.sh
+  branch_auto_merge_short_lived: shogunate_mod/git/auto_merge_short_lived.sh
+  branch_drift_check: shogunate_mod/git/branch_drift_check.sh
+  branch_policy: shogunate_mod/git/branch_policy.sh
+  branch_policy_cron: shogunate_mod/git/setup_cron.sh
+  branch_pre_deploy_verify: shogunate_mod/git/pre_deploy_verify.sh
+  cli_antigravity_keyring: shogunate_mod/cli/antigravity_keyring.sh
+  cli_adapter: shogunate_mod/cli/adapter.sh
+  configure_agents: shogunate_mod/configure/agents.sh
+  configure_opencode_permissions: shogunate_mod/configure/opencode-permissions.yaml
+  configure_opencode_tui: shogunate_mod/configure/opencode-tui.json
+  configure_projects_template: shogunate_mod/configure/projects.yaml.sample
+  configure_role_launcher: shogunate_mod/configure/role_launcher.sh
+  configure_runtime_roles: shogunate_mod/configure/runtime_roles.py
+  configure_settings_template: shogunate_mod/configure/settings.yaml.sample
+  configure_switch_cli: shogunate_mod/configure/switch_cli.sh
+  configure_sync_opencode_config: shogunate_mod/configure/sync_opencode_config.py
+  context_readme: shogunate_mod/context/README.md
+  development_makefile: shogunate_mod/development/Makefile
+  development_gitmodules: shogunate_mod/development/gitmodules
+  docs_changelog: shogunate_mod/docs/CHANGELOG.md
+  docs_contributing: shogunate_mod/docs/CONTRIBUTING.md
+  docs_agmsg_bridge_design: shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md
+  docs_philosophy: shogunate_mod/docs/philosophy.md
+  docs_readme: shogunate_mod/docs/README.md
+  docs_readme_ja: shogunate_mod/docs/README_ja.md
+  docs_security: shogunate_mod/docs/SECURITY.md
+  gunkan_codd_check: shogunate_mod/gunkan/codd_check.sh
+  gunkan_codd_audit: shogunate_mod/gunkan/codd_audit.py
+  gunkan_codd_config: shogunate_mod/gunkan/codd.yaml
+  gunkan_codd_docs: shogunate_mod/gunkan/docs/
+  gunkan_event_log: shogunate_mod/gunkan/event_log.py
+  gunkan_light_watch: shogunate_mod/gunkan/light_watch.py
+  gunkan_emergency_stop: shogunate_mod/gunkan/emergency_stop.sh
+  github_funding: shogunate_mod/github/FUNDING.yml
+  hooks_claude_settings: shogunate_mod/hooks/claude_settings.json
+  hooks_session_start: shogunate_mod/hooks/session_start_hook.sh
+  hooks_stop_hook_inbox: shogunate_mod/hooks/stop_hook_inbox.sh
+  inbox_path: shogunate_mod/inbox/path.sh
+  inbox_watcher: shogunate_mod/watcher/inbox_watcher.sh
+  inbox_write: shogunate_mod/inbox/write.sh
+  instructions_autoload_claude: shogunate_mod/instructions/autoload/CLAUDE.md
+  instructions_build: shogunate_mod/instructions/build.sh
+  instructions_ensure_generated: shogunate_mod/instructions/ensure_generated.sh
+  instructions_source: shogunate_mod/instructions/source/
+  localapi_repl: shogunate_mod/localapi/repl.py
+  macos_runtime_launcher: shogunate_mod/macos/runtime_launcher.command
+  mobile_android: shogunate_mod/mobile/android/
+  ntfy_auth: shogunate_mod/notify/ntfy_auth.sh
+  ntfy_auth_sample: shogunate_mod/notify/ntfy_auth.env.sample
+  ntfy_listener: shogunate_mod/notify/listener.sh
+  ntfy_send: shogunate_mod/notify/send.sh
+  opencode_mark_as_read_tool: shogunate_mod/opencode/tools/mark-as-read.ts
+  package_bootstrap: shogunate_mod/package/bootstrap.sh
+  package_first_setup: shogunate_mod/package/first_setup.sh
+  package_gitattributes: shogunate_mod/package/gitattributes
+  package_gitignore: shogunate_mod/package/gitignore
+  package_json: shogunate_mod/package/package.json
+  package_lock: shogunate_mod/package/package-lock.json
+  package_memory_template: shogunate_mod/package/templates/memory/MEMORY.md.sample
+  package_global_context_template: shogunate_mod/package/templates/memory/global_context.md.sample
+  package_npm_cli: shogunate_mod/package/npm_cli.js
+  package_prepublish_check: shogunate_mod/package/prepublish_check.sh
+  package_release_workflow: shogunate_mod/package/workflows/package-release.yml
+  package_requirements: shogunate_mod/package/requirements.txt
+  package_saytask_streaks_template: shogunate_mod/package/templates/saytask/streaks.yaml.sample
+  package_test_workflow: shogunate_mod/package/workflows/test.yml
+  pair_server: shogunate_mod/pair/server.py
+  projects_registry: shogunate_mod/projects/
+  queue_history_book: shogunate_mod/queue/history_book.sh
+  queue_slim_yaml: shogunate_mod/queue/slim_yaml.py
+  queue_slim_yaml_wrapper: shogunate_mod/queue/slim_yaml.sh
+  runtime_android_compat: shogunate_mod/runtime/android_compat.sh
+  runtime_android_tmux_proxy: shogunate_mod/runtime/android_tmux_proxy.py
+  runtime_agent_cli: shogunate_mod/runtime/agent_cli.sh
+  runtime_banner: shogunate_mod/runtime/banner.sh
+  runtime_bootstrap: shogunate_mod/runtime/bootstrap.sh
+  runtime_blocker: shogunate_mod/runtime/blocker.sh
+  runtime_blocker_notice: shogunate_mod/runtime/blocker_notice.py
+  runtime_cli_pref_daemon: shogunate_mod/runtime/cli_pref_daemon.sh
+  runtime_daemon: shogunate_mod/runtime/daemon.sh
+  runtime_departure: shogunate_mod/runtime/departure.sh
+  runtime_directives: shogunate_mod/runtime/directives.sh
+  runtime_entrypoint: shogunate_mod/runtime/entrypoint.sh
+  runtime_env: shogunate_mod/runtime/env.sh
+  runtime_goza: shogunate_mod/runtime/goza.sh
+  runtime_launch: shogunate_mod/runtime/launch.sh
+  runtime_lifecycle: shogunate_mod/runtime/lifecycle.sh
+  runtime_launcher: shogunate_mod/runtime/launcher.sh
+  runtime_loader: shogunate_mod/runtime/load.sh
+  runtime_karo_done_to_shogun_bridge: shogunate_mod/runtime/karo_done_to_shogun_bridge.py
+  runtime_karo_done_to_shogun_bridge_daemon: shogunate_mod/runtime/karo_done_to_shogun_bridge_daemon.sh
+  runtime_mcp_health_check: shogunate_mod/runtime/mcp_health_check.sh
+  runtime_mux_parity_smoke: shogunate_mod/runtime/mux_parity_smoke.sh
+  runtime_options: shogunate_mod/runtime/options.sh
+  runtime_prompts: shogunate_mod/runtime/prompts.sh
+  runtime_shell_launcher: shogunate_mod/runtime/runtime_launcher.sh
+  runtime_shogun_to_karo_bridge: shogunate_mod/runtime/shogun_to_karo_bridge.py
+  runtime_shogun_to_karo_bridge_daemon: shogunate_mod/runtime/shogun_to_karo_bridge_daemon.sh
+  runtime_shutsujin_launcher: shogunate_mod/runtime/shutsujin_launcher.sh
+  runtime_setup_compat: shogunate_mod/runtime/setup_compat.sh
+  runtime_source_smoke: shogunate_mod/runtime/source_smoke.sh
+  runtime_startup: shogunate_mod/runtime/startup.sh
+  runtime_state: shogunate_mod/runtime/state.sh
+  runtime_sync_state: shogunate_mod/runtime/sync_state.py
+  runtime_summary: shogunate_mod/runtime/summary.sh
+  runtime_sync_cli_preferences: shogunate_mod/runtime/sync_cli_preferences.py
+  runtime_topology: shogunate_mod/runtime/topology.sh
+  runtime_upstream_overlay_smoke: shogunate_mod/runtime/upstream_overlay_smoke.sh
+  security_gitleaks: shogunate_mod/security/gitleaks.toml
+  shell_install_aliases: shogunate_mod/shell/install_aliases.sh
+  shell_aliases: shogunate_mod/shell/aliases.sh
+  skills_claude: shogunate_mod/skills/claude/
+  skills_cursor: shogunate_mod/skills/cursor/
+  templates_integration: shogunate_mod/templates/
+  tests_e2e_cases: shogunate_mod/tests/e2e/
+  tests_e2e_fixtures: shogunate_mod/tests/e2e/fixtures/
+  tests_e2e_helpers: shogunate_mod/tests/e2e/helpers/
+  tests_e2e_mock_behaviors: shogunate_mod/tests/e2e/mock_behaviors/
+  tests_e2e_mock_cli: shogunate_mod/tests/e2e/mock_cli.sh
+  tests_fixtures: shogunate_mod/tests/fixtures/
+  tests_helpers: shogunate_mod/tests/helpers/
+  tests_root: shogunate_mod/tests/
+  tests_specs: shogunate_mod/tests/specs/
+  tests_unit_cases: shogunate_mod/tests/unit/
+  status_ratelimit_check: shogunate_mod/status/ratelimit_check.sh
+  topology_adapter: shogunate_mod/topology/adapter.sh
+  transport_agmsg_bridge: shogunate_mod/transport/agmsg_bridge.sh
+  transport_agmsg_setup: shogunate_mod/transport/agmsg_setup.sh
+  update_manager: shogunate_mod/update/manager.py
+  update_stop_and_apply: shogunate_mod/update/stop_and_apply_update.sh
+  update_upstream_sync: shogunate_mod/update/upstream_sync.sh
+  view_focus_agent_pane: shogunate_mod/view/focus_agent_pane.sh
+  view_goza_layout_autosave: shogunate_mod/view/goza_layout_autosave.sh
+  view_goza_no_ma: shogunate_mod/view/goza_no_ma.sh
+  view_dashboard_viewer: shogunate_mod/view/dashboard_viewer.py
+  windows_runtime_launcher: shogunate_mod/windows/runtime_launcher.bat
+  windows_configure_roles_launcher: shogunate_mod/windows/configure_roles.bat
+  windows_shutsujin_clean_launcher: shogunate_mod/windows/shutsujin_clean.bat
+  windows_shutsujin_launcher: shogunate_mod/windows/shutsujin_launcher.bat
+  windows_shutsujin_resume_launcher: shogunate_mod/windows/shutsujin_resume.bat
+  watcher_file_watch: shogunate_mod/watcher/file_watch.sh
+  watcher_supervisor: shogunate_mod/watcher/supervisor.sh
+compatibility_wrappers:
+  - first_setup.sh
+  - setup.sh
+  - bin/shogunate.js
+  - lib/agent_status.sh
+  - lib/agent_registry.sh
+  - lib/branch_policy.sh
+  - lib/cli_adapter.sh
+  - lib/file_watch.sh
+  - lib/inbox_path.sh
+  - lib/ntfy_auth.sh
+  - lib/topology_adapter.sh
+  - scripts/ensure_antigravity_keyring.sh
+  - Shogunate-Configure-Roles.bat
+  - Shogunate-Configure-Roles.command
+  - Shogunate-Configure-Roles.sh
+  - Shogunate-Runtime.command
+  - Shogunate-Runtime.bat
+  - Shogunate-Runtime.sh
+  - shutsujin_departure.sh
+  - Shutsujin.bat
+  - Shutsujin-Clean.bat
+  - Shutsujin-Resume.bat
+  - Shutsujin.sh
+  - scripts/configure_agents.sh
+  - scripts/configure_runtime_roles.py
+  - scripts/sync_opencode_config.py
+  - scripts/switch_cli.sh
+  - scripts/codd_check.sh
+  - scripts/gunkan_codd_audit.py
+  - scripts/gunkan_event_log.py
+  - scripts/gunkan_light_watch.py
+  - scripts/gunkan_emergency_stop.sh
+  - scripts/session_start_hook.sh
+  - scripts/stop_hook_inbox.sh
+  - scripts/agent_status.sh
+  - scripts/android_tmux_proxy.py
+  - scripts/auto_merge_short_lived.sh
+  - scripts/branch_drift_check.sh
+  - scripts/dashboard-viewer.py
+  - scripts/focus_agent_pane.sh
+  - scripts/goza_layout_autosave.sh
+  - scripts/goza_no_ma.sh
+  - scripts/build_instructions.sh
+  - scripts/ensure_generated_instructions.sh
+  - scripts/localapi_repl.py
+  - scripts/history_book.sh
+  - scripts/inbox_watcher.sh
+  - scripts/inbox_write.sh
+  - scripts/mcp_health_check.sh
+  - scripts/mux_parity_smoke.sh
+  - scripts/ntfy.sh
+  - scripts/ntfy_listener.sh
+  - scripts/pre_deploy_verify.sh
+  - scripts/prepublish_check.sh
+  - scripts/karo_done_to_shogun_bridge.py
+  - scripts/karo_done_to_shogun_bridge_daemon.sh
+  - scripts/runtime_blocker_notice.py
+  - scripts/runtime_cli_pref_daemon.sh
+  - scripts/ratelimit_check.sh
+  - scripts/setup_cron.sh
+  - scripts/sync_runtime_cli_preferences.py
+  - scripts/shogun_to_karo_bridge.py
+  - scripts/shogun_to_karo_bridge_daemon.sh
+  - scripts/shogunate_package_bootstrap.sh
+  - scripts/shogunate_pair_server.py
+  - scripts/slim_yaml.py
+  - scripts/slim_yaml.sh
+  - scripts/stop_and_apply_update.sh
+  - scripts/upstream_sync.sh
+  - scripts/update_manager.py
+  - scripts/install_shell_aliases.sh
+  - scripts/shell_aliases.sh
+  - scripts/watcher_supervisor.sh
+current_core_touchpoints:
+  - path: instructions/
+    reason: "Generated prompt outputs and root compatibility copies remain at historical paths consumed by CLI adapters and docs."
+    next_step: "Keep Shogunate prompt source ownership in shogunate_mod/instructions/source and keep root instructions limited to generated/compatibility outputs."
+  - path: .opencode/agents/
+    reason: "OpenCode agent definitions are generated root files consumed directly by OpenCode."
+    next_step: "Keep generated outputs at the OpenCode-required root path while retaining source templates, generation rules, and freshness checks in shogunate_mod/instructions."
+  - path: .opencode/tools/
+    reason: "OpenCode loads custom tools from this root path, while the Shogunate inbox state updater implementation is MOD-owned."
+    next_step: "Keep root OpenCode tools synchronized as compatibility copies of shogunate_mod/opencode/tools/."
+  - path: AGENTS.md
+    reason: "Codex auto-load file is generated at the repository root and differs from upstream guidance."
+    next_step: "Keep generated output at root, but keep generation rules and freshness checks in shogunate_mod/instructions."
+  - path: README.md / README_ja.md
+    reason: "GitHub and npm display these root docs, while Shogunate package install, cURL, cwd-first, and Pair guidance is MOD-owned."
+    next_step: "Keep root README files synchronized as compatibility copies of shogunate_mod/docs/README*.md."
+  - path: CHANGELOG.md / CONTRIBUTING.md / SECURITY.md
+    reason: "GitHub and package consumers read these root community docs, while Shogunate release notes, contribution rules, and security guidance are MOD-owned."
+    next_step: "Keep root community docs synchronized as compatibility copies of shogunate_mod/docs/."
+  - path: LICENSE
+    reason: "Repository and package consumers expect the upstream-compatible license text at the root."
+    next_step: "Keep LICENSE as a root public metadata file unless upstream changes require a deliberate license review."
+  - path: docs/philosophy.md
+    reason: "Design philosophy documentation remains at the historical root docs path, while Shogunate-specific doctrine is MOD-owned."
+    next_step: "Keep root docs/philosophy.md synchronized as a compatibility copy of shogunate_mod/docs/philosophy.md."
+  - path: CLAUDE.md
+    reason: "Claude Code auto-loads this root path, but Shogunate guidance source is now mirrored in shogunate_mod/instructions/autoload."
+    next_step: "Keep root CLAUDE.md synchronized as a compatibility copy of shogunate_mod/instructions/autoload/CLAUDE.md."
+  - path: .claude/settings.json
+    reason: "Claude Code reads hook and spinner settings from this root path, while the Shogunate hook settings are MOD-owned."
+    next_step: "Keep root .claude/settings.json synchronized as a compatibility copy of shogunate_mod/hooks/claude_settings.json."
+  - path: .github/copilot-instructions.md
+    reason: "Copilot auto-load file is generated at the GitHub-required root path."
+    next_step: "Keep generated output at root, but keep generation rules and freshness checks in shogunate_mod/instructions."
+  - path: agents/default/
+    reason: "Kimi K2 auto-load files are generated at this root path, while Shogunate guidance source is MOD-owned."
+    next_step: "Keep generated output at root, but keep generation rules and freshness checks in shogunate_mod/instructions."
+  - path: android/
+    reason: "Android Studio / Gradle workflows use this root project path, while Shogunate Android source is MOD-owned."
+    next_step: "Keep root android/ synchronized as the compatibility working tree for shogunate_mod/mobile/android/."
+  - path: .github/workflows/
+    reason: "GitHub Actions requires active workflow files at this root path, while Shogunate workflow sources are MOD-owned."
+    next_step: "Keep root workflows synchronized as compatibility copies of shogunate_mod/package/workflows/, but keep workflow files out of runtime release archives."
+  - path: .github/FUNDING.yml
+    reason: "GitHub reads funding metadata from this root path, while Shogunate repository metadata is MOD-owned."
+    next_step: "Keep root funding metadata synchronized as a compatibility copy of shogunate_mod/github/FUNDING.yml, but keep funding metadata out of runtime release archives."
+  - path: .gitmodules
+    reason: "Git reads submodule metadata from this root path, while Shogunate development dependency metadata is MOD-owned."
+    next_step: "Keep root .gitmodules synchronized as a compatibility copy of shogunate_mod/development/gitmodules, but keep development submodule metadata out of runtime release archives."
+  - path: .gitattributes
+    reason: "Git archive release packaging reads export-ignore and line-ending rules from this root path, while Shogunate package boundary rules are MOD-owned."
+    next_step: "Keep root .gitattributes synchronized as a compatibility copy of shogunate_mod/package/gitattributes, but keep Git packaging metadata out of runtime release archives."
+  - path: .gitignore
+    reason: "Git ignore rules for MOD source whitelists and local runtime state are read from this root path, while the Shogunate package boundary policy is MOD-owned."
+    next_step: "Keep root .gitignore synchronized as a compatibility copy of shogunate_mod/package/gitignore, but keep Git ignore metadata out of runtime release archives."
+  - path: .gitleaks.toml
+    reason: "Secret scanning tools expect this root config path, while Shogunate-specific allowlists and custom secret rules are MOD-owned."
+    next_step: "Keep root .gitleaks.toml synchronized as a compatibility copy of shogunate_mod/security/gitleaks.toml."
+  - path: package.json / package-lock.json / requirements.txt
+    reason: "npm and Python tooling require package metadata/dependency files at the repository root, while the Shogunate package metadata source is MOD-owned."
+    next_step: "Keep root package.json, package-lock.json, and requirements.txt synchronized as compatibility copies of shogunate_mod/package/package*.json and shogunate_mod/package/requirements.txt; keep package-lock files out of runtime release archives."
+  - path: memory/ and saytask/
+    reason: "User runtime state stays at the historical root paths, while first setup templates are MOD-owned."
+    next_step: "Keep root sample files synchronized as compatibility copies of shogunate_mod/package/templates and keep generated private state ignored."
+  - path: images/ and reports/
+    reason: "Historical docs/demo assets and an empty root reports scaffold are not part of the runtime package surface."
+    next_step: "Keep them out of release archives with export-ignore unless a future docs package explicitly needs them."
+  - path: config/
+    reason: "Tracked root config defaults remain at historical tool-facing paths, while local user runtime settings remain ignored and Shogunate config sources are MOD-owned."
+    next_step: "Keep tracked root config defaults synchronized as compatibility copies of shogunate_mod/configure and shogunate_mod/notify sources; keep config/settings.yaml and config/projects.yaml local/runtime."
+  - path: context/
+    reason: "Project context files remain user/runtime state at the historical root path, while the context directory guide is MOD-owned."
+    next_step: "Keep root context/README.md synchronized as a compatibility copy of shogunate_mod/context/README.md; keep project-specific context files local/runtime."
+  - path: Makefile
+    reason: "make reads the default development command surface from the repository root, while Shogunate-specific build/test/CoDD targets are MOD-owned."
+    next_step: "Keep root Makefile synchronized as a compatibility copy of shogunate_mod/development/Makefile."
+  - path: .codd/codd.yaml
+    reason: "CoDD tooling expects this root config path, but the Shogunate-specific config source is MOD-owned."
+    next_step: "Keep this compatibility copy synchronized with shogunate_mod/gunkan/codd.yaml."
+  - path: docs/codd/
+    reason: "CoDD frontmatter/design docs remain under root docs for readers and graph tooling, while Gunkan/CoDD design content is MOD-owned."
+    next_step: "Keep root docs/codd synchronized as compatibility copies of shogunate_mod/gunkan/docs/."
+  - path: docs/AGMSG_BRIDGE_DESIGN.md
+    reason: "The agmsg transport bridge design and verification record stays under root docs for readers, while the bridge design source is MOD-owned next to the transport implementation."
+    next_step: "Keep root docs/AGMSG_BRIDGE_DESIGN.md synchronized as a compatibility copy of shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md."
+  - path: skills/ and .cursor/skills/
+    reason: "Claude Code and Cursor load skills from root-compatible paths, while Shogunate skill sources are MOD-owned."
+    next_step: "Keep root skill directories synchronized as compatibility copies of shogunate_mod/skills/."
+  - path: templates/
+    reason: "Karo integration instructions reference the historical root templates path, while the reusable integration templates are Shogunate-owned."
+    next_step: "Keep root templates synchronized as compatibility copies of shogunate_mod/templates/."
+  - path: tests/
+    reason: "Root test runners consume top-level, unit, and E2E test paths directly, while Shogunate-specific test behavior is MOD-owned."
+    next_step: "Keep root tests synchronized as compatibility copies of shogunate_mod/tests/, but keep both test trees out of runtime npm packages and release archives."
+target_direction:
+  - "Keep upstream-like runtime entrypoints thin."
+  - "Move Shogunate-only behavior into shogunate_mod/ first."
+  - "Leave compatibility wrappers at historical paths."

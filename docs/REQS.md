@@ -1,7 +1,415 @@
 # Requirements (Normalized)
 
-最終更新: 2026-05-25
+最終更新: 2026-06-27
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
+
+## 追補（2026-06-23: Shogunate 本体の登録済み project）
+
+### 要求
+
+1. Shogunate 本体に「登録済み project」の概念を持たせる。
+2. `cd <project> && shogunate` の cwd-first 導線は維持しつつ、よく使う project を登録・一覧・選択・削除できる。
+3. `shogunate --project @name` や `shogunate open name` で登録済み project を選んで起動できる。
+4. Android app の戦場タブで開いた remote project は、host 側 `shogunate` が対応していれば同じ registry に同期する。
+5. registry は package install / npm wrapper / manifest / README に含まれ、配布物から落ちない。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate projects add DIR --name NAME --select`、`shogunate projects`、`shogunate projects current`、`shogunate projects remove NAME` が使える。
+2. `shogunate --project @NAME where` は登録済み project の runtime/session 情報を表示する。
+3. `shogunate open NAME` は登録済み project を選択し、その project runtime を resume 起動する。
+4. registry の正本は `shogunate_mod/projects/` で、package `files` と `manifest.yaml` に含まれる。
+5. package distribution contract と registry direct smoke が PASS する。
+
+## 追補（2026-06-23: Shogunate App向け本体API）
+
+### 要求
+
+1. スマホ/デスクトップアプリは、SSH shell で `cd` したり tmux pane 名を推測したりせず、Shogunate 本体の安定APIを使う。
+2. 本体APIは「接続先PC -> 登録済みprojectの戦場 -> app会話session -> 話しかける役職」という階層に合う。
+3. 登録済みprojectごとの遠隔起動、遠隔終了、起動状況、役職一覧、会話session一覧、新規session作成、transcript取得、役職への送信を提供する。
+4. 既存の `cd <project> && shogunate` と `shogunate projects` は維持する。
+5. APIは package install / npm wrapper / manifest / README に含まれ、Android/desktop appから同じコマンドを使える。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate app capabilities --json` が host と対応機能を返す。
+2. `shogunate battlefield list --json` が登録済みprojectごとの status / runtime / app session summary を返す。
+3. `shogunate battlefield start NAME --resume` と `--new` が、登録済みprojectを対象に起動し、app session を作る。
+4. `shogunate battlefield stop NAME` が対象projectの Shogunate tmux session / daemon session を停止できる。
+5. `shogunate battlefield send NAME --role shogun "..."` が対象runtimeの inbox に送信し、app transcript に user message を残す。
+6. `shogunate battlefield roles NAME --json`、`sessions NAME --json`、`transcript NAME --json` が app UI 用の情報を返す。
+
+## 追補（2026-06-26: 外出先からの停止中操作）
+
+### 要求
+
+1. スマホ/デスクトップアプリは、SSH 接続さえできれば Shogunate runtime が停止中でも登録済み project、app 会話 session、transcript を見られる。
+2. 停止中に role へ送信した message は失敗で終わらせず、app 側 pending message として保存する。
+3. 外出先から `start` したとき、または `send --start` したとき、保存済み pending message を対象 runtime の inbox へ配送する。
+4. この機能は HTTP 常駐サーバを新設せず、既存の SSH 経由 `shogunate battlefield/app` JSON API を軽量な操作面として使う。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate battlefield list --json` / `sessions NAME --json` / `transcript NAME --json` は対象 runtime が停止中でも成功する。
+2. `shogunate battlefield send NAME --role shogun "..." --json` は停止中なら pending として保存し、JSON に `queued: true` を返す。
+3. `shogunate battlefield outbox NAME --json` で pending message 数と内容を確認できる。
+4. `shogunate battlefield start NAME --resume --json` は起動後に pending message の配送を試み、結果を JSON に含める。
+5. `shogunate battlefield send NAME --role shogun "..." --start --json` は停止中 runtime を resume 起動してから配送できる。
+
+## 追補（2026-06-24: Android app 司令台への作り直し）
+
+### 要求
+
+1. Android app は単体の将軍pane管理専用ではなく、接続先PC上の登録済み Shogunate project を一覧管理する「司令台」を入口にする。
+2. 司令台は `shogunate app capabilities --json` と `shogunate battlefield ... --json` を使い、app側が tmux pane 名や起動コマンド詳細を推測しない。
+3. 司令台から、登録済みprojectの表示、遠隔project登録、続きから起動、新規起動、終了、会話session選択/作成、役職選択、役職への送信、transcript表示を扱える。
+4. 下タブは `司令台 / 将軍 / エージェント / 戦況 / 設定` とし、起動直後は司令台を表示する。
+5. root Android source と `shogunate_mod/mobile/android` の MOD canonical copy を同期する。
+
+### 受け入れ条件（観測可能）
+
+1. `BattlefieldScreen` が司令台として Host -> Battlefield(project) -> App Session -> Role Chat の階層を表示する。
+2. `BattlefieldViewModel` が Shogunate App API 経由で project list / role list / session list / transcript を取得し、start/stop/send/session-create を実行する。
+3. `cd android && ./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process -Pkotlin.compiler.execution.strategy=in-process testDebugUnitTest assembleDebug` が PASS する。
+4. Android root / MOD copy の同期契約テスト `test_android_source_has_mod_canonical_copy` が PASS する。
+
+## 追補（2026-06-26: Android app 複数PCオンライン表示）
+
+### 要求
+
+1. 複数PCに Shogunate が入っている場合、Android app の司令台で保存済みPCを一覧表示する。
+2. 各PCについて、SSH接続できるかどうかを生存チェックし、オンライン/オフラインを表示する。
+3. オンラインPCでは、そのPCに登録済みの Shogunate project を表示する。
+4. project の起動、終了、会話session、role送信は、選択したprojectが属するPCへ接続してから実行する。
+5. 別PCへ切り替えるとき、既存SSHセッションが生きていても接続先が違えば張り替える。
+
+### 受け入れ条件（観測可能）
+
+1. 司令台に `PC` 一覧があり、各PCのオンライン/オフライン、SSH接続先、project数が表示される。
+2. `生存チェック` で選択中PCのSSH到達性を確認できる。
+3. `戦場` 一覧は選択中PCのprojectだけを表示する。
+4. `SshManager.connect()` は host / port / user が変わった場合、既存接続を使い回さず再接続する。
+5. Android unit/build と Android root/MOD copy contract が PASS する。
+
+## 追補（2026-06-23: Android app 複数陣営管理）
+
+### 要求
+
+1. Android app は SSH 接続できるだけでなく、複数の Shogunate runtime / project を「陣営」として保存・切替できる。
+2. 陣営は host / port / user / key path / project path / shogun target / agents target を1セットとして扱う。
+3. `shogunate pair` で接続成功した場合も、返却された project 固有 target を陣営として保存し、並列 Shogunate の別 project へ誤接続しない。
+4. 既存のワンタッチ接続、USB/無線切替、Pair fallback、マニュアル設定、dashboard/agent target 診断は維持する。
+5. root Android source と `shogunate_mod/mobile/android` の MOD canonical copy を同期する。
+
+### 受け入れ条件（観測可能）
+
+1. 設定画面に陣営名入力と保存済み陣営一覧があり、選択すると接続設定欄へ反映される。
+2. 既存単一接続設定は初回利用時に陣営プロファイルへ移行される。
+3. 新しい host / port / user / project の組み合わせは別陣営として保存され、同じ組み合わせの更新では既存陣営名を保持する。
+4. `cd android && ./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process -Pkotlin.compiler.execution.strategy=in-process testDebugUnitTest assembleDebug` が PASS する。
+5. Android root / MOD copy の同期契約テスト `test_android_source_has_mod_canonical_copy` が PASS する。
+
+## 追補（2026-06-23: Android app 戦場タブ）
+
+### 要求
+
+1. Android app の下タブを 4 から 5 にし、`戦場` タブを追加する。
+2. `戦場` では遠隔PC上の既存 project path を開ける。
+3. 一度開いた project は履歴として記録し、再選択できる。
+4. 選択した project で、遠隔PC側の Shogunate を起動できる。
+5. 起動した project は陣営プロファイルにも反映し、将軍/エージェント/戦況タブがその project を使えるようにする。
+
+### 受け入れ条件（観測可能）
+
+1. OnePlus 実機の下タブに `将軍 / 戦場 / エージェント / 戦況 / 設定` が表示される。
+2. `戦場` タブで project path、`開く`、`起動`、履歴一覧が表示される。
+3. `開く` は SSH 経由で remote directory の存在確認を行い、成功した path を履歴へ保存する。
+4. `起動` は SSH 経由で remote project 内の Shogunate を resume/no-attach 起動し、成功時に session を表示する。
+5. 非ログイン SSH の PATH でも `~/.local/bin` と nvm の node bin を探索し、起動直後の `not found` / unknown command は成功扱いしない。
+6. Android unit/build、Android root/MOD copy contract、OnePlus USB実機 install/起動/戦場タブ操作が PASS する。
+
+## 追補（2026-06-22: 長時間安定性の実機E2E）
+
+### 要求
+
+1. Smoke ではなく、実AI CLIを載せた Shogunate runtime に複雑で大きめのタスクを与え、長時間安定性を観察する。
+2. 既存 repo や secrets を壊さないよう、隔離 target project と専用 tmux session で実施する。
+3. 観察対象は、pane ready、bootstrap、watcher wakeup、command/task/report/dashboard/Gunkan audit 同期、成果物生成、途中停止・詰まり・誤通知の有無とする。
+4. 問題が出た場合は、原因を特定し、修正できるものは修正し、再発防止テストまたは観測手順を残す。
+
+## 追補（2026-06-26: MacAir Test folder 全Codex実機E2E）
+
+### 要求
+
+1. MacAir の `/Users/fishorduck/projects/Test` を対象に Shogunate を起動する。
+2. Shogun / Gunkan / Gunshi / Karo / Ashigaru1-4 の全役職を Codex CLI に揃える。
+3. 実AI CLIを使って、テストプロジェクト作成タスクを実行させる。
+4. Mac環境で runtime / watcher / inbox / dashboard / command-task-report flow が破綻しないか観察する。
+5. 可能な範囲で長時間駆動を観察し、停止・詰まり・誤通知・成果物生成の有無を記録する。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate battlefield status test --json` で全 role が `cli: codex` として表示される。
+2. `/Users/fishorduck/projects/Test` の runtime が running になり、8 role が検出される。
+3. Shogun に実タスクを投入し、target project に複数ファイル成果物が生成される。
+4. 30分程度の観察で tmux session / daemon / watcher が落ちない、または落ちた場合は原因を説明できる。
+5. 結果と残リスクを ExecPlan に記録する。
+6. Gunkan 監査が失敗した場合、Karo へ修正差配されるか、足軽 report 更新後に Gunkan 再監査へ進み、command が詰まったままにならない。
+7. macOS の非ログイン shell / system Python から Gunkan audit が起動しても、Shogunate venv の PyYAML を検出して監査を継続できる。
+
+## 追補（2026-06-26: 修正後構成のMacAir/このPC二重検証）
+
+### 要求
+
+1. 修正後の Shogunate package/runtime 構成を MacAir に再導入し、既存 `test` battlefield で実機確認する。
+2. 同じ構成をこのPCのWSL環境にも導入し、隔離された test project で実機確認する。
+3. どちらも実AI CLI / tmux / watcher / runtime-sync / Gunkan audit を観察し、起動・配送・監査・復旧に関するバグを掘る。
+4. 見つかったバグは原因を切り分け、低リスクに直せるものはMOD側で修正し、再発防止テストまたは実機再確認を残す。
+5. 短時間probe後も、MacAir とこのPCの両方で30分以上の継続監視を行い、runtime / daemon / role process / queue が自然停止しないか確認する。
+
+### 受け入れ条件（観測可能）
+
+1. MacAir で package 再導入後、`test` battlefield が running になり、Codex 8 role / daemon 14 windows / inbox watcher 8 が確認できる。
+2. MacAir で短い追加命令または既存成果物の確認を投げ、Shogun/Karo/Gunkan の inbox が詰まらないことを確認する。
+3. このPCで package 再導入後、隔離 test project を登録・起動し、runtime / daemon / watcher が立ち上がる。
+4. このPCでも `codd_audit.py` の venv self re-exec と runtime-sync 再監査契約が動くことを確認する。
+5. 検証ログ、見つかったバグ、修正、残リスクを ExecPlan に記録する。
+6. MacAir とこのPCの同時soakで、少なくとも30分以上 runtime が running のまま、daemon 14 windows、8 role、実CLI表示が維持されることを確認する。
+
+## 追補（2026-06-27: stress bug hunt）
+
+### 要求
+
+1. 30分soakで安定確認した状態から、段階的に負荷を上げて Shogunate のバグを掘る。
+2. 対象はこのPCの `dual-probe` と MacAir の `test` を中心にし、既存ユーザーprojectや secrets を壊さない。
+3. 負荷は API 連打、status/list/roles/sessions/transcript の反復、停止中 outbox / start / resume、queue 異常入力、runtime daemon / watcher の再起動耐性、実AI role への小さな連続指示の順で上げる。
+4. 見つかったバグは原因を切り分け、MOD側で小さく修正し、再発防止テストまたは実機再確認を残す。
+5. 実AIに大きなトークン消費をさせる前に、非LLM/API/queue層で再現できる問題を優先して潰す。
+
+### 受け入れ条件（観測可能）
+
+1. stress 実施中も、対象 runtime の role 数、daemon windows、pending messages、inbox unread、command tail が説明可能な状態に保たれる。
+2. `shogunate battlefield status/list/roles/sessions/transcript/outbox` の反復実行が JSON 破損や例外で落ちない。
+3. 停止中 send / start / resume / pending delivery の契約が、少なくとも隔離projectで破綻しない。
+4. queue 異常入力や古い report で runtime-sync / Gunkan audit が停止せず、必要なら review / audit_failed へ説明可能に遷移する。
+5. 発見事項、修正、検証、残リスクを ExecPlan / WORKLOG に記録する。
+
+### 受け入れ条件（観測可能）
+
+1. 実AI混在構成で runtime が起動し、対象 pane が ready になる。
+2. 将軍へ大きめの開発タスクを投入し、target project 内に複数ファイルの成果物が生成される。
+3. queue の command/task/report/dashboard が矛盾なく進む、または停止した場合は停止箇所と原因を説明できる。
+4. 少なくとも30分以上、可能なら60分程度の観察で、watcher / bridge / sync daemon が落ちていないことを確認する。
+5. テスト結果、未確認範囲、残リスクを ExecPlan に記録する。
+
+## 追補（2026-06-22: 長時間E2E後の安定性改善）
+
+### 要求
+
+1. 長時間E2Eで見つかった実利用上の詰まりを、非エンジニアにも分かる形で改善する。
+2. Gunkan light watch は target project 内成果物を runtime root 基準で誤検知しない。
+3. Codex の初動命令・長文命令 paste が composer に残った場合、自動で Enter 追送または分かる通知を行う。
+4. 起動時 ready 表示は実際の role pane 数と一致させる。
+5. Antigravity の作業後 feedback prompt は自動 skip し、次の指示を塞がない。
+6. Karo などが長時間 `Working` のままでも、runtime が進行中なのか詰まりなのかを dashboard / runtime notice で観測できる。
+
+### 受け入れ条件（観測可能）
+
+1. artifact path が `target-project/app.js` のような target project 相対表現でも、実在する場合は Gunkan light watch が欠落扱いしない。
+2. Codex pane に pasted content / 初動命令が残ったとき、watcher または bootstrap retry が Enter を追送する契約テストがある。
+3. 8 role pane 構成では起動ログ上の ready count も 8 件基準になる。
+4. Antigravity feedback prompt を `0` でskipする契約テストがある。
+5. 長時間 busy pane の状態が `queue/runtime` または dashboard notice へ記録され、ユーザーが「生きているが作業中」と判断できる。
+
+## 追補（2026-06-22: Shogunate App 構想）
+
+### 要求
+
+1. 現行Androidアプリを置き換える新しい `Shogunate App` を設計する。
+2. 対象は Windows / Linux / macOS / Android とする。
+3. Codex App のように、チャット、実行状況、成果物、接続先、セッションを扱える体験を、Shogunate 経由で任意の対応AIエージェントへ提供する。
+4. 特定AI CLI専用ではなく、Codex / Claude / OpenCode / Antigravity などを Shogunate の role / agent abstraction 経由で扱う。
+5. 既存の Pair / SSH / tmux / dashboard / agent target 機能は失わず、desktop/mobile 共通の接続・セッションモデルへ整理する。
+6. 既存Android app のテスト・ビルドを確認し、壊れている箇所があれば小さく修正する。
+7. テストと修正が終わったら、結果を報告し、設計上の確認質問をユーザーへ出す。
+
+### 受け入れ条件（初期設計フェーズ）
+
+1. 既存Android app の機能棚卸し、残す機能、置き換える機能が ExecPlan に整理されている。
+2. Windows / Linux / macOS / Android の共通アーキテクチャ案があり、接続方式、UI、runtime API 境界、配布方針が説明されている。
+3. 既存Android app の unit/build check を実行し、失敗があれば原因と修正結果を記録する。
+4. すぐ実装する範囲と、ユーザー判断が必要な設計選択が分かれている。
+
+## 追補（2026-06-21: Optimization / role / CLI harnesses をMOD側に実装）
+
+### 要求
+
+1. 最適化処理は自動編集ではなく、Shogunate の役職境界を守った advisory harness として実装する。
+2. Shogunate が対応する AI CLI（Claude / Codex / Copilot / Kimi / Antigravity / Cursor / LocalAPI / OpenCode / Kilo）ごとに、公式・現行運用に沿った CLI harness を用意する。
+3. Shogun / Karo / Ashigaru / Gunshi / Gunkan の各 role harness を、最新の agentic coding best practices に合わせて MOD 側正本として追加する。
+4. 生成 instruction と OpenCode agent 定義は、MOD 側 harness を含む。
+5. Gunkan はセキュリティ監査・違反監視に加え、明示依頼または監査中の重大リスクに限って最適化助言を出せる。ただし足軽への直接割当や自動編集はしない。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate_mod/instructions/source/harnesses/` に common / role / CLI harness が存在する。
+2. `bash scripts/build_instructions.sh` 後、`instructions/generated/*` に `Shogunate Role Harness`、`Optimization Advisory Harness`、該当 role harness、該当 CLI harness が含まれる。
+3. `.opencode/agents/*.md` にも OpenCode 用 harness が含まれる。
+4. `codex-gunkan.md` は `optimization_requested` と structured optimization advisory を説明する。
+5. role harness は侍・戦国 persona を維持しつつ、command / task / report / advice / audit packet と検証証跡を明示する。
+6. build system の Bats test が、全 CLI / role harness と persona / packet discipline の生成契約を検証する。
+
+### 実機検証追補（2026-06-21）
+
+1. Harness refresh 後の generated instruction が、実機の source checkout / package / Android / tmux runtime 導線で破綻しないことを確認する。
+2. 可能な範囲で実Android端末、実tmux session、実AI CLIの存在を使って確認する。
+3. 失敗した検証は、原因、影響、次の修正対象を明記する。
+
+## 追補（2026-06-21: runtime同期最適化をMOD側に実装）
+
+### 要求
+
+1. 実AI runtime検証で再現した同期不整合を、Shogunate MOD側の機能として修正する。
+2. `karo_done_to_shogun_bridge` は通常運転で active command queue のみを完了通知対象にし、古い archive の同一 `cmd_id` を現在の完了として誤通知しない。
+3. 足軽reportが揃ったら、MOD側runtime同期が task status / command status / dashboard / Gunkan監査依頼を揃える。
+4. Gunkan最終監査reportが返った後に command を `done` にし、将軍への `cmd_done` 通知bridgeへ渡す。
+5. archive参照が必要な互換運用は明示環境変数でのみ有効にする。
+
+### 受け入れ条件（観測可能）
+
+1. active queue にない archive の `done` command は既定では `cmd_done` として将軍inboxへ送られない。
+2. `MAS_KARO_DONE_INCLUDE_ARCHIVE=1` を指定した場合だけ、従来どおり archive 側の完了通知を扱える。
+3. active command の足軽reportが全て `done` のとき、runtime同期は該当 task を `done` に更新し、command を `audit_requested` にし、Gunkan inboxへ `audit_requested` を1回だけ送る。
+4. `queue/reports/gunkan_report.yaml` に同じ `parent_cmd` の `passed` / `warn` / `done` report があると、runtime同期は command を `done` にし、dashboardの戦果へ反映する。
+5. 追加・変更した同期処理は `shogunate_mod/` を正本にし、daemon起動もMOD側実装を参照する。
+
+## 追補（2026-06-20: Android UI 実機E2E完走）
+
+### 要求
+
+1. 実Android端末のアプリUIで「接続」ボタンを押し、初回Pair、SSH接続、tmux target確認、dashboard表示まで確認する。
+2. 実AI runtimeにAndroidアプリから命令を送り、Shogun→Karo→Ashigaruの実役職paneを通って target project に成果物が生成されることを確認する。
+3. 実機E2Eで見つかったUI状態同期、ADB duplicate、役職優先順位の問題は修正し、回帰テストまたは再実機確認で証明する。
+
+### 受け入れ条件（観測可能）
+
+1. Android設定画面に `Pair: OK`、`接続: OK`、`tmux: OK`、`Project: OK`、`将軍 target: OK`、`エージェント target: OK`、`dashboard.md: OK` が表示される。
+2. Android戦況タブのWebViewに `dashboard.md` が表示され、完了した実タスクが戦果欄に表示される。
+3. Android将軍タブから送った命令が target project 内の成果物を作り、成果物内容をローカルファイルとdashboardの両方で確認できる。
+4. Pair成功後の返却設定は画面上の接続stateにも反映され、同じ画面で再接続しても空のuser/keyで上書きしない。
+5. ADBに同じ端末がUSBとWireless Debuggingの2件で見える場合でも、USB候補が1件なら `shogunate pair` はUSB reverseを張れる。
+
+## 追補（2026-06-20: 実機・本物AI検証）
+
+### 要求
+
+1. Smoke / mock だけではなく、本物の AI CLI と実端末を使って Shogunate の実利用可否を精査する。
+2. 実AI検証は隔離 project で行い、repo 本体や secrets を壊さない。認証 token、秘密鍵、credential file の内容は読まない・出力しない。
+3. Android は実機に debug APK を入れ、可能な範囲で Pair / SSH / dashboard 操作まで確認する。
+4. 完了時は、通った実機検証、未確認範囲、実利用上の残リスクを明記する。
+
+### 受け入れ条件（観測可能）
+
+1. 少なくとも1つの本物AI CLIを実行し、mockではない応答または成果物生成を確認する。
+2. Shogunate runtime を隔離 project で起動し、実AI CLI を役職 pane へ載せられることを確認する。
+3. 実AIに小タスクを渡し、隔離 project 内に期待成果物が生成または更新されることを確認する。
+4. 実Android端末で APK install / app 起動を確認し、接続系は可能な範囲で Pair / SSH / dashboard target まで確認する。
+5. 実機E2Eで再現したバグは、修正できるものは修正し、残る場合は「完了」としない。
+
+## 追補（2026-06-20: 本家差し替え耐性）
+
+### 要求
+
+1. 本家 `yohey-w/multi-agent-shogun` の `upstream/main` を差し替え更新しても、Shogunate MOD overlay が既存機能を維持できる構造を目指す。
+2. Shogunate-only 実装は `shogunate_mod/` を正本にし、root 側は本家 core、互換 wrapper、CLI/Android/GitHub が要求する同期・生成 surface に限定する。
+3. 完了判定は、manifest 分類だけでなく、実際の upstream core worktree に MOD と互換 wrapper だけを重ねた runtime 起動で確認する。
+4. 実機利用してよい水準に近づけるため、cURL package、source runtime、Android build/unit、可能な場合は Android 実機インストール/起動も確認する。
+
+### 受け入れ条件（観測可能）
+
+1. `make upstream-overlay-smoke` が PASS し、`upstream/main` worktree 上で `shogunate_mod/` と manifest `compatibility_wrappers` だけを overlay して Shogunate runtime が起動する。
+2. overlay 直後、runtime 起動前の upstream worktree の変更は `shogunate_mod/` と manifest `compatibility_wrappers` に限定される。
+3. overlay runtime smoke で tmux session / Goza / shogun・gunkan・karo・gunshi・ashigaru pane / `agent_cli.tsv` / dashboard / Gunkan queue/report が確認できる。
+4. `make mod-check` は `structure-check` の後に `upstream-overlay-smoke` を実行し、その後 package / cURL / source runtime / Android を確認する。
+5. 本家差し替え検証、package配布検証、runtime検証、Android検証のいずれかで再現バグが残る場合は「Goal完了」としない。
+
+## 追補（2026-06-20: 安定動作最優先）
+
+### 要求
+
+1. repo 構造は「本家 Shogun core + Shogunate MOD」に寄せるが、構造分離そのものよりも、実際に Shogunate が正常動作することを最優先にする。
+2. Shogunate 独自処理を MOD 側正本へ移す場合も、既存の cURL / npm / package install / cwd-first runtime / Android Pair / Gunkan / watcher / update / docs 導線を退行させない。
+3. 完了時は、実施した検証、残リスク、未検証範囲を報告し、その時点で作業を停止する。
+
+### 受け入れ条件（観測可能）
+
+1. `make structure-check` が PASS し、root 側に残る Shogunate surface が MOD wrapper または明示された互換 touchpoint だけであることを確認できる。
+2. `make package-check` が clean `HEAD` で PASS し、package distribution contract / MOD behavior unit tests / generated freshness / dirty gate が通る。
+3. source checkout runtime smoke またはそれ以上の runtime 実行検証で、MOD runtime entrypoint から tmux session / Goza / role panes / runtime metadata / queue 初期化が成立する。
+4. Android app は少なくとも `testDebugUnitTest assembleDebug` が PASS し、Pair server unit tests が Pair 成功・SSH destination 返却・成功後停止を確認する。
+5. cURL release archive / npm package / root compatibility wrapper の代表コマンドが直接実行でき、MOD 正本への委譲が contract で守られている。
+6. 完了報告時点で、再現済みの未修正バグまたは高リスク未検証導線が残っている場合は「完了」としない。
+
+## 追補（2026-06-16: cwd-first project runtime / parallel Shogunate）
+
+### 要求
+
+1. Codex / opencode と同じように、ユーザーが作業したいディレクトリへ `cd` してから `shogunate` を実行できるようにする。
+2. package install された Shogunate 本体は engine として `~/.shogunate/shogunate` に残し、実行対象 project と runtime state を分離する。
+3. `shogunate`, `shogunate clean`, `shogunate resume`, `shogunate attach`, `shogunate configure`, `shogunate pair` は既定で呼び出し元 cwd を project として扱う。
+4. 複数 project で同時に Shogunate を起動しても、tmux session、queue、logs、dashboard、runtime metadata が混ざらないようにする。
+5. `shogunate --project /path/to/project ...` または command 後の `--project /path/to/project` で対象 project を明示できる。
+6. Android Pair は USB / wireless とも、呼び出し元 project に対応する runtime へ接続できるようにする。
+7. 既存の source checkout 開発導線は壊さず、package 導線を cwd-first の正本にする。
+8. 非エンジニアでも現在の project / runtime / engine / tmux session を確認できる導線を用意する。
+9. Android app は Pair 後に project 固有の tmux target を保存し、並列 Shogunate の別 project へ誤接続しない。
+10. スモークだけでなく、可能な範囲で実機 runtime / Android build / 接続系の動作確認を行う。
+
+### 制約
+
+1. `main` / `master` へ直接 push しない。
+2. Shogunate 本体更新と project runtime の状態を混ぜない。
+3. secrets、SSH 秘密鍵、認証 token の内容は読まない・出力しない。
+4. 既存の Android app は `project` response を `dashboard.md` / screenshot upload 用に使うため、Pair response の互換性を維持する。
+
+### 受け入れ条件（観測可能）
+
+1. `cd /path/to/project && shogunate` は `/path/to/project` を target project として表示し、project 固有の runtime copy / tmux session 名を使う。
+2. 異なる 2 つの project から起動した場合、session 名が衝突せず、`queue/runtime` も別々になる。
+3. `shogunate attach` は同じ project から実行すると、その project の session へ attach する。
+4. `shogunate pair` は同じ project の runtime を起動し、Android app には runtime root を `project` として返しつつ、target project 情報も response に含める。
+5. `shogunate where` は project、runtime、engine、session を表示する。
+6. Android app は Pair response の `shogun` / `agents` を保存し、Pair response の `target_project` を接続結果に表示できる。
+7. `bash -n`、関連 Python unit tests、package distribution tests、runtime launcher tests、Android unit/build check が PASS する。
+
+## 追補（2026-06-16: upstream core + Shogunate MOD 構造化）
+
+### 要求
+
+1. この repo を「本家 Shogun core + Shogunate MOD」という構造へ段階的に作り直す。
+2. 本家由来 runtime core は可能な限り upstream 追従しやすく保ち、Shogunate 独自機能は `shogunate_mod/` を canonical source とする。
+3. 既存の cURL URL、`scripts/*` path、Android app、package install、cwd-first、Gunkan、追加 CLI、update manager 等の現行体験は壊さない。
+4. 互換 path は残すが、Shogunate-only 実装は MOD 側へ移し、wrapper で呼び出す。
+5. 本家更新時にどこが core touchpoint か追える manifest / docs を用意する。
+
+### 制約
+
+1. 一度に巨大 runtime core を全面置換して機能退行させない。
+2. 既存ユーザー向けの `scripts/shogunate_package_bootstrap.sh` と `scripts/shogunate_pair_server.py` は互換入口として残す。
+3. Android app と release package / npm package に `shogunate_mod/` が含まれること。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate_mod/manifest.yaml` が MOD canonical paths と core touchpoints を示す。
+2. `scripts/shogunate_package_bootstrap.sh`, `scripts/shogunate_pair_server.py`, `scripts/shell_aliases.sh` は互換 wrapper として MOD 実装へ委譲する。
+3. MOD 側正本の package bootstrap / package first setup / npm package CLI / package prepublish check / Pair server / CLI adapter / Antigravity keyring preflight / LocalAPI REPL / interactive agent configurator / runtime role configurator and OS launchers / OpenCode-Kilo project config sync / live CLI switch command / generated instruction build and freshness guard / queue YAML slimming / queue history book generation / Claude Code SessionStart persona injection / Stop hook inbox delivery and idle flag publication / branch policy, deploy verification, branch maintenance, and cron setup / update manager and update shell commands / ntfy auth/send/listener / agent status helper and command / rate-limit status command / agent registry / topology adapter / inbox path normalization / inbox writer policy / inbox watcher / file-watch helpers / watcher supervisor / Gunkan helpers and CoDD check command / runtime helper / runtime shell launchers / runtime launcher shared setup / runtime departure entrypoint / Android compatibility sessions / runtime daemon / watcher-bridge startup orchestration / runtime bridge scripts and daemons / live CLI preference sync and daemon / runtime role directives / runtime topology resolution / Goza tmux session construction / Goza layout and pane helpers / view attach-focus-autosave helpers and dashboard viewer / queue-dashboard-runtime state helpers / startup banner・startup-time ASCII banner・runtime CLI metadata helpers / runtime options/help / agent CLI launch flow / runtime lifecycle setup / runtime MCP health check and mux parity smoke / startup-window helpers / startup lock/update/logging helpers / startup bootstrap delivery helpers and delivery flow / runtime blocked relay and dashboard notice helper / completion summary and Windows Terminal tabs / runtime prompt handling / macOS and Windows runtime launchers / shell aliases and shell rc installer に既存機能が残る。
+4. npm package `files` に `shogunate_mod/` の正本ファイルが含まれ、生成物は混ざらない。
+5. `scripts/shogunate_package_bootstrap.sh` はローカル checkout では `shogunate_mod/package/bootstrap.sh` を優先して実行し、remote fallback でも root wrapper ではなく MOD bootstrap を取得する。
+6. npm CLI entrypoint と代表的な互換 wrapper は、文字列上の委譲だけでなく、`node bin/shogunate.js --help`、`python3 scripts/shogunate_pair_server.py --help`、`bash scripts/shell_aliases.sh`、`bash scripts/agent_status.sh --help` として直接実行できる。
+7. cURL release archive を展開した状態でも、npm CLI entrypoint と代表的な互換 wrapper が同じコマンドで直接実行できる。
+8. npm package tarball を展開した状態でも、npm CLI entrypoint と代表的な互換 wrapper が同じコマンドで直接実行できる。
+9. 既存 unit / package / Android / runtime smoke が PASS する。
 
 ## 追補（2026-05-22: upstream latest base rebuild）
 
@@ -166,10 +574,10 @@
 1. Shogunate 独自要素として `gunkan`（軍監）ロールを追加する。
 2. 軍監は将軍直属の独立監査ラインで、家老の配下ではない。ただし実務上は家老と並列に置き、通常の作業指揮は家老に残す。
 3. 軍師は家老配下の参謀・高度QC役とし、軍監とは分離する。
-4. 軍監は作業ログ、queue、reports、dashboard、runtime 状態を横断監査し、`queue/reports/gunkan_report.yaml` と必要な inbox 通知で将軍/家老へ報告する。
+4. 軍監は作業ログ、queue、reports、dashboard、runtime 状態を横断監査し、セキュリティチェック、システム監視、違反チェック、危険操作検知、報告矛盾検出を担当する。結果は `queue/reports/gunkan_report.yaml` と必要な inbox 通知で将軍/家老へ報告する。
 5. 軍監は通常の中間報告取得を担当しない。中間報告は従来どおり `将軍 -> 家老` で取り寄せる。
-6. 軍監LLMは常時ポーリングでトークンを消費しない。通常メッセージは非LLMの軽量イベントログへ記録し、軍監LLMは `audit_requested` / `audit_failed` / `runtime_blocked` / `emergency_stop_requested` などの監査イベントでのみ起動する event-driven 監査役とする。
-7. ただし、不正・破壊操作・報告矛盾のリアルタイム検知のため、非LLMの軽量軍監 watcher を常駐させる。軽量 watcher は queue / reports / dashboard / git diff / CoDD 設定を低コストに検査し、異常時だけ軍監 inbox へ `audit_requested` を送る。
+6. 軍監LLMは常時ポーリングでトークンを消費しない。通常メッセージは非LLMの軽量イベントログへ記録し、軍監LLMは `audit_requested` / `audit_failed` / `runtime_blocked` / `emergency_stop_requested` などの監査イベントと、ユーザーまたは将軍からの `direct_message` / `question` / `message` / `chat` 等の直接会話で起動する event-driven 監査役とする。
+7. ただし、不正・破壊操作・secret/credential 露出・権限逸脱・報告矛盾のリアルタイム検知のため、非LLMの軽量軍監 watcher を常駐させる。軽量 watcher は queue / reports / dashboard / git diff / CoDD 設定を低コストに検査し、異常時だけ軍監 inbox へ `audit_requested` を送る。
 8. 軍監は CoDD をオンデマンド監査ツールとして使う。`codd` CLI がない環境では組み込み整合性チェックへフォールバックし、runtime 常駐や周期実行はしない。
 8. CLI 種別は既存の簡単設定 CUI/CLI で選択でき、デフォルトは他ロール同様 `codex` とする。
 9. Codex / Claude / OpenCode / Antigravity / Kilo / Kimi / Copilot / LocalAPI の生成済み instruction と OpenCode agent 定義に軍監を追加する。
@@ -420,6 +828,12 @@
 2. Android debug APK build が成功し、release asset としてアップロードされている。
 3. `multi-agent-shognate-package.tar.gz` / `.zip` が同じ release tag にアップロードされている。
 4. `scripts/shogunate_package_bootstrap.sh --version <tag> --prefix ~/.shogunate/shogunate --no-setup` 相当の導入がこのPCで成功する。
+5. package release workflow は prepublish check 前に `upstream/main` を fetch し、CI 用の upstream ancestry / upstream-modified root surface contract を release channel でも実行する。
+6. package release workflow は GitHub Release へ upload/publish する前に、作成済み `dist/multi-agent-shognate-package.tar.gz` を使って cURL install smoke を実行する。
+7. package release workflow の tar.gz / zip は、package distribution test と同じ `git archive --worktree-attributes` 境界で作成する。
+8. package distribution contract は release tar archive と zip archive の実ファイル一覧が一致することを検査する。
+9. package release workflow のバージョン付き package asset は、通常名 package asset から `cp` で作成し、同一内容として公開する。
+10. GitHub Release notes には固定 release 用 cURL と latest channel 用 cURL を明示し、固定 release 用 cURL は tag と `--version` の両方に同じ `${TAG}` を使う。
 
 ## 追補（2026-06-11: README package install 導線）
 
@@ -432,8 +846,9 @@
 ### 受け入れ条件（観測可能）
 
 1. `README.md` / `README_ja.md` の冒頭 Quick Start で cURL install が最初に提示される。
-2. `v5.2.0.3` 固定の install command と、将来 main 反映後の moving command の違いが分かる。
+2. README の固定 release install command と、将来 main 反映後の moving command の違いが分かる。
 3. `shogunate`, `shogunate resume`, `shogunate configure`, `shogunate status`, `shogunate aliases` が導入後コマンドとして記載される。
+4. CI の MOD verification job は `make mod-check` の前提として `curl` を明示導入し、cURL install smoke が runner の既定状態に依存しない。
 
 ## 追補（2026-06-12: package clean 警告と軍監口調維持）
 
@@ -457,13 +872,13 @@
 ### 要求
 
 1. `README.md` / `README_ja.md` を package install 前提の導入文書として全面的に書き直す。
-2. 冒頭 Quick Start に、現在の通常 release tag `v5.2.0.3` 固定の cURL install command を明示する。
+2. 冒頭 Quick Start に、README が示す現在の通常 release tag 固定の cURL install command を明示する。
 3. 導入後に使う `shogunate` command、alias、role/CLI 設定、軍監、Android companion、開発 checkout、troubleshooting、release versioning を短く辿れる構成にする。
 4. `-preview` 前提の記述や重複した古い導入導線を README から外す。
 
 ### 受け入れ条件（観測可能）
 
-1. `README.md` / `README_ja.md` の冒頭に `v5.2.0.3` 固定 cURL がある。
+1. `README.md` / `README_ja.md` の冒頭に固定 release cURL があり、raw URL の tag と `--version` が一致する。
 2. README 内の導入例は `~/.shogunate/shogunate`、`~/.local/bin/shogunate`、`shogunate clean/resume/configure/status/aliases` を説明する。
 3. README 内に `v5.2.0.1-preview` や古い preview install 導線が残っていない。
 4. README の cURL URL が `scripts/shogunate_package_bootstrap.sh` の実在 path を指している。
@@ -499,13 +914,13 @@
 
 1. `shogunate pair` を USB/無線統合入口にした Android app を release asset として配布する。
 2. Android APK version は `5.2.0.3`、`versionCode` は `52003` にする。
-3. README の固定 cURL / APK 名は `v5.2.0.3` に更新する。
+3. README の固定 cURL は release 更新時に現在の固定 release tag へ更新し、APK 名は同じ release tag を使う。
 4. package command の `shogunate help` に `pair` と Pair Password の案内を表示する。
 
 ### 受け入れ条件（観測可能）
 
 1. `android/app/build.gradle.kts` の `versionName` が `5.2.0.3`、`versionCode` が `52003`。
-2. `shogunate-android-v5.2.0.3.apk` が GitHub Release asset としてアップロードされる。
+2. `shogunate-android-<version>.apk` が GitHub Release asset としてアップロードされ、`<version>` は同じ release tag と対応する。
 3. `multi-agent-shognate-package.tar.gz` / `.zip` も同じ release tag にアップロードされる。
 4. `shogunate help` に `shogunate pair [opts]` と `SHOGUNATE_PAIR_PASSWORD` が表示される。
 

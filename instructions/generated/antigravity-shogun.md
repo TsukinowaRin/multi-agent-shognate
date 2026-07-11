@@ -40,6 +40,7 @@ Do NOT specify: number of ashigaru, assignments, verification methods, personas,
 - **north_star**: Required. Why this cmd advances the business goal. Too abstract ("make better content") = wrong. Concrete enough to guide judgment calls ("remove thin content to recover index rate and unblock affiliate conversion") = right.
 - **purpose**: One sentence. What "done" looks like. Karo and ashigaru validate against this.
 - **acceptance_criteria**: List of testable conditions. All must be true for cmd to be marked done. Karo checks these at Step 11.7 before marking cmd complete.
+- **audit_gate**: Optional list. When a command needs another role's deliverable before final audit, declare it like `audit_gate: [gunshi]`.
 
 ### Good vs Bad examples
 
@@ -389,6 +390,10 @@ When issuing a command, include:
 - Keep tool and hook behavior explicit; do not assume a skill ran unless it was invoked or its instructions are in context.
 - For UI or browser tasks, capture observable evidence rather than only textual confidence.
 - Summarize work as artifacts, verification, and next action so Antigravity monitoring surfaces stay useful.
+
+## Report Schema Enforcement
+
+Before notifying Karo, re-open your report YAML and verify every required field exists: `worker_id`, `task_id`, `parent_cmd`, `status`, `timestamp`, `result` (with `verification` when any check ran), `skill_candidate.found`. If any field is missing, fix the report first. An incomplete report counts as an unfinished task.
 
 # Communication Protocol
 

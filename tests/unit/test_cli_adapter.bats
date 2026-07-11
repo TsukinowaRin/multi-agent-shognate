@@ -1375,7 +1375,6 @@ PY
 }
 
 @test "validate_cli_availability: antigravity はLinux keyring不足を警告する" {
-    command -v secret-tool >/dev/null 2>&1 && skip "secret-tool is installed on this host"
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     mkdir -p "${TEST_TMP}/bin"
     cat > "${TEST_TMP}/bin/agy" << 'SH'
@@ -1387,6 +1386,14 @@ SH
 printf 'Linux\n'
 SH
     chmod +x "${TEST_TMP}/bin/agy" "${TEST_TMP}/bin/uname"
+
+    command() {
+        if [ "${1:-}" = "-v" ] && [ "${2:-}" = "secret-tool" ]; then
+            return 1
+        fi
+        builtin command "$@"
+    }
+    export -f command
 
     HOME="${TEST_TMP}/home" PATH="${TEST_TMP}/bin:/usr/bin:/bin" run validate_cli_availability "antigravity"
     [ "$status" -eq 0 ]

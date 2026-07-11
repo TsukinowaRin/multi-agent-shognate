@@ -215,6 +215,7 @@ upstream-facing compatibility surface
 
 Shogunate MOD canonical sources
   shogunate_mod/
+    app/        app chat transcript reply helper
     battlefield/ app-facing host/project/session/role API
     gunkan/    independent auditor and CoDD helpers
     package/   cURL package install and cwd-first workspace management

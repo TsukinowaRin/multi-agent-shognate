@@ -1,4 +1,5 @@
 import ast
+import hashlib
 import io
 import json
 import fnmatch
@@ -817,6 +818,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("exec python3 shogunate_mod/pair/server.py", text)
         self.assertNotIn("exec python3 scripts/shogunate_pair_server.py", text)
         self.assertIn("prepare_project_runtime", text)
+        self.assertIn('project="\\$(resolve_project_dir)"', text)
         self.assertIn("default_session_name", text)
         self.assertIn("project_registry()", text)
         self.assertIn("resolve_registered_project_ref()", text)
@@ -828,6 +830,23 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("config/settings.yaml", text)
         self.assertIn("queue/runtime/session_name", text)
         self.assertIn("print_project_info", text)
+        self.assertIn("rsync -a --checksum --delete", text)
+        self.assertIn("--exclude '/.shogunate/'", text)
+        self.assertIn("--exclude '/dashboard.md'", text)
+        self.assertIn("--exclude='./.shogunate'", text)
+        self.assertIn("--exclude='./dashboard.md'", text)
+
+    def test_runtime_state_recreates_missing_dashboard(self):
+        text = (ROOT / "shogunate_mod" / "runtime" / "state.sh").read_text(encoding="utf-8")
+        self.assertIn('[ "$CLEAN_MODE" = true ] || [ ! -f "./dashboard.md" ]', text)
+
+    def test_package_where_does_not_prepare_project_runtime(self):
+        text = BOOTSTRAP.read_text(encoding="utf-8")
+        match = re.search(r"print_project_info\(\) \{\n(?P<body>.*?)\n\}", text, re.DOTALL)
+        self.assertIsNotNone(match)
+        body = match.group("body")
+        self.assertNotIn("prepare_project_runtime", body)
+        self.assertIn('runtime_dir="\\$workspace_home/\\${slug}-\\${hash}"', body)
 
     def test_project_registry_supports_registered_project_selection(self):
         registry_script = ROOT / "shogunate_mod" / "projects" / "registry.py"
@@ -854,22 +873,50 @@ class PackageDistributionContractTests(unittest.TestCase):
             self.assertEqual(0, add.returncode, add.stdout + add.stderr)
             self.assertIn("registered", add.stdout)
 
+            add_json = run("add", str(project), "--name", "demo", "--select", "--json")
+            self.assertEqual(0, add_json.returncode, add_json.stdout + add_json.stderr)
+            add_payload = json.loads(add_json.stdout)
+            self.assertEqual("demo", add_payload["project"]["name"])
+            self.assertEqual(str(project.resolve()), add_payload["project"]["path"])
+
             listing = run("list")
             self.assertEqual(0, listing.returncode, listing.stdout + listing.stderr)
             self.assertIn("* ", listing.stdout)
             self.assertIn("demo", listing.stdout)
 
+            listing_json = run("list", "--json")
+            self.assertEqual(0, listing_json.returncode, listing_json.stdout + listing_json.stderr)
+            self.assertEqual("demo", json.loads(listing_json.stdout)["projects"][0]["name"])
+
             current = run("current", "--path")
             self.assertEqual(0, current.returncode, current.stdout + current.stderr)
             self.assertEqual(str(project.resolve()), current.stdout.strip())
+
+            current_json = run("current", "--json")
+            self.assertEqual(0, current_json.returncode, current_json.stdout + current_json.stderr)
+            self.assertEqual("demo", json.loads(current_json.stdout)["project"]["name"])
 
             resolve = run("resolve", "@demo")
             self.assertEqual(0, resolve.returncode, resolve.stdout + resolve.stderr)
             self.assertEqual(str(project.resolve()), resolve.stdout.strip())
 
+            resolve_json = run("resolve", "@demo", "--json")
+            self.assertEqual(0, resolve_json.returncode, resolve_json.stdout + resolve_json.stderr)
+            self.assertEqual(str(project.resolve()), json.loads(resolve_json.stdout)["path"])
+
+            select_json = run("select", "demo", "--json")
+            self.assertEqual(0, select_json.returncode, select_json.stdout + select_json.stderr)
+            self.assertEqual("demo", json.loads(select_json.stdout)["project"]["name"])
+
             remove = run("remove", "demo")
             self.assertEqual(0, remove.returncode, remove.stdout + remove.stderr)
             self.assertIn("removed", remove.stdout)
+
+            add_again = run("add", str(project), "--name", "demo", "--select", "--json")
+            self.assertEqual(0, add_again.returncode, add_again.stdout + add_again.stderr)
+            remove_json = run("remove", "demo", "--json")
+            self.assertEqual(0, remove_json.returncode, remove_json.stdout + remove_json.stderr)
+            self.assertEqual("demo", json.loads(remove_json.stdout)["removed"]["name"])
 
     def test_battlefield_api_lists_projects_and_tracks_app_sessions(self):
         registry_script = ROOT / "shogunate_mod" / "projects" / "registry.py"
@@ -978,6 +1025,144 @@ class PackageDistributionContractTests(unittest.TestCase):
             delegated_args = json.loads(log.read_text(encoding="utf-8"))
             self.assertEqual(["--project", f"@{payload['project']['id']}", "resume", "--no-attach"], delegated_args)
 
+    def test_battlefield_api_queues_stopped_messages_and_flushes_on_start(self):
+        registry_script = ROOT / "shogunate_mod" / "projects" / "registry.py"
+        battlefield_script = ROOT / "shogunate_mod" / "battlefield" / "api.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            project = tmp_path / "project one"
+            workspace = tmp_path / "workspaces"
+            writer_log = tmp_path / "writer.log"
+            project.mkdir()
+            project_path = str(project.resolve())
+            runtime = workspace / f"project-one-{hashlib.sha1(project_path.encode('utf-8')).hexdigest()[:8]}"
+            fake = tmp_path / "fake-shogunate"
+            fake.write_text(
+                "#!/usr/bin/env python3\n"
+                "import pathlib\n"
+                f"runtime = pathlib.Path({str(runtime)!r})\n"
+                f"writer_log = {str(writer_log)!r}\n"
+                "writer = runtime / 'shogunate_mod' / 'inbox' / 'write.sh'\n"
+                "writer.parent.mkdir(parents=True, exist_ok=True)\n"
+                "writer.write_text(\"#!/usr/bin/env bash\\n\"\n"
+                "                  \"printf '%s|%s|%s|%s\\\\n' \\\"$1\\\" \\\"$2\\\" \\\"$3\\\" \\\"$4\\\" >> '\" + writer_log + \"'\\n\",\n"
+                "                  encoding='utf-8')\n"
+                "writer.chmod(0o755)\n"
+                "print('fake runtime started')\n",
+                encoding="utf-8",
+            )
+            fake.chmod(0o755)
+            env = {
+                **os.environ,
+                "SHOGUNATE_PROJECT_REGISTRY": str(tmp_path / "projects.json"),
+                "SHOGUNATE_WORKSPACE_HOME": str(workspace),
+                "SHOGUNATE_COMMAND": str(fake),
+            }
+            add = subprocess.run(
+                ["python3", str(registry_script), "add", str(project), "--name", "demo", "--select"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, add.returncode, add.stdout + add.stderr)
+
+            send = subprocess.run(
+                [
+                    "python3",
+                    str(battlefield_script),
+                    "send",
+                    "demo",
+                    "hello from road",
+                    "--role",
+                    "shogun",
+                    "--json",
+                ],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, send.returncode, send.stdout + send.stderr)
+            send_payload = json.loads(send.stdout)
+            self.assertTrue(send_payload["queued"])
+            self.assertEqual(1, send_payload["project"]["sessions"]["pending_messages"])
+
+            outbox = subprocess.run(
+                ["python3", str(battlefield_script), "outbox", "demo", "--json"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, outbox.returncode, outbox.stdout + outbox.stderr)
+            self.assertEqual(1, json.loads(outbox.stdout)["count"])
+
+            start = subprocess.run(
+                [
+                    "python3",
+                    str(battlefield_script),
+                    "start",
+                    "demo",
+                    "--resume",
+                    "--deliver-pending-timeout",
+                    "0",
+                    "--json",
+                ],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, start.returncode, start.stdout + start.stderr)
+            start_payload = json.loads(start.stdout)
+            self.assertEqual(1, start_payload["pending_delivery"]["delivered"])
+            self.assertEqual(0, start_payload["pending_delivery"]["remaining"])
+            self.assertIn("shogun|hello from road|user_message|lord", writer_log.read_text(encoding="utf-8"))
+
+            transcript = subprocess.run(
+                ["python3", str(battlefield_script), "transcript", "demo", "--json"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, transcript.returncode, transcript.stdout + transcript.stderr)
+            messages = json.loads(transcript.stdout)["messages"]
+            self.assertEqual("pending", messages[0]["delivery"])
+            self.assertEqual("delivered", messages[-1]["delivery"])
+
+            send_start = subprocess.run(
+                [
+                    "python3",
+                    str(battlefield_script),
+                    "send",
+                    "demo",
+                    "second message",
+                    "--role",
+                    "shogun",
+                    "--start",
+                    "--launch-probe-timeout",
+                    "1",
+                    "--deliver-pending-timeout",
+                    "0",
+                    "--json",
+                ],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, send_start.returncode, send_start.stdout + send_start.stderr)
+            self.assertFalse(json.loads(send_start.stdout)["queued"])
+            self.assertIn("shogun|second message|user_message|lord", writer_log.read_text(encoding="utf-8"))
+
     def test_package_bootstrap_wrapper_prefers_mod_source(self):
         text = (ROOT / "scripts" / "shogunate_package_bootstrap.sh").read_text(encoding="utf-8")
         local_delegate = 'exec bash "$SCRIPT_DIR/../shogunate_mod/package/bootstrap.sh" "$@"'
@@ -1012,7 +1197,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         text = (ROOT / "shogunate_mod" / "runtime" / "daemon.sh").read_text(encoding="utf-8")
         normalized = text.replace('\\"', '"')
 
-        self.assertIn('bash "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh"', normalized)
+        self.assertIn('"$runtime_bash" "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh"', normalized)
         self.assertIn('python3 "$SCRIPT_DIR/shogunate_mod/gunkan/light_watch.py"', normalized)
         self.assertIn('pkill -f "$SCRIPT_DIR/shogunate_mod/watcher/inbox_watcher.sh "', normalized)
         self.assertNotIn('bash "$SCRIPT_DIR/scripts/watcher_supervisor.sh"', normalized)
@@ -2545,6 +2730,10 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "shogunate_mod/docs/SECURITY.md",
             ],
             "docs/philosophy.md": ["docs/philosophy.md", "shogunate_mod/docs/philosophy.md"],
+            "docs/AGMSG_BRIDGE_DESIGN.md": [
+                "docs/AGMSG_BRIDGE_DESIGN.md",
+                "shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md",
+            ],
             "CLAUDE.md": ["CLAUDE.md", "shogunate_mod/instructions/autoload/CLAUDE.md"],
             ".claude/settings.json": [".claude/settings.json", "shogunate_mod/hooks/claude_settings.json"],
             "android/": ["require_android_sources_synced"],
@@ -4088,8 +4277,24 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn('".opencode/agents/shogun.md"', ensure_script)
         self.assertIn('".opencode/agents/ashigaru8.md"', ensure_script)
 
+        # Claude Code reads the five top-level role files; build.sh publishes the
+        # claude build output there (role + harness + common + claude_tools), so
+        # they must match instructions/generated/ instead of the front-matter
+        # donor monolith under shogunate_mod/instructions/source/.
+        published_claude_roles = {"shogun.md", "karo.md", "ashigaru.md", "gunshi.md", "gunkan.md"}
         for root_path in root_files:
             rel = root_path.relative_to(ROOT / "instructions")
+            if str(rel) in published_claude_roles:
+                generated_path = ROOT / "instructions" / "generated" / str(rel)
+                self.assertTrue(
+                    generated_path.exists(), f"missing generated claude instruction: {generated_path}"
+                )
+                self.assertEqual(
+                    root_path.read_text(encoding="utf-8"),
+                    generated_path.read_text(encoding="utf-8"),
+                    f"published claude instruction differs from generated build: {rel}",
+                )
+                continue
             mod_path = source_root / rel
             self.assertTrue(mod_path.exists(), f"missing MOD instruction source: {mod_path}")
             self.assertEqual(

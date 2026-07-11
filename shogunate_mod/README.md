@@ -143,6 +143,9 @@ is Shogunate-only.
   and operators.
 - `topology/` owns dynamic role formation, active Ashigaru/Karo resolution,
   and ownership map helpers.
+- `transport/` owns optional wake-up transport integrations such as the agmsg
+  bridge and setup helpers. Durable command/task/report state remains in the
+  YAML inbox and queue files; transport helpers only deliver wake-up pointers.
 - `update/` owns release/git install update management, pending update
   requests, upstream snapshot import, and merge-candidate notices.
 - `view/` owns Goza view attach/focus helpers, Goza layout autosave, and

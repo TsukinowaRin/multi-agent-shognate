@@ -29,6 +29,7 @@ canonical_paths:
   development_gitmodules: shogunate_mod/development/gitmodules
   docs_changelog: shogunate_mod/docs/CHANGELOG.md
   docs_contributing: shogunate_mod/docs/CONTRIBUTING.md
+  docs_agmsg_bridge_design: shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md
   docs_philosophy: shogunate_mod/docs/philosophy.md
   docs_readme: shogunate_mod/docs/README.md
   docs_readme_ja: shogunate_mod/docs/README_ja.md
@@ -133,6 +134,8 @@ canonical_paths:
   tests_unit_cases: shogunate_mod/tests/unit/
   status_ratelimit_check: shogunate_mod/status/ratelimit_check.sh
   topology_adapter: shogunate_mod/topology/adapter.sh
+  transport_agmsg_bridge: shogunate_mod/transport/agmsg_bridge.sh
+  transport_agmsg_setup: shogunate_mod/transport/agmsg_setup.sh
   update_manager: shogunate_mod/update/manager.py
   update_stop_and_apply: shogunate_mod/update/stop_and_apply_update.sh
   update_upstream_sync: shogunate_mod/update/upstream_sync.sh

@@ -161,6 +161,7 @@
     "shogunate_mod/shell/",
     "shogunate_mod/status/",
     "shogunate_mod/topology/",
+    "shogunate_mod/transport/",
     "shogunate_mod/update/",
     "shogunate_mod/view/",
     "shogunate_mod/windows/",

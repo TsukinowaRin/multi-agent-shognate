@@ -345,6 +345,7 @@ runtime_sandboxes/**
 !.codd/
 !.codd/codd.yaml
 .shogunate/codd-venv/
+.venv/
 queue/runtime/codd/
 
 

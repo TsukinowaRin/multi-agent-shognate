@@ -38,6 +38,7 @@ docs/INDEX.md export-ignore
 docs/WORKLOG.md export-ignore
 docs/EXECPLAN_* export-ignore
 docs/HANDOVER_* export-ignore
+docs/HANDOFF_* export-ignore
 docs/UPSTREAM_SYNC_* export-ignore
 docs/vps_pr118_verification_plan.md export-ignore
 .github/workflows export-ignore

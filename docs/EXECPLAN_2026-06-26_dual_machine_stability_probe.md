@@ -11,7 +11,7 @@
 - 既存 project や secrets は読まない・壊さない。
 - 実タスクは隔離 project に限定する。
 - MacAir の既存 `test` battlefield はユーザー観察用のため、停止が必要な場合は理由を残す。
-- このPCでは `/mnt/d/Git_WorkSpace` 配下に検証用 project を作る。
+- このPCでは `<WORKSPACE_ROOT>` 配下に検証用 project を作る。
 
 ## 手順
 
@@ -73,7 +73,7 @@
 ### 2026-06-26 このPC / WSL 再検証
 
 - 検証用 project:
-  - `/mnt/d/Git_WorkSpace/shogunate-dual-probe`
+  - `<WORKSPACE_ROOT>/shogunate-dual-probe`
   - registry name: `dual-probe`
   - runtime: `/home/muro/.shogunate/workspaces/shogunate-dual-probe-25426778`
 - engine `config/settings.yaml` を全Codexへ変更。
@@ -97,7 +97,7 @@
 1. `shogunate where` が project runtime を生成していた。
    - 症状: 情報表示だけのつもりで `where` を実行した時点の古い `config/settings.yaml` が project runtime に固定され、後で engine を全Codexに変えても runtime が混在構成になった。
    - 修正: `print_project_info` は `prepare_project_runtime` を呼ばず、slug/hash から runtime path を表示するだけに変更。
-   - 検証: `shogunate --project /mnt/d/Git_WorkSpace/shogunate-where-probe where` 後、runtime `config/settings.yaml` が作られないことを確認。
+   - 検証: `shogunate --project <WORKSPACE_ROOT>/shogunate-where-probe where` 後、runtime `config/settings.yaml` が作られないことを確認。
 
 2. App API の `current_command` が実CLIではなく常に `bash` に見える。
    - 症状: tmux `pane_current_command` は launch script の shell を返すため、Codexが動いていても `bash` 表示になる。

@@ -15,7 +15,7 @@ PC再起動後、MacAir とこのPCの修正後 Shogunate 構成を30分以上so
 ## 再開コマンド
 
 ```bash
-cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate
+cd <REPO_ROOT>
 git status --short
 PATH="$HOME/.local/bin:$PATH" shogunate battlefield status dual-probe --json
 ssh macair 'PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH" shogunate battlefield status test --json'
@@ -26,7 +26,7 @@ ssh macair 'PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH" shogu
 再起動後は WSL / tmux session が消えている可能性が高い。その場合は以下で復帰する。
 
 ```bash
-cd /mnt/d/Git_WorkSpace/multi-agent-shognate/multi-agent-shognate
+cd <REPO_ROOT>
 PATH="$HOME/.local/bin:$PATH" shogunate battlefield start dual-probe --resume --json
 PATH="$HOME/.local/bin:$PATH" shogunate battlefield status dual-probe --json
 ```

@@ -11,7 +11,7 @@
 - 既存ユーザーprojectや secrets は読まない・壊さない。
 - 実AIへの負荷は小さく始め、API / queue 層で再現できるものを優先する。
 - MacAir の `test` はユーザー観察用の既存 runtime なので、停止操作は原則このPCの隔離projectで行う。
-- このPCの破壊的操作は `/mnt/d/Git_WorkSpace/shogunate-dual-probe` または新規隔離projectに限定する。
+- このPCの破壊的操作は `<WORKSPACE_ROOT>/shogunate-dual-probe` または新規隔離projectに限定する。
 
 ## 方針
 
@@ -53,10 +53,10 @@
   - 多種類実タスク:
     - WSL/MacAir へ小タスク、Gunkan監査、Gunshi設計相談、Shogun経由の実ファイル作成タスク、Karo/Ashigaru点呼を投入。
     - `12` sends、failures `0`。最終 `battlefield transcript --json` は WSL/MacAir とも success。
-    - WSL: `/mnt/d/Git_WorkSpace/shogunate-stress-probe/e2e_workload/wsl_task_20260627` に Python CLI / unittest 3件 / README を作成し、`python3 -m unittest discover ...` -> OK。
+    - WSL: `<WORKSPACE_ROOT>/shogunate-stress-probe/e2e_workload/wsl_task_20260627` に Python CLI / unittest 3件 / README を作成し、`python3 -m unittest discover ...` -> OK。
     - MacAir: `/Users/fishorduck/projects/Test/e2e_workload/mac_task_20260627` に Python CLI / unittest 4件 / README を作成し、Mac上で `python3 -m unittest discover -v` -> OK。
 - Lifecycle / pending delivery:
-  - このPC隔離 project `/mnt/d/Git_WorkSpace/shogunate-stress-probe` を `stress-probe` として登録。
+  - このPC隔離 project `<WORKSPACE_ROOT>/shogunate-stress-probe` を `stress-probe` として登録。
   - 停止中に `20` messages を `shogunate battlefield send` で保存し、`start --resume --deliver-pending-timeout 10` で `attempted=20, delivered=20, remaining=0` を確認。
 - Package / unit:
   - `python3 -m unittest tests.unit.test_package_distribution shogunate_mod.tests.unit.test_package_distribution` -> PASS (`322` tests, `468.312s`)。
@@ -114,7 +114,7 @@
   - `shogunate_mod/projects/registry.py` の `add/select/current/resolve/remove` に `--json` を追加。既存のプレーン出力は維持。
   - package distribution contract に registry JSON 操作の確認を追加。
 - 再確認:
-  - WSL: `shogunate projects add /mnt/d/Git_WorkSpace/shogunate-stress-probe --name stress-probe --select --json` -> valid JSON。
+  - WSL: `shogunate projects add <WORKSPACE_ROOT>/shogunate-stress-probe --name stress-probe --select --json` -> valid JSON。
   - MacAir: `shogunate projects add /Users/fishorduck/projects/Test --name test --select --json` -> valid JSON。
 
 ### 古い blocked report が完了 command を error に戻す

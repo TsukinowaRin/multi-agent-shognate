@@ -222,7 +222,7 @@ write_runtime_coordination_state() {
 }
 
 initialize_dashboard_if_clean() {
-    if [ "$CLEAN_MODE" = true ]; then
+    if [ "$CLEAN_MODE" = true ] || [ ! -f "./dashboard.md" ]; then
         log_info "📊 戦況報告板を初期化中..."
         TIMESTAMP=$(date "+%Y-%m-%d %H:%M")
 

@@ -51,6 +51,15 @@ write_agent_launch_script() {
         printf 'set -uo pipefail\n'
         printf 'export SHOGUNATE_RUNTIME_DIR=%q\n' "$SCRIPT_DIR"
         printf 'export SHOGUNATE_PROJECT_DIR=%q\n' "$SHOGUNATE_PROJECT_DIR"
+        if [ -n "${SHOGUNATE_ENGINE_DIR:-}" ]; then
+            printf 'export SHOGUNATE_ENGINE_DIR=%q\n' "$SHOGUNATE_ENGINE_DIR"
+        fi
+        printf 'prepend_path_if_dir() { [ -d "$1" ] || return 0; case ":$PATH:" in *":$1:"*) ;; *) PATH="$1:$PATH" ;; esac; export PATH; }\n'
+        printf 'prepend_path_if_dir "$SHOGUNATE_RUNTIME_DIR/.venv/bin"\n'
+        printf 'if [ -n "${SHOGUNATE_ENGINE_DIR:-}" ]; then prepend_path_if_dir "$SHOGUNATE_ENGINE_DIR/.venv/bin"; fi\n'
+        printf 'prepend_path_if_dir "/opt/homebrew/opt/coreutils/libexec/gnubin"\n'
+        printf 'prepend_path_if_dir "/opt/homebrew/bin"\n'
+        printf 'prepend_path_if_dir "/usr/local/bin"\n'
         printf 'cd %q\n' "$SHOGUNATE_PROJECT_DIR"
         printf '%s\n' "$launch_cmd"
         printf 'status=$?\n'

@@ -31,6 +31,7 @@ class RuntimeSyncStateTest(unittest.TestCase):
         for rel in ("queue/inbox", "queue/tasks", "queue/reports", "queue/runtime", "scripts"):
             (self.root / rel).mkdir(parents=True, exist_ok=True)
         (self.root / "queue" / "inbox" / "gunkan.yaml").write_text("messages: []\n", encoding="utf-8")
+        (self.root / "queue" / "inbox" / "karo.yaml").write_text("messages: []\n", encoding="utf-8")
         (self.root / "dashboard.md").write_text(
             "# Shogunate Dashboard\n\n最終更新: -\n\n## 🔄 進行中\n\n- `cmd_999`: in_progress - keep me\n\n## ✅ 本日の戦果\n\n| 時刻 | command | 状態 | 要約 |\n|---|---|---|---|\n| old | `cmd_998` | done | keep result |\n",
             encoding="utf-8",
@@ -129,6 +130,47 @@ class RuntimeSyncStateTest(unittest.TestCase):
         self.assertEqual("done", commands[0]["status"])
         self.assertIn("completed_at", commands[0])
         self.assertIn("| `cmd_001` | done |", (self.root / "dashboard.md").read_text(encoding="utf-8"))
+
+    def test_failed_gunkan_audit_requests_karo_review(self) -> None:
+        self.run_sync()
+        (self.root / "queue" / "reports" / "gunkan_report.yaml").write_text(
+            "parent_cmd: cmd_001\nstatus: failed\nsummary: npm test failed\n", encoding="utf-8"
+        )
+
+        result = self.run_sync()
+        self.assertIn("review_requested\tcmd_001", result.stdout)
+
+        commands = self.read_yaml("queue/shogun_to_karo.yaml")
+        self.assertEqual("review", commands[0]["status"])
+        inbox = self.read_yaml("queue/inbox/karo.yaml")
+        self.assertEqual(1, len(inbox["messages"]))
+        self.assertEqual("audit_failed", inbox["messages"][0]["type"])
+        self.assertIn("cmd_001", inbox["messages"][0]["content"])
+
+    def test_worker_report_update_after_failed_audit_requests_gunkan_reaudit(self) -> None:
+        self.run_sync()
+        gunkan_report = self.root / "queue" / "reports" / "gunkan_report.yaml"
+        gunkan_report.write_text(
+            "parent_cmd: cmd_001\nstatus: failed\nsummary: npm test failed\n", encoding="utf-8"
+        )
+        self.run_sync()
+
+        report = self.root / "queue" / "reports" / "ashigaru2_report.yaml"
+        report.write_text(
+            "task_id: subtask_b\nparent_cmd: cmd_001\nstatus: done\nsummary: tests fixed and passed\n",
+            encoding="utf-8",
+        )
+        report.touch()
+
+        result = self.run_sync()
+        self.assertIn("reaudit_requested\tcmd_001", result.stdout)
+
+        commands = self.read_yaml("queue/shogun_to_karo.yaml")
+        self.assertEqual("audit_requested", commands[0]["status"])
+        inbox = self.read_yaml("queue/inbox/gunkan.yaml")
+        self.assertEqual(2, len(inbox["messages"]))
+        self.assertEqual("audit_requested", inbox["messages"][-1]["type"])
+        self.assertIn("再監査", inbox["messages"][-1]["content"])
 
 
 if __name__ == "__main__":

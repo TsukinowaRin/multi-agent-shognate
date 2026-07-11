@@ -8,6 +8,33 @@ build_tmux_runtime_daemon_command() {
     printf '%s\n' "$cmd"
 }
 
+runtime_bash_command() {
+    local candidate
+    if [ -n "${SHOGUNATE_BASH:-}" ] && [ -x "$SHOGUNATE_BASH" ]; then
+        printf '%s\n' "$SHOGUNATE_BASH"
+        return 0
+    fi
+    for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash bash /bin/bash; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            command -v "$candidate"
+            return 0
+        fi
+        if [ -x "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    printf 'bash\n'
+}
+
+runtime_file_watch_available() {
+    if command -v file_watch_backend_available >/dev/null 2>&1; then
+        file_watch_backend_available
+        return $?
+    fi
+    command -v inotifywait >/dev/null 2>&1 || command -v fswatch >/dev/null 2>&1
+}
+
 build_runtime_session_env_args() {
     local shogunate_session="${SHOGUNATE_SESSION_NAME:-${GOZA_SESSION_NAME:-shogunate}}"
     local goza_session="${GOZA_SESSION_NAME:-$shogunate_session}"
@@ -90,16 +117,18 @@ ensure_runtime_sync_daemon_started() {
 restart_tmux_runtime_daemon_session() {
     local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
     local session_env=""
+    local runtime_bash=""
     local started=0
 
     tmux_kill_runtime_daemon_session_exact "$session_name" || true
     session_env="$(build_runtime_session_env_args)"
+    runtime_bash="$(runtime_bash_command)"
 
-    if command -v inotifywait >/dev/null 2>&1; then
+    if runtime_file_watch_available; then
         start_tmux_runtime_daemon_window \
             "$session_name" \
             "watcher" \
-            "while true; do env $session_env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION=\"$session_name\" MUX_TYPE=tmux bash \"$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh\" >> \"$SCRIPT_DIR/logs/watcher_supervisor.log\" 2>&1 || true; sleep \"${WATCHER_SUPERVISOR_INTERVAL:-5}\"; done"
+            "while true; do env $session_env WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION=\"$session_name\" MUX_TYPE=tmux \"$runtime_bash\" \"$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh\" >> \"$SCRIPT_DIR/logs/watcher_supervisor.log\" 2>&1 || true; sleep \"${WATCHER_SUPERVISOR_INTERVAL:-5}\"; done"
         started=1
     fi
 
@@ -152,9 +181,11 @@ ensure_runtime_daemons_for_bootstrap() {
 
 start_runtime_watchers_and_bridges() {
     local agent=""
+    local runtime_bash=""
     local _watcher_total=0
 
     log_info "📬 メールボックス監視を起動中..."
+    runtime_bash="$(runtime_bash_command)"
 
     mkdir -p "$SCRIPT_DIR/logs"
     for agent in shogun gunkan gunshi "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}"; do
@@ -176,14 +207,15 @@ start_runtime_watchers_and_bridges() {
     pkill -f "$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py" 2>/dev/null || true
     tmux_kill_runtime_daemon_session_exact "$RUNTIME_DAEMON_SESSION" || true
     pkill -f "inotifywait.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
+    pkill -f "fswatch.*${SCRIPT_DIR}/queue/inbox" 2>/dev/null || true
     sleep 1
 
-    if command -v inotifywait >/dev/null 2>&1; then
-        env $(build_runtime_session_env_args) WATCHER_SUPERVISOR_ONCE=1 MUX_TYPE=tmux bash "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh" \
+    if runtime_file_watch_available; then
+        env $(build_runtime_session_env_args) WATCHER_SUPERVISOR_ONCE=1 MUX_TYPE=tmux "$runtime_bash" "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh" \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
         restart_tmux_runtime_daemon_session "$RUNTIME_DAEMON_SESSION" || true
         env $(build_runtime_session_env_args) WATCHER_SUPERVISOR_ONCE=1 WATCHER_RUNTIME_SESSION="$RUNTIME_DAEMON_SESSION" MUX_TYPE=tmux \
-            bash "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh" \
+            "$runtime_bash" "$SCRIPT_DIR/shogunate_mod/watcher/supervisor.sh" \
             >> "$SCRIPT_DIR/logs/watcher_supervisor.log" 2>&1 || true
         if [ -x "$SCRIPT_DIR/shogunate_mod/runtime/cli_pref_daemon.sh" ]; then
             sleep 1
@@ -205,7 +237,7 @@ start_runtime_watchers_and_bridges() {
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
         log_success "  └─ watcher_supervisor 起動完了（tmux daemon session: ${RUNTIME_DAEMON_SESSION}）"
     else
-        log_info "⚠️  inotifywait 未導入のため inbox_watcher はスキップ（sudo apt install -y inotify-tools）"
+        log_info "⚠️  file watcher 未導入のため inbox_watcher はスキップ（macOS: brew install fswatch / Linux: sudo apt install -y inotify-tools）"
     fi
 
     if [ -x "$SCRIPT_DIR/shogunate_mod/runtime/shogun_to_karo_bridge_daemon.sh" ]; then

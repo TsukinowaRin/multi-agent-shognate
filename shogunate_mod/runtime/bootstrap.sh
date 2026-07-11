@@ -465,7 +465,7 @@ should_embed_startup_prompt_in_cli_command() {
     local cli_type="${1:-}"
     local mode
 
-    mode="$(printf '%s' "${MAS_CODEX_STARTUP_PROMPT_MODE:-tmux}" | tr '[:upper:]' '[:lower:]')"
+    mode="$(printf '%s' "${MAS_CODEX_STARTUP_PROMPT_MODE:-argv}" | tr '[:upper:]' '[:lower:]')"
     if [ "$cli_type" = "codex" ]; then
         case "$mode" in
             argv|arg|args|inline|positional)

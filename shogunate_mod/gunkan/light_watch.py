@@ -173,6 +173,22 @@ def is_open_status(status: str) -> bool:
     return normalized in STATUS_OPEN or normalized.startswith("in-progress")
 
 
+def command_has_success_evidence(command: dict[str, Any]) -> bool:
+    data = command.get("data")
+    if not isinstance(data, dict):
+        return False
+    result = data.get("result")
+    if not isinstance(result, dict):
+        return False
+    evidence = result.get("verification") or result.get("tests") or result.get("checks")
+    text = compact(evidence or "", limit=800).lower()
+    if not text:
+        return False
+    success_markers = ("pass", "passed", "success", "ok", "合格", "成功")
+    failure_markers = ("fail", "failed", "error", "blocked", "timeout", "失敗", "異常", "停止")
+    return any(marker in text for marker in success_markers) and not any(marker in text for marker in failure_markers)
+
+
 def normalize_items(data: Any) -> list[dict[str, Any]]:
     if isinstance(data, list):
         return [x for x in data if isinstance(x, dict)]
@@ -539,6 +555,8 @@ def queue_consistency_findings(
         if not command:
             continue
         if is_done_status(str(command.get("status") or "")) and is_bad_status(str(report.get("status") or "")):
+            if command_has_success_evidence(command):
+                continue
             findings.append(
                 Finding(
                     "error",

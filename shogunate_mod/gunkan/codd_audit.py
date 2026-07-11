@@ -13,8 +13,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 
 COMMAND_TIMEOUT = 90
 INSTALL_TIMEOUT = 300
@@ -22,6 +20,67 @@ OUTPUT_LIMIT = 12000
 CODD_PACKAGE = os.environ.get("CODD_PACKAGE", "codd-dev")
 CODD_VERSION_SPEC = os.environ.get("CODD_VERSION_SPEC", "")
 CODD_FALLBACK_VERSION = os.environ.get("CODD_FALLBACK_VERSION", "1.34.0")
+
+
+def _candidate_pyyaml_pythons() -> list[Path]:
+    candidates: list[Path] = []
+    for env_name in ("SHOGUNATE_RUNTIME_DIR", "SHOGUNATE_ENGINE_DIR"):
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            candidates.append(Path(value) / ".venv" / "bin" / "python3")
+            candidates.append(Path(value) / ".venv" / "bin" / "python")
+
+    script_root = Path(__file__).resolve().parents[2]
+    candidates.append(script_root / ".venv" / "bin" / "python3")
+    candidates.append(script_root / ".venv" / "bin" / "python")
+    script_engine_marker = script_root / "queue" / "runtime" / "engine_dir"
+    if script_engine_marker.exists():
+        engine_dir = script_engine_marker.read_text(encoding="utf-8").strip()
+        if engine_dir:
+            candidates.append(Path(engine_dir) / ".venv" / "bin" / "python3")
+            candidates.append(Path(engine_dir) / ".venv" / "bin" / "python")
+
+    cwd = Path.cwd()
+    candidates.append(cwd / ".venv" / "bin" / "python3")
+    candidates.append(cwd / ".venv" / "bin" / "python")
+    engine_marker = cwd / "queue" / "runtime" / "engine_dir"
+    if engine_marker.exists():
+        engine_dir = engine_marker.read_text(encoding="utf-8").strip()
+        if engine_dir:
+            candidates.append(Path(engine_dir) / ".venv" / "bin" / "python3")
+            candidates.append(Path(engine_dir) / ".venv" / "bin" / "python")
+    return candidates
+
+
+def _import_yaml_or_reexec():
+    try:
+        import yaml as yaml_module
+
+        return yaml_module
+    except ModuleNotFoundError as exc:
+        if exc.name != "yaml":
+            raise
+
+    current = Path(sys.executable).resolve()
+    for candidate in _candidate_pyyaml_pythons():
+        if not candidate.is_file() or not os.access(candidate, os.X_OK):
+            continue
+        if candidate.resolve() == current:
+            continue
+        probe = subprocess.run(
+            [str(candidate), "-c", "import yaml"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if probe.returncode == 0:
+            os.execv(str(candidate), [str(candidate), *sys.argv])
+    raise ModuleNotFoundError(
+        "No module named 'yaml'. Shogunate venv with PyYAML was not found; run shogunate first_setup."
+    )
+
+
+yaml = _import_yaml_or_reexec()
 
 
 def now_iso() -> str:

@@ -306,6 +306,36 @@ assert watch["alert_sent"] is True
 PY
 }
 
+@test "gunkan_light_watch: completed command success evidence supersedes stale blocked worker report" {
+  cat > "$TEST_TMP/queue/shogun_to_karo.yaml" <<'YAML'
+commands:
+  - id: cmd_watch_done
+    status: completed
+    result:
+      verification:
+        command: python3 -m unittest discover -v
+        result: pass; Ran 3 tests; OK
+YAML
+  cat > "$TEST_TMP/queue/reports/ashigaru4_report.yaml" <<'YAML'
+worker_id: ashigaru4
+status: blocked
+parent_cmd: cmd_watch_done
+verification: failed: exit 5; Ran 0 tests
+YAML
+
+  run "$PYTHON_BIN" "$PROJECT_ROOT/shogunate_mod/gunkan/light_watch.py" --project-root "$TEST_TMP" --alert-on-first-run
+  [ "$status" -eq 0 ]
+
+  "$PYTHON_BIN" - "$TEST_TMP/queue/runtime/gunkan_watch.yaml" <<'PY'
+import sys
+import yaml
+
+watch = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+kinds = {f["kind"] for f in watch["findings"]}
+assert "done_command_with_failed_report" not in kinds
+PY
+}
+
 @test "gunkan_light_watch: artifact path check ignores URLs and natural text" {
   mkdir -p "$TEST_TMP/dist"
   printf '<!doctype html>\n' > "$TEST_TMP/dist/app.html"

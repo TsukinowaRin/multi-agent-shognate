@@ -125,12 +125,15 @@ shogunate battlefield start myapp --resume
 shogunate battlefield start myapp --new
 shogunate battlefield stop myapp
 shogunate battlefield send myapp --role shogun "Implement the next task"
+shogunate battlefield send myapp --role shogun --start "Implement the next task"
+shogunate battlefield outbox myapp --json
 shogunate battlefield roles myapp --json
 shogunate battlefield sessions myapp --json
 shogunate battlefield transcript myapp --json
 ```
 
 This gives mobile and desktop clients the intended hierarchy: host connection, registered project battlefield, app chat session, and role chat target.
+The list, sessions, transcript, and outbox commands work even when the Shogunate runtime is stopped. If an app sends a role message while the runtime is stopped, Shogunate stores it as a pending message; `start` or `send --start` resumes the project and attempts delivery to the role inbox.
 
 Parallel Shogunate is supported. Start Shogunate from two different project directories and each project gets its own runtime copy and `tmux` session name.
 

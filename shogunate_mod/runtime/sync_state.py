@@ -156,6 +156,8 @@ def read_state(path: Path) -> dict[str, Any]:
     if not isinstance(state, dict):
         state = {}
     state.setdefault("gunkan_audit_requested", [])
+    state.setdefault("gunkan_reaudit_requested", [])
+    state.setdefault("karo_review_requested", [])
     return state
 
 
@@ -172,21 +174,32 @@ def inbox_contains_audit_request(inbox_path: Path, cmd_id: str) -> bool:
     return False
 
 
-def request_gunkan_audit(root: Path, queue_dir: Path, cmd: dict[str, Any], reports: list[tuple[Path, dict[str, Any]]], state: dict[str, Any]) -> bool:
+def request_gunkan_audit(
+    root: Path,
+    queue_dir: Path,
+    cmd: dict[str, Any],
+    reports: list[tuple[Path, dict[str, Any]]],
+    state: dict[str, Any],
+    *,
+    force: bool = False,
+    reason: str = "",
+) -> bool:
     cmd_id = command_id(cmd)
     requested = set(state.get("gunkan_audit_requested", []) or [])
-    if cmd_id in requested:
+    if not force and cmd_id in requested:
         return False
     inbox_path = queue_dir / "inbox" / "gunkan.yaml"
-    if inbox_contains_audit_request(inbox_path, cmd_id):
+    if not force and inbox_contains_audit_request(inbox_path, cmd_id):
         requested.add(cmd_id)
         state["gunkan_audit_requested"] = sorted(requested)
         return False
 
     report_names = ", ".join(sorted(path.name for path, _ in reports)) or "no reports"
     target_project = str(cmd.get("project") or cmd.get("target_project") or root)
+    prefix = "runtime-syncより再監査を要請。" if force else "runtime-syncより最終監査を要請。"
+    reason_text = f" 理由: {reason}" if reason else ""
     content = (
-        f"[cmd:{cmd_id}] runtime-syncより最終監査を要請。"
+        f"[cmd:{cmd_id}] {prefix}{reason_text}"
         f" 足軽reportが揃いました。成果物・テスト結果・禁止操作違反の有無を確認し、"
         f"queue/reports/gunkan_report.yaml に parent_cmd: {cmd_id} の監査reportを書いてください。"
         f" target_project: {target_project} reports: {report_names}"
@@ -200,6 +213,34 @@ def request_gunkan_audit(root: Path, queue_dir: Path, cmd: dict[str, Any], repor
     requested.add(cmd_id)
     state["gunkan_audit_requested"] = sorted(requested)
     return True
+
+
+def request_karo_review(root: Path, queue_dir: Path, cmd: dict[str, Any], audit: dict[str, Any], state: dict[str, Any]) -> bool:
+    cmd_id = command_id(cmd)
+    requested = set(state.get("karo_review_requested", []) or [])
+    audit_key = str(audit.get("audit_id") or audit.get("timestamp") or record_status(audit) or "audit")
+    key = f"{cmd_id}:{audit_key}"
+    if key in requested:
+        return False
+    content = (
+        f"[cmd:{cmd_id}] 軍監監査が {record_status(audit) or 'failed'} です。"
+        f" queue/reports/gunkan_report.yaml を読み、指摘を修正差配してください。"
+        f" 修正後は必要な足軽reportを更新し、軍監へ再監査を依頼してください。"
+    )
+    inbox_write = root / "scripts" / "inbox_write.sh"
+    subprocess.run(
+        ["bash", str(inbox_write), "karo", content, "audit_failed", "runtime_sync"],
+        cwd=str(root),
+        check=True,
+    )
+    requested.add(key)
+    state["karo_review_requested"] = sorted(requested)
+    return True
+
+
+def latest_report_mtime(reports: list[tuple[Path, dict[str, Any]]]) -> int:
+    mtimes = [path.stat().st_mtime_ns for path, _ in reports if path.exists()]
+    return max(mtimes) if mtimes else 0
 
 
 def dashboard_template() -> str:
@@ -368,6 +409,40 @@ def sync_once(root: Path) -> list[str]:
                 changed_commands = True
                 update_dashboard(root, command, "done", summary)
                 events.append(f"done\t{cid}")
+                continue
+            if audit and record_status(audit[1]) in BAD_STATUSES:
+                audit_path, audit_report = audit
+                latest_worker_report = latest_report_mtime(reports)
+                audit_mtime = audit_path.stat().st_mtime_ns if audit_path.exists() else 0
+                reaudit_key = f"{cid}:{latest_worker_report}"
+                reaudit_requested = set(state.get("gunkan_reaudit_requested", []) or [])
+                if latest_worker_report > audit_mtime and reaudit_key not in reaudit_requested:
+                    if request_gunkan_audit(
+                        root,
+                        queue_dir,
+                        command,
+                        reports,
+                        state,
+                        force=True,
+                        reason="軍監失敗後に足軽reportが更新されました。",
+                    ):
+                        reaudit_requested.add(reaudit_key)
+                        state["gunkan_reaudit_requested"] = sorted(reaudit_requested)
+                        command["status"] = "audit_requested"
+                        command["updated_at"] = now_iso()
+                        changed_commands = True
+                        update_dashboard(root, command, "audit_requested", summary or "waiting for Gunkan re-audit")
+                        events.append(f"reaudit_requested\t{cid}")
+                        continue
+
+                command["status"] = "review"
+                command["updated_at"] = now_iso()
+                changed_commands = True
+                update_dashboard(root, command, "review", "Gunkan audit failed: " + compact(audit_report.get("summary") or audit_report.get("result") or "see gunkan_report"))
+                if request_karo_review(root, queue_dir, command, audit_report, state):
+                    events.append(f"review_requested\t{cid}")
+                else:
+                    events.append(f"review_pending\t{cid}")
                 continue
 
             command["status"] = "audit_requested"

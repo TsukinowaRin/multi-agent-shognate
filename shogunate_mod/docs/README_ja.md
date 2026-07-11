@@ -125,12 +125,15 @@ shogunate battlefield start myapp --resume
 shogunate battlefield start myapp --new
 shogunate battlefield stop myapp
 shogunate battlefield send myapp --role shogun "次のタスクを進めて"
+shogunate battlefield send myapp --role shogun --start "次のタスクを進めて"
+shogunate battlefield outbox myapp --json
 shogunate battlefield roles myapp --json
 shogunate battlefield sessions myapp --json
 shogunate battlefield transcript myapp --json
 ```
 
 このAPIは、接続先PC、登録済みprojectの戦場、app上の会話session、話しかける役職、という階層を前提にしています。
+`list`、`sessions`、`transcript`、`outbox` は Shogunate runtime が停止中でも使えます。停止中に role へ送信した message は pending として保存され、`start` または `send --start` で project を resume 起動したあと role inbox へ配送を試みます。
 
 並列 Shogunate も可能です。別々の project directory から起動すると、それぞれ専用の runtime copy と `tmux` session 名が割り当てられます。
 

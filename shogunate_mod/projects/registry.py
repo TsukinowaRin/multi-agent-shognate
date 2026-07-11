@@ -63,6 +63,10 @@ def save(data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def json_print(data: dict[str, Any]) -> None:
+    print(json.dumps(data, ensure_ascii=False, indent=2))
+
+
 def find_project(data: dict[str, Any], selector: str) -> dict[str, Any] | None:
     needle = selector.removeprefix("@").strip()
     if not needle:
@@ -104,6 +108,9 @@ def upsert(path: str, name: str = "", make_current: bool = False) -> dict[str, A
 
 def cmd_add(args: argparse.Namespace) -> int:
     project = upsert(args.path, args.name or "", make_current=args.select)
+    if args.json:
+        json_print({"project": project})
+        return 0
     print(f"registered {project['id']} {project['name']} {project['path']}")
     return 0
 
@@ -112,7 +119,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     data = load()
     current = data.get("current", "")
     if args.json:
-        print(json.dumps(data, ensure_ascii=False, indent=2))
+        json_print(data)
         return 0
     if not data["projects"]:
         print("No registered projects.")
@@ -134,6 +141,9 @@ def cmd_select(args: argparse.Namespace) -> int:
     data["projects"] = [p for p in data["projects"] if p.get("id") != project["id"]]
     data["projects"].insert(0, project)
     save(data)
+    if args.json:
+        json_print({"current": data["current"], "project": project})
+        return 0
     print(f"selected {project['id']} {project['name']} {project['path']}")
     return 0
 
@@ -143,6 +153,9 @@ def cmd_current(args: argparse.Namespace) -> int:
     project = find_project(data, data.get("current", ""))
     if project is None:
         return 1
+    if args.json:
+        json_print({"current": data.get("current", ""), "project": project})
+        return 0
     print(project["path"] if args.path else f"{project['id']} {project['name']} {project['path']}")
     return 0
 
@@ -153,6 +166,9 @@ def cmd_resolve(args: argparse.Namespace) -> int:
     project = find_project(data, selector)
     if project is None:
         return 1
+    if args.json:
+        json_print({"path": project["path"], "project": project})
+        return 0
     print(project["path"])
     return 0
 
@@ -167,8 +183,15 @@ def cmd_remove(args: argparse.Namespace) -> int:
     if data.get("current") == project["id"]:
         data["current"] = data["projects"][0]["id"] if data["projects"] else ""
     save(data)
+    if args.json:
+        json_print({"removed": project, "current": data.get("current", "")})
+        return 0
     print(f"removed {project['id']} {project['name']}")
     return 0
+
+
+def add_json_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--json", action="store_true")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -179,26 +202,31 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("path")
     add.add_argument("--name", default="")
     add.add_argument("--select", action="store_true")
+    add_json_arg(add)
     add.set_defaults(func=cmd_add)
 
     listing = sub.add_parser("list", help="list registered projects")
-    listing.add_argument("--json", action="store_true")
+    add_json_arg(listing)
     listing.set_defaults(func=cmd_list)
 
     select = sub.add_parser("select", help="select the current project")
     select.add_argument("selector")
+    add_json_arg(select)
     select.set_defaults(func=cmd_select)
 
     current = sub.add_parser("current", help="print the current registered project")
     current.add_argument("--path", action="store_true")
+    add_json_arg(current)
     current.set_defaults(func=cmd_current)
 
     resolve = sub.add_parser("resolve", help="print a registered project path")
     resolve.add_argument("selector", nargs="?")
+    add_json_arg(resolve)
     resolve.set_defaults(func=cmd_resolve)
 
     remove = sub.add_parser("remove", help="remove a registered project")
     remove.add_argument("selector")
+    add_json_arg(remove)
     remove.set_defaults(func=cmd_remove)
     return parser
 

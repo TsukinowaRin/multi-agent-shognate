@@ -1,6 +1,6 @@
 # Requirements (Normalized)
 
-最終更新: 2026-06-26
+最終更新: 2026-06-27
 出典: ユーザー要求「最新の本家リポジトリをベースに Shogunate 独自機能を実装し直す」
 
 ## 追補（2026-06-23: Shogunate 本体の登録済み project）
@@ -39,6 +39,23 @@
 4. `shogunate battlefield stop NAME` が対象projectの Shogunate tmux session / daemon session を停止できる。
 5. `shogunate battlefield send NAME --role shogun "..."` が対象runtimeの inbox に送信し、app transcript に user message を残す。
 6. `shogunate battlefield roles NAME --json`、`sessions NAME --json`、`transcript NAME --json` が app UI 用の情報を返す。
+
+## 追補（2026-06-26: 外出先からの停止中操作）
+
+### 要求
+
+1. スマホ/デスクトップアプリは、SSH 接続さえできれば Shogunate runtime が停止中でも登録済み project、app 会話 session、transcript を見られる。
+2. 停止中に role へ送信した message は失敗で終わらせず、app 側 pending message として保存する。
+3. 外出先から `start` したとき、または `send --start` したとき、保存済み pending message を対象 runtime の inbox へ配送する。
+4. この機能は HTTP 常駐サーバを新設せず、既存の SSH 経由 `shogunate battlefield/app` JSON API を軽量な操作面として使う。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate battlefield list --json` / `sessions NAME --json` / `transcript NAME --json` は対象 runtime が停止中でも成功する。
+2. `shogunate battlefield send NAME --role shogun "..." --json` は停止中なら pending として保存し、JSON に `queued: true` を返す。
+3. `shogunate battlefield outbox NAME --json` で pending message 数と内容を確認できる。
+4. `shogunate battlefield start NAME --resume --json` は起動後に pending message の配送を試み、結果を JSON に含める。
+5. `shogunate battlefield send NAME --role shogun "..." --start --json` は停止中 runtime を resume 起動してから配送できる。
 
 ## 追補（2026-06-24: Android app 司令台への作り直し）
 
@@ -120,6 +137,63 @@
 2. 既存 repo や secrets を壊さないよう、隔離 target project と専用 tmux session で実施する。
 3. 観察対象は、pane ready、bootstrap、watcher wakeup、command/task/report/dashboard/Gunkan audit 同期、成果物生成、途中停止・詰まり・誤通知の有無とする。
 4. 問題が出た場合は、原因を特定し、修正できるものは修正し、再発防止テストまたは観測手順を残す。
+
+## 追補（2026-06-26: MacAir Test folder 全Codex実機E2E）
+
+### 要求
+
+1. MacAir の `/Users/fishorduck/projects/Test` を対象に Shogunate を起動する。
+2. Shogun / Gunkan / Gunshi / Karo / Ashigaru1-4 の全役職を Codex CLI に揃える。
+3. 実AI CLIを使って、テストプロジェクト作成タスクを実行させる。
+4. Mac環境で runtime / watcher / inbox / dashboard / command-task-report flow が破綻しないか観察する。
+5. 可能な範囲で長時間駆動を観察し、停止・詰まり・誤通知・成果物生成の有無を記録する。
+
+### 受け入れ条件（観測可能）
+
+1. `shogunate battlefield status test --json` で全 role が `cli: codex` として表示される。
+2. `/Users/fishorduck/projects/Test` の runtime が running になり、8 role が検出される。
+3. Shogun に実タスクを投入し、target project に複数ファイル成果物が生成される。
+4. 30分程度の観察で tmux session / daemon / watcher が落ちない、または落ちた場合は原因を説明できる。
+5. 結果と残リスクを ExecPlan に記録する。
+6. Gunkan 監査が失敗した場合、Karo へ修正差配されるか、足軽 report 更新後に Gunkan 再監査へ進み、command が詰まったままにならない。
+7. macOS の非ログイン shell / system Python から Gunkan audit が起動しても、Shogunate venv の PyYAML を検出して監査を継続できる。
+
+## 追補（2026-06-26: 修正後構成のMacAir/このPC二重検証）
+
+### 要求
+
+1. 修正後の Shogunate package/runtime 構成を MacAir に再導入し、既存 `test` battlefield で実機確認する。
+2. 同じ構成をこのPCのWSL環境にも導入し、隔離された test project で実機確認する。
+3. どちらも実AI CLI / tmux / watcher / runtime-sync / Gunkan audit を観察し、起動・配送・監査・復旧に関するバグを掘る。
+4. 見つかったバグは原因を切り分け、低リスクに直せるものはMOD側で修正し、再発防止テストまたは実機再確認を残す。
+5. 短時間probe後も、MacAir とこのPCの両方で30分以上の継続監視を行い、runtime / daemon / role process / queue が自然停止しないか確認する。
+
+### 受け入れ条件（観測可能）
+
+1. MacAir で package 再導入後、`test` battlefield が running になり、Codex 8 role / daemon 14 windows / inbox watcher 8 が確認できる。
+2. MacAir で短い追加命令または既存成果物の確認を投げ、Shogun/Karo/Gunkan の inbox が詰まらないことを確認する。
+3. このPCで package 再導入後、隔離 test project を登録・起動し、runtime / daemon / watcher が立ち上がる。
+4. このPCでも `codd_audit.py` の venv self re-exec と runtime-sync 再監査契約が動くことを確認する。
+5. 検証ログ、見つかったバグ、修正、残リスクを ExecPlan に記録する。
+6. MacAir とこのPCの同時soakで、少なくとも30分以上 runtime が running のまま、daemon 14 windows、8 role、実CLI表示が維持されることを確認する。
+
+## 追補（2026-06-27: stress bug hunt）
+
+### 要求
+
+1. 30分soakで安定確認した状態から、段階的に負荷を上げて Shogunate のバグを掘る。
+2. 対象はこのPCの `dual-probe` と MacAir の `test` を中心にし、既存ユーザーprojectや secrets を壊さない。
+3. 負荷は API 連打、status/list/roles/sessions/transcript の反復、停止中 outbox / start / resume、queue 異常入力、runtime daemon / watcher の再起動耐性、実AI role への小さな連続指示の順で上げる。
+4. 見つかったバグは原因を切り分け、MOD側で小さく修正し、再発防止テストまたは実機再確認を残す。
+5. 実AIに大きなトークン消費をさせる前に、非LLM/API/queue層で再現できる問題を優先して潰す。
+
+### 受け入れ条件（観測可能）
+
+1. stress 実施中も、対象 runtime の role 数、daemon windows、pending messages、inbox unread、command tail が説明可能な状態に保たれる。
+2. `shogunate battlefield status/list/roles/sessions/transcript/outbox` の反復実行が JSON 破損や例外で落ちない。
+3. 停止中 send / start / resume / pending delivery の契約が、少なくとも隔離projectで破綻しない。
+4. queue 異常入力や古い report で runtime-sync / Gunkan audit が停止せず、必要なら review / audit_failed へ説明可能に遷移する。
+5. 発見事項、修正、検証、残リスクを ExecPlan / WORKLOG に記録する。
 
 ### 受け入れ条件（観測可能）
 

@@ -14,8 +14,8 @@ function usage() {
   shogunate run [args...]
   shogunate pair [args...]
   shogunate projects [list|add|select|current|remove]
-  shogunate battlefield [list|status|start|stop|send|sessions|transcript]
-  shogunate app [capabilities|list|status|start|stop|send]
+  shogunate battlefield [list|status|start|stop|send|outbox|sessions|transcript]
+  shogunate app [capabilities|list|status|start|stop|send|outbox|sessions|transcript]
   shogunate help
   shogunate --help
 
@@ -24,7 +24,7 @@ Commands:
   run       Run the Shogunate MOD runtime launcher for the current project directory.
   pair      Pair Android app over USB auto + Tailscale/LAN for the current project.
   projects  Manage the registered project list.
-  battlefield  Manage registered project runtimes.
+  battlefield  Manage registered project runtimes, offline history, and pending messages.
   app       JSON-friendly API for mobile and desktop apps.
 
 The npm package is a thin wrapper. Its install command runs the MOD package bootstrap:
@@ -51,6 +51,17 @@ function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   const args = [...argv];
   const command = args.shift();
   const root = path.resolve(__dirname, "../..");
+  const venvBin = path.join(root, ".venv", "bin");
+  const commonUnixBins = [
+    venvBin,
+    "/opt/homebrew/opt/coreutils/libexec/gnubin",
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+  ];
+  const runtimeEnv = {
+    ...process.env,
+    PATH: `${commonUnixBins.join(path.delimiter)}${path.delimiter}${process.env.PATH || ""}`,
+  };
 
   if (!command || command === "help" || command === "-h" || command === "--help") {
     usage();
@@ -66,7 +77,9 @@ function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   }
 
   if (command === "run") {
-    run("bash", [path.join(root, "shogunate_mod/runtime/runtime_launcher.sh"), "--project", cwd, ...args]);
+    run("bash", [path.join(root, "shogunate_mod/runtime/runtime_launcher.sh"), "--project", cwd, ...args], {
+      env: runtimeEnv,
+    });
   }
 
   if (command === "pair") {
@@ -77,17 +90,17 @@ function main(argv = process.argv.slice(2), cwd = process.cwd()) {
       "--target-project",
       cwd,
       ...args,
-    ]);
+    ], { env: runtimeEnv });
   }
 
   if (command === "projects" || command === "project") {
-    run("python3", [path.join(root, "shogunate_mod/projects/registry.py"), ...args]);
+    run("python3", [path.join(root, "shogunate_mod/projects/registry.py"), ...args], { env: runtimeEnv });
   }
 
   if (command === "battlefield" || command === "battlefields" || command === "app") {
     run("python3", [path.join(root, "shogunate_mod/battlefield/api.py"), ...args], {
       env: {
-        ...process.env,
+        ...runtimeEnv,
         SHOGUNATE_ENGINE_DIR: root,
         SHOGUNATE_COMMAND: process.argv[1],
       },

@@ -1,6 +1,6 @@
 # Docs Index
 
-最終更新: 2026-06-21
+最終更新: 2026-06-27
 
 ## Must-read
 
@@ -20,6 +20,10 @@
 - `docs/EXECPLAN_2026-06-22_long_running_real_ai_e2e.md` - 実AI混在構成で複雑タスクを長時間走らせる安定性検証計画。
 - `docs/EXECPLAN_2026-06-22_long_running_stability_fixes.md` - 長時間E2Eで見つかった詰まり・誤検知を改善する計画。
 - `docs/EXECPLAN_2026-06-22_shogunate_app.md` - Windows / Linux / macOS / Android 対応の Shogunate App 設計計画。
+- `docs/EXECPLAN_2026-06-26_macair_all_codex_e2e.md` - MacAir `/Users/fishorduck/projects/Test` の全役職 Codex 実機E2E計画と検証記録。
+- `docs/EXECPLAN_2026-06-26_dual_machine_stability_probe.md` - 修正後構成を MacAir とこのPCの両方で再検証し、残バグを掘る計画。
+- `docs/EXECPLAN_2026-06-27_stress_bug_hunt.md` - API / queue / runtime / 実機を段階的に高負荷で叩き、バグを掘って修正する計画。
+- `docs/HANDOFF_2026-06-27_long_soak_resume.md` - PC再起動後に長時間soakを再開するための手順。
 - `docs/EXECPLAN_2026-05-30_android_setup.md` - Android app の SSH / tmux target 設定改善計画。
 - `docs/EXECPLAN_2026-05-31_android_host_setup.md` - Android app の USB/無線 SSH セットアップと将軍単体表示計画。
 
@@ -40,5 +44,6 @@
 - cURL package installer は既定で engine を `~/.shogunate/shogunate` に展開し、`~/.local/bin/shogunate` を登録する。`cd <project> && shogunate` が正本導線で、project ごとの runtime copy は `~/.shogunate/workspaces/<slug>-<hash>/` に作る。`first_setup.sh` より先に command shim を更新するため、依存不足で setup が途中停止しても `shogunate pair` / `shogunate help` は最新化される。PATH に `~/.local/bin` が入っていれば `shogunate` だけで起動できる。package 展開後の helper scripts は executable bit が無くても `bash` 経由で使える前提にする。
 - Shogunate 本体の登録済み project registry は MOD 正本 `shogunate_mod/projects/registry.py`。既定保存先は `~/.shogunate/projects.json`。`shogunate projects add /path --name name --select`、`shogunate projects`、`shogunate --project @name resume`、`shogunate open name` を package command と npm wrapper から使える。
 - Shogunate App向け本体APIは MOD 正本 `shogunate_mod/battlefield/api.py`。`shogunate app capabilities --json`、`shogunate battlefield list/status/start/stop/send/roles/sessions/transcript` を使い、接続先PC -> 登録済みprojectの戦場 -> app会話session -> 役職chat の階層をアプリに提供する。Android/desktop app は tmux pane 名を直接推測するより、このAPIを優先する。
+- project runtime sync は `queue/`、`logs/`、`.shogunate/`、`config/settings.yaml`、`config/projects.yaml`、`dashboard.md` を runtime-local state として保護し、engine/package からの `rsync --delete` で消してはいけない。`dashboard.md` が欠落した runtime は次回起動時に初期dashboardを再生成する。
 - README / README_ja は package install 前提の導入正本。固定導入例は最新 release tag の cURL command を使い、通常 release tag は `v5.2.0.1`, `v5.2.0.2`, `v5.2.0.3` のように `-preview` なしで進める。
 - `shogunate pair` は Android app の初回 setup 用。既定で呼び出し元 cwd の project runtime を対象にし、USB reverse を自動試行しつつ Tailscale/LAN でも待ち受ける。`shogunate pair --usb` は廃止し、package command は `shogunate pair` に統一する。Android app は app 内秘密鍵を保持し、PC 側は端末名確認後の Pair Password prompt 承認で公開鍵だけを `~/.ssh/authorized_keys` へ追加する。成功後は PC 側が best-effort でその project の Shogunate runtime を起動し、以後は登録済み SSH 鍵で直接接続する。Pair response の `project` は Android dashboard 用の runtime root、`target_project` は実作業 directory。既定では1台成功後に `Pairing complete` を表示して自動終了し、複数端末を続けて登録する場合だけ `--keep-running` を使う。SSH port は TCP open だけでなく SSH banner で検出し、壊れた Windows portproxy / stale forwarding を避ける。USB は `127.0.0.1`、無線は app が入力した PC address に対して SSH banner を返す port を選び、Pair terminal は app へ返した `user@host:port` を表示する。

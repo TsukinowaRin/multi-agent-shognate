@@ -78,6 +78,7 @@ data class BattlefieldRoleItem(
 )
 
 data class BattlefieldMessageItem(
+    val type: String,
     val time: String,
     val from: String,
     val to: String,
@@ -114,6 +115,7 @@ class BattlefieldViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _actionState = MutableStateFlow(BattlefieldActionState())
     val actionState: StateFlow<BattlefieldActionState> = _actionState
+    private var transcriptRefreshRunning = false
 
     init {
         refresh()
@@ -330,7 +332,7 @@ class BattlefieldViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun sendMessage(text: String) {
+    fun sendMessage(text: String, onSent: () -> Unit = {}) {
         val project = _uiState.value.selectedProject ?: return
         val message = text.trim()
         if (message.isBlank()) {
@@ -348,11 +350,30 @@ class BattlefieldViewModel(application: Application) : AndroidViewModel(applicat
             val result = execJson("shogunate battlefield send ${project.id} ${Defaults.shellQuote(message)} --role ${Defaults.shellQuote(role)} --json")
             if (result.isSuccess) {
                 _actionState.value = BattlefieldActionState(false, true, "${role}へ送りました。")
+                onSent()
                 loadTranscript(project.key)
             } else {
                 _actionState.value = BattlefieldActionState(false, false, "送信できませんでした。戦場が起動中か確認してください。")
             }
         }
+    }
+
+    fun refreshTranscriptOnly() {
+        val projectKey = _uiState.value.selectedProjectId
+        if (projectKey.isBlank() || _uiState.value.selectedSessionId.isBlank() || transcriptRefreshRunning) return
+        viewModelScope.launch {
+            transcriptRefreshRunning = true
+            try {
+                loadTranscript(projectKey)
+            } finally {
+                transcriptRefreshRunning = false
+            }
+        }
+    }
+
+    fun pollTranscript() {
+        if (_actionState.value.running) return
+        refreshTranscriptOnly()
     }
 
     private suspend fun refreshProjectDetails(projectKey: String, quiet: Boolean) {
@@ -519,6 +540,7 @@ class BattlefieldViewModel(application: Application) : AndroidViewModel(applicat
         return (0 until array.length()).mapNotNull { index ->
             val obj = array.optJSONObject(index) ?: return@mapNotNull null
             BattlefieldMessageItem(
+                type = obj.optString("type"),
                 time = obj.optString("time"),
                 from = obj.optString("from"),
                 to = obj.optString("to"),

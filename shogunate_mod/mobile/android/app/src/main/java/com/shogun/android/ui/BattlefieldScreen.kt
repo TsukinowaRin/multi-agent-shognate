@@ -8,12 +8,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -34,11 +39,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -60,6 +67,8 @@ import com.shogun.android.viewmodel.BattlefieldMessageItem
 import com.shogun.android.viewmodel.BattlefieldRoleItem
 import com.shogun.android.viewmodel.BattlefieldSessionItem
 import com.shogun.android.viewmodel.BattlefieldViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -68,6 +77,14 @@ fun BattlefieldScreen(viewModel: BattlefieldViewModel = viewModel()) {
     val actionState by viewModel.actionState.collectAsState()
     var projectPath by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+
+    LaunchedEffect(uiState.selectedProjectId, uiState.selectedSessionId) {
+        if (uiState.selectedProjectId.isBlank() || uiState.selectedSessionId.isBlank()) return@LaunchedEffect
+        while (isActive) {
+            delay(5000)
+            viewModel.pollTranscript()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -143,8 +160,7 @@ fun BattlefieldScreen(viewModel: BattlefieldViewModel = viewModel()) {
                 onRoleSelect = { viewModel.selectRole(it) },
                 onMessageChange = { message = it },
                 onSend = {
-                    viewModel.sendMessage(message)
-                    message = ""
+                    viewModel.sendMessage(message) { message = "" }
                 }
             )
         }
@@ -379,48 +395,125 @@ private fun RoleChatCard(
     onMessageChange: (String) -> Unit,
     onSend: () -> Unit
 ) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(transcript.size) {
+        if (transcript.isNotEmpty()) {
+            listState.animateScrollToItem(transcript.lastIndex)
+        }
+    }
+
     AppCard {
         Text("役職に話す", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             roles.distinctBy { it.role }.forEach { role ->
                 AssistChip(
                     onClick = { onRoleSelect(role.role) },
-                    label = { Text(if (role.role == selectedRole) "選択中: ${role.role}" else role.role) }
+                    label = { Text(if (role.role == selectedRole) "選択中: ${roleDisplayName(role.role)}" else roleDisplayName(role.role)) }
                 )
             }
         }
-        OutlinedTextField(
-            value = message,
-            onValueChange = onMessageChange,
-            label = { Text("${selectedRole.ifBlank { "shogun" }} へ送信") },
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            maxLines = 6
-        )
-        Button(
-            onClick = onSend,
-            enabled = !running && message.isNotBlank(),
-            shape = RoundedCornerShape(4.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Shuaka, contentColor = Color.White),
-            modifier = Modifier.fillMaxWidth()
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom
         ) {
-            Icon(Icons.Default.Send, contentDescription = null)
-            Text("送信")
-        }
-        Spacer(Modifier.height(4.dp))
-        Text("会話履歴", color = Kinpaku, fontSize = 13.sp)
-        if (transcript.isEmpty()) {
-            Text("まだメッセージはありません。", color = TextMuted, fontSize = 12.sp)
-        } else {
-            transcript.takeLast(8).forEach { item ->
-                Text(
-                    text = "${item.from} -> ${item.to}: ${item.content}",
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    fontFamily = FontFamily.Monospace
-                )
+            OutlinedTextField(
+                value = message,
+                onValueChange = onMessageChange,
+                label = { Text("${roleDisplayName(selectedRole.ifBlank { "shogun" })} へ送信") },
+                modifier = Modifier.weight(1f),
+                enabled = !running,
+                minLines = 1,
+                maxLines = 4
+            )
+            IconButton(
+                onClick = onSend,
+                enabled = !running && message.isNotBlank(),
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(if (!running && message.isNotBlank()) Shuaka else Color(0xFF5A3A3A), CircleShape)
+            ) {
+                Icon(Icons.Default.Send, contentDescription = "送信", tint = if (!running && message.isNotBlank()) Color.White else TextMuted)
             }
         }
+        Text("会話履歴", color = Kinpaku, fontSize = 13.sp)
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(320.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (transcript.isEmpty()) {
+                item {
+                    Text("まだメッセージはありません。", color = TextMuted, fontSize = 12.sp)
+                }
+            } else {
+                items(transcript) { item ->
+                    TranscriptMessageRow(item)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranscriptMessageRow(item: BattlefieldMessageItem) {
+    when {
+        item.from == "lord" || item.type == "user_message" -> LordMessageBubble(item.content)
+        item.type == "role_message" -> RoleMessageBubble(item)
+        else -> SystemMessageLine(item)
+    }
+}
+
+@Composable
+private fun LordMessageBubble(content: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Text(
+            text = content,
+            color = Color.White,
+            fontSize = 13.sp,
+            modifier = Modifier
+                .widthIn(max = 292.dp)
+                .background(Shuaka, RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 4.dp))
+                .padding(horizontal = 12.dp, vertical = 9.dp)
+        )
+    }
+}
+
+@Composable
+private fun RoleMessageBubble(item: BattlefieldMessageItem) {
+    val time = transcriptTimeLabel(item.time)
+    val label = listOf(roleDisplayName(item.from), time).filter { it.isNotBlank() }.joinToString(" ")
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 292.dp)
+                .background(
+                    Color(0xFF3A3A3A),
+                    RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 4.dp, bottomEnd = 12.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(label, color = Kinpaku, fontSize = 12.sp)
+            Text(item.content, color = TextSecondary, fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun SystemMessageLine(item: BattlefieldMessageItem) {
+    val status = when {
+        item.content.isNotBlank() -> item.content
+        item.type == "delivery_status" && item.to.isNotBlank() -> "✓ ${roleDisplayName(item.to)}へ配送済み"
+        item.type.isNotBlank() -> item.type
+        else -> ""
+    }
+    if (status.isBlank()) return
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        Text(status, color = TextMuted, fontSize = 11.sp)
     }
 }
 

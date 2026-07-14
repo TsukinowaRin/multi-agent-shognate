@@ -17,6 +17,9 @@ is Shogunate-only.
 
 - `app/` owns Shogunate App chat transcript reply helpers used by roles to
   append replies back into the originating app session.
+- `approval/` owns the host-controlled phone registry, per-device capability
+  checks, private atomic storage, and the local approval-device management CLI.
+  It does not execute privileged commands or let the app grant capabilities.
 - `battlefield/` owns the Shogunate App-facing battlefield API for registered
   project discovery, runtime start/stop, app sessions, transcripts, role
   listing, and role message delivery.

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 append_bootstrap_status_log() {
     local agent_id="$1"
     local cli_type="$2"

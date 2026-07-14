@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 tmux_send_text_and_enter() {
     local pane_target="$1"
     local text="$2"

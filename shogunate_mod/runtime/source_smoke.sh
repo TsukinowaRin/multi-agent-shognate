@@ -10,6 +10,7 @@ DAEMON="${SHOGUNATE_SOURCE_SMOKE_DAEMON_SESSION:-goza-runtime-shogunate-mod-$RUN
 TARGET_PROJECT="$WORKTREE/target-project"
 KEEP_ON_FAIL="${SHOGUNATE_SOURCE_SMOKE_KEEP_ON_FAIL:-1}"
 KEEP_ALWAYS="${SHOGUNATE_SOURCE_SMOKE_KEEP:-0}"
+STUB_BIN=""
 
 cleanup() {
   local status=$?
@@ -22,6 +23,7 @@ cleanup() {
   tmux kill-session -t "$DAEMON" 2>/dev/null || true
   git -C "$ROOT_DIR" worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
   git -C "$ROOT_DIR" worktree prune >/dev/null 2>&1 || true
+  [[ -n "$STUB_BIN" ]] && rm -rf "$STUB_BIN"
 }
 trap cleanup EXIT
 
@@ -63,9 +65,17 @@ printf '[INFO] adding detached worktree: %s (%s)\n' "$WORKTREE" "$REF"
 git -C "$ROOT_DIR" worktree add --detach "$WORKTREE" "$REF"
 mkdir -p "$TARGET_PROJECT"
 
+# CI には実 CLI が存在せず、resolve_cli_type_for_agent の可用性フォールバックが
+# localapi を選んで agent_cli.tsv の期待値(claude)と食い違う。stub の claude を
+# PATH 先頭へ置き、ホスト環境に依存せず可用性判定を通す(worktree 外に置く)。
+STUB_BIN="$(mktemp -d "${TMPDIR:-/tmp}/shogunate-smoke-stub.XXXXXX")"
+printf '#!/usr/bin/env bash\nexec sleep 3600\n' > "$STUB_BIN/claude"
+chmod +x "$STUB_BIN/claude"
+
 printf '[INFO] starting setup-only runtime smoke: %s\n' "$SESSION"
 (
   cd "$WORKTREE"
+  PATH="$STUB_BIN:$PATH" \
   SHOGUNATE_PROJECT_DIR="$TARGET_PROJECT" \
   SHOGUNATE_SESSION_NAME="$SESSION" \
   GOZA_SESSION_NAME="$SESSION" \

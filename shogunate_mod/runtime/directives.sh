@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 role_linkage_directive() {
     local agent_id="$1"
     case "$agent_id" in

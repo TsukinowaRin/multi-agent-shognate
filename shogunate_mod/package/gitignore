@@ -222,6 +222,8 @@ shogunate_mod/mobile/android/release/*.apk
 !shogunate_mod/app/
 !shogunate_mod/app/*.sh
 !shogunate_mod/app/server.py
+!shogunate_mod/approval/
+!shogunate_mod/approval/*.py
 !shogunate_mod/battlefield/
 !shogunate_mod/battlefield/*.py
 !shogunate_mod/projects/

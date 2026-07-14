@@ -2,7 +2,7 @@
 
 setup_file() {
     export PROJECT_ROOT
-    PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+    PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../../.." && pwd)"
 }
 
 @test "shell_aliases は source で repo-local alias を定義する" {
@@ -24,6 +24,12 @@ setup_file() {
     [[ "$output" == *"alias CSM='bash $PROJECT_ROOT/shogunate_mod/view/goza_no_ma.sh -t multiagent'"* ]]
     [[ "$output" == *"alias CSK='bash $PROJECT_ROOT/shogunate_mod/view/focus_agent_pane.sh karo'"* ]]
     [[ "$output" == *"alias CKR='bash $PROJECT_ROOT/shogunate_mod/view/focus_agent_pane.sh karo'"* ]]
+}
+
+@test "shell_aliases は呼び出し元 shell の strict option を変更しない" {
+    run bash -c "set +e +u; set +o pipefail; source '$PROJECT_ROOT/shogunate_mod/shell/aliases.sh'; false; printf 'shell-alive\\n'"
+    [ "$status" -eq 0 ]
+    [ "$output" = "shell-alive" ]
 }
 
 @test "shell_aliases は workspace session_name を環境変数へ反映する" {

@@ -16,6 +16,7 @@ function usage() {
   shogunate projects [list|add|select|current|remove]
   shogunate battlefield [list|status|start|stop|send|outbox|sessions|transcript]
   shogunate app [capabilities|list|status|start|stop|send|outbox|sessions|transcript]
+  shogunate approval-devices [--registry PATH] [list|show|rename|capabilities|activate|suspend|revoke]
   shogunate help
   shogunate --help
 
@@ -26,6 +27,7 @@ Commands:
   projects  Manage the registered project list.
   battlefield  Manage registered project runtimes, offline history, and pending messages.
   app       JSON-friendly API for mobile and desktop apps.
+  approval-devices  Manage phone trust and capabilities on this PC.
 
 The npm package is a thin wrapper. Its install command runs the MOD package bootstrap:
   curl -fsSL ${bootstrapUrl} | bash
@@ -104,6 +106,13 @@ function main(argv = process.argv.slice(2), cwd = process.cwd()) {
         SHOGUNATE_ENGINE_DIR: root,
         SHOGUNATE_COMMAND: process.argv[1],
       },
+    });
+  }
+
+  if (command === "approval-devices" || command === "approval-device") {
+    run("python3", ["-m", "shogunate_mod.approval.admin_cli", ...args], {
+      cwd: root,
+      env: runtimeEnv,
     });
   }
 

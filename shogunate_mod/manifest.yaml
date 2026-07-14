@@ -6,6 +6,7 @@ canonical_paths:
   mod_readme: shogunate_mod/README.md
   agent_status: shogunate_mod/status/agent_status.sh
   agent_status_command: shogunate_mod/status/command.sh
+  approval_device_registry: shogunate_mod/approval/
   battlefield_api: shogunate_mod/battlefield/
   app_reply: shogunate_mod/app/reply.sh
   app_server: shogunate_mod/app/server.py

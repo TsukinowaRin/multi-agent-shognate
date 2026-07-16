@@ -18,6 +18,7 @@
 CLI_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLI_ADAPTER_PROJECT_ROOT="${CLI_ADAPTER_PROJECT_ROOT:-$(cd "${CLI_ADAPTER_DIR}/../.." && pwd)}"
 CLI_ADAPTER_SETTINGS="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
+CLI_ADAPTER_FAILOVER_ROOT="${CLI_ADAPTER_FAILOVER_ROOT:-${CLI_ADAPTER_PROJECT_ROOT}}"
 CLI_ADAPTER_HOST_HOME="${CLI_ADAPTER_HOST_HOME:-${HOME:-}}"
 CLI_ADAPTER_PYTHON="${CLI_ADAPTER_PROJECT_ROOT}/.venv/bin/python3"
 if [[ -x "$CLI_ADAPTER_PYTHON" ]] && ! "$CLI_ADAPTER_PYTHON" -c "import yaml" >/dev/null 2>&1; then
@@ -29,6 +30,80 @@ fi
 
 # 許可されたCLI種別
 CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi antigravity localapi opencode kilo cursor"
+CLI_ACTIVE_PROFILE_ENABLED="${CLI_ACTIVE_PROFILE_ENABLED:-0}"
+
+# load_active_role_profile agent_id
+# role_failover state が初期化済みなら、type/model等を同じgenerationの
+# 1 snapshotから読み込む。stateが無い既存projectだけlegacy flat設定へ戻る。
+load_active_role_profile() {
+    local agent_id="$1"
+    local state_path="${CLI_ADAPTER_FAILOVER_ROOT}/queue/runtime/role_failover.yaml"
+    local controller="${CLI_ADAPTER_PROJECT_ROOT}/shogunate_mod/runtime/role_failover.py"
+    local payload=""
+    local -a fields=()
+
+    CLI_ACTIVE_PROFILE_ENABLED=0
+    unset CLI_ACTIVE_PROFILE_AGENT CLI_ACTIVE_PROFILE_TYPE CLI_ACTIVE_PROFILE_MODEL \
+        CLI_ACTIVE_PROFILE_REASONING CLI_ACTIVE_PROFILE_THINKING CLI_ACTIVE_PROFILE_EFFORT \
+        CLI_ACTIVE_PROFILE_VARIANT CLI_ACTIVE_PROFILE_ENDPOINT CLI_ACTIVE_PROFILE_RECOMMENDED_MODEL \
+        CLI_ACTIVE_PROFILE_SLOT CLI_ACTIVE_PROFILE_GENERATION CLI_ACTIVE_PROFILE_STATUS \
+        CLI_ACTIVE_PROFILE_HANDOFF_COMPLETE
+    export CLI_ACTIVE_PROFILE_ENABLED
+
+    [ -f "$state_path" ] || return 0
+    [ -f "$controller" ] || {
+        echo "[ERROR] role failover state exists but controller is missing" >&2
+        return 1
+    }
+    payload=$("$CLI_ADAPTER_PYTHON" "$controller" --root "$CLI_ADAPTER_FAILOVER_ROOT" \
+        resolve-profile --role "$agent_id" --settings "$CLI_ADAPTER_SETTINGS" --format json 2>/dev/null) || {
+        echo "[ERROR] active role profile could not be resolved for '$agent_id'" >&2
+        return 1
+    }
+    mapfile -t fields < <(printf '%s' "$payload" | "$CLI_ADAPTER_PYTHON" -c '
+import json, sys
+data = json.load(sys.stdin)
+p = data.get("profile") or {}
+values = [data.get("role"), p.get("type"), p.get("model"), p.get("reasoning_effort"),
+          p.get("thinking"), p.get("effort"), p.get("variant"), p.get("endpoint"),
+          p.get("recommended_model"), data.get("slot"), data.get("generation"),
+          data.get("status"), data.get("handoff_complete")]
+for value in values:
+    if value is True: print("true")
+    elif value is False: print("false")
+    elif value is None: print("")
+    else: print(value)
+') || return 1
+    [ "${#fields[@]}" -eq 13 ] || return 1
+
+    CLI_ACTIVE_PROFILE_ENABLED=1
+    CLI_ACTIVE_PROFILE_AGENT="${fields[0]}"
+    CLI_ACTIVE_PROFILE_TYPE="${fields[1]}"
+    CLI_ACTIVE_PROFILE_MODEL="${fields[2]}"
+    CLI_ACTIVE_PROFILE_REASONING="${fields[3]}"
+    CLI_ACTIVE_PROFILE_THINKING="${fields[4]}"
+    CLI_ACTIVE_PROFILE_EFFORT="${fields[5]}"
+    CLI_ACTIVE_PROFILE_VARIANT="${fields[6]}"
+    CLI_ACTIVE_PROFILE_ENDPOINT="${fields[7]}"
+    CLI_ACTIVE_PROFILE_RECOMMENDED_MODEL="${fields[8]}"
+    CLI_ACTIVE_PROFILE_SLOT="${fields[9]}"
+    CLI_ACTIVE_PROFILE_GENERATION="${fields[10]}"
+    CLI_ACTIVE_PROFILE_STATUS="${fields[11]}"
+    CLI_ACTIVE_PROFILE_HANDOFF_COMPLETE="${fields[12]}"
+    export CLI_ACTIVE_PROFILE_ENABLED CLI_ACTIVE_PROFILE_AGENT CLI_ACTIVE_PROFILE_TYPE \
+        CLI_ACTIVE_PROFILE_MODEL CLI_ACTIVE_PROFILE_REASONING CLI_ACTIVE_PROFILE_THINKING \
+        CLI_ACTIVE_PROFILE_EFFORT CLI_ACTIVE_PROFILE_VARIANT CLI_ACTIVE_PROFILE_ENDPOINT \
+        CLI_ACTIVE_PROFILE_RECOMMENDED_MODEL CLI_ACTIVE_PROFILE_SLOT CLI_ACTIVE_PROFILE_GENERATION \
+        CLI_ACTIVE_PROFILE_STATUS CLI_ACTIVE_PROFILE_HANDOFF_COMPLETE
+}
+
+_cli_adapter_ensure_active_profile() {
+    local agent_id="$1"
+    local state_path="${CLI_ADAPTER_FAILOVER_ROOT}/queue/runtime/role_failover.yaml"
+    if [ -f "$state_path" ] && { [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" != "1" ] || [ "${CLI_ACTIVE_PROFILE_AGENT:-}" != "$agent_id" ]; }; then
+        load_active_role_profile "$agent_id"
+    fi
+}
 
 # normalize_opencode_model(model)
 # OpenCode 向けに provider-qualified なモデル名へ正規化する。
@@ -249,6 +324,12 @@ _cli_adapter_resolve_command_binary() {
 _cli_adapter_get_configured_model() {
     local agent_id="$1"
     local model
+
+    _cli_adapter_ensure_active_profile "$agent_id" || return 1
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_AGENT:-}" = "$agent_id" ]; then
+        printf '%s\n' "${CLI_ACTIVE_PROFILE_MODEL:-}"
+        return 0
+    fi
 
     model=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.model" "")
     if [[ -z "$model" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
@@ -770,8 +851,13 @@ _cli_adapter_is_valid_codex_model() {
 get_agent_reasoning_effort() {
     local agent_id="$1"
     local effort
-    effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.reasoning_effort" "")")
-    if [[ -z "$effort" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
+    _cli_adapter_ensure_active_profile "$agent_id" || return 1
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_AGENT:-}" = "$agent_id" ]; then
+        effort=$(_cli_adapter_normalize_lower "${CLI_ACTIVE_PROFILE_REASONING:-}")
+    else
+        effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.reasoning_effort" "")")
+    fi
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" != "1" ] && [[ -z "$effort" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
         effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.karo.reasoning_effort" "")")
     fi
     case "$effort" in
@@ -783,8 +869,13 @@ get_agent_reasoning_effort() {
 get_agent_effort() {
     local agent_id="$1"
     local effort
-    effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.effort" "")")
-    if [[ -z "$effort" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
+    _cli_adapter_ensure_active_profile "$agent_id" || return 1
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_AGENT:-}" = "$agent_id" ]; then
+        effort=$(_cli_adapter_normalize_lower "${CLI_ACTIVE_PROFILE_EFFORT:-}")
+    else
+        effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.${agent_id}.effort" "")")
+    fi
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" != "1" ] && [[ -z "$effort" && "$agent_id" =~ ^karo[1-9][0-9]*$ ]]; then
         effort=$(_cli_adapter_normalize_lower "$(_cli_adapter_read_yaml "cli.agents.karo.effort" "")")
     fi
     if [[ -z "$effort" ]]; then
@@ -831,6 +922,12 @@ get_cli_type() {
     local agent_id="$1"
     if [[ -z "$agent_id" ]]; then
         echo "claude"
+        return 0
+    fi
+
+    _cli_adapter_ensure_active_profile "$agent_id" || return 1
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_AGENT:-}" = "$agent_id" ]; then
+        printf '%s\n' "$CLI_ACTIVE_PROFILE_TYPE"
         return 0
     fi
 
@@ -903,13 +1000,23 @@ build_cli_command_with_type() {
     local agent_id="$1"
     local cli_type="$2"
     cli_type="$(_cli_adapter_normalize_cli_type "$cli_type")"
+    _cli_adapter_ensure_active_profile "$agent_id" || return 1
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_TYPE:-}" != "$cli_type" ]; then
+        echo "[ERROR] CLI type '$cli_type' does not match active profile '$CLI_ACTIVE_PROFILE_TYPE'" >&2
+        return 1
+    fi
     local agent_env_prefix=""
     local model
     model=$(get_agent_model "$agent_id")
     local configured_model
     configured_model=$(_cli_adapter_get_configured_model "$agent_id")
     local thinking
-    thinking=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking" "")
+    _cli_adapter_ensure_active_profile "$agent_id" || return 1
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_AGENT:-}" = "$agent_id" ]; then
+        thinking="${CLI_ACTIVE_PROFILE_THINKING:-}"
+    else
+        thinking=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking" "")
+    fi
     if [[ -z "$thinking" ]]; then
         thinking="$(_cli_adapter_default_claude_thinking "$agent_id")"
     fi
@@ -918,6 +1025,9 @@ build_cli_command_with_type() {
     local permission_flag="${PERMISSION_FLAG:---setting-sources local --permission-mode auto}"
     if [[ -n "$agent_id" ]]; then
         agent_env_prefix="AGENT_ID=$(_cli_adapter_shell_quote "$agent_id") "
+    fi
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ]; then
+        agent_env_prefix="${agent_env_prefix}SHOGUNATE_ROLE_SLOT=$(_cli_adapter_shell_quote "$CLI_ACTIVE_PROFILE_SLOT") SHOGUNATE_ROLE_GENERATION=$(_cli_adapter_shell_quote "$CLI_ACTIVE_PROFILE_GENERATION") SHOGUNATE_ROLE_STATUS=$(_cli_adapter_shell_quote "$CLI_ACTIVE_PROFILE_STATUS") SHOGUNATE_HANDOFF_COMPLETE=$(_cli_adapter_shell_quote "$CLI_ACTIVE_PROFILE_HANDOFF_COMPLETE") "
     fi
 
     # thinking prefix: Claude CLI でのみ有効
@@ -1013,7 +1123,11 @@ build_cli_command_with_type() {
             local localapi_cmd
             localapi_cmd=$(_cli_adapter_read_yaml "cli.commands.localapi" "python3 shogunate_mod/localapi/repl.py")
             local localapi_endpoint
-            localapi_endpoint=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.endpoint" "")
+            if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_AGENT:-}" = "$agent_id" ]; then
+                localapi_endpoint="${CLI_ACTIVE_PROFILE_ENDPOINT:-}"
+            else
+                localapi_endpoint=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.endpoint" "")
+            fi
             if [[ -z "$localapi_endpoint" ]]; then
                 localapi_endpoint=$(_cli_adapter_read_yaml "cli.localapi_endpoint" "")
             fi
@@ -1041,7 +1155,11 @@ build_cli_command_with_type() {
             if [[ -n "$normalized_model" && "$normalized_model" != "auto" && "$normalized_model" != "default" && " $opencode_cmd " != *" --model "* ]]; then
                 opencode_cmd="$opencode_cmd --model $normalized_model"
             fi
-            variant=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.variant" "")
+            if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_AGENT:-}" = "$agent_id" ]; then
+                variant="${CLI_ACTIVE_PROFILE_VARIANT:-}"
+            else
+                variant=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.variant" "")
+            fi
             launch_agent_id="$agent_id"
             if [[ -n "$variant" ]]; then
                 launch_agent_id="${agent_id}-runtime"
@@ -1139,7 +1257,7 @@ get_first_available_cli() {
 }
 
 # resolve_cli_type_for_agent(agent_id)
-# 設定上のCLIが未導入なら利用可能なCLIにフォールバックする
+# controllerが選んだCLIだけを許可する。別CLIへの暗黙置換はしない。
 resolve_cli_type_for_agent() {
     local agent_id="$1"
     local requested
@@ -1150,15 +1268,8 @@ resolve_cli_type_for_agent() {
         return 0
     fi
 
-    local fallback
-    fallback=$(get_first_available_cli 2>/dev/null || true)
-    if [[ -n "$fallback" ]]; then
-        echo "[WARN] CLI '$requested' for agent '$agent_id' is unavailable. Falling back to '$fallback'." >&2
-        echo "$fallback"
-        return 0
-    fi
-
-    echo "$requested"
+    echo "[ERROR] configured CLI '$requested' for agent '$agent_id' is unavailable" >&2
+    return 1
 }
 
 # get_role_instruction_file(agent_id)
@@ -1311,6 +1422,16 @@ validate_cli_availability() {
 get_agent_model() {
     local agent_id="$1"
 
+    _cli_adapter_ensure_active_profile "$agent_id" || return 1
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_AGENT:-}" = "$agent_id" ]; then
+        if [ -n "${CLI_ACTIVE_PROFILE_MODEL:-}" ]; then
+            printf '%s\n' "$CLI_ACTIVE_PROFILE_MODEL"
+        else
+            printf '%s\n' "auto"
+        fi
+        return 0
+    fi
+
     # まずsettings.yamlのcli.agents.{id}.modelを確認
     local model_from_yaml
     model_from_yaml=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.model" "")
@@ -1373,7 +1494,12 @@ get_model_display_name() {
     local cli_type
     cli_type=$(get_cli_type "$agent_id")
     local thinking
-    thinking=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking" "")
+    _cli_adapter_ensure_active_profile "$agent_id" || return 1
+    if [ "${CLI_ACTIVE_PROFILE_ENABLED:-0}" = "1" ] && [ "${CLI_ACTIVE_PROFILE_AGENT:-}" = "$agent_id" ]; then
+        thinking="${CLI_ACTIVE_PROFILE_THINKING:-}"
+    else
+        thinking=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.thinking" "")
+    fi
 
     # モデル名 → 短縮表示名
     local short=""

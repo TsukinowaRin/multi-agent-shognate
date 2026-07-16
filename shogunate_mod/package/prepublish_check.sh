@@ -327,6 +327,28 @@ for raw in files:
 PYEOF
 }
 
+require_curl_only_distribution() {
+  python3 <<'PYEOF' || fail "Shogunate distribution must remain cURL-only"
+import json
+from pathlib import Path
+
+for package_path in (Path("package.json"), Path("shogunate_mod/package/package.json")):
+    package = json.loads(package_path.read_text(encoding="utf-8"))
+    if package.get("private") is not True:
+        raise SystemExit(f"{package_path} must set private=true to block npm publish")
+
+for readme_path in (
+    Path("README.md"),
+    Path("README_ja.md"),
+    Path("shogunate_mod/docs/README.md"),
+    Path("shogunate_mod/docs/README_ja.md"),
+):
+    text = readme_path.read_text(encoding="utf-8")
+    if "npx @tsukinowarin/shogunate" in text:
+        raise SystemExit(f"{readme_path} must not advertise npm/npx installation")
+PYEOF
+}
+
 printf '[INFO] prepublish check start\n'
 
 tracked_forbidden="$(git ls-files | rg '^(Waste/|_trash/|_upstream_reference/|\\.shogunate/|docs/(WORKLOG|HANDOVER|UPSTREAM_SYNC)|config/(settings|projects)\.yaml|dashboard.md|queue/)' || true)"
@@ -355,6 +377,7 @@ require_same_file .github/workflows/test.yml shogunate_mod/package/workflows/tes
 require_same_file .github/FUNDING.yml shogunate_mod/github/FUNDING.yml
 require_same_file README.md shogunate_mod/docs/README.md
 require_same_file README_ja.md shogunate_mod/docs/README_ja.md
+require_curl_only_distribution
 require_same_file CHANGELOG.md shogunate_mod/docs/CHANGELOG.md
 require_same_file CONTRIBUTING.md shogunate_mod/docs/CONTRIBUTING.md
 require_same_file SECURITY.md shogunate_mod/docs/SECURITY.md

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Changed
+- Shogunate is distributed only through the cURL bootstrap and GitHub Release archives. npm package metadata is private and cannot be published.
+
 ## [5.2.0.1] - 2026-06-10
 
 ### Changed

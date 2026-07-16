@@ -114,6 +114,17 @@ ensure_runtime_sync_daemon_started() {
         "env MAS_RUNTIME_SYNC_INTERVAL=\"${MAS_RUNTIME_SYNC_INTERVAL:-5}\" python3 \"$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py\" --daemon >> \"$SCRIPT_DIR/logs/runtime_sync.log\" 2>&1"
 }
 
+ensure_role_failover_daemon_started() {
+    local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
+    local runner="$SCRIPT_DIR/shogunate_mod/runtime/role_failover_runner.sh"
+    [ -f "$runner" ] || return 0
+    mkdir -p "$SCRIPT_DIR/logs" "$SCRIPT_DIR/queue/runtime"
+    ensure_tmux_runtime_daemon_window \
+        "$session_name" \
+        "role-failover" \
+        "env SHOGUNATE_RUNTIME_DIR=\"$SCRIPT_DIR\" SHOGUNATE_NO_PROGRESS_INTERVAL_SECONDS=\"${SHOGUNATE_NO_PROGRESS_INTERVAL_SECONDS:-30}\" bash \"$runner\" daemon >> \"$SCRIPT_DIR/logs/role_failover.log\" 2>&1"
+}
+
 restart_tmux_runtime_daemon_session() {
     local session_name="${1:-$RUNTIME_DAEMON_SESSION}"
     local session_env=""
@@ -163,6 +174,11 @@ restart_tmux_runtime_daemon_session() {
 
     if [ -f "$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py" ]; then
         ensure_runtime_sync_daemon_started "$session_name"
+        started=1
+    fi
+
+    if [ -f "$SCRIPT_DIR/shogunate_mod/runtime/role_failover_runner.sh" ]; then
+        ensure_role_failover_daemon_started "$session_name"
         started=1
     fi
 
@@ -233,6 +249,7 @@ start_runtime_watchers_and_bridges() {
         if [ -f "$SCRIPT_DIR/shogunate_mod/runtime/sync_state.py" ]; then
             ensure_runtime_sync_daemon_started "$RUNTIME_DAEMON_SESSION"
         fi
+        ensure_role_failover_daemon_started "$RUNTIME_DAEMON_SESSION"
         _watcher_total=$((2 + ${#MULTIAGENT_IDS[@]}))
         log_success "  └─ ${_watcher_total}エージェント分のinbox_watcher起動完了"
         log_success "  └─ watcher_supervisor 起動完了（tmux daemon session: ${RUNTIME_DAEMON_SESSION}）"

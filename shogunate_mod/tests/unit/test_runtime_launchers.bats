@@ -142,6 +142,98 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
+@test "runtime launchers: role failover exports generation, reports exit, and starts monitor" {
+  run bash -n "$PROJECT_ROOT/shogunate_mod/runtime/role_failover_runner.sh"
+  [ "$status" -eq 0 ]
+  run bash -n "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'SHOGUNATE_ROLE_GENERATION' "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'role_failover_runner.sh' "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'initialize_role_failover_state' "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'ensure_role_failover_daemon_started' "$PROJECT_ROOT/shogunate_mod/runtime/daemon.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'monitor-candidates' "$PROJECT_ROOT/shogunate_mod/runtime/role_failover_runner.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "runtime launchers: intentional stop marker is separate from crash recovery" {
+  run grep -F 'queue/runtime/intentional_stop' "$PROJECT_ROOT/shogunate_mod/runtime/departure.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'intentional_stop' "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'process_exit' "$PROJECT_ROOT/shogunate_mod/runtime/launch.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "runtime launchers: failover-enabled watchers do not use legacy direct restart" {
+  run grep -F 'role_failover_runner.sh' "$PROJECT_ROOT/shogunate_mod/watcher/supervisor.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'role_failover_runner.sh' "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'role_exit_reported_generation' "$PROJECT_ROOT/shogunate_mod/watcher/supervisor.sh"
+  [ "$status" -eq 0 ]
+  run grep -F 'role_exit_reported_generation' "$PROJECT_ROOT/shogunate_mod/watcher/inbox_watcher.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "runtime launchers: fixed runner performs one Primary restart then Fallback" {
+  tmp="$(mktemp -d)"
+  mkdir -p "$tmp/shogunate_mod/runtime" "$tmp/config" "$tmp/queue/runtime" "$tmp/bin"
+  cp "$PROJECT_ROOT/shogunate_mod/runtime/role_failover.py" "$tmp/shogunate_mod/runtime/role_failover.py"
+  cp "$PROJECT_ROOT/shogunate_mod/runtime/role_failover_runner.sh" "$tmp/shogunate_mod/runtime/role_failover_runner.sh"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/queue/runtime/launch_karo.sh"
+  cat > "$tmp/config/settings.yaml" <<'YAML'
+cli:
+  agents:
+    karo:
+      type: codex
+      fallback:
+        type: opencode
+YAML
+  cat > "$tmp/bin/tmux" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$TMUX_LOG"
+exit 0
+SH
+  chmod +x "$tmp/bin/tmux"
+  python3 "$tmp/shogunate_mod/runtime/role_failover.py" --root "$tmp" init-role --role karo --event-id init --settings "$tmp/config/settings.yaml" --reset >/dev/null
+
+  run env PATH="$tmp/bin:$PATH" TMUX_LOG="$tmp/tmux.log" SHOGUNATE_RUNTIME_DIR="$tmp" SHOGUNATE_ROLE_RESTART_COOLDOWN_SECONDS=0 \
+    bash "$tmp/shogunate_mod/runtime/role_failover_runner.sh" process_exit karo 1 process_exit %1
+  [ "$status" -eq 0 ]
+  run grep -F 'respawn-pane -k -t %1' "$tmp/tmux.log"
+  [ "$status" -eq 0 ]
+  run python3 - "$tmp/queue/runtime/role_failover.yaml" <<'PY'
+import sys, yaml
+r = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["roles"]["karo"]
+assert r["generation"] == 2 and r["active_slot"] == "primary"
+PY
+  [ "$status" -eq 0 ]
+
+  run env PATH="$tmp/bin:$PATH" TMUX_LOG="$tmp/tmux.log" SHOGUNATE_RUNTIME_DIR="$tmp" SHOGUNATE_ROLE_RESTART_COOLDOWN_SECONDS=0 \
+    bash "$tmp/shogunate_mod/runtime/role_failover_runner.sh" process_exit karo 2 process_exit %1
+  [ "$status" -eq 0 ]
+  run python3 - "$tmp/queue/runtime/role_failover.yaml" <<'PY'
+import sys, yaml
+r = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["roles"]["karo"]
+assert r["generation"] == 3 and r["active_slot"] == "fallback"
+PY
+  [ "$status" -eq 0 ]
+  run env PATH="$tmp/bin:$PATH" TMUX_LOG="$tmp/tmux.log" SHOGUNATE_RUNTIME_DIR="$tmp" SHOGUNATE_ROLE_RESTART_COOLDOWN_SECONDS=0 \
+    bash "$tmp/shogunate_mod/runtime/role_failover_runner.sh" primary_recovered karo 3 primary_recovered %1
+  [ "$status" -eq 0 ]
+  run python3 - "$tmp/queue/runtime/role_failover.yaml" <<'PY'
+import sys, yaml
+r = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["roles"]["karo"]
+assert r["generation"] == 4 and r["active_slot"] == "primary"
+PY
+  [ "$status" -eq 0 ]
+  rm -rf "$tmp"
+}
+
 @test "runtime launchers: Windows wrapper runs shutsujin through Ubuntu WSL and attaches" {
   run grep -F "shogunate_mod\\windows\\runtime_launcher.bat" "$PROJECT_ROOT/Shogunate-Runtime.bat"
   [ "$status" -eq 0 ]

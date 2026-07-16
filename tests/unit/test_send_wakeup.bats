@@ -1548,6 +1548,123 @@ YAML
     [[ "$output" == *"same unread set already nudged"* ]]
 }
 
+@test "T-GEN-003: watcherは旧generation messageをread/rejectedにして処理しない" {
+    source "$TEST_HARNESS"
+    SCRIPT_DIR="$TEST_TMPDIR/project"
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    cat > "$SCRIPT_DIR/queue/runtime/role_failover.yaml" <<'YAML'
+roles:
+  shogun:
+    generation: 3
+    status: ready
+    initialized_at: "2026-07-16T00:00:00Z"
+YAML
+    cat > "$INBOX" <<'YAML'
+messages:
+  - id: stale
+    from: shogun
+    generation: 2
+    timestamp: "2026-07-16T01:00:00Z"
+    type: cmd_new
+    content: old
+    read: false
+YAML
+    reject_stale_generation_messages
+    run python3 - "$INBOX" <<'PY'
+import sys, yaml
+m = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["messages"][0]
+assert m["read"] is True and m["rejected"] is True
+assert m["rejection_reason"] == "stale_generation"
+PY
+    [ "$status" -eq 0 ]
+}
+
+@test "T-GEN-004: generation無しlegacy messageはstate初期化前だけ許可する" {
+    source "$TEST_HARNESS"
+    SCRIPT_DIR="$TEST_TMPDIR/project"
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    cat > "$SCRIPT_DIR/queue/runtime/role_failover.yaml" <<'YAML'
+roles:
+  shogun:
+    generation: 3
+    status: ready
+    initialized_at: "2026-07-16T00:00:00Z"
+YAML
+    cat > "$INBOX" <<'YAML'
+messages:
+  - id: legacy-before
+    from: shogun
+    timestamp: "2026-07-15T23:59:00Z"
+    type: cmd_new
+    content: before
+    read: false
+  - id: missing-after
+    from: shogun
+    timestamp: "2026-07-16T00:01:00Z"
+    type: cmd_new
+    content: after
+    read: false
+YAML
+    reject_stale_generation_messages
+    run python3 - "$INBOX" <<'PY'
+import sys, yaml
+messages = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["messages"]
+assert messages[0]["read"] is False
+assert messages[1]["read"] is True
+assert messages[1]["rejection_reason"] == "missing_generation_after_init"
+PY
+    [ "$status" -eq 0 ]
+}
+
+@test "T-GEN-005: read済みcmd_doneで受信先の委任workをcompleteにする" {
+    source "$TEST_HARNESS"
+    AGENT_ID="shogun"
+    SCRIPT_DIR="$TEST_TMPDIR/project"
+    mkdir -p "$SCRIPT_DIR/queue/runtime" "$SCRIPT_DIR/shogunate_mod/runtime"
+    cp "$PROJECT_ROOT/shogunate_mod/runtime/role_failover.py" "$SCRIPT_DIR/shogunate_mod/runtime/role_failover.py"
+    cat > "$SCRIPT_DIR/queue/runtime/role_failover.yaml" <<'YAML'
+schema_version: 1
+army_mode: normal
+processed_event_ids: []
+pending_reassignments: []
+roles:
+  shogun:
+    role: shogun
+    active_slot: primary
+    generation: 1
+    status: ready
+    current_work:
+      work_id: work-1
+      purpose: delegated command
+      acceptance_criteria: [done]
+      approved_plan_id: null
+      approved_plan_revision: null
+      progress: {done: [], in_progress: [delegated], todo: [report]}
+      scope: {started_at: "2026-07-16T00:00:00Z"}
+      next_step: await report
+    handoff: null
+    handoff_complete: false
+    initialized_at: "2026-07-16T00:00:00Z"
+YAML
+    cat > "$INBOX" <<'YAML'
+messages:
+  - id: done-1
+    from: karo
+    generation: 1
+    timestamp: "2026-07-16T00:10:00Z"
+    type: cmd_done
+    content: done
+    read: true
+YAML
+    sync_completed_inbox_work
+    run python3 - "$SCRIPT_DIR/queue/runtime/role_failover.yaml" <<'PY'
+import sys, yaml
+state = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
+assert state["roles"]["shogun"]["current_work"] is None
+PY
+    [ "$status" -eq 0 ]
+}
+
 @test "T-CODEX-015h: watcher は Codex pasted content が残っていたら Enter を追送する" {
     run bash -c '
         MOCK_PANE_CLI="codex"

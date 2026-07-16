@@ -968,6 +968,86 @@ SH
     [[ "$result" == *"OPENCODE_AGENT_ID=ashigaru1"* ]]
 }
 
+@test "role failover: Fallbackのtype/model/reasoning/thinking/variantを同じgenerationから使う" {
+    cat > "${TEST_TMP}/settings_failover.yaml" <<'YAML'
+cli:
+  default: codex
+  agents:
+    ashigaru1:
+      type: codex
+      model: primary-model
+      reasoning_effort: high
+      fallback:
+        type: opencode
+        model: sonnet
+        reasoning_effort: medium
+        thinking: false
+        variant: high
+  commands:
+    opencode: opencode
+YAML
+    python3 "${PROJECT_ROOT}/shogunate_mod/runtime/role_failover.py" --root "$TEST_TMP" init-role \
+      --role ashigaru1 --settings "${TEST_TMP}/settings_failover.yaml" --event-id init --reset >/dev/null
+    python3 "${PROJECT_ROOT}/shogunate_mod/runtime/role_failover.py" --root "$TEST_TMP" apply-event \
+      --event-json '{"event_id":"fail","type":"explicit_failure","role":"ashigaru1","expected_generation":1,"reason":"rate_limit"}' >/dev/null
+
+    export CLI_ADAPTER_FAILOVER_ROOT="$TEST_TMP"
+    load_adapter_with "${TEST_TMP}/settings_failover.yaml"
+    load_active_role_profile ashigaru1
+    [ "$CLI_ACTIVE_PROFILE_SLOT" = "fallback" ]
+    [ "$CLI_ACTIVE_PROFILE_GENERATION" = "2" ]
+    [ "$(get_cli_type ashigaru1)" = "opencode" ]
+    [ "$(get_agent_model ashigaru1)" = "sonnet" ]
+    [ "$(get_agent_reasoning_effort ashigaru1)" = "medium" ]
+    [ "$CLI_ACTIVE_PROFILE_THINKING" = "false" ]
+    [ "$CLI_ACTIVE_PROFILE_VARIANT" = "high" ]
+}
+
+@test "role failover: 指定CLIが無ければ別CLIへ置換せず失敗する" {
+    cat > "${TEST_TMP}/settings_failover_unavailable.yaml" <<'YAML'
+cli:
+  default: cursor
+  agents:
+    karo:
+      type: cursor
+      fallback: null
+YAML
+    python3 "${PROJECT_ROOT}/shogunate_mod/runtime/role_failover.py" --root "$TEST_TMP" init-role \
+      --role karo --settings "${TEST_TMP}/settings_failover_unavailable.yaml" --event-id init --reset >/dev/null
+    export CLI_ADAPTER_FAILOVER_ROOT="$TEST_TMP"
+    load_adapter_with "${TEST_TMP}/settings_failover_unavailable.yaml"
+    make_fake_cli opencode
+    run env HOME="${TEST_TMP}/no-home" PATH="${TEST_TMP}/bin:/usr/bin:/bin" bash -lc \
+      "export CLI_ADAPTER_PROJECT_ROOT='$PROJECT_ROOT' CLI_ADAPTER_FAILOVER_ROOT='$TEST_TMP' CLI_ADAPTER_SETTINGS='${TEST_TMP}/settings_failover_unavailable.yaml'; source '$PROJECT_ROOT/shogunate_mod/cli/adapter.sh'; load_active_role_profile karo; resolve_cli_type_for_agent karo"
+    [ "$status" -ne 0 ]
+    [[ "$output" != *"opencode"* ]]
+}
+
+@test "role failover: 同じshellでも切替後に明示reloadすればPrimary snapshotを残さない" {
+    cat > "${TEST_TMP}/settings_failover_reload.yaml" <<'YAML'
+cli:
+  agents:
+    karo:
+      type: codex
+      model: primary
+      fallback:
+        type: opencode
+        model: fallback
+YAML
+    python3 "${PROJECT_ROOT}/shogunate_mod/runtime/role_failover.py" --root "$TEST_TMP" init-role \
+      --role karo --settings "${TEST_TMP}/settings_failover_reload.yaml" --event-id init --reset >/dev/null
+    export CLI_ADAPTER_FAILOVER_ROOT="$TEST_TMP"
+    load_adapter_with "${TEST_TMP}/settings_failover_reload.yaml"
+    load_active_role_profile karo
+    [ "$CLI_ACTIVE_PROFILE_MODEL" = "primary" ]
+    python3 "${PROJECT_ROOT}/shogunate_mod/runtime/role_failover.py" --root "$TEST_TMP" apply-event \
+      --event-json '{"event_id":"switch","type":"explicit_failure","role":"karo","expected_generation":1,"reason":"rate_limit"}' >/dev/null
+    load_active_role_profile karo
+    [ "$CLI_ACTIVE_PROFILE_SLOT" = "fallback" ]
+    [ "$CLI_ACTIVE_PROFILE_GENERATION" = "2" ]
+    [ "$CLI_ACTIVE_PROFILE_MODEL" = "fallback" ]
+}
+
 @test "build_cli_command: kilo + provider/model → kilo --model ..." {
     load_adapter_with "${TEST_TMP}/settings_kilo.yaml"
     result=$(build_cli_command "gunshi")

@@ -178,11 +178,7 @@ Use the same installed bootstrap later:
 shogunate install --no-setup
 ```
 
-The npm wrapper calls the same bootstrap:
-
-```bash
-npx @tsukinowarin/shogunate install
-```
+Shogunate is distributed through this cURL bootstrap and GitHub Release archives. It is not published as an npm package.
 
 ## What Shogunate Runs
 

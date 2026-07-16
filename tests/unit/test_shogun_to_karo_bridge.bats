@@ -76,6 +76,24 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
+@test "shogun_to_karo_bridge: logical shogun senderのcurrent generationを注入する" {
+  cat > "$TEST_TMP/queue/runtime/role_failover.yaml" <<'YAML'
+roles:
+  shogun:
+    generation: 7
+    status: ready
+YAML
+  cat > "$TEST_TMP/scripts/inbox_write.sh" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "${MAS_ROLE_GENERATION:-}" > "$MAS_RUNTIME_DIR/captured_generation"
+SH
+  chmod +x "$TEST_TMP/scripts/inbox_write.sh"
+
+  run python3 "$PROJECT_ROOT/scripts/shogun_to_karo_bridge.py"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TEST_TMP/queue/runtime/captured_generation")" = "7" ]
+}
+
 @test "shogun_to_karo_bridge: 既に通知済み cmd は重複送信しない" {
   printf 'cmd_200\n' > "$MAS_SHOGUN_TO_KARO_BRIDGE_STATE"
 

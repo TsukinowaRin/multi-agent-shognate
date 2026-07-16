@@ -1,7 +1,8 @@
 {
   "name": "@tsukinowarin/shogunate",
   "version": "5.2.0-9",
-  "description": "Package bootstrap wrapper for multi-agent-shognate.",
+  "private": true,
+  "description": "Internal release manifest; Shogunate is distributed through the cURL bootstrap.",
   "bin": {
     "shogunate": "bin/shogunate.js"
   },

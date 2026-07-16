@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Added
+- Role-level Primary/Fallback profiles with one-restart recovery, generation-scoped handoff, Gunkan emergency policy checks, app notification outbox, and safe-stop behavior.
+
+### Fixed
+- Prevented legacy watchers and stale-generation inbox messages from bypassing the role failover controller.
+
+### Changed
+- Shogunate is distributed only through the cURL bootstrap and GitHub Release archives. npm package metadata is private and cannot be published.
+
 ## [5.2.0.1] - 2026-06-10
 
 ### Changed

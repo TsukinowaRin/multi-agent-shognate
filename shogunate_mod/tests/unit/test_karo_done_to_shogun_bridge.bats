@@ -95,6 +95,25 @@ teardown() {
   [ "$status" -eq 1 ]
 }
 
+@test "karo_done_to_shogun_bridge: logical Karo senderのcurrent generationを注入する" {
+  : > "$MAS_KARO_DONE_TO_SHOGUN_STATE"
+  cat > "$TEST_TMP/queue/runtime/role_failover.yaml" <<'YAML'
+roles:
+  karo:
+    generation: 9
+    status: ready
+YAML
+  cat > "$TEST_TMP/scripts/inbox_write.sh" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "${MAS_ROLE_GENERATION:-}" > "$MAS_RUNTIME_DIR/captured_generation"
+SH
+  chmod +x "$TEST_TMP/scripts/inbox_write.sh"
+
+  run python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TEST_TMP/queue/runtime/captured_generation")" = "9" ]
+}
+
 @test "karo_done_to_shogun_bridge: 新たにdoneになったcmdをshogun inboxへ通知する" {
   python3 "$PROJECT_ROOT/scripts/karo_done_to_shogun_bridge.py" >/dev/null
   python3 - <<'PY' "$MAS_SHOGUN_TO_KARO_FILE"

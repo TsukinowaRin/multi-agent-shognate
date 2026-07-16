@@ -178,11 +178,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v
 shogunate install --no-setup
 ```
 
-npm wrapper は同じ cURL bootstrap を呼ぶ薄い補助です。
-
-```bash
-npx @tsukinowarin/shogunate install
-```
+Shogunate本体は、このcURL bootstrapとGitHub Release archiveだけで配布します。npm packageとしては公開しません。
 
 ## Shogunate が動かすもの
 

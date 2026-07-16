@@ -12,6 +12,9 @@ CONTENT="${2:-}"
 TYPE="${3:-}"
 FROM="${4:-}"
 OWNER_MAP="$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
+FAILOVER_STATE="$SCRIPT_DIR/queue/runtime/role_failover.yaml"
+FAILOVER_CONTROLLER="$SCRIPT_DIR/shogunate_mod/runtime/role_failover.py"
+MESSAGE_GENERATION="${SHOGUNATE_ROLE_GENERATION:-${MAS_ROLE_GENERATION:-}}"
 
 INBOX="$SCRIPT_DIR/queue/inbox/${TARGET}.yaml"
 LOCKFILE="${INBOX}.lock"
@@ -79,6 +82,18 @@ validate_route_policy() {
 
 validate_route_policy
 
+if [[ "$FROM" =~ ^(shogun|gunkan|gunshi|karo([1-9][0-9]*)?|ashigaru[1-9][0-9]*)$ ]] && [ -f "$FAILOVER_STATE" ]; then
+    if ! [[ "$MESSAGE_GENERATION" =~ ^[1-9][0-9]*$ ]]; then
+        echo "[inbox_write] REJECTED: generation is required for managed sender $FROM" >&2
+        exit 1
+    fi
+    if ! python3 "$FAILOVER_CONTROLLER" --root "$SCRIPT_DIR" validate-write \
+        --role "$FROM" --expected-generation "$MESSAGE_GENERATION" >/dev/null; then
+        echo "[inbox_write] REJECTED: stale or stopped generation (from=$FROM, generation=$MESSAGE_GENERATION)" >&2
+        exit 1
+    fi
+fi
+
 # Initialize inbox if not exists
 if [ ! -f "$INBOX" ]; then
     if [ -f "$INBOX_DIR" ] && [ ! -d "$INBOX_DIR" ]; then
@@ -95,14 +110,14 @@ TIMESTAMP=$(date "+%Y-%m-%dT%H:%M:%S")
 
 write_inbox_message() {
     # Add message via python3 (unified YAML handling)
-    python3 - "$INBOX" "$MSG_ID" "$FROM" "$TIMESTAMP" "$TYPE" "$CONTENT" <<'PY'
+    python3 - "$INBOX" "$MSG_ID" "$FROM" "$TIMESTAMP" "$TYPE" "$CONTENT" "$MESSAGE_GENERATION" <<'PY'
 import os
 import sys
 import tempfile
 
 import yaml
 
-inbox_path, msg_id, msg_from, timestamp, msg_type, content = sys.argv[1:]
+inbox_path, msg_id, msg_from, timestamp, msg_type, content, generation = sys.argv[1:]
 
 try:
     # Load existing inbox
@@ -124,6 +139,8 @@ try:
         "content": content,
         "read": False,
     }
+    if generation:
+        new_msg["generation"] = int(generation)
     data["messages"].append(new_msg)
 
     # Overflow protection: keep max 50 messages
@@ -147,6 +164,72 @@ try:
 except Exception as e:
     print(f"ERROR: {e}", file=sys.stderr)
     sys.exit(1)
+PY
+}
+
+record_failover_work_state() {
+    [ -f "$FAILOVER_STATE" ] || return 0
+    case "$TYPE" in cmd_new|task_assigned|audit_requested|cmd_done|report_received|audit_report) ;; *) return 0 ;; esac
+    python3 - "$SCRIPT_DIR" "$MSG_ID" "$FROM" "$TARGET" "$TYPE" "$TIMESTAMP" <<'PY'
+import sys
+from pathlib import Path
+
+root, message_id, sender, target, message_type, timestamp = sys.argv[1:]
+sys.path.insert(0, root)
+from shogunate_mod.runtime.role_failover import (  # noqa: E402
+    EVENT_WORK_COMPLETE,
+    EVENT_WORK_STATE_UPDATE,
+    RoleFailoverStore,
+    is_role_name,
+)
+
+store = RoleFailoverStore(Path(root))
+state = store.load()
+roles = state.get("roles", {})
+source_state = roles.get(sender) if isinstance(roles, dict) else None
+plan_id = source_state.get("current_work", {}).get("approved_plan_id") if isinstance(source_state, dict) and isinstance(source_state.get("current_work"), dict) else None
+plan_revision = source_state.get("current_work", {}).get("approved_plan_revision") if isinstance(source_state, dict) and isinstance(source_state.get("current_work"), dict) else None
+
+if message_type in {"cmd_done", "report_received", "audit_report"}:
+    if is_role_name(sender) and isinstance(source_state, dict):
+        generation = source_state.get("generation")
+        if isinstance(generation, int) and not isinstance(generation, bool):
+            store.apply_event({
+                "event_id": f"complete-{message_id}-{sender}"[:128],
+                "type": EVENT_WORK_COMPLETE,
+                "role": sender,
+                "expected_generation": generation,
+            })
+    raise SystemExit(0)
+
+for role in dict.fromkeys((sender, target)):
+    if not is_role_name(role):
+        continue
+    role_state = roles.get(role)
+    if not isinstance(role_state, dict) or role_state.get("current_work"):
+        continue
+    generation = role_state.get("generation")
+    if not isinstance(generation, int) or isinstance(generation, bool):
+        continue
+    work = {
+        "work_id": message_id,
+        "purpose": f"process inbox {message_type} reference {message_id}",
+        "acceptance_criteria": ["process the referenced inbox message and record the result"],
+        "approved_plan_id": plan_id,
+        "approved_plan_revision": plan_revision,
+        "progress": {"done": [], "in_progress": ["inbox_received"], "todo": ["process", "report"]},
+        "scope": {"inbox_message_id": message_id, "started_at": timestamp},
+        "next_step": "read the referenced inbox message",
+    }
+    store.apply_event(
+        {
+            "event_id": f"work-{message_id}-{role}"[:128],
+            "type": EVENT_WORK_STATE_UPDATE,
+            "role": role,
+            "expected_generation": generation,
+            "work_state": work,
+        }
+    )
 PY
 }
 
@@ -192,6 +275,9 @@ while [ $attempt -lt $max_attempts ]; do
                 --content "$CONTENT" \
                 --message-id "$MSG_ID" \
                 --timestamp "$TIMESTAMP" >/dev/null 2>&1 || true
+        fi
+        if ! record_failover_work_state; then
+            echo "[inbox_write] WARN: message persisted but failover work state was not updated" >&2
         fi
         # shellcheck source=shogunate_mod/transport/agmsg_bridge.sh
         if source "$SCRIPT_DIR/shogunate_mod/transport/agmsg_bridge.sh" 2>/dev/null \

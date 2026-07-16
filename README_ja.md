@@ -178,11 +178,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v
 shogunate install --no-setup
 ```
 
-npm wrapper は同じ cURL bootstrap を呼ぶ薄い補助です。
-
-```bash
-npx @tsukinowarin/shogunate install
-```
+Shogunate本体は、このcURL bootstrapとGitHub Release archiveだけで配布します。npm packageとしては公開しません。
 
 ## Shogunate が動かすもの
 
@@ -252,6 +248,16 @@ ashigaru opencode / codex / claude / agy
 ```
 
 Shogunate は必要に応じて role-local CLI state を持ちつつ、host 側の認証を再利用します。役職ごとの設定を分けながら、毎回ログインし直す負担を減らします。
+
+各役職には、通常使う `Primary` と、任意の `Fallback` を1つ設定できます。
+
+```bash
+python3 scripts/configure_runtime_roles.py \
+  --shogun codex --shogun-fallback opencode \
+  --karo codex --karo-fallback none
+```
+
+Primaryが異常終了した場合は同じPrimaryを1回だけ再起動し、それでも失敗した場合だけFallbackへ移ります。役職の世代番号と作業状態は`queue/runtime/role_failover.yaml`へ保存され、古い世代のmessageは処理されません。上位役職を復旧できない場合は、新しい仕事を始めず安全停止します。
 
 ## 軍監
 

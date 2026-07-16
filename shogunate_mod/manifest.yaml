@@ -106,6 +106,8 @@ canonical_paths:
   runtime_mux_parity_smoke: shogunate_mod/runtime/mux_parity_smoke.sh
   runtime_options: shogunate_mod/runtime/options.sh
   runtime_prompts: shogunate_mod/runtime/prompts.sh
+  runtime_role_failover: shogunate_mod/runtime/role_failover.py
+  runtime_role_failover_runner: shogunate_mod/runtime/role_failover_runner.sh
   runtime_shell_launcher: shogunate_mod/runtime/runtime_launcher.sh
   runtime_shogun_to_karo_bridge: shogunate_mod/runtime/shogun_to_karo_bridge.py
   runtime_shogun_to_karo_bridge_daemon: shogunate_mod/runtime/shogun_to_karo_bridge_daemon.sh
@@ -286,8 +288,8 @@ current_core_touchpoints:
     reason: "Secret scanning tools expect this root config path, while Shogunate-specific allowlists and custom secret rules are MOD-owned."
     next_step: "Keep root .gitleaks.toml synchronized as a compatibility copy of shogunate_mod/security/gitleaks.toml."
   - path: package.json / package-lock.json / requirements.txt
-    reason: "npm and Python tooling require package metadata/dependency files at the repository root, while the Shogunate package metadata source is MOD-owned."
-    next_step: "Keep root package.json, package-lock.json, and requirements.txt synchronized as compatibility copies of shogunate_mod/package/package*.json and shogunate_mod/package/requirements.txt; keep package-lock files out of runtime release archives."
+    reason: "Legacy Node compatibility checks and Python tooling require metadata/dependency files at the repository root, while the Shogunate package metadata source is MOD-owned. The Node metadata is private and is not a distribution channel."
+    next_step: "Keep root package.json, package-lock.json, and requirements.txt synchronized as compatibility copies of shogunate_mod/package/package*.json and shogunate_mod/package/requirements.txt; keep the metadata private and package-lock files out of runtime release archives."
   - path: memory/ and saytask/
     reason: "User runtime state stays at the historical root paths, while first setup templates are MOD-owned."
     next_step: "Keep root sample files synchronized as compatibility copies of shogunate_mod/package/templates and keep generated private state ignored."

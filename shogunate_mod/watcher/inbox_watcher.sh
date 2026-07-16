@@ -853,6 +853,21 @@ recover_shell_returned_cli_if_needed() {
         return 0
     fi
 
+    # Failover-enabled panes report the generation-scoped exit to the
+    # controller. The old direct send-keys restart would bypass its one-restart
+    # limit and can start Primary and Fallback at the same time.
+    if [ -f "$SCRIPT_DIR/queue/runtime/role_failover.yaml" ] && [ -f "$SCRIPT_DIR/shogunate_mod/runtime/role_failover_runner.sh" ]; then
+        local generation=""
+        local reported=""
+        generation=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @role_generation 2>/dev/null | tr -d '\r' | head -n1)
+        reported=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @role_exit_reported_generation 2>/dev/null | tr -d '\r' | head -n1)
+        if [[ "$generation" =~ ^[1-9][0-9]*$ ]] && [ "$reported" != "$generation" ]; then
+            SHOGUNATE_RUNTIME_DIR="$SCRIPT_DIR" bash "$SCRIPT_DIR/shogunate_mod/runtime/role_failover_runner.sh" \
+                process_exit "$AGENT_ID" "$generation" shell_return "$PANE_TARGET" || true
+        fi
+        return 0
+    fi
+
     restart_cmd=$(restart_command_for_cli "$effective_cli" 2>/dev/null || true)
     [ -n "$restart_cmd" ] || return 0
 
@@ -1366,6 +1381,139 @@ recover_missing_ashigaru_report_if_idle() {
 }
 
 # summary-first: unread_count fast-path before full read
+reject_stale_generation_messages() {
+    local state_file="$SCRIPT_DIR/queue/runtime/role_failover.yaml"
+    [ -f "$state_file" ] || return 0
+    mkdir -p "$(dirname "$LOCKFILE")" 2>/dev/null || true
+    (
+        flock -x 200
+        INBOX_PATH="$INBOX" FAILOVER_STATE_PATH="$state_file" python3 - <<'PY'
+import datetime as dt
+import os
+import re
+import tempfile
+
+import yaml
+
+inbox_path = os.environ["INBOX_PATH"]
+state_path = os.environ["FAILOVER_STATE_PATH"]
+managed = re.compile(r"^(shogun|gunkan|gunshi|karo(?:[1-9][0-9]*)?|ashigaru[1-9][0-9]*)$")
+
+def parse_time(value):
+    try:
+        parsed = dt.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt.timezone.utc)
+        return parsed.astimezone(dt.timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+try:
+    with open(inbox_path, encoding="utf-8") as fh:
+        inbox = yaml.safe_load(fh) or {}
+    with open(state_path, encoding="utf-8") as fh:
+        state = yaml.safe_load(fh) or {}
+    roles = state.get("roles") if isinstance(state.get("roles"), dict) else {}
+    changed = False
+    now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    for message in inbox.get("messages") or []:
+        if not isinstance(message, dict) or message.get("read"):
+            continue
+        sender = str(message.get("from") or "")
+        if not managed.fullmatch(sender):
+            continue
+        role_state = roles.get(sender)
+        if not isinstance(role_state, dict):
+            reason = "sender_role_not_initialized"
+        else:
+            generation = message.get("generation")
+            if isinstance(generation, int) and not isinstance(generation, bool):
+                reason = "" if generation == role_state.get("generation") else "stale_generation"
+            else:
+                sent_at = parse_time(message.get("timestamp"))
+                initialized_at = parse_time(role_state.get("initialized_at"))
+                reason = "" if sent_at and initialized_at and sent_at < initialized_at else "missing_generation_after_init"
+        if reason:
+            message["read"] = True
+            message["rejected"] = True
+            message["rejection_reason"] = reason
+            message["rejected_at"] = now
+            changed = True
+    if changed:
+        fd, tmp_name = tempfile.mkstemp(dir=os.path.dirname(inbox_path), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                yaml.safe_dump(inbox, fh, allow_unicode=True, sort_keys=False)
+            os.replace(tmp_name, inbox_path)
+        except Exception:
+            os.unlink(tmp_name)
+            raise
+except Exception as exc:
+    print(f"[inbox_watcher] generation filter failed: {exc}", file=__import__("sys").stderr)
+    raise SystemExit(1)
+PY
+    ) 200>"$LOCKFILE"
+}
+
+sync_completed_inbox_work() {
+    local state_file="$SCRIPT_DIR/queue/runtime/role_failover.yaml"
+    [ -f "$state_file" ] || return 0
+    INBOX_PATH="$INBOX" WATCHER_AGENT_ID="$AGENT_ID" SHOGUNATE_ROOT="$SCRIPT_DIR" python3 - <<'PY'
+import datetime as dt
+import os
+import sys
+
+import yaml
+
+root = os.environ["SHOGUNATE_ROOT"]
+agent = os.environ["WATCHER_AGENT_ID"]
+inbox_path = os.environ["INBOX_PATH"]
+sys.path.insert(0, root)
+from shogunate_mod.runtime.role_failover import EVENT_WORK_COMPLETE, RoleFailoverStore, is_role_name  # noqa: E402
+
+def parse_time(value):
+    try:
+        parsed = dt.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt.timezone.utc)
+        return parsed.astimezone(dt.timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+if not is_role_name(agent):
+    raise SystemExit(0)
+store = RoleFailoverStore(__import__("pathlib").Path(root))
+state = store.load()
+role_state = state.get("roles", {}).get(agent)
+if not isinstance(role_state, dict) or not isinstance(role_state.get("current_work"), dict):
+    raise SystemExit(0)
+scope = role_state["current_work"].get("scope")
+started_at = parse_time(scope.get("started_at")) if isinstance(scope, dict) else None
+with open(inbox_path, encoding="utf-8") as fh:
+    messages = (yaml.safe_load(fh) or {}).get("messages") or []
+completion_types = {"cmd_done", "report_received", "audit_report"}
+completion = None
+for message in messages:
+    if not isinstance(message, dict) or not message.get("read") or message.get("rejected"):
+        continue
+    if message.get("type") not in completion_types:
+        continue
+    completed_at = parse_time(message.get("timestamp"))
+    if started_at and completed_at and completed_at < started_at:
+        continue
+    completion = message
+if completion is None:
+    raise SystemExit(0)
+event_id = f"work-complete-{agent}-{completion.get('id', 'message')}"[:128]
+store.apply_event({
+    "event_id": event_id,
+    "type": EVENT_WORK_COMPLETE,
+    "role": agent,
+    "expected_generation": role_state["generation"],
+})
+PY
+}
+
 get_unread_count_fast() {
     INBOX_PATH="$INBOX" python3 - << 'PY'
 import json
@@ -2033,6 +2181,8 @@ send_wakeup_with_escape() {
 # ─── Process cycle ───
 process_unread() {
     local trigger="${1:-event}"
+    reject_stale_generation_messages || return 0
+    sync_completed_inbox_work || return 0
 
     # summary-first: unread_count fast-path (Phase 2/3 optimization)
     # unread_count fast-path lets us skip expensive full reads when idle.

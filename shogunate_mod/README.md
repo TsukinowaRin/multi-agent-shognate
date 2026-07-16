@@ -58,11 +58,11 @@ is Shogunate-only.
 - `github/` owns repository-level GitHub metadata that must also exist at root
   for GitHub to read it, such as funding metadata. Root `.github/FUNDING.yml`
   remains the GitHub compatibility copy.
-- `package/` owns cURL/package install, first setup, npm package metadata,
+- `package/` owns cURL package install, first setup, private compatibility metadata,
   first-run templates for `memory/` and `saytask/`, Python package
   requirements for build-time generation helpers, release archive
-  `.gitattributes` rules, `.gitignore` package/source boundary rules, the npm
-  wrapper implementation, cwd-first workspace resolution, prepublish checks, GitHub
+  `.gitattributes` rules, `.gitignore` package/source boundary rules, the
+  unpublished legacy Node wrapper, cwd-first workspace resolution, prepublish checks, GitHub
   Actions package/test workflow sources, and the generated `shogunate`
   command. Root `package*.json`, `requirements.txt`, `.gitattributes`,
   `.gitignore`, `.github/workflows/`, `memory/MEMORY.md.sample`, and
@@ -118,6 +118,7 @@ is Shogunate-only.
 	  construction, Goza layout/pane helpers, startup banner and startup-time
 	  ASCII banner rendering,
 	  queue/dashboard/runtime state initialization,
+	  generation-scoped Primary/Fallback state, recovery runner, and safe-stop monitoring,
 	  runtime bridge scripts, runtime bridge daemons, live CLI preference sync,
 	  and live CLI preference sync daemon,
 	  MCP health checks,

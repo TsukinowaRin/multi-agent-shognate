@@ -2166,16 +2166,14 @@ agent_is_busy() {
         return 0
     fi
 
-    # Claude busy detection is flag-first: stop_hook creates the idle flag when a
-    # turn ends. Pane text is unreliable (welcome banners look busy), so a present
-    # idle flag means idle even when agent_is_busy_check would disagree.
-    if [[ "$effective_cli" == "claude" ]]; then
-        if [ -f "$idle_flag" ]; then
-            clear_agent_busy_observation
-            return 1
-        fi
-        record_agent_busy_observation "$effective_cli"
-        return 0
+    # Claude idle-flag short-circuit: stop_hook creates this when a turn ends.
+    # A present flag means idle even if pane text or agent_is_busy_check would
+    # disagree (welcome banners / mock panes often look busy).
+    # Absence does NOT force busy — fall through to pane/check so unit tests and
+    # environments without stop_hook still work.
+    if [[ "$effective_cli" == "claude" ]] && [ -f "$idle_flag" ]; then
+        clear_agent_busy_observation
+        return 1
     fi
 
     if declare -F agent_is_busy_check >/dev/null 2>&1; then

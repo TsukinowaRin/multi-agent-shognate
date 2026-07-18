@@ -152,6 +152,27 @@ NUDGE_REPEAT_COOLDOWN=${NUDGE_REPEAT_COOLDOWN:-120}
 LAST_NUDGE_SIGNATURE=${LAST_NUDGE_SIGNATURE:-}
 LAST_NUDGE_TS=${LAST_NUDGE_TS:-0}
 
+# macOS does not ship flock. Keep the Linux fast path, but use an atomic
+# directory lock with the same bounded wait when flock is unavailable.
+# Each caller runs this helper inside a subshell, so the EXIT trap releases
+# only the lock acquired for that inbox operation.
+acquire_inbox_lock() {
+    if command -v flock >/dev/null 2>&1; then
+        flock -x 200
+        return $?
+    fi
+
+    local lock_dir="${LOCKFILE}.d"
+    local lock_attempt=0
+    while ! mkdir "$lock_dir" 2>/dev/null; do
+        lock_attempt=$((lock_attempt + 1))
+        [ "$lock_attempt" -lt 50 ] || return 1
+        sleep 0.1
+    done
+    INBOX_LOCK_DIR="$lock_dir"
+    trap 'rmdir "${INBOX_LOCK_DIR:-}" 2>/dev/null || true' EXIT
+}
+
 # ─── Phase feature flags (cmd_107 Phase 1/2/3) ───
 # ASW_PHASE:
 #   1 = self-watch base (compatible)
@@ -1305,7 +1326,7 @@ enqueue_recovery_task_assigned() {
     mkdir -p "$(dirname "$LOCKFILE")" 2>/dev/null || true
 
     (
-        flock -x 200
+        acquire_inbox_lock || exit 1
         INBOX_PATH="$INBOX" AGENT_ID="$AGENT_ID" RECOVERY_HINT="$recovery_hint" python3 - << 'PY'
 import datetime
 import os
@@ -1475,7 +1496,7 @@ reject_stale_generation_messages() {
     [ -f "$state_file" ] || return 0
     mkdir -p "$(dirname "$LOCKFILE")" 2>/dev/null || true
     (
-        flock -x 200
+        acquire_inbox_lock || exit 1
         INBOX_PATH="$INBOX" FAILOVER_STATE_PATH="$state_file" python3 - <<'PY'
 import datetime as dt
 import os
@@ -1628,7 +1649,7 @@ get_unread_info() {
     mkdir -p "$(dirname "$LOCKFILE")" 2>/dev/null || true
 
     (
-        flock -x 200
+        acquire_inbox_lock || exit 1
         INBOX_PATH="$INBOX" python3 - << 'PY'
 import json
 import os

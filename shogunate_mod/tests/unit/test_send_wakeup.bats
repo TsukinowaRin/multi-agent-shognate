@@ -1616,6 +1616,44 @@ PY
     [ "$status" -eq 0 ]
 }
 
+@test "T-GEN-004b: flock無し環境ではatomic directory lockでgenerationを検証する" {
+    source "$TEST_HARNESS"
+    SCRIPT_DIR="$TEST_TMPDIR/project"
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    cat > "$SCRIPT_DIR/queue/runtime/role_failover.yaml" <<'YAML'
+roles:
+  shogun:
+    generation: 3
+    status: ready
+    initialized_at: "2026-07-16T00:00:00Z"
+YAML
+    cat > "$INBOX" <<'YAML'
+messages:
+  - id: stale-without-flock
+    from: shogun
+    generation: 2
+    timestamp: "2026-07-16T01:00:00Z"
+    type: cmd_new
+    content: old
+    read: false
+YAML
+    fallback_bin="$TEST_TMPDIR/no-flock-bin"
+    mkdir -p "$fallback_bin"
+    for tool in dirname mkdir python3 rmdir sleep; do
+        ln -s "$(command -v "$tool")" "$fallback_bin/$tool"
+    done
+
+    PATH="$fallback_bin" reject_stale_generation_messages
+    run python3 - "$INBOX" <<'PY'
+import sys, yaml
+m = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["messages"][0]
+assert m["read"] is True and m["rejected"] is True
+assert m["rejection_reason"] == "stale_generation"
+PY
+    [ "$status" -eq 0 ]
+    [ ! -d "${LOCKFILE}.d" ]
+}
+
 @test "T-GEN-005: read済みcmd_doneで受信先の委任workをcompleteにする" {
     source "$TEST_HARNESS"
     AGENT_ID="shogun"

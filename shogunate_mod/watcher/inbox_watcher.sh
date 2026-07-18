@@ -137,6 +137,11 @@ LAST_CLEAR_TS=${LAST_CLEAR_TS:-0}
 ESCALATE_PHASE1=${ESCALATE_PHASE1:-120}
 ESCALATE_PHASE2=${ESCALATE_PHASE2:-240}
 ESCALATE_COOLDOWN=${ESCALATE_COOLDOWN:-300}
+# Tracks whether /new or /clear was already sent for the current task_assigned batch.
+# Resets to 0 when all messages are read (FIRST_UNREAD_SEEN → 0).
+NEW_CONTEXT_SENT=${NEW_CONTEXT_SENT:-0}
+# Codex startup prompt includes full recovery; skip the follow-up nudge that cycle.
+STARTUP_PROMPT_SENT=${STARTUP_PROMPT_SENT:-0}
 LAST_CLI_RESTART_TS=${LAST_CLI_RESTART_TS:-0}
 CLI_RESTART_COOLDOWN=${CLI_RESTART_COOLDOWN:-30}
 CLI_STARTUP_GRACE_SECONDS=${CLI_STARTUP_GRACE_SECONDS:-20}
@@ -1683,18 +1688,20 @@ try:
 
     normal = [m for m in unread if m.get("type") not in special_types]
     normal_count = len(normal)
+    has_task_assigned = any((m.get("type") or "") == "task_assigned" for m in normal)
     signature = "|".join(
         f"{m.get('id', '')}:{m.get('type', '')}:{m.get('timestamp', '')}"
         for m in normal
     )
     payload = {
         "count": normal_count,
+        "has_task_assigned": has_task_assigned,
         "signature": signature,
         "specials": [{"type": m.get("type", ""), "content": m.get("content", "")} for m in specials],
     }
     print(json.dumps(payload))
 except Exception:
-    print(json.dumps({"count": 0, "specials": []}))
+    print(json.dumps({"count": 0, "has_task_assigned": False, "specials": []}))
 PY
     ) 200>"$LOCKFILE" 2>/dev/null
 }
@@ -1873,6 +1880,80 @@ send_startup_prompt() {
     send_text_and_enter "$startup_prompt" "startup prompt" || true
 }
 
+# ─── Context reset before a new task_assigned batch ───
+# Codex は /new 後に AGENTS.md を自動再読しないため、startup prompt を同梱する。
+# Claude は /clear のみ（Session Start は CLAUDE.md 側）。OpenCode は /new のみ。
+send_context_reset() {
+    local effective_cli
+    effective_cli=$(get_effective_cli_type)
+
+    if [ "$AGENT_ID" = "shogun" ]; then
+        echo "[$(date)] [SKIP] shogun: suppressing context reset" >&2
+        return 0
+    fi
+
+    local reset_cmd="/new"
+    case "$effective_cli" in
+        codex|opencode|kilo|localapi|cursor)
+            reset_cmd="/new"
+            ;;
+        claude|copilot|kimi|antigravity|grok)
+            reset_cmd="/clear"
+            ;;
+        *)
+            reset_cmd="/new"
+            ;;
+    esac
+
+    echo "[$(date)] [CONTEXT-RESET] Sending $reset_cmd before task_assigned for $AGENT_ID ($effective_cli)" >&2
+
+    if [[ "$effective_cli" == "codex" ]]; then
+        if ! send_text_and_enter "/new" "Codex /new"; then
+            return 1
+        fi
+        sleep 3
+        send_startup_prompt
+        # Context-reset startup already carries full recovery; skip the same-cycle nudge.
+        STARTUP_PROMPT_SENT=1
+        return 0
+    fi
+
+    if [[ "$effective_cli" == "opencode" ]]; then
+        if ! send_text_and_enter "/new" "OpenCode /new"; then
+            return 1
+        fi
+        NEW_CONTEXT_SENT=1
+        sleep 3
+        return 0
+    fi
+
+    # Do not route through send_cli_command here: that path may inject an extra
+    # startup prompt (Claude) or restart the CLI. Context-reset only needs the
+    # conversation reset itself; the follow-up nudge carries task instructions.
+    if ! send_text_and_enter "$reset_cmd" "context reset"; then
+        return 1
+    fi
+    if [[ "$reset_cmd" == "/clear" ]]; then
+        LAST_CLEAR_TS=$(date +%s)
+        sleep 3
+    else
+        sleep 3
+    fi
+
+    local attempt
+    for attempt in 1 2 3; do
+        sleep 5
+        if ! agent_is_busy; then
+            echo "[$(date)] [CONTEXT-RESET] $AGENT_ID idle after ${attempt}x5s — ready for nudge" >&2
+            break
+        fi
+        echo "[$(date)] [CONTEXT-RESET] $AGENT_ID still busy after ${attempt}x5s — retrying" >&2
+    done
+    if agent_is_busy; then
+        echo "[$(date)] [CONTEXT-RESET] $AGENT_ID still busy after 15s — proceeding anyway" >&2
+    fi
+}
+
 # ─── Send CLI command via pty direct write ───
 # For /clear and /model only. These are CLI commands, not conversation messages.
 # CLI_TYPE別分岐: claude→そのまま, codex→/clear対応・/modelスキップ,
@@ -1902,10 +1983,16 @@ send_cli_command() {
                     echo "[$(date)] [SKIP] Codex escalation /clear suppressed for $AGENT_ID (avoid /new interruption)" >&2
                     return 0
                 fi
+                # Rapid duplicate clear_commands must not stack multiple /new sessions.
+                if [ "${NEW_CONTEXT_SENT:-0}" -eq 1 ]; then
+                    echo "[$(date)] [SKIP] Codex /new already sent for $AGENT_ID — skipping duplicate clear_command" >&2
+                    return 0
+                fi
                 echo "[$(date)] [SEND-KEYS] Codex /clear→/new: starting new conversation for $AGENT_ID" >&2
                 if ! send_text_and_enter "/new" "Codex /new"; then
                     return 1
                 fi
+                NEW_CONTEXT_SENT=1
                 sleep 3
                 send_startup_prompt
                 return 0
@@ -2074,26 +2161,29 @@ agent_is_busy() {
     now=$(date +%s)
     clear_busy_until=$((LAST_CLEAR_TS + 30))
 
-    if declare -F agent_is_busy_check >/dev/null 2>&1; then
-        agent_is_busy_check "$PANE_TARGET"
-        case $? in
-            0) record_agent_busy_observation "$effective_cli"; return 0 ;;
-            1|2) clear_agent_busy_observation; return 1 ;;
-        esac
-    fi
-
     if [ "${LAST_CLEAR_TS:-0}" -gt 0 ] && [ "$now" -lt "$clear_busy_until" ]; then
         record_agent_busy_observation "$effective_cli"
         return 0
     fi
 
-    if [[ "$effective_cli" == "claude" ]] && [ -n "${IDLE_FLAG_DIR:-}" ]; then
+    # Claude busy detection is flag-first: stop_hook creates the idle flag when a
+    # turn ends. Pane text is unreliable (welcome banners look busy), so a present
+    # idle flag means idle even when agent_is_busy_check would disagree.
+    if [[ "$effective_cli" == "claude" ]]; then
         if [ -f "$idle_flag" ]; then
             clear_agent_busy_observation
             return 1
         fi
         record_agent_busy_observation "$effective_cli"
         return 0
+    fi
+
+    if declare -F agent_is_busy_check >/dev/null 2>&1; then
+        agent_is_busy_check "$PANE_TARGET"
+        case $? in
+            0) record_agent_busy_observation "$effective_cli"; return 0 ;;
+            1|2) clear_agent_busy_observation; return 1 ;;
+        esac
     fi
 
     pane_tail=$(mux_capture_pane_tail)
@@ -2310,6 +2400,8 @@ process_unread() {
             echo "[$(date)] All messages read for $AGENT_ID — escalation reset (fast-path)" >&2
         fi
         FIRST_UNREAD_SEEN=0
+        NEW_CONTEXT_SENT=0
+        STARTUP_PROMPT_SENT=0
         return 0
     fi
 
@@ -2371,6 +2463,8 @@ for s in data.get('specials', []):
     normal_count=$(echo "$info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null)
     local normal_signature
     normal_signature=$(echo "$info" | python3 -c "import sys,json; print(json.load(sys.stdin).get('signature',''))" 2>/dev/null)
+    local has_task_assigned
+    has_task_assigned=$(echo "$info" | python3 -c "import sys,json; print(1 if json.load(sys.stdin).get('has_task_assigned') else 0)" 2>/dev/null)
 
     if [ "$normal_count" -gt 0 ] 2>/dev/null; then
         local now
@@ -2392,6 +2486,43 @@ for s in data.get('specials', []):
         # Track when we first saw unread messages
         if [ "$FIRST_UNREAD_SEEN" -eq 0 ]; then
             FIRST_UNREAD_SEEN=$now
+        fi
+
+        # Stale busy safety net: if busy detection persists for >5 min with unread,
+        # force-create the idle flag so false-busy deadlocks (missed stop_hook) recover.
+        if agent_is_busy && [[ "$AGENT_ID" != "shogun" ]]; then
+            local stale_busy_limit=300
+            if [ "${FIRST_UNREAD_SEEN:-0}" -gt 0 ] && [ "$((now - FIRST_UNREAD_SEEN))" -ge "$stale_busy_limit" ]; then
+                echo "[$(date)] WARNING: $AGENT_ID busy for $((now - FIRST_UNREAD_SEEN))s with $normal_count unread — forcing idle flag (stale busy recovery)" >&2
+                touch "${IDLE_FLAG_DIR:-/tmp}/shogun_idle_${AGENT_ID}" 2>/dev/null || true
+                clear_agent_busy_observation 2>/dev/null || true
+            else
+                local busy_cli
+                busy_cli="$effective_cli"
+                if [[ "$busy_cli" == "claude" ]]; then
+                    echo "[$(date)] $normal_count unread for $AGENT_ID but agent is busy (claude) — Stop hook will deliver" >&2
+                else
+                    # Non-Claude: pause escalation while busy so we don't jump phases mid-thought.
+                    FIRST_UNREAD_SEEN=$now
+                    echo "[$(date)] $normal_count unread for $AGENT_ID but agent is busy ($busy_cli) — pausing escalation timer" >&2
+                fi
+                return 0
+            fi
+        fi
+
+        # Context reset once per task_assigned batch (Codex /new + startup, Claude /clear, …).
+        # Skip when clear_command already handled the reset above.
+        if [ "$has_task_assigned" = "1" ] && [ "${NEW_CONTEXT_SENT:-0}" -eq 0 ] && [ "$clear_seen" -eq 0 ]; then
+            send_context_reset
+            NEW_CONTEXT_SENT=1
+        fi
+
+        # Codex startup prompt already carries full recovery instructions.
+        if [ "${STARTUP_PROMPT_SENT:-0}" -eq 1 ]; then
+            STARTUP_PROMPT_SENT=0
+            echo "[$(date)] [SKIP] Startup prompt just sent to $AGENT_ID — skipping nudge this cycle" >&2
+            FIRST_UNREAD_SEEN=$now
+            return 0
         fi
 
         if [ "${ASW_DISABLE_ESCALATION:-0}" = "1" ]; then
@@ -2429,6 +2560,7 @@ for s in data.get('specials', []):
                 send_cli_command "/clear" "escalation"
                 LAST_CLEAR_TS=$now
                 FIRST_UNREAD_SEEN=0  # Reset — will re-detect on next cycle
+                NEW_CONTEXT_SENT=0
             else
                 # Cooldown active — fall back to Escape+nudge
                 echo "[$(date)] $normal_count unread for $AGENT_ID (${age}s — /clear cooldown, using Escape+nudge)" >&2
@@ -2441,6 +2573,8 @@ for s in data.get('specials', []):
             echo "[$(date)] All messages read for $AGENT_ID — escalation reset" >&2
         fi
         FIRST_UNREAD_SEEN=0
+        NEW_CONTEXT_SENT=0
+        STARTUP_PROMPT_SENT=0
         LAST_NUDGE_SIGNATURE=""
         LAST_NUDGE_TS=0
 

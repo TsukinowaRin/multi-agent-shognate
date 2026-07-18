@@ -103,6 +103,33 @@ PY
     echo "[$(date)] file watch backend: $(file_watch_backend)" >&2
 fi
 
+# ─── Grok Build failure classifier (GB-003B) ───
+# Pure in-memory helper: 引数として渡された短い pane text を分類し、固定
+# reason 文字列だけを返す。TUI の stdout/stderr を file へ redirect する
+# ことは絶対にしない（attempt 1 の禁止設計の再発防止）。helper は関数定義
+# だけを提供し、ここでは関数を load するだけで何も実行しない。
+#
+# helper の source path は BASH_SOURCE[0] の symlink を解決した実 path だけ
+# から決める。MOD_WATCHER_DIR 等の環境変数や、外部directoryに置いた watcher
+# symlink 経由で source 先を差し替えることは許さない。
+_grok_watcher_source="${BASH_SOURCE[0]}"
+while [[ -L "$_grok_watcher_source" ]]; do
+    _grok_watcher_dir="$(cd -P "$(dirname "$_grok_watcher_source")" && pwd)"
+    _grok_watcher_link="$(readlink "$_grok_watcher_source")"
+    if [[ "$_grok_watcher_link" == /* ]]; then
+        _grok_watcher_source="$_grok_watcher_link"
+    else
+        _grok_watcher_source="${_grok_watcher_dir}/${_grok_watcher_link}"
+    fi
+done
+MOD_WATCHER_DIR="$(cd -P "$(dirname "$_grok_watcher_source")" && pwd)"
+_grok_failure_helper="${MOD_WATCHER_DIR}/../runtime/grok_failure.sh"
+if [[ -f "$_grok_failure_helper" ]]; then
+    # shellcheck source=/dev/null
+    source "$_grok_failure_helper"
+fi
+unset _grok_failure_helper _grok_watcher_source _grok_watcher_dir _grok_watcher_link
+
 # ─── Escalation state ───
 # Time-based escalation: track how long unread messages have been waiting
 FIRST_UNREAD_SEEN=${FIRST_UNREAD_SEEN:-0}
@@ -179,7 +206,7 @@ disable_normal_nudge() {
 
 is_valid_cli_type() {
     case "${1:-}" in
-        claude|codex|copilot|kimi|antigravity|opencode|kilo|localapi|cursor) return 0 ;;
+        claude|codex|copilot|kimi|antigravity|opencode|kilo|localapi|cursor|grok) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -887,6 +914,68 @@ recover_shell_returned_cli_if_needed() {
 
 recover_shell_returned_codex_if_needed() {
     recover_shell_returned_cli_if_needed "$@"
+}
+
+# ─── Grok Build failure guard (GB-003B, attempt 3) ───
+# 設計方針（attempt 1/2 の禁止事項を除く）:
+#   * TUI の stdout/stderr を file へ redirect しない。capture-pane の結果
+#     は一時変数に入れ、固定 reason だけを取り出した後すぐ捨てる。
+#   * raw pane text を state / log / marker file へ書かない。marker に書く
+#     のは issue 名と generation 番号を含めた空 file だけで、pane text を
+#     含まない。
+#   * 通常 process exit は既存 `launch.sh` の process_exit 経路を変えない。
+#     ここでは explicit_failure event だけを1回だけ発行する。
+#   * generation を取得・検証してから marker path を作る。marker 名へ
+#     generation を含め、同一 generation+reason は1回、次 generation は
+#     再度1回発火できる。runtime_blocked_relay_marker_path の dir を再利用
+#     し、filename を `${AGENT_ID}__grok-${reason}-generation${N}.sent` と
+#     する（notify_shogun_runtime_* 用の既存 issue 名 marker とは別物）。
+#   * helper (`grok_classify_failure_text`) は pane 中の単独の既知 error 行
+#     だけを分類し、narrative 内の語句は分類しない。
+maintain_grok_runtime_failure_guard() {
+    local effective_cli="${1:-}"
+    local pane_text=""
+    local reason=""
+    local generation=""
+    local marker_dir=""
+    local marker_path=""
+
+    if [[ -z "$effective_cli" ]]; then
+        effective_cli=$(get_effective_cli_type)
+    fi
+    [[ "$effective_cli" == "grok" ]] || return 0
+
+    # role_failover_runner は managed role + 世代番号を要求する（runner 側の
+    # valid_role / generation check と同期）。managed pane でなければ何もしない。
+    [[ "${AGENT_ID:-}" =~ ^(shogun|gunkan|gunshi|karo([1-9][0-9]*)?|ashigaru[1-9][0-9]*)$ ]] || return 0
+    [[ -f "$SCRIPT_DIR/queue/runtime/role_failover.yaml" ]] || return 0
+    [[ -f "$SCRIPT_DIR/shogunate_mod/runtime/role_failover_runner.sh" ]] || return 0
+
+    # 短い pane snapshot を capture し純粋 helper へ渡す。raw text は変数の
+    # scope 内で使い捨て、永続 file へ書かない。
+    pane_text=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -80 || true)
+    reason=$(grok_classify_failure_text "$pane_text")
+    [[ -n "$reason" ]] || return 0
+
+    # generation を先に取得・検証してから marker path を作る。generation が
+    # 無ければ何もしない（runner 側の check と同期）。
+    generation=$(timeout 2 tmux show-options -p -t "$PANE_TARGET" -v @role_generation 2>/dev/null | tr -d '\r' | head -n1)
+    [[ "$generation" =~ ^[1-9][0-9]*$ ]] || return 0
+
+    # marker 名に generation を含める。同一 generation+reason は1回だけ、
+    # 次 generation は再度1回発火できる。marker 内容は空 file で pane text
+    # を絶対に書かない。dir は既存 relay marker helper と同じ場所を使う。
+    marker_dir="$(dirname "$(runtime_blocked_relay_marker_path "grok-${reason}")")"
+    marker_path="${marker_dir}/${AGENT_ID}__grok-${reason}-generation${generation}.sent"
+    [ -f "$marker_path" ] && return 0
+
+    mkdir -p "$marker_dir" 2>/dev/null || true
+    if SHOGUNATE_RUNTIME_DIR="$SCRIPT_DIR" bash "$SCRIPT_DIR/shogunate_mod/runtime/role_failover_runner.sh" \
+        explicit_failure "$AGENT_ID" "$generation" "$reason" "$PANE_TARGET" >/dev/null 2>&1; then
+        : > "$marker_path"
+        echo "[$(date)] [INFO] grok ${reason} classified for $AGENT_ID (generation ${generation}); role_failover_runner invoked once" >&2
+    fi
+    return 0
 }
 
 BUSY_SINCE_TS=${BUSY_SINCE_TS:-0}
@@ -2352,6 +2441,7 @@ if [ "${__INBOX_WATCHER_TESTING__:-}" != "1" ]; then
 # ─── Startup: process any existing unread messages ───
 recover_shell_returned_cli_if_needed || true
 maintain_codex_runtime_prompt || true
+maintain_grok_runtime_failure_guard || true
 deliver_pending_bootstrap_if_ready || true
 process_unread_once
 
@@ -2378,6 +2468,7 @@ while true; do
 
     recover_shell_returned_cli_if_needed || true
     maintain_codex_runtime_prompt || true
+    maintain_grok_runtime_failure_guard || true
     deliver_pending_bootstrap_if_ready || true
 
     if [ "$rc" -eq 2 ]; then

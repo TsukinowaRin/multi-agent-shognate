@@ -21,7 +21,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SETTINGS = ROOT / "config/settings.yaml"
-ALLOWED_CLIS = ("codex", "antigravity", "claude", "opencode", "kilo", "localapi", "kimi", "copilot", "cursor")
+ALLOWED_CLIS = ("codex", "antigravity", "claude", "opencode", "kilo", "localapi", "kimi", "copilot", "cursor", "grok")
 LEGACY_CLI_ALIASES = {"gemini": "antigravity", "agy": "antigravity"}
 CORE_ROLES = ("shogun", "gunkan", "karo", "gunshi")
 MODEL_PREF_KEYS = ("model", "reasoning_effort", "thinking")

@@ -5,6 +5,9 @@ source "$BATS_TEST_DIRNAME/../helpers/search_helper.bash"
 setup() {
   TEST_TMP="$(mktemp -d)"
   PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+  while [[ "$PROJECT_ROOT" != "/" && ! -f "$PROJECT_ROOT/shogunate_mod/runtime/shogun_to_karo_bridge.py" ]]; do
+    PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+  done
 
   mkdir -p "$TEST_TMP/queue/inbox" "$TEST_TMP/queue/runtime" "$TEST_TMP/scripts"
 

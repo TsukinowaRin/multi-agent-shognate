@@ -33,6 +33,7 @@ canonical_paths:
   docs_changelog: shogunate_mod/docs/CHANGELOG.md
   docs_contributing: shogunate_mod/docs/CONTRIBUTING.md
   docs_agmsg_bridge_design: shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md
+  docs_role_failover_design: shogunate_mod/docs/DESIGN_2026-07-16_ROLE_FAILOVER.md
   docs_philosophy: shogunate_mod/docs/philosophy.md
   docs_readme: shogunate_mod/docs/README.md
   docs_readme_ja: shogunate_mod/docs/README_ja.md
@@ -96,6 +97,7 @@ canonical_paths:
   runtime_entrypoint: shogunate_mod/runtime/entrypoint.sh
   runtime_env: shogunate_mod/runtime/env.sh
   runtime_goza: shogunate_mod/runtime/goza.sh
+  runtime_grok_failure: shogunate_mod/runtime/grok_failure.sh
   runtime_launch: shogunate_mod/runtime/launch.sh
   runtime_lifecycle: shogunate_mod/runtime/lifecycle.sh
   runtime_launcher: shogunate_mod/runtime/launcher.sh
@@ -254,6 +256,9 @@ current_core_touchpoints:
   - path: docs/philosophy.md
     reason: "Design philosophy documentation remains at the historical root docs path, while Shogunate-specific doctrine is MOD-owned."
     next_step: "Keep root docs/philosophy.md synchronized as a compatibility copy of shogunate_mod/docs/philosophy.md."
+  - path: docs/DESIGN_2026-07-16_ROLE_FAILOVER.md
+    reason: "The role failover design remains under root docs for maintainers, while the Shogunate-specific source is MOD-owned."
+    next_step: "Keep this root design synchronized as a compatibility copy of shogunate_mod/docs/DESIGN_2026-07-16_ROLE_FAILOVER.md and keep the root copy out of release archives."
   - path: CLAUDE.md
     reason: "Claude Code auto-loads this root path, but Shogunate guidance source is now mirrored in shogunate_mod/instructions/autoload."
     next_step: "Keep root CLAUDE.md synchronized as a compatibility copy of shogunate_mod/instructions/autoload/CLAUDE.md."

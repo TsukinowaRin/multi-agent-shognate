@@ -2,7 +2,20 @@
 
 setup_file() {
     export PROJECT_ROOT
-    PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../../.." && pwd)"
+    PROJECT_ROOT="$(resolve_project_root "$(dirname "$BATS_TEST_FILENAME")")"
+}
+
+resolve_project_root() {
+    local candidate
+    candidate="$(cd "$1" && pwd)"
+    while [[ "$candidate" != "/" ]]; do
+        if [[ -f "$candidate/package.json" && -f "$candidate/shogunate_mod/manifest.yaml" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+        candidate="$(dirname "$candidate")"
+    done
+    return 1
 }
 
 @test "shell_aliases は source で repo-local alias を定義する" {

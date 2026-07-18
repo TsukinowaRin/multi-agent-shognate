@@ -167,7 +167,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 Pin an exact release only when you need reproducible installs:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.9/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.9
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.13/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.13
 ```
 
 Each GitHub Release page includes the version-pinned cURL command for that tag.
@@ -248,6 +248,16 @@ ashigaru opencode / codex / claude / agy
 ```
 
 Shogunate keeps role-local CLI state where needed while reusing your host authentication, so each role can have its own runtime settings without forcing repeated login.
+
+Each role can have one required `Primary` profile and one optional `Fallback` profile:
+
+```bash
+python3 scripts/configure_runtime_roles.py \
+  --shogun codex --shogun-fallback opencode \
+  --karo codex --karo-fallback none
+```
+
+After an unexpected exit, Shogunate restarts the same Primary once, then switches to the explicit Fallback. It persists role generations and work state in `queue/runtime/role_failover.yaml`, rejects stale-generation messages, and safe-stops new work when an upper role cannot be recovered.
 
 ## Gunkan Audit Role
 
@@ -365,6 +375,10 @@ v5.2.0.6
 v5.2.0.7
 v5.2.0.8
 v5.2.0.9
+v5.2.0.10
+v5.2.0.11
+v5.2.0.12
+v5.2.0.13
 ```
 
 Each release may include:

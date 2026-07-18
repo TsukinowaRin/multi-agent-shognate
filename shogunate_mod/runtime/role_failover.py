@@ -32,7 +32,7 @@ AUDIT_RELATIVE = Path("queue/runtime/role_failover_audit.yaml")
 OUTBOX_RELATIVE = Path("queue/runtime/app_outbox.yaml")
 
 ALLOWED_CLIS = frozenset(
-    {"codex", "antigravity", "claude", "opencode", "kilo", "localapi", "kimi", "copilot", "cursor"}
+    {"codex", "antigravity", "claude", "opencode", "kilo", "localapi", "kimi", "copilot", "cursor", "grok"}
 )
 LEGACY_CLI_ALIASES = {"gemini": "antigravity", "agy": "antigravity"}
 

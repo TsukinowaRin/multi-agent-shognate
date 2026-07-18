@@ -167,7 +167,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 再現性のために固定 release を入れたい場合だけ、version tag を指定します。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.9/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.9
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.13/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.13
 ```
 
 各 GitHub Release ページには、その tag 固定の cURL も載せています。
@@ -248,6 +248,16 @@ ashigaru opencode / codex / claude / agy
 ```
 
 Shogunate は必要に応じて role-local CLI state を持ちつつ、host 側の認証を再利用します。役職ごとの設定を分けながら、毎回ログインし直す負担を減らします。
+
+各役職には、通常使う `Primary` と、任意の `Fallback` を1つ設定できます。
+
+```bash
+python3 scripts/configure_runtime_roles.py \
+  --shogun codex --shogun-fallback opencode \
+  --karo codex --karo-fallback none
+```
+
+Primaryが異常終了した場合は同じPrimaryを1回だけ再起動し、それでも失敗した場合だけFallbackへ移ります。役職の世代番号と作業状態は`queue/runtime/role_failover.yaml`へ保存され、古い世代のmessageは処理されません。上位役職を復旧できない場合は、新しい仕事を始めず安全停止します。
 
 ## 軍監
 
@@ -365,6 +375,10 @@ v5.2.0.6
 v5.2.0.7
 v5.2.0.8
 v5.2.0.9
+v5.2.0.10
+v5.2.0.11
+v5.2.0.12
+v5.2.0.13
 ```
 
 各 release には必要に応じて以下を置きます。

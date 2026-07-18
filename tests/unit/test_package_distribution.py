@@ -2743,6 +2743,10 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "docs/AGMSG_BRIDGE_DESIGN.md",
                 "shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md",
             ],
+            "docs/DESIGN_2026-07-16_ROLE_FAILOVER.md": [
+                "docs/DESIGN_2026-07-16_ROLE_FAILOVER.md",
+                "shogunate_mod/docs/DESIGN_2026-07-16_ROLE_FAILOVER.md",
+            ],
             "CLAUDE.md": ["CLAUDE.md", "shogunate_mod/instructions/autoload/CLAUDE.md"],
             ".claude/settings.json": [".claude/settings.json", "shogunate_mod/hooks/claude_settings.json"],
             "android/": ["require_android_sources_synced"],

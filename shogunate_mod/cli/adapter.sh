@@ -3,7 +3,7 @@
 # Multi-CLI統合設計書 (reports/design_multi_cli_support.md) §2.2 準拠
 #
 # 提供関数:
-#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "antigravity" | "localapi" | "opencode" | "kilo" | "cursor"
+#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "antigravity" | "localapi" | "opencode" | "kilo" | "cursor" | "grok"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
 #   build_cli_command_with_type(agent_id, cli_type) → 指定CLIでの完全なコマンド文字列
 #   build_cli_command_with_startup_prompt(agent_id, cli_type, prompt) → 初回プロンプト付き完全コマンド
@@ -29,7 +29,7 @@ if [[ -z "$CLI_ADAPTER_PYTHON" || ! -x "$CLI_ADAPTER_PYTHON" ]]; then
 fi
 
 # 許可されたCLI種別
-CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi antigravity localapi opencode kilo cursor"
+CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi antigravity localapi opencode kilo cursor grok"
 CLI_ACTIVE_PROFILE_ENABLED="${CLI_ACTIVE_PROFILE_ENABLED:-0}"
 
 # load_active_role_profile agent_id
@@ -934,7 +934,7 @@ get_cli_type() {
     local result
     result=$("$CLI_ADAPTER_PYTHON" -c "
 import re, yaml, sys
-allowed = ('claude','codex','copilot','kimi','antigravity','localapi','opencode','kilo','cursor')
+allowed = ('claude','codex','copilot','kimi','antigravity','localapi','opencode','kilo','cursor','grok')
 def norm(value):
     value = str(value or '').strip().lower()
     return 'antigravity' if value in ('gemini', 'agy') else value
@@ -1181,6 +1181,17 @@ build_cli_command_with_type() {
             fi
             _cli_adapter_with_cli_state "$agent_id" "$cli_type" "${agent_env_prefix}${kilo_cmd}"
             ;;
+        grok)
+            # Grok Build: fixed binary + optional model as separate argv.
+            # Do not embed tokens/credentials into the generated command string;
+            # host auth stays outside this builder (no --api-key / token flags).
+            local grok_cmd
+            grok_cmd="$(_cli_adapter_pick_executable_cmd "grok" "grok")"
+            if [[ -n "$configured_model" && "$configured_model" != "auto" && "$configured_model" != "default" ]]; then
+                grok_cmd="$grok_cmd --model $(_cli_adapter_shell_quote "$configured_model")"
+            fi
+            echo "${agent_env_prefix}${grok_cmd}"
+            ;;
         *)
             local claude_bin
             claude_bin="$(_cli_adapter_pick_executable_cmd "claude" "claude")"
@@ -1322,6 +1333,7 @@ get_instruction_file() {
         opencode) echo "instructions/generated/opencode-${role}.md" ;;
         kilo) echo "instructions/generated/kilo-${role}.md" ;;
         cursor) echo "instructions/generated/cursor-${role}.md" ;;
+        grok) echo "instructions/generated/grok-${role}.md" ;;
         *) echo "instructions/generated/${role}.md" ;;
     esac
 }
@@ -1406,6 +1418,12 @@ validate_cli_availability() {
         kilo)
             _cli_adapter_find_executable kilo &>/dev/null || {
                 echo "[ERROR] Kilo CLI not found. Install with: npm install -g @kilocode/cli" >&2
+                return 1
+            }
+            ;;
+        grok)
+            _cli_adapter_find_executable grok &>/dev/null || {
+                echo "[ERROR] Grok Build CLI not found. Install Grok Build and ensure 'grok' is in PATH." >&2
                 return 1
             }
             ;;

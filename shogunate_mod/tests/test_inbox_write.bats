@@ -76,6 +76,24 @@ teardown() {
     [[ "$output" =~ "Usage" ]]
 }
 
+setup_failover_state() {
+    mkdir -p "$TEST_TMPDIR/queue/runtime" "$TEST_TMPDIR/shogunate_mod/runtime"
+    cp "$PROJECT_ROOT/shogunate_mod/runtime/role_failover.py" "$TEST_TMPDIR/shogunate_mod/runtime/role_failover.py"
+    cat > "$TEST_TMPDIR/queue/runtime/role_failover.yaml" <<'YAML'
+schema_version: 1
+army_mode: normal
+roles:
+  shogun:
+    role: shogun
+    active_slot: primary
+    generation: 2
+    status: ready
+    initialized_at: "2026-07-16T00:00:00Z"
+processed_event_ids: []
+pending_reassignments: []
+YAML
+}
+
 @test "T-002c: self-send (from == target) → exit 1 with REJECTED" {
     run bash "$TEST_INBOX_WRITE" "karo" "self message" "cmd_new" "karo"
     [ "$status" -eq 1 ]
@@ -186,6 +204,29 @@ EOF
     run bash "$TEST_INBOX_WRITE" "test_agent" "デフォルトテスト"
     [ "$status" -eq 1 ]
     [[ "$output" =~ "Usage" ]]
+}
+
+@test "T-GEN-001: managed senderの旧generationとgeneration欠落を拒否する" {
+    setup_failover_state
+    run env MAS_ROLE_GENERATION=1 bash "$TEST_INBOX_WRITE" test_agent stale cmd_new shogun
+    [ "$status" -ne 0 ]
+    run bash "$TEST_INBOX_WRITE" test_agent missing cmd_new shogun
+    [ "$status" -ne 0 ]
+    [ ! -f "$TEST_INBOX_DIR/test_agent.yaml" ]
+}
+
+@test "T-GEN-002: current generationをmessageへ記録する" {
+    setup_failover_state
+    run env MAS_ROLE_GENERATION=2 bash "$TEST_INBOX_WRITE" test_agent current cmd_new shogun
+    [ "$status" -eq 0 ]
+    run python3 - "$TEST_INBOX_DIR/test_agent.yaml" <<'PY'
+import sys, yaml
+message = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["messages"][0]
+assert message["generation"] == 2
+state = yaml.safe_load(open(sys.argv[1].replace("queue/inbox/test_agent.yaml", "queue/runtime/role_failover.yaml"), encoding="utf-8"))
+assert state["roles"]["shogun"]["current_work"]["work_id"] == message["id"]
+PY
+    [ "$status" -eq 0 ]
 }
 
 # =============================================================================

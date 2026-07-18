@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+## [5.2.0.13] - 2026-07-18
+
+### Added
+- Grok Build CLI support with `grok-4.5` model forwarding, generated instructions for all five roles, and runtime availability checks.
+- Role-level Primary/Fallback profiles with one-restart recovery, generation-scoped handoff, Gunkan emergency policy checks, app notification outbox, and safe-stop behavior.
+
+### Fixed
+- Classified explicit Grok authentication and rate-limit failures in memory and routed them through generation-scoped role failover without persisting pane text.
+- Prevented legacy watchers and stale-generation inbox messages from bypassing the role failover controller.
+
+### Changed
+- npm package metadata version updated to `5.2.0-13` for the `v5.2.0.13` release.
+- Shogunate is distributed only through the cURL bootstrap and GitHub Release archives. npm package metadata is private and cannot be published.
+
 ## [5.2.0.1] - 2026-06-10
 
 ### Changed

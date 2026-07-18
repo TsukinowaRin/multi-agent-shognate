@@ -185,6 +185,31 @@ EOF
     fi
 }
 
+initialize_role_failover_state() {
+    local controller="$SCRIPT_DIR/shogunate_mod/runtime/role_failover.py"
+    local settings="${MAS_SETTINGS_PATH:-$SCRIPT_DIR/config/settings.yaml}"
+    local role=""
+    local safe_role=""
+    local reset_arg=""
+    local seen=" "
+
+    [ -f "$controller" ] || return 0
+    [ -f "$settings" ] || return 0
+    [ "$CLEAN_MODE" != true ] || reset_arg="--reset"
+    for role in shogun gunkan gunshi "${KARO_AGENTS[@]}" "${ACTIVE_ASHIGARU[@]}"; do
+        [ -n "$role" ] || continue
+        case "$seen" in *" $role "*) continue ;; esac
+        seen="${seen}${role} "
+        safe_role=$(printf '%s' "$role" | tr -c 'A-Za-z0-9_.-' '_')
+        "${RUNTIME_PYTHON:-python3}" "$controller" --root "$SCRIPT_DIR" init-role \
+            --role "$role" --settings "$settings" \
+            --event-id "init-${MAS_LAUNCHER_RUN_ID:-$$}-${safe_role}" $reset_arg >/dev/null || {
+            echo "[ERROR] role failover initialization failed for $role" >&2
+            return 1
+        }
+    done
+}
+
 write_runtime_coordination_state() {
     date +%s > "$SCRIPT_DIR/queue/runtime/runtime_start_epoch"
     if [ "$TOPOLOGY_ADAPTER_LOADED" = true ]; then

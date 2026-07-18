@@ -25,6 +25,10 @@ cli:
       type: codex
       model: gpt-5.5
       reasoning_effort: high
+      thinking: false
+      fallback:
+        type: opencode
+        model: fallback/model
     gunkan:
       type: codex
       model: gpt-5.5
@@ -66,7 +70,7 @@ assert cfg["cli"]["default"] == "codex"
 assert cfg["topology"]["active_ashigaru"] == ["ashigaru1", "ashigaru2", "ashigaru3"]
 assert cfg["topology"]["karo"] == {"mode": "auto", "max_ashigaru_per_karo": 6}
 agents = cfg["cli"]["agents"]
-assert agents["shogun"] == {"type": "antigravity"}
+assert agents["shogun"] == {"type": "antigravity", "fallback": {"type": "opencode", "model": "fallback/model"}}
 assert agents["gunkan"] == {"type": "codex"}
 assert agents["gunshi"] == {"type": "codex"}
 assert agents["karo"] == {"type": "codex"}
@@ -100,7 +104,7 @@ with open(sys.argv[1], encoding='utf-8') as fh:
 assert cfg["cli"]["default"] == "codex"
 assert cfg["topology"]["active_ashigaru"] == ["ashigaru1", "ashigaru2"]
 agents = cfg["cli"]["agents"]
-assert agents["shogun"] == {"type": "antigravity"}
+assert agents["shogun"] == {"type": "antigravity", "fallback": {"type": "opencode", "model": "fallback/model"}}
 assert agents["gunkan"] == {"type": "codex"}
 assert agents["karo"] == {"type": "opencode"}
 assert agents["gunshi"] == {"type": "kilo"}
@@ -152,6 +156,8 @@ with open(sys.argv[1], encoding='utf-8') as fh:
 agents = cfg["cli"]["agents"]
 assert agents["shogun"]["type"] == "codex"
 assert agents["shogun"]["model"] == "gpt-5.5"
+assert agents["shogun"]["thinking"] is False
+assert agents["shogun"]["fallback"] == {"type": "opencode", "model": "fallback/model"}
 assert agents["gunkan"]["type"] == "codex"
 assert agents["gunkan"]["model"] == "gpt-5.5"
 assert agents["ashigaru1"]["type"] == "antigravity"
@@ -160,4 +166,43 @@ assert "thinking_level" not in agents["ashigaru1"]
 print("ok")
 PY
   [ "$status" -eq 0 ]
+}
+
+@test "configure_runtime_roles: Fallbackを明示設定・解除できる" {
+  run bash -lc "cd '$TEST_TMP' && python3 scripts/configure_runtime_roles.py --ashigaru-count 1 --shogun codex --shogun-fallback kilo --gunkan codex --gunkan-fallback none --karo codex --gunshi codex --ashigaru1 antigravity --ashigaru1-fallback cursor"
+  [ "$status" -eq 0 ]
+
+  run python3 - "$TEST_TMP/config/settings.yaml" <<'PY'
+import sys, yaml
+cfg = yaml.safe_load(open(sys.argv[1], encoding='utf-8'))
+agents = cfg["cli"]["agents"]
+assert agents["shogun"]["fallback"] == {"type": "kilo", "model": "fallback/model"}
+assert agents["gunkan"]["fallback"] is None
+assert agents["ashigaru1"]["fallback"] == {"type": "cursor"}
+PY
+  [ "$status" -eq 0 ]
+}
+
+@test "configure_runtime_roles: 壊れた設定は上書きしない" {
+  printf 'cli: [broken\n' > "$TEST_TMP/config/settings.yaml"
+  before="$(sha256sum "$TEST_TMP/config/settings.yaml" | awk '{print $1}')"
+  run bash -lc "cd '$TEST_TMP' && python3 scripts/configure_runtime_roles.py --ashigaru-count 1 --shogun codex"
+  [ "$status" -ne 0 ]
+  after="$(sha256sum "$TEST_TMP/config/settings.yaml" | awk '{print $1}')"
+  [ "$before" = "$after" ]
+}
+
+@test "configure_runtime_roles: secret-like Fallback fieldを含む設定は上書きしない" {
+  python3 - "$TEST_TMP/config/settings.yaml" <<'PY'
+import sys, yaml
+path = sys.argv[1]
+cfg = yaml.safe_load(open(path, encoding='utf-8'))
+cfg['cli']['agents']['shogun']['fallback']['api_token'] = 'do-not-copy'
+open(path, 'w', encoding='utf-8').write(yaml.safe_dump(cfg, sort_keys=False))
+PY
+  before="$(sha256sum "$TEST_TMP/config/settings.yaml" | awk '{print $1}')"
+  run bash -lc "cd '$TEST_TMP' && python3 scripts/configure_runtime_roles.py --ashigaru-count 1 --shogun codex"
+  [ "$status" -ne 0 ]
+  after="$(sha256sum "$TEST_TMP/config/settings.yaml" | awk '{print $1}')"
+  [ "$before" = "$after" ]
 }

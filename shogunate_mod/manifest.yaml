@@ -6,6 +6,7 @@ canonical_paths:
   mod_readme: shogunate_mod/README.md
   agent_status: shogunate_mod/status/agent_status.sh
   agent_status_command: shogunate_mod/status/command.sh
+  approval_device_registry: shogunate_mod/approval/
   battlefield_api: shogunate_mod/battlefield/
   app_reply: shogunate_mod/app/reply.sh
   app_server: shogunate_mod/app/server.py
@@ -32,6 +33,7 @@ canonical_paths:
   docs_changelog: shogunate_mod/docs/CHANGELOG.md
   docs_contributing: shogunate_mod/docs/CONTRIBUTING.md
   docs_agmsg_bridge_design: shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md
+  docs_role_failover_design: shogunate_mod/docs/DESIGN_2026-07-16_ROLE_FAILOVER.md
   docs_philosophy: shogunate_mod/docs/philosophy.md
   docs_readme: shogunate_mod/docs/README.md
   docs_readme_ja: shogunate_mod/docs/README_ja.md
@@ -95,6 +97,7 @@ canonical_paths:
   runtime_entrypoint: shogunate_mod/runtime/entrypoint.sh
   runtime_env: shogunate_mod/runtime/env.sh
   runtime_goza: shogunate_mod/runtime/goza.sh
+  runtime_grok_failure: shogunate_mod/runtime/grok_failure.sh
   runtime_launch: shogunate_mod/runtime/launch.sh
   runtime_lifecycle: shogunate_mod/runtime/lifecycle.sh
   runtime_launcher: shogunate_mod/runtime/launcher.sh
@@ -105,6 +108,8 @@ canonical_paths:
   runtime_mux_parity_smoke: shogunate_mod/runtime/mux_parity_smoke.sh
   runtime_options: shogunate_mod/runtime/options.sh
   runtime_prompts: shogunate_mod/runtime/prompts.sh
+  runtime_role_failover: shogunate_mod/runtime/role_failover.py
+  runtime_role_failover_runner: shogunate_mod/runtime/role_failover_runner.sh
   runtime_shell_launcher: shogunate_mod/runtime/runtime_launcher.sh
   runtime_shogun_to_karo_bridge: shogunate_mod/runtime/shogun_to_karo_bridge.py
   runtime_shogun_to_karo_bridge_daemon: shogunate_mod/runtime/shogun_to_karo_bridge_daemon.sh
@@ -251,6 +256,9 @@ current_core_touchpoints:
   - path: docs/philosophy.md
     reason: "Design philosophy documentation remains at the historical root docs path, while Shogunate-specific doctrine is MOD-owned."
     next_step: "Keep root docs/philosophy.md synchronized as a compatibility copy of shogunate_mod/docs/philosophy.md."
+  - path: docs/DESIGN_2026-07-16_ROLE_FAILOVER.md
+    reason: "The role failover design remains under root docs for maintainers, while the Shogunate-specific source is MOD-owned."
+    next_step: "Keep this root design synchronized as a compatibility copy of shogunate_mod/docs/DESIGN_2026-07-16_ROLE_FAILOVER.md and keep the root copy out of release archives."
   - path: CLAUDE.md
     reason: "Claude Code auto-loads this root path, but Shogunate guidance source is now mirrored in shogunate_mod/instructions/autoload."
     next_step: "Keep root CLAUDE.md synchronized as a compatibility copy of shogunate_mod/instructions/autoload/CLAUDE.md."
@@ -285,8 +293,8 @@ current_core_touchpoints:
     reason: "Secret scanning tools expect this root config path, while Shogunate-specific allowlists and custom secret rules are MOD-owned."
     next_step: "Keep root .gitleaks.toml synchronized as a compatibility copy of shogunate_mod/security/gitleaks.toml."
   - path: package.json / package-lock.json / requirements.txt
-    reason: "npm and Python tooling require package metadata/dependency files at the repository root, while the Shogunate package metadata source is MOD-owned."
-    next_step: "Keep root package.json, package-lock.json, and requirements.txt synchronized as compatibility copies of shogunate_mod/package/package*.json and shogunate_mod/package/requirements.txt; keep package-lock files out of runtime release archives."
+    reason: "Legacy Node compatibility checks and Python tooling require metadata/dependency files at the repository root, while the Shogunate package metadata source is MOD-owned. The Node metadata is private and is not a distribution channel."
+    next_step: "Keep root package.json, package-lock.json, and requirements.txt synchronized as compatibility copies of shogunate_mod/package/package*.json and shogunate_mod/package/requirements.txt; keep the metadata private and package-lock files out of runtime release archives."
   - path: memory/ and saytask/
     reason: "User runtime state stays at the historical root paths, while first setup templates are MOD-owned."
     next_step: "Keep root sample files synchronized as compatibility copies of shogunate_mod/package/templates and keep generated private state ignored."

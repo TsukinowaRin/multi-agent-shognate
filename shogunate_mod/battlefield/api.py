@@ -11,6 +11,7 @@ import argparse
 import getpass
 import hashlib
 import json
+import math
 import os
 import platform
 import re
@@ -18,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -402,6 +404,126 @@ def read_transcript(runtime: Path, session_id: str) -> list[dict[str, Any]]:
     return messages
 
 
+# Public session/transcript times are unix seconds. Values beyond this are not
+# trusted for recency ordering (fail-closed to None rather than overflow/shuffle).
+_MAX_PUBLIC_UNIX = 10**12
+# Pure digit strings longer than this are treated as malformed (no float coercion).
+_MAX_NUMERIC_TS_DIGITS = 12
+
+
+def _bounded_public_unix(ts: int) -> int | None:
+    if 0 <= ts <= _MAX_PUBLIC_UNIX:
+        return ts
+    return None
+
+
+def parse_public_timestamp(value: Any) -> int | None:
+    """Parse a public transcript/session timestamp to unix seconds.
+
+    Accepts non-negative int/float, numeric strings, and ISO-8601 strings.
+    Invalid, non-finite, oversized, or missing values return None.
+    Callers must not substitute wall-clock now().
+    """
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            if isinstance(value, float) and not math.isfinite(value):
+                return None
+            ts = int(value)
+        except (OverflowError, ValueError):
+            return None
+        return _bounded_public_unix(ts)
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    if re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", text):
+        integer_part = text.split(".", 1)[0]
+        if len(integer_part) > _MAX_NUMERIC_TS_DIGITS:
+            return None
+        try:
+            ts = int(float(text)) if "." in text else int(text)
+        except (OverflowError, ValueError):
+            return None
+        return _bounded_public_unix(ts)
+
+    candidates = [text]
+    if text.endswith("Z") or text.endswith("z"):
+        candidates.append(text[:-1] + "+00:00")
+    # iso_now() uses %z without a colon (+0900); fromisoformat wants +09:00.
+    offset_match = re.fullmatch(r"(.*[+-]\d{2})(\d{2})", text)
+    if offset_match:
+        candidates.append(f"{offset_match.group(1)}:{offset_match.group(2)}")
+
+    for candidate in candidates:
+        try:
+            dt = datetime.fromisoformat(candidate)
+        except ValueError:
+            continue
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        try:
+            return _bounded_public_unix(int(dt.timestamp()))
+        except (OverflowError, OSError, ValueError):
+            return None
+    try:
+        dt = datetime.strptime(text, "%Y-%m-%dT%H:%M:%S%z")
+        return _bounded_public_unix(int(dt.timestamp()))
+    except (ValueError, OverflowError, OSError):
+        return None
+
+
+def latest_transcript_event_time(messages: list[dict[str, Any]]) -> int | None:
+    """Return the newest valid public timestamp from transcript events, or None."""
+    latest: int | None = None
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        ts = parse_public_timestamp(message.get("time"))
+        if ts is None:
+            continue
+        if latest is None or ts > latest:
+            latest = ts
+    return latest
+
+
+def session_effective_updated_at(
+    session: dict[str, Any],
+    messages: list[dict[str, Any]] | None = None,
+) -> int:
+    """Effective session recency for listing.
+
+    Prefer the latest valid transcript event time (user or role reply; any public
+    timestamp). Fall back to session metadata updated_at, then created_at, then
+    stable epoch 0. Never uses wall-clock now() for missing/invalid times.
+    """
+    transcript_ts = latest_transcript_event_time(messages or [])
+    if transcript_ts is not None:
+        return transcript_ts
+    for key in ("updated_at", "created_at"):
+        ts = parse_public_timestamp(session.get(key))
+        if ts is not None:
+            return ts
+    return 0
+
+
+def sessions_with_effective_updated_at(runtime: Path) -> dict[str, Any]:
+    """Load sessions, set effective updated_at from transcript, newest-first."""
+    data = load_sessions(runtime)
+    enriched: list[dict[str, Any]] = []
+    for session in data["sessions"]:
+        session_id = str(session.get("id", ""))
+        messages = read_transcript(runtime, session_id) if session_id else []
+        record = dict(session)
+        record["updated_at"] = session_effective_updated_at(session, messages)
+        enriched.append(record)
+    # Newest first; id as stable secondary key so equal times do not shuffle.
+    enriched.sort(key=lambda item: (-int(item.get("updated_at") or 0), str(item.get("id", ""))))
+    return {"current": data.get("current", ""), "sessions": enriched}
+
+
 def roles_for_project(project: dict[str, Any]) -> list[dict[str, str]]:
     session = session_name(project)
     if not has_session(session):
@@ -781,7 +903,7 @@ def cmd_roles(args: argparse.Namespace) -> int:
 
 def cmd_sessions(args: argparse.Namespace) -> int:
     project = resolve_project(args.selector)
-    data = load_sessions(runtime_dir(project))
+    data = sessions_with_effective_updated_at(runtime_dir(project))
     if args.json:
         json_print({"project": project_summary(project), **data})
     else:

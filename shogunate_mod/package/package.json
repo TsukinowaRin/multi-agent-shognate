@@ -1,7 +1,8 @@
 {
   "name": "@tsukinowarin/shogunate",
-  "version": "5.2.0-9",
-  "description": "Package bootstrap wrapper for multi-agent-shognate.",
+  "version": "5.2.0-13",
+  "private": true,
+  "description": "Internal release manifest; Shogunate is distributed through the cURL bootstrap.",
   "bin": {
     "shogunate": "bin/shogunate.js"
   },
@@ -63,6 +64,7 @@
     "instructions/cli_specific/codex_tools.md",
     "instructions/cli_specific/copilot_tools.md",
     "instructions/cli_specific/cursor_tools.md",
+    "instructions/cli_specific/grok_tools.md",
     "instructions/cli_specific/kilo_tools.md",
     "instructions/cli_specific/kimi_tools.md",
     "instructions/cli_specific/localapi_tools.md",
@@ -91,6 +93,11 @@
     "instructions/generated/cursor-gunshi.md",
     "instructions/generated/cursor-karo.md",
     "instructions/generated/cursor-shogun.md",
+    "instructions/generated/grok-ashigaru.md",
+    "instructions/generated/grok-gunkan.md",
+    "instructions/generated/grok-gunshi.md",
+    "instructions/generated/grok-karo.md",
+    "instructions/generated/grok-shogun.md",
     "instructions/generated/gunkan.md",
     "instructions/generated/gunshi.md",
     "instructions/generated/karo.md",
@@ -136,6 +143,7 @@
     "saytask/streaks.yaml.sample",
     "shogunate_mod/app/",
     "shogunate_mod/app/server.py",
+    "shogunate_mod/approval/",
     "shogunate_mod/battlefield/",
     "shogunate_mod/cli/",
     "shogunate_mod/configure/",

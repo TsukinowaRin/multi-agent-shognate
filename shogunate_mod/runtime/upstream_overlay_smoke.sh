@@ -10,6 +10,7 @@ DAEMON="${SHOGUNATE_UPSTREAM_OVERLAY_DAEMON_SESSION:-goza-runtime-shogunate-mod-
 TARGET_PROJECT="$WORKTREE/target-project"
 KEEP_ON_FAIL="${SHOGUNATE_UPSTREAM_OVERLAY_KEEP_ON_FAIL:-1}"
 KEEP_ALWAYS="${SHOGUNATE_UPSTREAM_OVERLAY_KEEP:-0}"
+STUB_BIN=""
 
 cleanup() {
   local status=$?
@@ -22,6 +23,7 @@ cleanup() {
   tmux kill-session -t "$DAEMON" 2>/dev/null || true
   git -C "$ROOT_DIR" worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
   git -C "$ROOT_DIR" worktree prune >/dev/null 2>&1 || true
+  [[ -n "$STUB_BIN" ]] && rm -rf "$STUB_BIN"
 }
 trap cleanup EXIT
 
@@ -137,9 +139,18 @@ mapfile -t paths < <(overlay_paths)
 git -C "$ROOT_DIR" archive --format=tar HEAD -- "${paths[@]}" | tar -xf - -C "$WORKTREE"
 require_overlay_status_is_mod_only
 
+# CI には実 CLI が存在せず、resolve_cli_type_for_agent の可用性フォールバックが
+# localapi を選んで agent_cli.tsv の期待値(claude)と食い違う。この smoke の関心は
+# 「設定どおりの CLI が選ばれること」なので、stub の claude を PATH 先頭へ置いて
+# ホスト環境に依存せず可用性判定を通す(worktree 外に置き、overlay 検査を汚さない)。
+STUB_BIN="$(mktemp -d "${TMPDIR:-/tmp}/shogunate-smoke-stub.XXXXXX")"
+printf '#!/usr/bin/env bash\nexec sleep 3600\n' > "$STUB_BIN/claude"
+chmod +x "$STUB_BIN/claude"
+
 printf '[INFO] starting upstream-overlay runtime smoke: %s\n' "$SESSION"
 (
   cd "$WORKTREE"
+  PATH="$STUB_BIN:$PATH" \
   SHOGUNATE_PROJECT_DIR="$TARGET_PROJECT" \
   SHOGUNATE_SESSION_NAME="$SESSION" \
   GOZA_SESSION_NAME="$SESSION" \

@@ -163,6 +163,9 @@ EOFYAML
         kilo)
             cat "$PARTS_DIR/cli_specific/kilo_tools.md" >> "$output_path"
             ;;
+        grok)
+            cat "$PARTS_DIR/cli_specific/grok_tools.md" >> "$output_path"
+            ;;
     esac
 
     normalize_generated_markdown "$output_path"
@@ -247,6 +250,16 @@ build_instruction_file "kilo" "karo" "kilo-karo.md"
 build_instruction_file "kilo" "ashigaru" "kilo-ashigaru.md"
 build_instruction_file "kilo" "gunshi" "kilo-gunshi.md"
 build_instruction_file "kilo" "gunkan" "kilo-gunkan.md"
+
+# Build Grok Build instruction files
+# Grok Build (cli_type: grok, default model grok-4.5) was added in GB-002/GB-003A.
+# Same 5-role mapping as the other MOD-owned CLIs so adapter.get_instruction_file
+# resolves grok through instructions/generated/grok-<role>.md instead of the claude fallback.
+build_instruction_file "grok" "shogun" "grok-shogun.md"
+build_instruction_file "grok" "karo" "grok-karo.md"
+build_instruction_file "grok" "ashigaru" "grok-ashigaru.md"
+build_instruction_file "grok" "gunshi" "grok-gunshi.md"
+build_instruction_file "grok" "gunkan" "grok-gunkan.md"
 
 # ============================================================
 # AGENTS.md generation (Codex auto-load file)

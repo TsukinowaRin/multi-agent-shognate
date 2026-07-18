@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 build_ashigaru_grid() {
     local pane_target="$1"
     local start_index="$2"

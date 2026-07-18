@@ -128,8 +128,13 @@ PY
 
 @test "TC-FR-004 [RED]: read-update path uses lock/atomic protections" {
     body="$(awk '/get_unread_info\\(\\)/,/^}/' "$WATCHER_SCRIPT")"
-    echo "$body" | grep -q "flock"
+    lock_body="$(awk '/^acquire_inbox_lock[(][)] [{]/,/^}/' "$WATCHER_SCRIPT")"
+    echo "$body" | grep -q "acquire_inbox_lock"
     echo "$body" | grep -q "os.replace"
+    echo "$lock_body" | grep -q "command -v flock"
+    echo "$lock_body" | grep -q "flock -x 200"
+    echo "$lock_body" | grep -q 'mkdir "$lock_dir"'
+    echo "$lock_body" | grep -q "rmdir"
 }
 
 @test "TC-FR-005: post-task inbox check rule is documented for ashigaru" {

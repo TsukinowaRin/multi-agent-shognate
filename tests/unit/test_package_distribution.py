@@ -1808,6 +1808,8 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn("shogunate_mod/context/README.md", manifest)
         self.assertIn("shogunate_mod/configure/runtime_roles.py", configure_runtime_roles_wrapper)
         self.assertIn("shogunate_mod/configure/runtime_roles.py", manifest)
+        self.assertIn("shogunate_mod/runtime/role_failover.py", manifest)
+        self.assertIn("shogunate_mod/runtime/role_failover_runner.sh", manifest)
         self.assertIn("shogunate_mod/configure/sync_opencode_config.py", sync_opencode_config_wrapper)
         self.assertIn("shogunate_mod/configure/sync_opencode_config.py", manifest)
         self.assertIn("shogunate_mod/opencode/tools/mark-as-read.ts", manifest)
@@ -2741,6 +2743,10 @@ class PackageDistributionContractTests(unittest.TestCase):
                 "docs/AGMSG_BRIDGE_DESIGN.md",
                 "shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md",
             ],
+            "docs/DESIGN_2026-07-16_ROLE_FAILOVER.md": [
+                "docs/DESIGN_2026-07-16_ROLE_FAILOVER.md",
+                "shogunate_mod/docs/DESIGN_2026-07-16_ROLE_FAILOVER.md",
+            ],
             "CLAUDE.md": ["CLAUDE.md", "shogunate_mod/instructions/autoload/CLAUDE.md"],
             ".claude/settings.json": [".claude/settings.json", "shogunate_mod/hooks/claude_settings.json"],
             "android/": ["require_android_sources_synced"],
@@ -3273,6 +3279,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertEqual(root_package, mod_package)
         self.assertEqual(root_lock, mod_lock)
         self.assertEqual(root_package["name"], "@tsukinowarin/shogunate")
+        self.assertIs(root_package["private"], True)
         self.assertEqual(root_package["bin"]["shogunate"], "bin/shogunate.js")
         self.assertEqual(root_lock["packages"][""]["bin"]["shogunate"], "bin/shogunate.js")
         self.assertIn("bin/shogunate.js", root_package["files"])
@@ -5436,7 +5443,7 @@ class PackageDistributionContractTests(unittest.TestCase):
                 f"Android MOD copy differs: {rel}",
             )
 
-    def test_docs_describe_curl_and_npm_package_distribution(self):
+    def test_docs_describe_curl_only_distribution(self):
         docs = "\n".join(
             [
                 (ROOT / "README.md").read_text(encoding="utf-8"),
@@ -5444,7 +5451,9 @@ class PackageDistributionContractTests(unittest.TestCase):
             ]
         )
         self.assertIn("curl -fsSL", docs)
-        self.assertIn("npx @tsukinowarin/shogunate install", docs)
+        self.assertNotIn("npx @tsukinowarin/shogunate", docs)
+        self.assertIn("not published as an npm package", docs)
+        self.assertIn("npm packageとしては公開しません", docs)
         self.assertIn("shogunate pair", docs)
         self.assertIn("multi-agent-shognate-package.tar.gz", docs)
         self.assertIn("multi-agent-shognate-package.zip", docs)

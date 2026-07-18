@@ -16,20 +16,28 @@ cli:
   agents:
     shogun:
       type: codex
+      fallback: null
     gunkan:
       type: codex
+      fallback: null
     gunshi:
       type: codex
+      fallback: null
     karo:
       type: codex
+      fallback: null
     ashigaru1:
       type: opencode
+      fallback: null
     ashigaru2:
       type: opencode
+      fallback: null
     ashigaru3:
       type: codex
+      fallback: null
     ashigaru4:
       type: gemini
+      fallback: null
 update:
   startup_check: true
   auto_apply_release: false

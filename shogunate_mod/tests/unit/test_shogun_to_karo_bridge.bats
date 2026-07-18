@@ -5,6 +5,9 @@ source "$BATS_TEST_DIRNAME/../helpers/search_helper.bash"
 setup() {
   TEST_TMP="$(mktemp -d)"
   PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+  while [[ "$PROJECT_ROOT" != "/" && ! -f "$PROJECT_ROOT/shogunate_mod/runtime/shogun_to_karo_bridge.py" ]]; do
+    PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+  done
 
   mkdir -p "$TEST_TMP/queue/inbox" "$TEST_TMP/queue/runtime" "$TEST_TMP/scripts"
 
@@ -74,6 +77,24 @@ teardown() {
 
   run bats_search "cmd_200|2026-03-13T22:33:00\\+09:00" "$MAS_KARO_INBOX_FILE" "$MAS_SHOGUN_TO_KARO_BRIDGE_STATE"
   [ "$status" -eq 0 ]
+}
+
+@test "shogun_to_karo_bridge: logical shogun senderのcurrent generationを注入する" {
+  cat > "$TEST_TMP/queue/runtime/role_failover.yaml" <<'YAML'
+roles:
+  shogun:
+    generation: 7
+    status: ready
+YAML
+  cat > "$TEST_TMP/scripts/inbox_write.sh" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "${MAS_ROLE_GENERATION:-}" > "$MAS_RUNTIME_DIR/captured_generation"
+SH
+  chmod +x "$TEST_TMP/scripts/inbox_write.sh"
+
+  run python3 "$PROJECT_ROOT/scripts/shogun_to_karo_bridge.py"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$TEST_TMP/queue/runtime/captured_generation")" = "7" ]
 }
 
 @test "shogun_to_karo_bridge: 既に通知済み cmd は重複送信しない" {

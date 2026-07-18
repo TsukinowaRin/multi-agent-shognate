@@ -139,6 +139,20 @@ def read_lead_karo(runtime_dir: Path) -> str:
     return value[0].strip() if value and value[0].strip() else ""
 
 
+def sender_generation_env(runtime_dir: Path, sender: str) -> dict[str, str]:
+    env = os.environ.copy()
+    state_path = runtime_dir / "role_failover.yaml"
+    if not state_path.exists():
+        return env
+    state = load_yaml(state_path) or {}
+    roles = state.get("roles") if isinstance(state, dict) else {}
+    role_state = roles.get(sender) if isinstance(roles, dict) else None
+    generation = role_state.get("generation") if isinstance(role_state, dict) else None
+    if isinstance(generation, int) and not isinstance(generation, bool) and generation > 0:
+        env["MAS_ROLE_GENERATION"] = str(generation)
+    return env
+
+
 def main() -> int:
     root = Path(os.environ.get("MAS_PROJECT_ROOT", Path(__file__).resolve().parents[2]))
     queue_dir = Path(os.environ.get("MAS_QUEUE_DIR", root / "queue"))
@@ -199,6 +213,7 @@ def main() -> int:
             [inbox_write, target_agent, content, "cmd_new", "shogun"],
             check=True,
             cwd=str(root),
+            env=sender_generation_env(runtime_dir, "shogun"),
         )
         if identity:
             state.add(identity)

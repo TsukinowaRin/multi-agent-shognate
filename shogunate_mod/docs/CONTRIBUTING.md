@@ -50,7 +50,7 @@ Understanding the directory layout will help you navigate the codebase:
 ```
 multi-agent-shognate/
 ├── shogunate_mod/        # Shogunate MOD canonical sources
-│   ├── package/          # cURL/npm package install, first setup, release checks
+│   ├── package/          # cURL package install, first setup, release checks
 │   ├── runtime/          # Runtime entrypoint, launchers, lifecycle, Goza setup
 │   ├── inbox/            # Agent-to-agent messaging policy and mailbox writer
 │   ├── watcher/          # Event-driven delivery and file watch helpers

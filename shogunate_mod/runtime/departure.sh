@@ -46,7 +46,10 @@ run_shutsujin_departure() {
     echo -e "  \033[1;33m天下布武！陣立てを開始いたす\033[0m (Setting up the battlefield)"
     echo ""
 
+    mkdir -p "$SCRIPT_DIR/queue/runtime"
+    : > "$SCRIPT_DIR/queue/runtime/intentional_stop"
     cleanup_existing_runtime_sessions
+    rm -f "$SCRIPT_DIR/queue/runtime/intentional_stop"
     backup_previous_records_if_clean
     ensure_runtime_queue_dirs
     reset_or_keep_runtime_queue

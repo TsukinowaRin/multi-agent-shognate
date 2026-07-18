@@ -420,6 +420,20 @@ restart_shell_returned_codex_if_needed() {
         return 0
     fi
 
+    # New runtime scripts own restart/fallback transitions. Keep the legacy
+    # send-keys recovery only for projects without initialized failover state.
+    if [ -f "$SCRIPT_DIR/queue/runtime/role_failover.yaml" ] && [ -f "$SCRIPT_DIR/shogunate_mod/runtime/role_failover_runner.sh" ]; then
+        local generation=""
+        local reported=""
+        generation="$(tmux show-options -p -t "$pane" -v @role_generation 2>/dev/null | tr -d '\r' | head -n1)"
+        reported="$(tmux show-options -p -t "$pane" -v @role_exit_reported_generation 2>/dev/null | tr -d '\r' | head -n1)"
+        if [[ "$generation" =~ ^[1-9][0-9]*$ ]] && [ "$reported" != "$generation" ]; then
+            SHOGUNATE_RUNTIME_DIR="$SCRIPT_DIR" bash "$SCRIPT_DIR/shogunate_mod/runtime/role_failover_runner.sh" \
+                process_exit "$agent" "$generation" shell_return "$pane" || true
+        fi
+        return 0
+    fi
+
     if ! declare -F build_cli_command_with_type >/dev/null 2>&1; then
         return 0
     fi

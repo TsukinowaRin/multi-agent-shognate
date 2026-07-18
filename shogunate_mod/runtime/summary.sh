@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 show_departure_completion_summary() {
     local _agent=""
 

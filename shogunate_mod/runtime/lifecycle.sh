@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 initialize_runtime_cli_metadata() {
     local _agent=""
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 tmux_send_text_and_enter() {
     local pane_target="$1"
     local text="$2"
@@ -42,6 +43,8 @@ write_agent_launch_script() {
     local launch_cmd="$2"
     local safe_agent
     local script_path
+    local generation="${CLI_ACTIVE_PROFILE_GENERATION:-1}"
+    local slot="${CLI_ACTIVE_PROFILE_SLOT:-primary}"
 
     safe_agent="$(printf '%s' "$agent_id" | tr -c 'A-Za-z0-9_.-' '_')"
     script_path="$SCRIPT_DIR/queue/runtime/launch_${safe_agent}.sh"
@@ -51,6 +54,9 @@ write_agent_launch_script() {
         printf 'set -uo pipefail\n'
         printf 'export SHOGUNATE_RUNTIME_DIR=%q\n' "$SCRIPT_DIR"
         printf 'export SHOGUNATE_PROJECT_DIR=%q\n' "$SHOGUNATE_PROJECT_DIR"
+        printf 'export SHOGUNATE_ROLE_ID=%q\n' "$agent_id"
+        printf 'export SHOGUNATE_ROLE_GENERATION=%q\n' "$generation"
+        printf 'export SHOGUNATE_ROLE_SLOT=%q\n' "$slot"
         if [ -n "${SHOGUNATE_ENGINE_DIR:-}" ]; then
             printf 'export SHOGUNATE_ENGINE_DIR=%q\n' "$SHOGUNATE_ENGINE_DIR"
         fi
@@ -61,14 +67,41 @@ write_agent_launch_script() {
         printf 'prepend_path_if_dir "/opt/homebrew/bin"\n'
         printf 'prepend_path_if_dir "/usr/local/bin"\n'
         printf 'cd %q\n' "$SHOGUNATE_PROJECT_DIR"
-        printf '%s\n' "$launch_cmd"
+        printf 'adapter=%q\n' "$SCRIPT_DIR/shogunate_mod/cli/adapter.sh"
+        printf 'runner=%q\n' "$SCRIPT_DIR/shogunate_mod/runtime/role_failover_runner.sh"
+        printf 'runtime_launch_cmd=%q\n' "$launch_cmd"
+        printf 'if [ -f "$SHOGUNATE_RUNTIME_DIR/queue/runtime/role_failover.yaml" ]; then\n'
+        printf '  source "$adapter"\n'
+        printf '  if ! load_active_role_profile "$SHOGUNATE_ROLE_ID"; then bash "$runner" explicit_failure "$SHOGUNATE_ROLE_ID" "$SHOGUNATE_ROLE_GENERATION" config_error "${TMUX_PANE:-}"; exit 1; fi\n'
+        printf '  export SHOGUNATE_ROLE_GENERATION="$CLI_ACTIVE_PROFILE_GENERATION" SHOGUNATE_ROLE_SLOT="$CLI_ACTIVE_PROFILE_SLOT"\n'
+        printf '  active_cli="$(resolve_cli_type_for_agent "$SHOGUNATE_ROLE_ID")" || { bash "$runner" explicit_failure "$SHOGUNATE_ROLE_ID" "$SHOGUNATE_ROLE_GENERATION" config_error "${TMUX_PANE:-}"; exit 1; }\n'
+        printf '  runtime_launch_cmd="$(build_cli_command_with_type "$SHOGUNATE_ROLE_ID" "$active_cli")" || { bash "$runner" explicit_failure "$SHOGUNATE_ROLE_ID" "$SHOGUNATE_ROLE_GENERATION" config_error "${TMUX_PANE:-}"; exit 1; }\n'
+        printf 'fi\n'
+        printf 'if [ -n "${TMUX_PANE:-}" ]; then tmux set-option -p -t "$TMUX_PANE" @role_generation "$SHOGUNATE_ROLE_GENERATION" >/dev/null 2>&1 || true; tmux set-option -p -t "$TMUX_PANE" @role_slot "$SHOGUNATE_ROLE_SLOT" >/dev/null 2>&1 || true; tmux set-option -p -t "$TMUX_PANE" @agent_cli_running 1 >/dev/null 2>&1 || true; if [ -n "${active_cli:-}" ]; then tmux set-option -p -t "$TMUX_PANE" @agent_cli "$active_cli" >/dev/null 2>&1 || true; fi; fi\n'
+        printf 'bash -lc "$runtime_launch_cmd"\n'
         printf 'status=$?\n'
         printf 'if [ -n "${TMUX_PANE:-}" ]; then tmux set-option -p -t "$TMUX_PANE" @agent_cli_running 0 >/dev/null 2>&1 || true; fi\n'
         printf 'echo "[Shogunate] %s CLI exited with status ${status}"\n' "$agent_id"
+        printf 'if [ -f "$SHOGUNATE_RUNTIME_DIR/queue/runtime/intentional_stop" ]; then bash "$runner" user_stop "$SHOGUNATE_ROLE_ID" "$SHOGUNATE_ROLE_GENERATION" intentional_stop "${TMUX_PANE:-}" || true; else bash "$runner" process_exit "$SHOGUNATE_ROLE_ID" "$SHOGUNATE_ROLE_GENERATION" process_exit "${TMUX_PANE:-}" || true; fi\n'
         printf 'exec bash -i\n'
     } > "$script_path"
     chmod 700 "$script_path" 2>/dev/null || true
     printf '%s\n' "$script_path"
+}
+
+prepare_role_launch_profile_or_die() {
+    local agent_id="$1"
+    if [ "$CLI_ADAPTER_LOADED" = true ] && ! load_active_role_profile "$agent_id"; then
+        echo "[ERROR] active role profile resolution failed for $agent_id" >&2
+        exit 1
+    fi
+}
+
+preserve_primary_bootstrap() {
+    local agent_id="$1"
+    local bootstrap="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.md"
+    [ -f "$bootstrap" ] || return 0
+    cp "$bootstrap" "$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.primary.md"
 }
 
 launch_agent_cli_pane_or_die() {
@@ -165,6 +198,7 @@ launch_all_agent_clis_tmux() {
     declare -gA MULTIAGENT_CLI=()
 
     wait_for_goza_client_before_cli_launch
+    initialize_role_failover_state || exit 1
 
     # CLI の存在チェック（Multi-CLI対応）
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
@@ -189,11 +223,13 @@ launch_all_agent_clis_tmux() {
 
     _shogun_cmd="claude --model opus $PERMISSION_FLAG"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        prepare_role_launch_profile_or_die "shogun"
         _shogun_cli_type=$(resolve_cli_type_for_agent "shogun")
         _shogun_cmd=$(build_cli_command_with_type "shogun" "$_shogun_cli_type")
     fi
     tmux set-option -p -t "$SHOGUN_TARGET" @agent_cli "$_shogun_cli_type"
     generate_bootstrap_file "shogun" "$_shogun_cli_type"
+    preserve_primary_bootstrap "shogun"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         _shogun_startup_prompt="$(bootstrap_message_text "shogun" || true)"
         if [ -n "$_shogun_startup_prompt" ] && should_embed_startup_prompt_in_cli_command "$_shogun_cli_type"; then
@@ -215,11 +251,13 @@ launch_all_agent_clis_tmux() {
 
     _gunkan_cmd="claude --model opus --effort max $PERMISSION_FLAG"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        prepare_role_launch_profile_or_die "gunkan"
         _gunkan_cli_type=$(resolve_cli_type_for_agent "gunkan")
         _gunkan_cmd=$(build_cli_command_with_type "gunkan" "$_gunkan_cli_type")
     fi
     tmux set-option -p -t "$GUNKAN_TARGET" @agent_cli "$_gunkan_cli_type"
     generate_bootstrap_file "gunkan" "$_gunkan_cli_type"
+    preserve_primary_bootstrap "gunkan"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         _gunkan_startup_prompt="$(bootstrap_message_text "gunkan" || true)"
         if [ -n "$_gunkan_startup_prompt" ] && should_embed_startup_prompt_in_cli_command "$_gunkan_cli_type"; then
@@ -234,11 +272,13 @@ launch_all_agent_clis_tmux() {
 
     _gunshi_cmd="claude --model opus --effort max $PERMISSION_FLAG"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
+        prepare_role_launch_profile_or_die "gunshi"
         _gunshi_cli_type=$(resolve_cli_type_for_agent "gunshi")
         _gunshi_cmd=$(build_cli_command_with_type "gunshi" "$_gunshi_cli_type")
     fi
     tmux set-option -p -t "$GUNSHI_TARGET" @agent_cli "$_gunshi_cli_type"
     generate_bootstrap_file "gunshi" "$_gunshi_cli_type"
+    preserve_primary_bootstrap "gunshi"
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         _gunshi_startup_prompt="$(bootstrap_message_text "gunshi" || true)"
         if [ -n "$_gunshi_startup_prompt" ] && should_embed_startup_prompt_in_cli_command "$_gunshi_cli_type"; then
@@ -261,6 +301,7 @@ launch_all_agent_clis_tmux() {
             _agent_cli_type="claude"
             _agent_cmd="claude --model opus --effort max $PERMISSION_FLAG"
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
+                prepare_role_launch_profile_or_die "$_agent"
                 _agent_cli_type=$(resolve_cli_type_for_agent "$_agent")
                 _agent_cmd=$(build_cli_command_with_type "$_agent" "$_agent_cli_type")
             fi
@@ -276,6 +317,7 @@ launch_all_agent_clis_tmux() {
                 _agent_cmd="claude --model opus --effort max $PERMISSION_FLAG"
             fi
             if [ "$CLI_ADAPTER_LOADED" = true ]; then
+                prepare_role_launch_profile_or_die "$_agent"
                 _agent_cli_type=$(resolve_cli_type_for_agent "$_agent")
                 if [ "$KESSEN_MODE" = true ] && [ "$_agent_cli_type" = "claude" ]; then
                     _agent_cmd="claude --model opus --effort max $PERMISSION_FLAG"
@@ -290,6 +332,7 @@ launch_all_agent_clis_tmux() {
         [ -n "$_pane_target" ] || continue
         tmux set-option -p -t "$_pane_target" @agent_cli "$_agent_cli_type"
         generate_bootstrap_file "$_agent" "$_agent_cli_type"
+        preserve_primary_bootstrap "$_agent"
         if [ "$CLI_ADAPTER_LOADED" = true ]; then
             _agent_startup_prompt="$(bootstrap_message_text "$_agent" || true)"
             if [ -n "$_agent_startup_prompt" ] && should_embed_startup_prompt_in_cli_command "$_agent_cli_type"; then

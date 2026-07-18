@@ -61,7 +61,12 @@ setup_file() {
 
 build_tmp_project() {
     local root="$1"
-    mkdir -p "$root/scripts" "$root/queue"/{inbox,tasks,reports,archive,reports,archive/reports}
+    # scripts/slim_yaml.py is a thin wrapper that loads the MOD implementation.
+    # After the root/MOD split, both files must be present for fixture runs.
+    mkdir -p "$root/scripts" "$root/shogunate_mod/queue" \
+        "$root/queue"/{inbox,tasks,reports,archive,archive/reports}
+    cp "$PROJECT_ROOT/scripts/slim_yaml.py" "$root/scripts/"
+    cp "$PROJECT_ROOT/shogunate_mod/queue/slim_yaml.py" "$root/shogunate_mod/queue/"
 }
 
 run_slim_yaml() {
@@ -79,7 +84,6 @@ seed_yaml() {
     local root
     root="$(mktemp -d "/tmp/e2e_slim_retention_XXXXXX")"
     build_tmp_project "$root"
-    cp "$PROJECT_ROOT/scripts/slim_yaml.py" "$root/scripts/"
 
     seed_yaml "$root/queue/shogun_to_karo.yaml" $'commands:\n  - id: cmd_test\n    status: pending\n'
     seed_yaml "$root/queue/reports/ashigaru1_cmd_test_report.yaml" $'parent_cmd: cmd_test\nstatus: done\n'
@@ -103,7 +107,6 @@ seed_yaml() {
     local root
     root="$(mktemp -d "/tmp/e2e_slim_retention_XXXXXX")"
     build_tmp_project "$root"
-    cp "$PROJECT_ROOT/scripts/slim_yaml.py" "$root/scripts/"
 
     seed_yaml "$root/queue/shogun_to_karo.yaml" $'commands:\n  - id: cmd_test\n    status: done\n'
     seed_yaml "$root/queue/reports/ashigaru1_cmd_test_report.yaml" $'parent_cmd: cmd_test\nstatus: done\n'
@@ -128,7 +131,6 @@ seed_yaml() {
     local root
     root="$(mktemp -d "/tmp/e2e_slim_retention_XXXXXX")"
     build_tmp_project "$root"
-    cp "$PROJECT_ROOT/scripts/slim_yaml.py" "$root/scripts/"
 
     seed_yaml "$root/queue/shogun_to_karo.yaml" $'commands:\n  - id: cmd_test\n    status: done\n'
     seed_yaml "$root/queue/reports/ashigaru1_report.yaml" $'parent_cmd: cmd_done\nstatus: done\n'

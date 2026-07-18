@@ -64,6 +64,7 @@
     "instructions/cli_specific/codex_tools.md",
     "instructions/cli_specific/copilot_tools.md",
     "instructions/cli_specific/cursor_tools.md",
+    "instructions/cli_specific/grok_tools.md",
     "instructions/cli_specific/kilo_tools.md",
     "instructions/cli_specific/kimi_tools.md",
     "instructions/cli_specific/localapi_tools.md",

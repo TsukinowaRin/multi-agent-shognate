@@ -44,6 +44,7 @@
 !instructions/cli_specific/opencode_tools.md
 !instructions/cli_specific/kilo_tools.md
 !instructions/cli_specific/cursor_tools.md
+!instructions/cli_specific/grok_tools.md
 
 # Multi-CLI: Build template parts (roles, common sections)
 !instructions/roles/

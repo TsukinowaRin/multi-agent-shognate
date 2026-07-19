@@ -4816,7 +4816,7 @@ class PackageDistributionContractTests(unittest.TestCase):
             text.index('git archive --worktree-attributes --format=zip --prefix=multi-agent-shognate/ HEAD'),
             text.index('cp "dist/${PACKAGE_ZIP_ASSET}" "dist/${VERSIONED_PACKAGE_ZIP_ASSET}"'),
         )
-        self.assertIn("target_commitish: ${{ steps.asset.outputs.tag }}", text)
+        self.assertIn("target_commitish: ${{ steps.asset.outputs.target_commitish }}", text)
         self.assertIn("fetch-depth: 0", text)
         self.assertIn("Fetch upstream main", text)
         self.assertIn("git remote add upstream https://github.com/yohey-w/multi-agent-shogun.git", text)

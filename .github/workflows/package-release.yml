@@ -81,6 +81,8 @@ jobs:
           VERSIONED_PACKAGE_TGZ_ASSET="multi-agent-shognate-package-${VERSION}.tar.gz"
           VERSIONED_PACKAGE_ZIP_ASSET="multi-agent-shognate-package-${VERSION}.zip"
           mkdir -p dist
+          # Peel annotated tags to the commit object. GitHub's Releases API
+          # target_commitish accepts a branch or commit SHA only — never a tag name.
           TAG_COMMIT="$(git rev-list -n 1 "$TAG")"
           HEAD_COMMIT="$(git rev-parse HEAD)"
           if [ "$TAG_COMMIT" != "$HEAD_COMMIT" ]; then
@@ -113,6 +115,7 @@ jobs:
           } > dist/release-notes.md
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "target_commitish=${HEAD_COMMIT}" >> "$GITHUB_OUTPUT"
           echo "package_tgz_asset=${PACKAGE_TGZ_ASSET}" >> "$GITHUB_OUTPUT"
           echo "package_zip_asset=${PACKAGE_ZIP_ASSET}" >> "$GITHUB_OUTPUT"
           echo "versioned_package_tgz_asset=${VERSIONED_PACKAGE_TGZ_ASSET}" >> "$GITHUB_OUTPUT"
@@ -149,4 +152,7 @@ jobs:
           body_path: ${{ steps.asset.outputs.release_notes_path }}
           generate_release_notes: true
           prerelease: ${{ github.event.inputs.prerelease == true }}
-          target_commitish: ${{ steps.asset.outputs.tag }}
+          # Must be a commit SHA (or branch), not the tag name. Passing the tag
+          # string makes the Releases API return 422 invalid target_commitish
+          # (observed on v5.2.0.13 tag-push run 29649772082).
+          target_commitish: ${{ steps.asset.outputs.target_commitish }}

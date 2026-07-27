@@ -92,10 +92,50 @@ shogunate where           # show project/runtime/engine/session paths
 shogunate projects        # list registered projects
 shogunate battlefield     # list/start/stop registered project runtimes
 shogunate app             # JSON API for mobile and desktop apps
+shogunate council         # convene a temporary Gunshi planning council
 shogunate status          # show package/update metadata
 shogunate aliases         # print shell alias source command
 shogunate help            # show command help
 ```
+
+## Gunshi Council
+
+The experimental council lets several models challenge and improve a plan
+through one shared transcript. Only the representative owns synthesis and the
+convergence decision. Configure the default members and representative in
+`config/settings.yaml`:
+
+```yaml
+council:
+  default:
+    members:
+      fable: {type: claude, model: claude-fable-5}
+      opus: {type: claude, model: claude-opus-5}
+      sol: {type: codex, model: gpt-5.6-sol}
+    representative: fable
+```
+
+Council member `type` supports `antigravity`, `claude`, `codex`, `grok`, and
+`opencode`.
+Use the model ID reported by the corresponding local CLI, or omit `model` to
+use that CLI's default.
+
+Starting, advancing, or auditing a council calls paid external models and therefore
+requires explicit permission:
+
+```bash
+shogunate council --allow-paid-models start --id plan-001 --brief-file docs/brief.md
+shogunate council --allow-paid-models advance --id plan-001
+shogunate council --allow-paid-models audit --id plan-001
+shogunate council status --id plan-001
+```
+
+`closing` means the final objection cycle is still open. `awaiting_audit` means
+the candidate is ready for independent Gunkan review. Only a passing audit
+produces `plan.md` and `handoff.yaml` and moves the council to `dissolved`.
+The handoff assigns planning/QC to Gunshi, dispatch to Karo, and implementation
+to Ashigaru. There is no fixed cycle limit. See
+`shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md` for the protocol.
 
 Target another project explicitly:
 

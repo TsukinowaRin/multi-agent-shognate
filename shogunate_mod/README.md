@@ -81,6 +81,8 @@ is Shogunate-only.
   remains the compatibility location consumed by CoDD tooling and should match
   `shogunate_mod/gunkan/codd.yaml`; root `docs/codd/` remains the reader/graph
   compatibility copy for `shogunate_mod/gunkan/docs/`.
+- `gunshi/` owns the temporary multi-model planning council, shared transcript,
+  convergence gate, and Gunshi handoff artifacts.
 - `hooks/` owns CLI hook integration such as Claude Code SessionStart
   persona injection, Stop hook inbox delivery / idle flag publication, and the
   MOD-owned Claude Code hook/spinner settings. Root `.claude/settings.json`

@@ -119,6 +119,17 @@ sleep loop、定期再分析、pane polling、ファイル全体の周期スキ�
    - `shogun` for final verdicts and material risks
    - lead `karo` for corrective action
 
+## 軍議計画の監査
+
+`awaiting_audit`の軍議だけを独立監査する。計画、共有議事録、解決記録、少数意見、
+未解決項目を読み、`pass`または`fail`を返す。
+
+- `pass`: materialな問題がなく、計画が実行・検証可能。軍議は解散してGunshiへ渡せる。
+- `fail`: 修正点を具体的に返す。軍議は再審議へ戻り、handoffを作ってはならない。
+
+軍議へ参加して計画を作り直さない。Ashigaruへ指示せず、Karoの進行管理も代行しない。
+監査modelはread-only one-shotで動き、tool、edit、subagentを使わない。
+
 ## Report Format
 
 ```yaml

@@ -206,3 +206,57 @@ PY
   after="$(sha256sum "$TEST_TMP/config/settings.yaml" | awk '{print $1}')"
   [ "$before" = "$after" ]
 }
+
+@test "configure_runtime_roles: 軍議defaultを保持して検証する" {
+  python3 - "$TEST_TMP/config/settings.yaml" <<'PY'
+import sys, yaml
+path = sys.argv[1]
+cfg = yaml.safe_load(open(path, encoding='utf-8'))
+cfg['council'] = {
+    'default': {
+        'members': {
+            'grok': {'type': 'grok', 'model': 'grok-4.5'},
+            'agy': {'type': 'antigravity', 'model': 'gemini-3.1-pro-high'},
+            'sol': {'type': 'codex', 'model': 'gpt-5.6-sol'},
+            'open': {'type': 'opencode'},
+        },
+        'representative': 'grok',
+    },
+}
+open(path, 'w', encoding='utf-8').write(yaml.safe_dump(cfg, sort_keys=False))
+PY
+
+  run bash -lc "cd '$TEST_TMP' && python3 scripts/configure_runtime_roles.py --ashigaru-count 1 --shogun codex --gunkan codex --gunshi codex --karo codex --ashigaru1 codex"
+  [ "$status" -eq 0 ]
+
+  run python3 - "$TEST_TMP/config/settings.yaml" <<'PY'
+import sys, yaml
+cfg = yaml.safe_load(open(sys.argv[1], encoding='utf-8'))
+assert cfg['council']['default']['representative'] == 'grok'
+assert list(cfg['council']['default']['members']) == ['grok', 'agy', 'sol', 'open']
+PY
+  [ "$status" -eq 0 ]
+}
+
+@test "configure_runtime_roles: 代表不在の軍議設定は上書きしない" {
+  python3 - "$TEST_TMP/config/settings.yaml" <<'PY'
+import sys, yaml
+path = sys.argv[1]
+cfg = yaml.safe_load(open(path, encoding='utf-8'))
+cfg['council'] = {
+    'default': {
+        'members': {
+            'fable': {'type': 'claude', 'model': 'fable'},
+            'sol': {'type': 'codex', 'model': 'gpt-5.6-sol'},
+        },
+        'representative': 'opus',
+    },
+}
+open(path, 'w', encoding='utf-8').write(yaml.safe_dump(cfg, sort_keys=False))
+PY
+  before="$(sha256sum "$TEST_TMP/config/settings.yaml" | awk '{print $1}')"
+  run bash -lc "cd '$TEST_TMP' && python3 scripts/configure_runtime_roles.py --ashigaru-count 1 --shogun codex"
+  [ "$status" -ne 0 ]
+  after="$(sha256sum "$TEST_TMP/config/settings.yaml" | awk '{print $1}')"
+  [ "$before" = "$after" ]
+}

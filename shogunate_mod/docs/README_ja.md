@@ -92,10 +92,45 @@ shogunate where           # project/runtime/engine/session の場所を表示
 shogunate projects        # 登録済み project を一覧表示
 shogunate battlefield     # 登録済み project runtime の一覧・起動・終了
 shogunate app             # mobile / desktop app 用 JSON API
+shogunate council         # Gunshiの短命な計画会議
 shogunate status          # package/update metadata を表示
 shogunate aliases         # shell alias の source コマンドを表示
 shogunate help            # help
 ```
+
+## Gunshiの軍議
+
+軍議は、複数モデルが共有議事録を読みながら計画を反証・改善し、代表者が
+最終計画へ統合する試験機能です。出席者と代表者は
+`config/settings.yaml`の`council.default`だけで設定します。
+
+```yaml
+council:
+  default:
+    members:
+      fable: {type: claude, model: claude-fable-5}
+      opus: {type: claude, model: claude-opus-5}
+      sol: {type: codex, model: gpt-5.6-sol}
+    representative: fable
+```
+
+出席者の`type`には`antigravity`、`claude`、`codex`、`grok`、`opencode`を指定できます。
+`model`には各CLIが表示するmodel IDを使います。省略時はCLIの既定modelを使います。
+
+実モデルを呼ぶため、`start`、`advance`、`audit`では明示的な許可が必要です。
+
+```bash
+shogunate council --allow-paid-models start --id plan-001 --brief-file docs/brief.md
+shogunate council --allow-paid-models advance --id plan-001
+shogunate council --allow-paid-models audit --id plan-001
+shogunate council status --id plan-001
+```
+
+`closing`は最終異議受付中、`awaiting_audit`はGunkan監査待ちです。監査PASS時
+だけ`plan.md`と`handoff.yaml`を作り、`dissolved`になります。引き継ぎ後は
+Gunshiが計画と品質、Karoが作業分解・割当、Ashigaruが実装を担当します。
+固定cycle数はありません。詳細は
+`shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md`を参照してください。
 
 別 project を明示する場合:
 

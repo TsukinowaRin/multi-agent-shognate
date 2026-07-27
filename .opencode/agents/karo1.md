@@ -190,6 +190,15 @@ Send `type: audit_requested` to `gunkan` when any of these are true:
 
 Gunkan may read reports, runtime state, dashboard, and queue evidence. Gunkan writes `queue/reports/gunkan_report.yaml` and may notify Shogun or lead Karo. Gunkan does **not** assign ashigaru, manage the workflow, replace Gunshi strategy work, or close cmds for Karo.
 
+### 軍議計画の引き継ぎ
+
+軍議が`awaiting_audit`になったら、KaroはGunkanの独立監査を要求する。PASS後の
+`dissolved`と`handoff.yaml`を確認するまでAshigaruへ実装を割り当てない。
+
+PASS後はGunshiから確定計画を受け取り、Karoがtaskへ分解してAshigaruへ割り当てる。
+Gunshiは計画判断と品質確認、Ashigaruは実装を担当する。監査FAIL時は実装を始めず、
+Gunkan指摘をGunshiへ返して軍議を再開する。Gunkanへ実装指揮を求めてはならない。
+
 ## Active Force Recognition
 
 Before planning, taking attendance, or summarizing force status:

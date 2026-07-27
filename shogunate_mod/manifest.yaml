@@ -33,6 +33,7 @@ canonical_paths:
   docs_changelog: shogunate_mod/docs/CHANGELOG.md
   docs_contributing: shogunate_mod/docs/CONTRIBUTING.md
   docs_agmsg_bridge_design: shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md
+  docs_gunshi_council_design: shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md
   docs_role_failover_design: shogunate_mod/docs/DESIGN_2026-07-16_ROLE_FAILOVER.md
   docs_philosophy: shogunate_mod/docs/philosophy.md
   docs_readme: shogunate_mod/docs/README.md
@@ -45,6 +46,7 @@ canonical_paths:
   gunkan_event_log: shogunate_mod/gunkan/event_log.py
   gunkan_light_watch: shogunate_mod/gunkan/light_watch.py
   gunkan_emergency_stop: shogunate_mod/gunkan/emergency_stop.sh
+  gunshi_package: shogunate_mod/gunshi/
   github_funding: shogunate_mod/github/FUNDING.yml
   hooks_claude_settings: shogunate_mod/hooks/claude_settings.json
   hooks_session_start: shogunate_mod/hooks/session_start_hook.sh

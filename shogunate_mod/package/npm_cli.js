@@ -13,6 +13,7 @@ function usage() {
   shogunate install [-- --version v5.0.0.12 --prefix ~/.shogunate/shogunate]
   shogunate run [args...]
   shogunate pair [args...]
+  shogunate council [--allow-paid-models] [start|advance|audit|status|reopen] [args...]
   shogunate projects [list|add|select|current|remove]
   shogunate battlefield [list|status|start|stop|send|outbox|sessions|transcript]
   shogunate app [capabilities|list|status|start|stop|send|outbox|sessions|transcript]
@@ -24,6 +25,7 @@ Commands:
   install   Run the cURL-based package bootstrap.
   run       Run the Shogunate MOD runtime launcher for the current project directory.
   pair      Pair Android app over USB auto + Tailscale/LAN for the current project.
+  council   Convene an ephemeral Gunshi planning council.
   projects  Manage the registered project list.
   battlefield  Manage registered project runtimes, offline history, and pending messages.
   app       JSON-friendly API for mobile and desktop apps.
@@ -91,6 +93,18 @@ function main(argv = process.argv.slice(2), cwd = process.cwd()) {
       root,
       "--target-project",
       cwd,
+      ...args,
+    ], { env: runtimeEnv });
+  }
+
+  if (command === "council") {
+    const runtimeRoot = process.env.SHOGUNATE_RUNTIME_DIR || root;
+    run("python3", [
+      path.join(root, "shogunate_mod/gunshi/council.py"),
+      "--project-root",
+      cwd,
+      "--runtime-root",
+      runtimeRoot,
       ...args,
     ], { env: runtimeEnv });
   }

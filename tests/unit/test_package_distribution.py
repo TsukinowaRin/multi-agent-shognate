@@ -5463,6 +5463,37 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("android/release", docs)
         self.assertNotIn("multi-agent-shognate-installer-<version>", docs)
 
+    def test_gunshi_council_is_in_package_contract(self):
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        package_source = (
+            ROOT / "shogunate_mod" / "package" / "package.json"
+        ).read_text(encoding="utf-8")
+        package_compat = (ROOT / "package.json").read_text(encoding="utf-8")
+        npm_cli = (
+            ROOT / "shogunate_mod" / "package" / "npm_cli.js"
+        ).read_text(encoding="utf-8")
+        gitignore_source = (
+            ROOT / "shogunate_mod" / "package" / "gitignore"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("gunshi_package: shogunate_mod/gunshi/", manifest)
+        self.assertIn('"shogunate_mod/gunshi/"', package_source)
+        self.assertEqual(package_source, package_compat)
+        self.assertIn("!shogunate_mod/gunshi/*.py", gitignore_source)
+        self.assertIn(
+            "!shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md",
+            gitignore_source,
+        )
+        self.assertIn('if (command === "council")', npm_cli)
+        self.assertIn("start|advance|audit|status|reopen", npm_cli)
+        self.assertTrue((ROOT / "shogunate_mod/gunshi/council.py").is_file())
+        self.assertTrue(
+            (
+                ROOT
+                / "shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md"
+            ).is_file()
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

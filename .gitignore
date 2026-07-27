@@ -147,6 +147,7 @@
 !shogunate_mod/docs/
 !shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md
 !shogunate_mod/docs/DESIGN_2026-07-16_ROLE_FAILOVER.md
+!shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md
 !shogunate_mod/docs/CHANGELOG.md
 !shogunate_mod/docs/CONTRIBUTING.md
 !shogunate_mod/docs/philosophy.md
@@ -163,6 +164,8 @@
 !shogunate_mod/gunkan/*.py
 !shogunate_mod/gunkan/*.sh
 !shogunate_mod/gunkan/*.yaml
+!shogunate_mod/gunshi/
+!shogunate_mod/gunshi/*.py
 !shogunate_mod/hooks/
 !shogunate_mod/hooks/*.sh
 !shogunate_mod/hooks/*.json

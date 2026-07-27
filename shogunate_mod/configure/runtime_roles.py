@@ -27,6 +27,10 @@ CORE_ROLES = ("shogun", "gunkan", "karo", "gunshi")
 MODEL_PREF_KEYS = ("model", "reasoning_effort", "thinking")
 ASHIGARU_RE = re.compile(r"^ashigaru([1-9][0-9]*)$")
 SECRET_KEY_RE = re.compile(r"(?i)(password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credential|bearer)")
+COUNCIL_ALIAS_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
+COUNCIL_ALLOWED_CLIS = frozenset(
+    {"antigravity", "claude", "codex", "grok", "opencode"}
+)
 PROFILE_FIELDS = frozenset(
     {"type", "model", "reasoning_effort", "thinking", "effort", "variant", "endpoint", "recommended_model"}
 )
@@ -77,6 +81,7 @@ def _validate_profile(raw: Any, *, field: str) -> None:
 
 
 def validate_settings_profiles(data: dict[str, Any]) -> None:
+    _validate_council_settings(data)
     cli = data.get("cli")
     if cli is None:
         return
@@ -100,6 +105,57 @@ def validate_settings_profiles(data: dict[str, Any]) -> None:
         fallback = raw.get("fallback")
         if fallback is not None:
             _validate_profile(fallback, field=f"cli.agents.{role}.fallback")
+
+
+def _validate_council_settings(data: dict[str, Any]) -> None:
+    council = data.get("council")
+    if council is None:
+        return
+    if not isinstance(council, dict):
+        raise SystemExit("council must be a mapping")
+    unknown = set(council) - {"default"}
+    if unknown:
+        raise SystemExit(f"council.{sorted(unknown)[0]}: unknown field")
+    default = council.get("default")
+    if not isinstance(default, dict):
+        raise SystemExit("council.default must be a mapping")
+    unknown = set(default) - {"members", "representative"}
+    if unknown:
+        raise SystemExit(f"council.default.{sorted(unknown)[0]}: unknown field")
+    members = default.get("members")
+    if not isinstance(members, dict) or not 2 <= len(members) <= 8:
+        raise SystemExit("council.default.members must contain 2 to 8 members")
+    for alias, profile in members.items():
+        if not isinstance(alias, str) or not COUNCIL_ALIAS_RE.fullmatch(alias):
+            raise SystemExit(f"council.default.members.{alias}: invalid alias")
+        if not isinstance(profile, dict):
+            raise SystemExit(f"council.default.members.{alias} must be a mapping")
+        for key in profile:
+            if SECRET_KEY_RE.search(str(key)):
+                raise SystemExit(
+                    f"council.default.members.{alias}.{key}: secret-like key is not allowed"
+                )
+        unknown = set(profile) - {"type", "model"}
+        if unknown:
+            raise SystemExit(
+                f"council.default.members.{alias}.{sorted(unknown)[0]}: unknown profile field"
+            )
+        cli_type = profile.get("type")
+        if cli_type not in COUNCIL_ALLOWED_CLIS:
+            allowed = ", ".join(sorted(COUNCIL_ALLOWED_CLIS))
+            raise SystemExit(
+                f"council.default.members.{alias}.type: must be one of {allowed}"
+            )
+        model = profile.get("model", "")
+        if not isinstance(model, str) or len(model.strip()) > 128:
+            raise SystemExit(f"council.default.members.{alias}.model: invalid value")
+        if any(ord(char) < 32 or ord(char) == 127 for char in model):
+            raise SystemExit(
+                f"council.default.members.{alias}.model: control characters are not allowed"
+            )
+    representative = default.get("representative")
+    if representative not in members:
+        raise SystemExit("council.default.representative must be a member")
 
 
 def _atomic_write_bytes(path: Path, content: bytes, mode: int | None = None) -> None:

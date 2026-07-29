@@ -14,6 +14,7 @@ FROM="${4:-}"
 OWNER_MAP="$SCRIPT_DIR/queue/runtime/ashigaru_owner.tsv"
 FAILOVER_STATE="$SCRIPT_DIR/queue/runtime/role_failover.yaml"
 FAILOVER_CONTROLLER="$SCRIPT_DIR/shogunate_mod/runtime/role_failover.py"
+PROVENANCE_HELPER="$SCRIPT_DIR/shogunate_mod/runtime/report_provenance.py"
 MESSAGE_GENERATION="${SHOGUNATE_ROLE_GENERATION:-${MAS_ROLE_GENERATION:-}}"
 
 INBOX="$SCRIPT_DIR/queue/inbox/${TARGET}.yaml"
@@ -93,6 +94,142 @@ if [[ "$FROM" =~ ^(shogun|gunkan|gunshi|karo([1-9][0-9]*)?|ashigaru[1-9][0-9]*)$
         exit 1
     fi
 fi
+
+# report provenance (acceptance 2, 4): report_received / audit_report だけ pane-bound
+# receipt を要求する。strict marker (queue/runtime/report_provenance_required) がある
+# 新runtimeでは、提出元paneがそのrole本人でgeneration/CLI/report path/digest と一致
+# しないと inbox へ書けない (fail-closed)。marker がない legacy runtime は従来どおり
+# inbox を書き、receipt は pane metadata が得られる時だけ best-effort で作る。別role
+# paneの self-agent 代用による false completion を機械検出する境界であり、暗号境界
+# ではない (同一ローカルuserの悪意ある偽造は防げない)。非report message と daemon
+# cmd_done 互換は維持し、本 gate は report_received / audit_report にしか効かない。
+enforce_report_provenance() {
+    case "$TYPE" in report_received|audit_report) ;; *) return 0 ;; esac
+    if [ ! -f "$PROVENANCE_HELPER" ]; then
+        if [ -f "$SCRIPT_DIR/queue/runtime/report_provenance_required" ]; then
+            echo "[inbox_write] REJECTED: provenance helper missing in strict runtime" >&2
+            return 1
+        fi
+        return 0
+    fi
+    local pane="${TMUX_PANE:-}"
+    local agent_id="" role_generation="" agent_cli_running="" agent_cli=""
+    if [ -n "$pane" ]; then
+        agent_id="$(tmux show-options -p -t "$pane" -v @agent_id 2>/dev/null || true)"
+        role_generation="$(tmux show-options -p -t "$pane" -v @role_generation 2>/dev/null || true)"
+        agent_cli_running="$(tmux show-options -p -t "$pane" -v @agent_cli_running 2>/dev/null || true)"
+        agent_cli="$(tmux show-options -p -t "$pane" -v @agent_cli 2>/dev/null || true)"
+    fi
+    MESSAGE_GENERATION="$MESSAGE_GENERATION" python3 - \
+        "$PROVENANCE_HELPER" "$SCRIPT_DIR" "$FROM" "$TYPE" \
+        "$pane" "$agent_id" "$role_generation" "$agent_cli_running" "$agent_cli" \
+        <<'PY'
+import os
+import sys
+from pathlib import Path
+
+helper_path, root, role, msg_type, pane, agent_id, role_gen, cli_running, agent_cli = sys.argv[1:]
+sys.path.insert(0, root)
+from shogunate_mod.runtime import report_provenance as rp  # noqa: E402
+
+
+def _int_or_none(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+runtime_dir = Path(root) / "queue" / "runtime"
+receipt_dir = runtime_dir / "report_receipts"
+strict = rp.is_strict_mode(runtime_dir)
+
+# pane metadata が一つでも欠けていれば verify は missing_pane で落ちる。それでよい:
+# 別role paneや非tmux経路の代用を弁別するため。strict ならここで止める。
+pane_meta = {
+    "pane": pane or "",
+    "agent_id": agent_id or "",
+    "role_generation": _int_or_none(role_gen),
+    "agent_cli_running": cli_running or "",
+    "agent_cli": agent_cli or "",
+}
+
+# role_failover 状態を読む。
+try:
+    import yaml
+    with (runtime_dir / "role_failover.yaml").open("r", encoding="utf-8") as fh:
+        failover = yaml.safe_load(fh) or {}
+except Exception:
+    failover = {}
+roles = failover.get("roles") if isinstance(failover, dict) else {}
+role_state = roles.get(role) if isinstance(roles, dict) else None
+
+report_rel = rp.expected_report_rel(role)
+report_abs = Path(root) / report_rel
+report_bytes = b""
+if report_abs.is_file():
+    try:
+        report_bytes = report_abs.read_bytes()
+    except OSError:
+        report_bytes = b""
+
+try:
+    import yaml
+    report_doc = yaml.safe_load(report_bytes) if report_bytes.strip() else None
+except Exception:
+    report_doc = None
+if not isinstance(report_doc, dict):
+    report_doc = {}
+report_task_id = str(report_doc.get("task_id") or report_doc.get("id") or "").strip()
+report_parent_cmd = str(report_doc.get("parent_cmd") or report_doc.get("cmd_id") or "").strip()
+
+result = rp.verify_pane_identity(
+    role=role,
+    pane_meta=pane_meta,
+    role_state=role_state,
+    report_path=str(report_rel),
+    expected_generation=_int_or_none(__import__("os").environ.get("MESSAGE_GENERATION")),
+)
+
+if not result.ok:
+    if strict:
+        # acceptance 4: marker ありでは receipt なし完了を許さない。inbox へ書かせない。
+        print(f"[inbox_write] REJECTED: report provenance failed (from={role}, reason={result.reason})", file=sys.stderr)
+        sys.exit(1)
+    # legacy: receipt を作らないが inbox は書かせる (既存queue flow を壊さない)。
+    sys.exit(0)
+
+# 合格時だけ atomic receipt を作る (acceptance 2)。
+try:
+    current_gen = None
+    if isinstance(role_state, dict):
+        g = role_state.get("generation")
+        if isinstance(g, int) and not isinstance(g, bool):
+            current_gen = g
+    if current_gen is None:
+        current_gen = pane_meta["role_generation"]
+    receipt = rp.build_receipt(
+        role=role,
+        generation=current_gen,
+        pane=str(pane),
+        agent_cli=(agent_cli or None),
+        report_path=str(report_rel),
+        report_bytes=report_bytes,
+        task_id=report_task_id,
+        parent_cmd=report_parent_cmd,
+    )
+    rp.write_receipt(receipt_dir, role, receipt)
+except Exception as exc:
+    if strict:
+        print(f"[inbox_write] REJECTED: receipt write failed (from={role}, error={exc})", file=sys.stderr)
+        sys.exit(1)
+    # legacy: receipt 失敗は inbox を止めない。
+sys.exit(0)
+PY
+    return $?
+}
+
+enforce_report_provenance
 
 # Initialize inbox if not exists
 if [ ! -f "$INBOX" ]; then

@@ -128,14 +128,29 @@ shogunate council --allow-paid-models start --id plan-001 --brief-file docs/brie
 shogunate council --allow-paid-models advance --id plan-001
 shogunate council --allow-paid-models audit --id plan-001
 shogunate council status --id plan-001
+shogunate council reopen --id plan-001
 ```
 
 `closing` means the final objection cycle is still open. `awaiting_audit` means
 the candidate is ready for independent Gunkan review. Only a passing audit
 produces `plan.md` and `handoff.yaml` and moves the council to `dissolved`.
 The handoff assigns planning/QC to Gunshi, dispatch to Karo, and implementation
-to Ashigaru. There is no fixed cycle limit. See
+to Ashigaru; it does not auto-start agents or enqueue work. The controller also
+ships a capability contract snapshot into every model context. The contract
+includes each command's allowed source states and outcomes, plus audit and
+`reopen` artifact lifecycle rules. Reaching `awaiting_audit` requires another
+review of the same final candidate while in `closing`, with convergence, no
+blocking or unresolved items, and no newly raised blocker. Explicit command
+forms in code spans, `shogunate council ...`, or imperative instructions are
+checked. Ordinary noun phrases such as `council lifecycle` are not treated as
+commands, even at the start of a plan field. Plans that claim unsupported `council`
+subcommands such as `end` or `handoff` are blocked.
+There is no fixed cycle limit. See
 `shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md` for the protocol.
+
+Every review and representative synthesis receives separate `open_objections`
+and resolved `resolutions` ledgers. A representative may reference only a
+currently open ID in `response.resolutions`; reusing a resolved ID is rejected.
 
 Target another project explicitly:
 

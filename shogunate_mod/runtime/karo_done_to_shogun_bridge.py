@@ -2,6 +2,7 @@
 import os
 import hashlib
 import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -9,6 +10,12 @@ import yaml
 DONE_STATUSES = {"done", "completed", "closed"}
 COMPLETION_TIME_FIELDS = ("completed_at", "done_at", "closed_at", "verified_at", "updated_at")
 COMPLETION_HASH_PREFIX = "digest:"
+
+# report provenance (acceptance 3): strict marker がある新runtimeでは、cmd完了通知を
+# Shogunへ送る前に全 required role の pane-bound receipt と現report digest を検証する。
+# 不合格なら cmd_done を送らず、state も更新せず、blocked ledger へ reason を1件だけ
+# 記録する。marker がない legacy runtime は従来挙動を保つ (acceptance 4)。
+_REPORT_PROVENANCE_REL = Path("shogunate_mod/runtime/report_provenance.py")
 
 
 def load_yaml(path: Path):
@@ -222,6 +229,161 @@ def read_lead_karo(runtime_dir: Path) -> str:
     return value[0].strip() if value and value[0].strip() else ""
 
 
+def _load_provenance(root: Path):
+    if str(root) not in _load_provenance._cache:
+        sys.path.insert(0, str(root))
+        import importlib
+        mod = importlib.import_module("shogunate_mod.runtime.report_provenance")
+        _load_provenance._cache[str(root)] = mod
+    return _load_provenance._cache[str(root)]
+_load_provenance._cache = {}
+
+
+def _strict_marker_present(runtime_dir: Path) -> bool:
+    return (runtime_dir / "report_provenance_required").exists()
+
+
+def _load_failover_roles(runtime_dir: Path) -> dict:
+    state_path = runtime_dir / "role_failover.yaml"
+    if not state_path.exists():
+        return {}
+    data = load_yaml(state_path) or {}
+    roles = data.get("roles") if isinstance(data, dict) else {}
+    return roles if isinstance(roles, dict) else {}
+
+
+def _collect_cmd_task_roles(cmd: dict) -> list:
+    """cmd に紐付く task 提出 role を収集する (acceptance 3)。
+
+    audit_gate は report_provenance.required_receipt_roles 側で拾うので、ここでは
+    実作業 role (ashigaru 等) だけを cmd の task/assignee 系 field から抽出する。
+    構造は幅広く受け入れ、role 名として妥当なものだけ残す。
+    """
+    roles: list = []
+
+    def add(value):
+        if isinstance(value, str) and value:
+            roles.append(value)
+
+    for key in ("ashigaru", "assignees", "owners", "roles"):
+        v = cmd.get(key)
+        if isinstance(v, list):
+            for item in v:
+                add(item if isinstance(item, str) else (item.get("role") if isinstance(item, dict) else None))
+        elif isinstance(v, str):
+            add(v)
+
+    tasks = cmd.get("tasks")
+    if isinstance(tasks, list):
+        for task in tasks:
+            if not isinstance(task, dict):
+                continue
+            for key in ("assigned_to", "assignee", "owner", "role", "agent"):
+                add(task.get(key))
+
+    rp = _load_provenance(Path(os.environ.get("MAS_PROJECT_ROOT", Path(__file__).resolve().parents[2])))
+    return [r for r in dict.fromkeys(roles) if rp.is_role_name(r)]
+
+
+def _collect_cmd_task_contexts(queue_dir: Path, cmd: dict) -> dict[str, dict[str, str]]:
+    """queue/tasks の実taskをcmdへ結び、roleごとの期待contextを返す。
+
+    cmd inline fieldだけを見ると、通常運用の別file taskを見落としてrequired roleが
+    空になり得る。task fileのparent_cmdを必須にし、roleは明示fieldを優先しつつ
+    role名file（ashigaru1.yaml等）を正規fallbackとして使う。
+    """
+    cmd_id = str(cmd.get("id") or "").strip()
+    if not cmd_id:
+        return {}
+    rp = _load_provenance(Path(os.environ.get("MAS_PROJECT_ROOT", Path(__file__).resolve().parents[2])))
+    contexts: dict[str, dict[str, str]] = {}
+    tasks_dir = Path(queue_dir) / "tasks"
+    if not tasks_dir.is_dir():
+        return contexts
+    for path in sorted(tasks_dir.glob("*.yaml")):
+        raw = load_yaml(path)
+        if not isinstance(raw, dict):
+            continue
+        task = raw.get("task") if isinstance(raw.get("task"), dict) else raw
+        parent_cmd = str(task.get("parent_cmd") or task.get("cmd_id") or "").strip()
+        if parent_cmd != cmd_id:
+            continue
+        role = ""
+        for key in ("assigned_to", "assignee", "owner", "role", "agent", "worker_id"):
+            value = str(task.get(key) or "").strip()
+            if rp.is_role_name(value):
+                role = value
+                break
+        if not role and rp.is_role_name(path.stem):
+            role = path.stem
+        if not role:
+            continue
+        task_id = str(task.get("task_id") or task.get("id") or "").strip()
+        contexts[role] = {"task_id": task_id, "parent_cmd": parent_cmd}
+    return contexts
+
+
+def _command_completion_blocked_by_provenance(root: Path, runtime_dir: Path, cmd: dict) -> str | None:
+    """strict marker がある時、provenance gate が cmd 完了を止めるなら reason を返す。
+
+    合格 (または legacy/marker なし) なら None を返し、呼び出し側は従来どおり通知する。
+    """
+    if not _strict_marker_present(runtime_dir):
+        return None
+    rp = _load_provenance(root)
+    role_states_raw = _load_failover_roles(runtime_dir)
+    task_contexts = _collect_cmd_task_contexts(root / "queue", cmd)
+    cmd_id = str(cmd.get("id") or "").strip()
+    for role in _collect_cmd_task_roles(cmd):
+        task_contexts.setdefault(role, {"task_id": "", "parent_cmd": cmd_id})
+    task_roles = list(task_contexts)
+    required = rp.required_receipt_roles(cmd, task_roles)
+    expected_contexts = {
+        role: task_contexts.get(role, {"task_id": "", "parent_cmd": cmd_id})
+        for role in required
+    }
+    receipt_dir = runtime_dir / "report_receipts"
+    receipts: dict = {}
+    role_states: dict = {}
+    report_bytes_by_role: dict = {}
+    for role in required:
+        receipts[role] = rp.load_receipt(receipt_dir, role)
+        rs = role_states_raw.get(role)
+        role_states[role] = rs if isinstance(rs, dict) else None
+        report_path = root / rp.expected_report_rel(role)
+        if report_path.is_file():
+            try:
+                report_bytes_by_role[role] = report_path.read_bytes()
+            except OSError:
+                report_bytes_by_role[role] = b""
+        else:
+            report_bytes_by_role[role] = b""
+    result = rp.validate_completion(
+        cmd=cmd,
+        task_roles=task_roles,
+        receipts=receipts,
+        role_states=role_states,
+        report_bytes_by_role=report_bytes_by_role,
+        expected_context_by_role=expected_contexts,
+    )
+    if result.ok:
+        return None
+    # 不合格: cmd YAML を自動書き戻さず、blocked ledger へ reason を1件だけ記録する
+    # (acceptance 3, plan判断: Karo編集中YAMLとの競合回避)。
+    ledger = runtime_dir / "report_provenance_blocked.yaml"
+    entry = rp.blocked_ledger_entry(
+        cmd_id=str(cmd.get("id", "")),
+        reason=result.reason,
+        missing_roles=result.missing_roles,
+        invalid_roles=result.invalid_roles,
+    )
+    try:
+        rp.append_blocked_ledger(ledger, entry)
+    except Exception:
+        pass
+    return result.reason
+
+
 def sender_generation_env(runtime_dir: Path, sender: str) -> dict[str, str]:
     env = os.environ.copy()
     state_path = runtime_dir / "role_failover.yaml"
@@ -279,6 +441,7 @@ def main() -> int:
     newly_sent = []
     already_sent = []
     already_notified = []
+    already_blocked = []
     skipped_not_done = []
 
     for cmd in cmds:
@@ -299,6 +462,15 @@ def main() -> int:
         if inbox_already_mentions(shogun_inbox, cmd, summary):
             state.add(identity)
             already_notified.append(cmd)
+            continue
+
+        # report provenance strict gate (acceptance 3, 4): marker がある新runtimeで
+        # receipt/digest 検証が不合格なら cmd_done を送らず、state も更新しない。
+        blocked_reason = _command_completion_blocked_by_provenance(root, runtime_dir, cmd)
+        if blocked_reason is not None:
+            # 送信も state 更新もしない (Karo/Gunkan が blocked ledger と summary で
+            # 再差配するのを待つ)。理由を次出力へ明示する。
+            already_blocked.append((cmd_id, blocked_reason))
             continue
 
         purpose = str(cmd.get("purpose", "")).strip()
@@ -330,6 +502,9 @@ def main() -> int:
 
     if newly_sent:
         print("sent\t" + ",".join(format_status_entries(newly_sent)))
+    elif already_blocked:
+        # strict gate で完了通知を止めた。false completion させず、reason を明示する。
+        print("blocked\t" + ",".join(f"{cid}:{rsn}" for cid, rsn in already_blocked))
     elif already_notified:
         print("noop\talready_notified=" + ",".join(format_status_entries(already_notified)))
     elif already_sent:

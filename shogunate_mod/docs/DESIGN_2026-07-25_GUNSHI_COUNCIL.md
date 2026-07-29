@@ -95,13 +95,52 @@ Shogunateの既存agmsg bridgeは「YAML inboxに未読がある」という起�
 sessionにする場合は、agmsgを起床・配送層として追加できる。その場合も
 共有議事録と収束gateは軍議controllerに残す。
 
+## Capability contract
+
+controllerは起動時にtrustedなcapability contractを`state.yaml`へsnapshotし、
+draft / review / synthesis / audit の全contextへ同じsnapshotを渡す。
+
+- 対応command: `start`、`advance`、`audit`、`status`、`reopen`
+- 状態: `deliberating`、`closing`、`awaiting_audit`、`dissolved`
+- 常時成果物: `state.yaml`、`brief.txt`
+- Gunkan PASS後だけ: `plan.md`、`handoff.yaml`
+- handoffは責任記録のみ。Karo/Ashigaru queueの自動生成やagent自動起動はしない
+
+contract v2は各commandの状態遷移も固定する。`start`は新規軍議を`deliberating`で
+作る。`advance`の条件は次のとおり。
+
+- `deliberating`: `converged=false`、blocking objectionあり、未解決あり、のいずれか
+- `closing`: 収束済みでblocking objectionと未解決がなく、かつ直前が`deliberating`、
+  新規blocking objectionあり、plan変更あり、のいずれか
+- `awaiting_audit`: 直前が`closing`、収束済み、blocking objectionなし、未解決なし、
+  新規blocking objectionなし、plan変更なし、のすべて
+
+`audit`は`awaiting_audit`だけで実行でき、PASSなら成果物を作って
+`dissolved`、FAILなら成果物を作らず`deliberating`へ戻す。`status`はread-only。
+`reopen`は`dissolved`から`deliberating`へ戻し、既存成果物を残したままstate上の
+`handoff_path`をclearする。
+
+plan本文の明示的な`council <subcommand>` / `shogunate council <subcommand>` claimを
+controllerが検査し、contract外のsubcommandはspeaker=`controller`のblocking
+objectionとして記録する。違反があるcycleでは`closing` / `awaiting_audit`へ進めない。
+検査対象はbacktick code span、`shogunate council ...`、`run` / `execute` / `call` /
+`use` / `invoke` / `request` / `try`の直後にあるcommand形に限定する。
+`council system`や`council lifecycle`などの名詞句は、plan fieldの文頭でも
+検査しない。
+promptは補助であり、最終防衛はこのdeterministic gateとする。
+
+reviewとsynthesisのcontextには、現在の`open_objections`と過去の`resolutions`を
+別ledgerとしてdeep copyで渡す。代表者の`response.resolutions`が参照できるのは
+そのsynthesis contextでopenなIDだけで、解決済みIDの再掲は既存validationが拒否する。
+
 ## 安全境界
 
 - 実モデル呼び出しには`--allow-paid-models`を明示する。
 - Codexはread-only・ephemeral、Claudeはtoolなし・session非永続で起動する。
 - Grokはtool、web、memory、subagentを無効化し、Antigravityはplan modeとsandboxで起動する。
 - Opencodeはinlineの専用agent policyで全toolをdenyし、`--auto`なしのone-shotで起動する。
-- brief、repository文書、モデル出力はuntrusted dataとして扱う。
+- brief、repository文書、モデル出力はuntrusted dataとして扱う。capability contractは
+  controller提供のtrusted authorityであり、矛盾時はcontractを優先する。
 - stateやモデル出力をshell commandとして実行しない。
 - 軍議メンバーへedit、admin、delete、publish、secret accessを与えない。
 - Gunkan監査もread-only one-shotで実行し、実装指揮や自動dispatchを許可しない。

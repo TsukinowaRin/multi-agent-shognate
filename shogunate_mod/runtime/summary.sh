@@ -1,4 +1,81 @@
 #!/usr/bin/env bash
+# report provenance / bootstrap readiness (acceptance 7): ready 不足時は runtime state
+# を degraded にし、summary を「出陣準備未完了」とする。全 ready 時だけ従来の完了
+# 表示を使う。pane は診断用に維持し watcher の後続回復は妨げない。純粋判定を純
+# function に分離し unit test で検証する (test_runtime_bootstrap)。
+compute_bootstrap_ready_state() {
+    # $1: ready 済み agent 数, $2: 構成 agent 総数, $3: bootstrap pending 数
+    local ready="${1:-0}"
+    local total="${2:-0}"
+    local pending="${3:-0}"
+    if [ "${pending:-0}" -gt 0 ]; then
+        echo "degraded"
+        return 0
+    fi
+    if [ "${total:-0}" -le 0 ]; then
+        echo "degraded"
+        return 0
+    fi
+    if [ "${ready:-0}" -ge "${total:-0}" ]; then
+        echo "ready"
+    else
+        echo "degraded"
+    fi
+}
+
+current_bootstrap_ready_state() {
+    # bootstrap.shが実paneで確認したready ack数を唯一の正本にする。
+    # pending fileは配信済み時点で消えるため、ready応答の代用にはならない。
+    compute_bootstrap_ready_state \
+        "${CURRENT_BOOTSTRAP_READY_COUNT:-0}" \
+        "${CURRENT_BOOTSTRAP_TOTAL_COUNT:-0}" \
+        "${CURRENT_BOOTSTRAP_PENDING_COUNT:-0}"
+}
+
+format_departure_readiness_message() {
+    # $1: state ("ready" or "degraded")
+    local state="${1:-degraded}"
+    case "$state" in
+        ready)
+            echo "出陣準備完了！天下布武！"
+            ;;
+        *)
+            echo "出陣準備未完了（一部エージェント ready 未達成）"
+            ;;
+    esac
+}
+
+write_bootstrap_ready_state() {
+    # $1: state, $2: ready_count, $3: total_count, $4: runtime_dir
+    local state="${1:-degraded}"
+    local ready="${2:-0}"
+    local total="${3:-0}"
+    local runtime_dir="${4:-$SCRIPT_DIR/queue/runtime}"
+    mkdir -p "$runtime_dir"
+    python3 - "$runtime_dir/bootstrap_ready_state.yaml" "$state" "$ready" "$total" <<'PY'
+import os
+import tempfile
+import sys
+from pathlib import Path
+
+import yaml
+
+path, state, ready, total = sys.argv[1:]
+payload = {
+    "state": state,
+    "ready_count": int(ready or 0),
+    "total_count": int(total or 0),
+}
+fd, tmp = tempfile.mkstemp(dir=Path(path).parent, suffix=".tmp")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        yaml.safe_dump(payload, fh, allow_unicode=True, sort_keys=False)
+    os.replace(tmp, path)
+except Exception:
+    os.unlink(tmp)
+PY
+}
+
 show_departure_completion_summary() {
     local _agent=""
 
@@ -42,8 +119,25 @@ show_departure_completion_summary() {
     fi
 
     echo ""
+    # acceptance 7: ready 不足 (bootstrap pending > 0) 時は runtime state を
+    # degraded にし、summary を「出陣準備未完了」として false completion させない。
+    local _ready_count=0 _ready_total=0 _ready_state="degraded" _ready_msg=""
+    _ready_count="${CURRENT_BOOTSTRAP_READY_COUNT:-0}"
+    _ready_total="${CURRENT_BOOTSTRAP_TOTAL_COUNT:-0}"
+    _ready_state="$(current_bootstrap_ready_state)"
+    if ! write_bootstrap_ready_state "$_ready_state" \
+        "$_ready_count" \
+        "$_ready_total" "$SCRIPT_DIR/queue/runtime"; then
+        _ready_state="degraded"
+        echo "[WARN] bootstrap ready stateを保存できないため、起動完了扱いにしません" >&2
+    fi
+    _ready_msg="$(format_departure_readiness_message "$_ready_state")"
     echo "  ╔══════════════════════════════════════════════════════════╗"
-    echo "  ║  🏯 出陣準備完了！天下布武！                              ║"
+    if [ "$_ready_state" = "ready" ]; then
+        printf '  ║  🏯 %s                              ║\n' "$_ready_msg"
+    else
+        printf '  ║  ⚠️  %s  ║\n' "$_ready_msg"
+    fi
     echo "  ╚══════════════════════════════════════════════════════════╝"
     echo ""
 

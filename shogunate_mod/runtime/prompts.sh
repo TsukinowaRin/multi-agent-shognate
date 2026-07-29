@@ -60,6 +60,90 @@ codex_ready_prompt_detected_tmux() {
     printf '%s' "$screen_content" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left)'
 }
 
+antigravity_workspace_trust_prompt_detected_in_text() {
+    local screen_content="${1:-}"
+    printf '%s' "$screen_content" | grep -qiE \
+        'Do you trust this folder|Do you trust the contents of this project\?|Antigravity CLI requires permission to read, edit, and execute files here'
+}
+
+claude_workspace_trust_prompt_detected_in_text() {
+    local screen_content="${1:-}"
+    printf '%s' "$screen_content" | grep -qiE \
+        'Quick safety check: Is this a project you created or one you trust\?|Yes, I trust this folder'
+}
+
+shogunate_target_project_path_matches() {
+    local pane_path="${1:-}"
+    local target_path="${2:-}"
+    [ -n "$pane_path" ] && [ -n "$target_path" ] && [ "$pane_path" = "$target_path" ]
+}
+
+cli_startup_blocker_kind() {
+    local cli_type="${1:-}"
+    local screen_content="${2:-}"
+
+    case "$cli_type" in
+        antigravity)
+            if printf '%s' "$screen_content" | grep -qiE 'currently not signed in|sign in (failed|required)|authentication (failed|required)'; then
+                printf 'auth-required\n'
+            fi
+            ;;
+        claude)
+            if printf '%s' "$screen_content" | grep -qiE "out of usage credits|usage limit reached|you.ve hit your.*limit"; then
+                printf 'usage-limit\n'
+            elif printf '%s' "$screen_content" | grep -qiE 'Allow external CLAUDE\.md file imports\?'; then
+                # 外部importはproject trustと別の境界なので自動承認しない。
+                printf 'external-import-approval-required\n'
+            elif printf '%s' "$screen_content" | grep -qiE 'Not logged in|Please run /login|authentication required'; then
+                printf 'auth-required\n'
+            fi
+            ;;
+        grok)
+            if printf '%s' "$screen_content" | grep -qiE 'You are not authenticated|authentication required|please log in'; then
+                printf 'auth-required\n'
+            fi
+            ;;
+        codex)
+            if printf '%s' "$screen_content" | grep -qiE 'Finish signing in via your browser|Sign in with ChatGPT|Sign in with Device Code'; then
+                printf 'auth-required\n'
+            fi
+            ;;
+    esac
+    return 0
+}
+
+cli_bootstrap_activity_detected_in_text() {
+    local cli_type="${1:-}"
+    local screen_content="${2:-}"
+    local agent_id="${3:-}"
+
+    if [ -n "$agent_id" ] && printf '%s\n' "$screen_content" | grep -Eq \
+        "^[[:space:]]*([•●][[:space:]]*)?ready:${agent_id}([[:space:]]+[0-9]{1,2}:[0-9]{2}[[:space:]]*(AM|PM)?)?[[:space:]│█]*$"; then
+        return 0
+    fi
+
+    case "$cli_type" in
+        antigravity)
+            printf '%s' "$screen_content" | grep -qiE 'Generating\.\.\.|esc to cancel|ready:[[:alnum:]_.-]+'
+            ;;
+        grok)
+            printf '%s' "$screen_content" | grep -qiE 'Starting session|Waiting for response|Esc:cancel|Worked for|ready:[[:alnum:]_.-]+'
+            ;;
+        claude)
+            printf '%s' "$screen_content" | grep -qiE 'Worked for|esc to interrupt|Baked for|ready:[[:alnum:]_.-]+'
+            ;;
+        codex)
+            codex_bootstrap_activity_visible_tmux "$screen_content" "$agent_id"
+            ;;
+        opencode|kilo|cursor|copilot|kimi|localapi)
+            printf '%s' "$screen_content" | grep -qiE 'Working|Generating|esc to interrupt|esc to cancel|ready:[[:alnum:]_.-]+'
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 codex_pasted_content_pending_tmux() {
     local screen_content="${1:-}"
     printf '%s' "$screen_content" | grep -qi 'pasted content'
@@ -98,10 +182,14 @@ codex_bootstrap_input_visible_tmux() {
 
 bootstrap_delivery_prompt_tmux() {
     local agent_id="$1"
-    local bootstrap_file="$2"
+    local runtime_root="${SCRIPT_DIR:-}"
+    local target_project="${SHOGUNATE_PROJECT_DIR:-$PWD}"
 
-    printf "【初動命令】あなたは%s。詳細正本は %s に保存済み。起動直後は読まず、実タスク/未読inbox/直接指示を受けた時だけ必要最小範囲を読め。今は追加探索せず ready:%s を1行だけ送信し、イベント駆動で待機せよ。" \
-        "$agent_id" "$bootstrap_file" "$agent_id"
+    # acceptance 5: 外部fileを権威として読むよう求めない。本プロンプト自体が直接
+    # context としての初動命令であり、file は参照用に残すだけ。embedded CLI では
+    # argv で本文を直接渡すため本 fallback は使われない。
+    printf "【初動命令】あなたは%s。作業対象projectは %s、Shogunate runtime rootは %s であり、queue/dashboard/logsはruntime root配下を正とする。本メッセージを初動命令として即適用せよ。起動直後は追加探索せず、実タスク/未読inbox/直接指示を受けた時だけ必要最小範囲を読め。今は、半角英字 ready、半角コロン、役職ID %s を空白なしで連結した1行だけを返し、イベント駆動で待機せよ。" \
+        "$agent_id" "$target_project" "$runtime_root" "$agent_id"
 }
 
 codex_bootstrap_delivery_prompt_tmux() {
@@ -156,20 +244,93 @@ confirm_codex_bootstrap_submitted_tmux() {
     return 1
 }
 
+confirm_cli_bootstrap_submitted_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="${3:-claude}"
+    local action_label="${4:-bootstrap submit confirm}"
+    local screen_content=""
+    local attempt
+    local max_wait="${MAS_BOOTSTRAP_SUBMIT_CONFIRM_WAIT:-10}"
+
+    if [ "$cli_type" = "codex" ]; then
+        confirm_codex_bootstrap_submitted_tmux "$pane_target" "$agent_id" "$action_label"
+        return $?
+    fi
+
+    if ! [[ "$max_wait" =~ ^[0-9]+$ ]] || [ "$max_wait" -lt 3 ]; then
+        max_wait=10
+    fi
+    [ "$max_wait" -le 30 ] || max_wait=30
+
+    for ((attempt=1; attempt<=max_wait; attempt++)); do
+        sleep 1
+        screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)
+        if cli_bootstrap_activity_detected_in_text "$cli_type" "$screen_content" "$agent_id"; then
+            return 0
+        fi
+        # TUIが入力をcomposerに保持している場合だけを救済する。空Enterはtaskを
+        # 実行しないため、最大2回の再確定に限定する。
+        if [ "$attempt" -eq 1 ] || [ "$attempt" -eq 3 ]; then
+            tmux_send_enter_only "$pane_target" "$action_label" || return 1
+        fi
+    done
+
+    echo "[WARN] ${action_label}: CLI did not show bootstrap activity for ${agent_id} (${pane_target}, ${cli_type})" >&2
+    return 1
+}
+
 auto_accept_antigravity_trust_prompt_tmux() {
     local pane_target="$1"
     local agent_id="$2"
     local cli_type="$3"
     local i
     local pane_text
+    local pane_path
 
     [ "$cli_type" = "antigravity" ] || return 0
 
     for i in {1..20}; do
         pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -60 || true)"
-        if echo "$pane_text" | grep -q "Do you trust this folder"; then
-            tmux_send_text_and_enter "$pane_target" "1" "Antigravity trust prompt" || return 1
+        if antigravity_workspace_trust_prompt_detected_in_text "$pane_text"; then
+            pane_path="$(tmux display-message -p -t "$pane_target" '#{pane_current_path}' 2>/dev/null || true)"
+            if ! shogunate_target_project_path_matches "$pane_path" "${SHOGUNATE_PROJECT_DIR:-}"; then
+                echo "[WARN] Antigravity trust prompt: pane path does not match the Shogunate target project (${pane_path})" >&2
+                return 1
+            fi
+            tmux_send_enter_only "$pane_target" "Antigravity trust prompt" || return 1
             log_info "  └─ ${agent_id}: Antigravity trust prompt を自動承認"
+            sleep 1
+            return 0
+        fi
+        sleep 1
+    done
+    return 0
+}
+
+auto_accept_claude_workspace_trust_prompt_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="$3"
+    local i
+    local pane_text
+    local pane_path
+
+    [ "$cli_type" = "claude" ] || return 0
+    [ "${MAS_CLAUDE_AUTO_TRUST_PROJECT:-1}" = "1" ] || return 0
+
+    for i in {1..20}; do
+        pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -100 || true)"
+        if claude_workspace_trust_prompt_detected_in_text "$pane_text"; then
+            pane_path="$(tmux display-message -p -t "$pane_target" '#{pane_current_path}' 2>/dev/null || true)"
+            if ! shogunate_target_project_path_matches "$pane_path" "${SHOGUNATE_PROJECT_DIR:-}"; then
+                echo "[WARN] Claude trust prompt: pane path does not match the Shogunate target project (${pane_path})" >&2
+                return 1
+            fi
+            # 既定選択の「Yes」へEnterだけを送る。外部CLAUDE.md import確認は
+            # 別の信頼境界なので、この関数では承認しない。
+            tmux_send_enter_only "$pane_target" "Claude workspace trust prompt" || return 1
+            log_info "  └─ ${agent_id}: Claude target project trust prompt を自動承認"
             sleep 1
             return 0
         fi
@@ -407,12 +568,22 @@ codex_auth_prompt_detected_tmux() {
     echo "$pane_text" | grep -qiE "Finish signing in via your browser|open the following link to authenticate|Sign in with ChatGPT|Sign in with Device Code|Provide your own API key|auth\\.openai\\.com/oauth/authorize|Login server error: Login cancelled|account/login/start failed|failed to start login server"
 }
 
+opencode_project_modal_detected_in_text() {
+    # acceptance 6: OpenCode idle placeholder `Ask anything... What is the tech
+    # stack of this project?` を project modal と誤認しないよう、modal 固有の
+    # 表現だけへ狭める。従来の緩い `project\?"` は idle placeholder にも一致して
+    # 自動Enter を無限ループさせた (system matrix B の原因)。
+    local text="${1:-}"
+    # 実modal は独自の見出し行で問う。正規表現は行内に固有文字列を含む時だけ一致。
+    printf '%s' "$text" | grep -qiE '^[[:space:]]*\<?[[:space:]]*What is this project\??|^[[:space:]]*\<?[[:space:]]*What is the project\??|Configure your project|Select a project'
+}
+
 opencode_project_prompt_detected_tmux() {
     local pane_target="$1"
     local pane_text
 
     pane_text="$(tmux capture-pane -p -t "$pane_target" 2>/dev/null | tail -80 || true)"
-    echo "$pane_text" | grep -qiE "What is this project\\?|What is the project\\?|project\\?\""
+    opencode_project_modal_detected_in_text "$pane_text"
 }
 
 auto_accept_opencode_project_prompt_tmux() {

@@ -5483,7 +5483,7 @@ class PackageDistributionContractTests(unittest.TestCase):
         self.assertIn(
             "!shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md",
             gitignore_source,
-        )
+)
         self.assertIn('if (command === "council")', npm_cli)
         self.assertIn("start|advance|audit|status|reopen", npm_cli)
         self.assertTrue((ROOT / "shogunate_mod/gunshi/council.py").is_file())
@@ -5493,6 +5493,69 @@ class PackageDistributionContractTests(unittest.TestCase):
                 / "shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md"
             ).is_file()
         )
+
+    def test_report_provenance_runtime_is_in_package_contract(self):
+        # Acceptance 9: the new report provenance runtime module is part of the
+        # package contract, not a stray file. Mirror the gunshi council contract
+        # pattern: manifest declares the canonical path, package json ships the
+        # runtime directory, gitignore un-ignores the new module + design doc.
+        manifest = (ROOT / "shogunate_mod" / "manifest.yaml").read_text(encoding="utf-8")
+        package_source = (
+            ROOT / "shogunate_mod" / "package" / "package.json"
+        ).read_text(encoding="utf-8")
+        package_compat = (ROOT / "package.json").read_text(encoding="utf-8")
+        gitignore_source = (
+            ROOT / "shogunate_mod" / "package" / "gitignore"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "runtime_report_provenance: shogunate_mod/runtime/report_provenance.py",
+            manifest,
+        )
+        self.assertIn(
+            "docs_report_provenance_design: shogunate_mod/docs/DESIGN_2026-07-29_REPORT_PROVENANCE.md",
+            manifest,
+        )
+        # The runtime directory is shipped as a whole (covers the new module).
+        self.assertIn('"shogunate_mod/runtime/"', package_source)
+        self.assertEqual(package_source, package_compat)
+        # gitignore un-ignores runtime *.py and the new design doc so the
+        # manifest-declared canonical sources are not dropped from packaging.
+        self.assertIn("!shogunate_mod/runtime/*.py", gitignore_source)
+        self.assertIn(
+            "!shogunate_mod/docs/DESIGN_2026-07-29_REPORT_PROVENANCE.md",
+            gitignore_source,
+        )
+        self.assertTrue(
+            (ROOT / "shogunate_mod" / "runtime" / "report_provenance.py").is_file()
+        )
+        self.assertTrue(
+            (
+                ROOT
+                / "shogunate_mod" / "docs"
+                / "DESIGN_2026-07-29_REPORT_PROVENANCE.md"
+            ).is_file()
+        )
+
+    def test_android_gradle_wrapper_uses_lf(self):
+        # Acceptance 8: android/gradlew has no CR, the leading shebang is
+        # interpretable by a Linux shell, and the executable bit is kept.
+        gradlew = ROOT / "android" / "gradlew"
+        self.assertTrue(gradlew.is_file())
+        data = gradlew.read_bytes()
+        self.assertNotIn(b"\r", data, "android/gradlew must not contain CR bytes")
+        first_line = data.split(b"\n", 1)[0]
+        self.assertTrue(
+            first_line.startswith(b"#!"),
+            f"android/gradlew shebang must lead the file, got: {first_line!r}",
+        )
+        # A Linux shell must accept the shebang interpreter path.
+        self.assertTrue(
+            first_line.decode("utf-8", "replace").startswith("#!/"),
+            "android/gradlew shebang must use an absolute interpreter path",
+        )
+        # Execute bit must be preserved (the wrapper is invoked directly).
+        self.assertTrue(gradlew.stat().st_mode & 0o100, "android/gradlew must keep the executable bit")
 
 
 if __name__ == "__main__":

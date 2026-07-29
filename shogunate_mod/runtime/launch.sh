@@ -1,4 +1,33 @@
 #!/usr/bin/env bash
+# report provenance strict marker (acceptance 4): 新runtime起動時にmarkerを作り、
+# completion relay と inbox/write.sh を fail-closed に切り替える。marker は冪等で
+# 存在判定のみ (report_provenance.enable_strict_mode 参照)。
+enable_report_provenance_strict_mode() {
+    local root="$1"
+    local helper="$root/shogunate_mod/runtime/report_provenance.py"
+    if [ ! -f "$helper" ]; then
+        echo "[ERROR] report provenance helper missing: $helper" >&2
+        return 1
+    fi
+    if ! python3 - "$helper" "$root" <<'PY'
+import sys
+from pathlib import Path
+
+helper, root = sys.argv[1:]
+sys.path.insert(0, root)
+from shogunate_mod.runtime import report_provenance as rp  # noqa: E402
+rp.enable_strict_mode(Path(root) / "queue" / "runtime")
+PY
+    then
+        echo "[ERROR] failed to enable report provenance strict mode" >&2
+        return 1
+    fi
+    if [ ! -f "$root/queue/runtime/report_provenance_required" ]; then
+        echo "[ERROR] report provenance strict marker was not created" >&2
+        return 1
+    fi
+}
+
 tmux_send_text_and_enter() {
     local pane_target="$1"
     local text="$2"
@@ -199,6 +228,13 @@ launch_all_agent_clis_tmux() {
 
     wait_for_goza_client_before_cli_launch
     initialize_role_failover_state || exit 1
+    # report provenance (acceptance 4): 新runtime起動時に strict marker を作る。
+    # marker がない既存runtime は legacy 扱いで従来挙動を保つ。これにより、更新後に
+    # 再起動したruntime から fail-closed (receipt なし完了を拒否) へ段階的に切り替わる。
+    if ! enable_report_provenance_strict_mode "$SCRIPT_DIR"; then
+        echo "[ERROR] refusing to launch without report provenance strict mode" >&2
+        exit 1
+    fi
 
     # CLI の存在チェック（Multi-CLI対応）
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
@@ -380,6 +416,7 @@ launch_all_agent_clis_tmux() {
         auto_dismiss_codex_rate_limit_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_skip_opencode_update_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_accept_antigravity_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
+        auto_accept_claude_workspace_trust_prompt_tmux "$_pane" "$_agent" "$_cli"
         auto_retry_antigravity_busy_tmux "$_pane" "$_agent" "$_cli"
         auto_skip_antigravity_feedback_prompt_tmux "$_pane" "$_agent" "$_cli"
     }

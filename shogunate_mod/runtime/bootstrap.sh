@@ -25,9 +25,10 @@ generate_bootstrap_file() {
     local bootstrap_file="$bootstrap_dir/bootstrap_${agent_id}.md"
     local pending_file="$bootstrap_dir/bootstrap_${agent_id}.pending"
     local delivered_file="$bootstrap_dir/bootstrap_${agent_id}.delivered"
+    local ready_file="$bootstrap_dir/bootstrap_${agent_id}.ready"
     local role_instruction_file=""
     local optimized_instruction_file=""
-    local lang_rule="" event_rule="" report_rule="" linkage_rule="" tone_rule="" startup_fastpath="" instruction_ref_rule=""
+    local lang_rule="" event_rule="" report_rule="" linkage_rule="" tone_rule="" startup_fastpath="" instruction_ref_rule="" ready_instruction=""
 
     if [ "$CLI_ADAPTER_LOADED" = true ]; then
         role_instruction_file="$(get_role_instruction_file "$agent_id" 2>/dev/null || true)"
@@ -55,19 +56,28 @@ generate_bootstrap_file() {
     report_rule="$(reporting_chain_directive "$agent_id")"
     tone_rule="$(role_tone_directive "$agent_id")"
     startup_fastpath="$(startup_fastpath_directive "$agent_id")"
+    ready_instruction="$(bootstrap_ready_instruction_text "$agent_id")"
     instruction_ref_rule="正本参照: project側AGENTS.md、${SCRIPT_DIR}/AGENTS.md、${SCRIPT_DIR}/${optimized_instruction_file} を役職・CLI別の正本として扱え。ただし起動直後にこれらを全文読込しない。実タスク、未読inbox、直接指示を処理する時だけ必要な最小範囲を読むこと。"
 
     local startup_msg
     if [ "$optimized_instruction_file" != "$role_instruction_file" ]; then
-        startup_msg="【初動命令】あなたは${agent_id}。作業対象projectは ${SHOGUNATE_PROJECT_DIR}、Shogunate runtime rootは ${SCRIPT_DIR} である。この初動命令を ${cli_type} 用の正本指示として即適用せよ。${instruction_ref_rule} queue/dashboard/logs は ${SCRIPT_DIR} 配下を正とする。${SCRIPT_DIR}/${role_instruction_file} との比較・diff・読み比べは不要。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、追加探索せず未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。作業対象projectは ${SHOGUNATE_PROJECT_DIR}、Shogunate runtime rootは ${SCRIPT_DIR} である。この初動命令を ${cli_type} 用の正本指示として即適用せよ。${instruction_ref_rule} queue/dashboard/logs は ${SCRIPT_DIR} 配下を正とする。${SCRIPT_DIR}/${role_instruction_file} との比較・diff・読み比べは不要。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} ${ready_instruction}"
     else
-        startup_msg="【初動命令】あなたは${agent_id}。作業対象projectは ${SHOGUNATE_PROJECT_DIR}、Shogunate runtime rootは ${SCRIPT_DIR} である。この初動命令を役割・口調・禁止事項の正本指示として即適用せよ。${instruction_ref_rule} queue/dashboard/logs は ${SCRIPT_DIR} 配下を正とする。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} 準備が整ったら 'ready:${agent_id}' を1行で送信し、追加探索せず未読inbox監視へ戻れ。"
+        startup_msg="【初動命令】あなたは${agent_id}。作業対象projectは ${SHOGUNATE_PROJECT_DIR}、Shogunate runtime rootは ${SCRIPT_DIR} である。この初動命令を役割・口調・禁止事項の正本指示として即適用せよ。${instruction_ref_rule} queue/dashboard/logs は ${SCRIPT_DIR} 配下を正とする。${lang_rule} ${tone_rule} ${event_rule} ${linkage_rule} ${report_rule} ${startup_fastpath} ${ready_instruction}"
     fi
 
     mkdir -p "$bootstrap_dir"
     echo "$startup_msg" > "$bootstrap_file"
     : > "$pending_file"
-    rm -f "$delivered_file"
+    rm -f "$delivered_file" "$ready_file"
+    clear_bootstrap_diagnostic_for_agent "$agent_id"
+}
+
+bootstrap_ready_instruction_text() {
+    local agent_id="$1"
+    # 完成形tokenを指示文へ書くと、TUIの自動折返しでtokenだけが単独行となり、
+    # モデル応答と誤認できる。構成要素だけを説明し、完成形は応答にだけ現す。
+    printf '準備が整ったら、半角英字 ready、半角コロン、役職ID %s を空白なしで連結した1行だけを返し、追加探索せず未読inbox監視へ戻れ。\n' "$agent_id"
 }
 
 bootstrap_message_text() {
@@ -88,7 +98,107 @@ bootstrap_acknowledged_tmux() {
     if [ -z "$screen_content" ]; then
         screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
     fi
-    printf '%s\n' "$screen_content" | grep -Eq "^[[:space:]]*([•●][[:space:]]*)?${ack_token}[[:space:]]*$"
+    # Grok TUIはassistant応答の右端へ時刻とscrollbarを同じ行に描画する。
+    # 指示文側には完成形tokenを書かないため、token単独またはtoken+UI装飾だけを
+    # 許可してもuser promptをackと誤認しない。
+    printf '%s\n' "$screen_content" | grep -Eq \
+        "^[[:space:]]*([•●][[:space:]]*)?${ack_token}([[:space:]]+[0-9]{1,2}:[0-9]{2}[[:space:]]*(AM|PM)?)?[[:space:]│█]*$"
+}
+
+mark_bootstrap_ready_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="${3:-unknown}"
+    local ready_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent_id}.ready"
+
+    if [ ! -f "$ready_file" ]; then
+        : > "$ready_file"
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-ready" "ready:${agent_id} acknowledged"
+    fi
+}
+
+redact_bootstrap_diagnostic_text() {
+    local screen_content="${1:-}"
+    printf '%s\n' "$screen_content" | sed -E \
+        -e 's#https?://[^[:space:]]+#[redacted-url]#g' \
+        -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+/[redacted-email]/g' \
+        -e 's/[A-Za-z0-9_=+-]{32,}/[redacted-long-token]/g'
+}
+
+clear_bootstrap_diagnostic_for_agent() {
+    local agent_id="$1"
+    local safe_agent=""
+    safe_agent="$(printf '%s' "$agent_id" | tr -c 'A-Za-z0-9_.-' '_')"
+    # role単位の生成物だけを対象とし、他roleや診断directory全体は消さない。
+    rm -f "$SCRIPT_DIR/queue/runtime/bootstrap_diagnostics/${safe_agent}.txt"
+}
+
+capture_bootstrap_diagnostic_tmux() {
+    local pane_target="$1"
+    local agent_id="$2"
+    local cli_type="${3:-unknown}"
+    local reason="${4:-not-ready}"
+    local diagnostic_dir="$SCRIPT_DIR/queue/runtime/bootstrap_diagnostics"
+    local safe_agent=""
+    local diagnostic_file=""
+    local tmp_file=""
+    local screen_content=""
+
+    safe_agent="$(printf '%s' "$agent_id" | tr -c 'A-Za-z0-9_.-' '_')"
+    mkdir -p "$diagnostic_dir"
+    diagnostic_file="$diagnostic_dir/${safe_agent}.txt"
+    tmp_file="${diagnostic_file}.tmp.$$"
+    screen_content="$(tmux capture-pane -p -t "$pane_target" -S -120 2>/dev/null || true)"
+    {
+        printf 'agent=%s\ncli=%s\npane=%s\nreason=%s\ncaptured_at=%s\n---\n' \
+            "$agent_id" "$cli_type" "$pane_target" "$reason" "$(date '+%Y-%m-%d %H:%M:%S %Z')"
+        redact_bootstrap_diagnostic_text "$screen_content"
+    } > "$tmp_file"
+    mv "$tmp_file" "$diagnostic_file"
+    append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "diagnostic-saved" "queue/runtime/bootstrap_diagnostics/${safe_agent}.txt"
+}
+
+cli_ready_screen_detected() {
+    local cli_type="${1:-}"
+    local screen_content="${2:-}"
+
+    case "$cli_type" in
+        claude)
+            printf '%s' "$screen_content" | grep -qiE 'Quick safety check: Is this a project you created or one you trust\?|Yes, I trust this folder' && return 1
+            printf '%s' "$screen_content" | grep -qiE 'Claude Code v[0-9]|manual mode on.*for shortcuts|(auto|manual) mode on.*for agents'
+            ;;
+        codex)
+            printf '%s' "$screen_content" | grep -qiE '(openai codex|/model to change|Use /skills|Tip:|Working|esc to interrupt|% left|context left)'
+            ;;
+        antigravity)
+            printf '%s' "$screen_content" | grep -qiE 'Do you trust this folder|Do you trust the contents of this project\?|Antigravity CLI requires permission to read, edit, and execute files here' && return 1
+            printf '%s' "$screen_content" | grep -qiE 'Antigravity CLI[[:space:]]+[0-9]' && \
+                printf '%s' "$screen_content" | grep -qiE '\? for shortcuts|esc to cancel|Generating\.\.\.'
+            ;;
+        grok)
+            # 起動bannerは会話後にscroll outする。Grok TUIの常設shortcut行も
+            # composer readyの証拠に含め、応答後のwake/bootstrap再送を可能にする。
+            printf '%s' "$screen_content" | grep -qiE 'Grok Build( Beta)?[[:space:]]+[0-9]|Ctrl\+x:shortcuts'
+            ;;
+        copilot)
+            printf '%s' "$screen_content" | grep -qiE 'GitHub Copilot|Copilot CLI|/model'
+            ;;
+        kimi)
+            printf '%s' "$screen_content" | grep -qiE 'Kimi|Moonshot|/model'
+            ;;
+        opencode)
+            printf '%s' "$screen_content" | grep -qiE 'OpenCode|Ask anything|ctrl\+p commands|/model|ready:'
+            ;;
+        kilo)
+            printf '%s' "$screen_content" | grep -qiE 'Kilo|/model|ready:'
+            ;;
+        localapi)
+            printf '%s' "$screen_content" | grep -qiE 'LocalAPI|ready:|\$'
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 startup_fastpath_directive() {
@@ -118,20 +228,7 @@ wait_for_cli_ready_tmux() {
     local pane_target="$1"
     local cli_type="${2:-claude}"
     local max_wait="${3:-30}"
-    local ready_pattern=""
     local i
-
-    case "$cli_type" in
-        claude)  ready_pattern='(claude code|Claude Code|╰|/model|for shortcuts)' ;;
-        codex)   ready_pattern='(openai codex|Codex|context left|/model|for shortcuts|Press Ctrl|Working|esc to interrupt|% left)' ;;
-        antigravity)  ready_pattern='(agy|antigravity|Antigravity|type your message|Working|esc to interrupt|Initializing the Agent)' ;;
-        copilot) ready_pattern='(copilot|GitHub Copilot|/model)' ;;
-        kimi)    ready_pattern='(kimi|moonshot|/model)' ;;
-        opencode) ready_pattern='(opencode|OpenCode|Ask anything|ctrl\\+p commands|/model|ready:)' ;;
-        kilo)    ready_pattern='(kilo|Kilo|/model|ready:)' ;;
-        localapi) ready_pattern='(localapi|LocalAPI|ready:|\$)' ;;
-        *)       ready_pattern='(claude|codex|antigravity|agy|copilot|kimi|opencode|kilo|localapi|ready:)' ;;
-    esac
 
     # max_wait=0 でも1回は即時チェックする（for ループでは 0<0 が偽でスキップされるため分離）
     local screen_content
@@ -151,11 +248,7 @@ wait_for_cli_ready_tmux() {
     if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
         return 2
     fi
-    if [ "$cli_type" = "codex" ]; then
-        if codex_ready_prompt_detected_tmux "$screen_content"; then
-            return 0
-        fi
-    elif echo "$screen_content" | grep -qiE "$ready_pattern"; then
+    if cli_ready_screen_detected "$cli_type" "$screen_content"; then
         return 0
     fi
 
@@ -177,11 +270,7 @@ wait_for_cli_ready_tmux() {
         if [ "$cli_type" = "codex" ] && codex_auth_prompt_detected_tmux "$pane_target"; then
             return 2
         fi
-        if [ "$cli_type" = "codex" ]; then
-            if codex_ready_prompt_detected_tmux "$screen_content"; then
-                return 0
-            fi
-        elif echo "$screen_content" | grep -qiE "$ready_pattern"; then
+        if cli_ready_screen_detected "$cli_type" "$screen_content"; then
             return 0
         fi
     done
@@ -224,6 +313,7 @@ deliver_bootstrap_tmux() {
     if bootstrap_acknowledged_tmux "$pane_target" "$agent_id" "$screen_content"; then
         rm -f "$pending_file"
         : > "$delivered_file"
+        mark_bootstrap_ready_tmux "$pane_target" "$agent_id" "$cli_type"
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "bootstrap already acknowledged in pane"
         return 0
     fi
@@ -262,9 +352,18 @@ deliver_bootstrap_tmux() {
             append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-pending" "codex ui not ready after wait; watcher retry will deliver"
             return 1
         fi
-        clear_runtime_blocker_tmux "$agent_id" "codex-auth-required" "Codex auth prompt not detected during bootstrap delivery."
-        echo "[WARN] CLI '$cli_type' not ready in '$pane_target' after ${ready_wait}s, sending bootstrap anyway" >&2
-        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-timeout" "sending bootstrap anyway after ${ready_wait}s"
+        screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+        local blocker_kind=""
+        blocker_kind="$(cli_startup_blocker_kind "$cli_type" "$screen_content")"
+        if [ -n "$blocker_kind" ]; then
+            record_runtime_blocker_tmux "$agent_id" "${cli_type}-${blocker_kind}" "CLI startup blocked before bootstrap delivery."
+            append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "$blocker_kind" "bootstrap kept pending"
+        else
+            append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "ready-timeout" "bootstrap kept pending after ${ready_wait}s"
+        fi
+        capture_bootstrap_diagnostic_tmux "$pane_target" "$agent_id" "$cli_type" "${blocker_kind:-cli-ready-timeout}"
+        echo "[WARN] CLI '$cli_type' not ready in '$pane_target' after ${ready_wait}s. Keeping bootstrap pending." >&2
+        return 1
     fi
 
     if [ ! -f "$pending_file" ]; then
@@ -278,6 +377,7 @@ deliver_bootstrap_tmux() {
     if bootstrap_acknowledged_tmux "$pane_target" "$agent_id" "$screen_content"; then
         rm -f "$pending_file"
         : > "$delivered_file"
+        mark_bootstrap_ready_tmux "$pane_target" "$agent_id" "$cli_type"
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "already-delivered" "bootstrap acknowledged during startup wait"
         return 0
     fi
@@ -294,14 +394,15 @@ deliver_bootstrap_tmux() {
         append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "text or enter send failed"
         return 1
     fi
-    if [ "$cli_type" = "codex" ] && ! confirm_codex_bootstrap_submitted_tmux "$pane_target" "$agent_id" "bootstrap delivery"; then
-        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "codex bootstrap still pending in composer"
+    if ! confirm_cli_bootstrap_submitted_tmux "$pane_target" "$agent_id" "$cli_type" "bootstrap delivery"; then
+        append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-send-failed" "CLI did not show submission activity"
+        capture_bootstrap_diagnostic_tmux "$pane_target" "$agent_id" "$cli_type" "submission-unconfirmed"
         return 1
     fi
     rm -f "$pending_file"
     : > "$delivered_file"
     clear_runtime_blocker_tmux "$agent_id" "codex-auth-required" "Codex auth prompt cleared before bootstrap delivery."
-    append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-delivered" "send-keys literal + enter"
+    append_bootstrap_status_log "$agent_id" "$cli_type" "$pane_target" "bootstrap-submitted" "send-keys accepted and CLI activity observed"
 }
 
 wait_for_bootstrap_ready_tmux() {
@@ -313,12 +414,23 @@ wait_for_bootstrap_ready_tmux() {
     local pane_target=""
     local pending_file=""
     local delivered_file=""
+    local screen_content=""
+    local blocker_kind=""
+    local _ready_cli=""
+
+    # summaryはpending file数からreadyを推測せず、この関数が実際に確認した
+    # ready:<agent> ack数を使う。MULTIAGENT_IDSにはKaroとAshigaruの双方が入る。
+    CURRENT_BOOTSTRAP_READY_COUNT=0
+    CURRENT_BOOTSTRAP_TOTAL_COUNT=0
 
     [ "${MAS_WAIT_FOR_BOOTSTRAP_READY_BEFORE_GOZA:-1}" = "1" ] || return 0
     [ "$SETUP_ONLY" = false ] || return 0
 
     local -a wait_agents=(shogun gunkan gunshi "${MULTIAGENT_IDS[@]}")
     for agent in "${wait_agents[@]}"; do
+        # pane解決に失敗したroleも総数へ含める。存在しないagentを分母から消すと、
+        # 残りだけreadyで起動完了と誤表示できてしまう。
+        total=$((total + 1))
         case "$agent" in
             shogun) pane_target="${SHOGUN_TARGET:-}" ;;
             gunkan) pane_target="${GUNKAN_TARGET:-}" ;;
@@ -328,10 +440,10 @@ wait_for_bootstrap_ready_tmux() {
         [ -n "$pane_target" ] || continue
         delivered_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.delivered"
         pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.pending"
-        total=$((total + 1))
     done
 
     [ "$total" -gt 0 ] || return 0
+    CURRENT_BOOTSTRAP_TOTAL_COUNT="$total"
 
     log_info "⏳ 初動命令の処理完了を待機中（ready:agent ${total}件）..."
     while true; do
@@ -348,8 +460,11 @@ wait_for_bootstrap_ready_tmux() {
             pending_file="$SCRIPT_DIR/queue/runtime/bootstrap_${agent}.pending"
             if bootstrap_acknowledged_tmux "$pane_target" "$agent"; then
                 ready=$((ready + 1))
+                _ready_cli=$(tmux show-options -p -t "$pane_target" -v @agent_cli 2>/dev/null || echo "unknown")
+                mark_bootstrap_ready_tmux "$pane_target" "$agent" "$_ready_cli"
             fi
         done
+        CURRENT_BOOTSTRAP_READY_COUNT="$ready"
 
         if [ "$ready" -ge "$total" ]; then
             log_success "  └─ 初動命令処理完了（${ready}/${total} ready）"
@@ -358,6 +473,21 @@ wait_for_bootstrap_ready_tmux() {
 
         if [[ "$timeout" =~ ^[0-9]+$ ]] && [ "$timeout" -gt 0 ] && [ "$waited" -ge "$timeout" ]; then
             log_info "⚠️  初動命令 ready 待機はタイムアウト（${ready}/${total} ready）。御座の間へ移動します"
+            for agent in "${wait_agents[@]}"; do
+                case "$agent" in
+                    shogun) pane_target="${SHOGUN_TARGET:-}" ;;
+                    gunkan) pane_target="${GUNKAN_TARGET:-}" ;;
+                    gunshi) pane_target="${GUNSHI_TARGET:-}" ;;
+                    *) pane_target="${AGENT_PANES[$agent]:-}" ;;
+                esac
+                [ -n "$pane_target" ] || continue
+                bootstrap_acknowledged_tmux "$pane_target" "$agent" && continue
+                _ready_cli=$(tmux show-options -p -t "$pane_target" -v @agent_cli 2>/dev/null || echo "unknown")
+                screen_content=$(tmux capture-pane -p -t "$pane_target" 2>/dev/null || true)
+                blocker_kind="$(cli_startup_blocker_kind "$_ready_cli" "$screen_content")"
+                capture_bootstrap_diagnostic_tmux "$pane_target" "$agent" "$_ready_cli" "${blocker_kind:-ready-ack-timeout}"
+                append_bootstrap_status_log "$agent" "$_ready_cli" "$pane_target" "ready-ack-timeout" "ready:${agent} not observed"
+            done
             return 0
         fi
 
@@ -465,18 +595,40 @@ run_startup_bootstrap_delivery_flow() {
 should_embed_startup_prompt_in_cli_command() {
     local cli_type="${1:-}"
     local mode
+    local default_mode
 
-    mode="$(printf '%s' "${MAS_CODEX_STARTUP_PROMPT_MODE:-argv}" | tr '[:upper:]' '[:lower:]')"
+    # CLI ごとにembed 可否と既定mode を分ける (acceptance 5)。
+    # codex/claude は起動argv へ初動命令を直接渡し、send-keys fallback は外部fileを
+    # 権威として読むよう要求しない。それ以外は従来どおり embedded しない。
+    case "$cli_type" in
+        codex)
+            default_mode="argv"
+            ;;
+        claude)
+            # acceptance 5: Claude startup command に bootstrap 本文を argv 直接渡す。
+            # これにより Claude が外部 bootstrap を prompt injection として拒否するのを
+            # 回避する (前回 system matrix B の Claude Shogun 拒否原因)。
+            default_mode="argv"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
     if [ "$cli_type" = "codex" ]; then
-        case "$mode" in
-            argv|arg|args|inline|positional)
-                return 0
-                ;;
-            *)
-                return 1
-                ;;
-        esac
+        mode="$(printf '%s' "${MAS_CODEX_STARTUP_PROMPT_MODE:-$default_mode}" | tr '[:upper:]' '[:lower:]')"
+    elif [ "$cli_type" = "claude" ]; then
+        mode="$(printf '%s' "${MAS_CLAUDE_STARTUP_PROMPT_MODE:-$default_mode}" | tr '[:upper:]' '[:lower:]')"
+    else
+        mode="$default_mode"
     fi
 
-    return 1
+    case "$mode" in
+        argv|arg|args|inline|positional)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }

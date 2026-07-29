@@ -26,6 +26,7 @@ ROOT = find_repo_root(Path(__file__).resolve())
 sys.path.insert(0, str(ROOT))
 
 from shogunate_mod.gunshi.council import (  # noqa: E402
+    CAPABILITY_CONTRACT,
     CouncilConfig,
     CouncilController,
     CouncilError,
@@ -33,8 +34,11 @@ from shogunate_mod.gunshi.council import (  # noqa: E402
     MemberProfile,
     SubprocessBackend,
     apply_session_override,
+    capability_contract_snapshot,
+    extract_council_command_claims,
     parse_council_config,
     parse_gunkan_profile,
+    unsupported_council_command_findings,
 )
 
 
@@ -250,9 +254,13 @@ def test_two_and_three_member_councils_use_the_same_protocol(
     after_second = controller.advance(f"common-{member_count}")
 
     assert [started["status"], after_first["status"], after_second["status"]] == [
-        "deliberating",
-        "deliberating",
-        "deliberating",
+        started["capability_contract"]["commands"]["start"]["to"],
+        started["capability_contract"]["commands"]["advance"]["outcomes"][
+            "unresolved_or_not_converged"
+        ]["to"],
+        started["capability_contract"]["commands"]["advance"]["outcomes"][
+            "unresolved_or_not_converged"
+        ]["to"],
     ]
     assert [started["cycle"], after_first["cycle"], after_second["cycle"]] == [0, 1, 2]
     assert after_second["plan_revision"] == 3
@@ -269,6 +277,8 @@ def test_two_and_three_member_councils_use_the_same_protocol(
         "plan",
         "transcript",
         "open_objections",
+        "resolutions",
+        "capability_contract",
         "protocol",
     }
     assert all(set(context) == expected_snapshot_keys for _, _, context in review_calls)
@@ -306,6 +316,102 @@ def test_every_member_reads_prior_cycle_shared_transcript(tmp_path: Path):
 
     # Same-cycle reviewers receive the same snapshot; neither gets ordering advantage.
     assert second_opus["transcript"] == second_sol["transcript"]
+
+
+def test_review_and_synthesis_share_open_and_resolved_objection_ledgers(
+    tmp_path: Path,
+):
+    backend = ScriptedBackend(
+        [
+            ("fable", "draft", draft_response()),
+            ("opus", "review", review_response("cycle 1 blocker", blocking=True)),
+            (
+                "fable",
+                "synthesize",
+                synthesis_response(
+                    "cycle 1 fixed",
+                    converged=False,
+                    resolutions=[
+                        {
+                            "objection_id": "obj-1-opus-1",
+                            "status": "resolved",
+                            "reason": "cycle 1で修正した",
+                        }
+                    ],
+                ),
+            ),
+            ("opus", "review", review_response("cycle 2 blocker", blocking=True)),
+            (
+                "fable",
+                "synthesize",
+                synthesis_response(
+                    "cycle 2 fixed",
+                    converged=False,
+                    resolutions=[
+                        {
+                            "objection_id": "obj-2-opus-1",
+                            "status": "resolved",
+                            "reason": "cycle 2で修正した",
+                        }
+                    ],
+                ),
+            ),
+        ]
+    )
+    controller = CouncilController(tmp_path, backend)
+    controller.start("council-resolution-ledger", "r4再掲を防ぐ", config(2))
+    controller.advance("council-resolution-ledger")
+    final_state = controller.advance("council-resolution-ledger")
+
+    cycle_2_review = backend.calls[3][2]
+    cycle_2_synthesis = backend.calls[4][2]
+    expected_resolved = [
+        {
+            "objection_id": "obj-1-opus-1",
+            "status": "resolved",
+            "reason": "cycle 1で修正した",
+            "cycle": 1,
+        }
+    ]
+    assert cycle_2_review["resolutions"] == expected_resolved
+    assert cycle_2_synthesis["resolutions"] == expected_resolved
+    assert cycle_2_review["open_objections"] == []
+    assert [item["id"] for item in cycle_2_synthesis["open_objections"]] == [
+        "obj-2-opus-1"
+    ]
+    resolved_ids = {
+        item["objection_id"] for item in cycle_2_synthesis["resolutions"]
+    }
+    open_ids = {item["id"] for item in cycle_2_synthesis["open_objections"]}
+    assert resolved_ids.isdisjoint(open_ids)
+    assert "reference only IDs currently listed in open_objections" in cycle_2_synthesis[
+        "protocol"
+    ]
+    assert "Never reference an ID already listed in resolutions" in cycle_2_review[
+        "protocol"
+    ]
+    assert [item["objection_id"] for item in final_state["resolutions"]] == [
+        "obj-1-opus-1",
+        "obj-2-opus-1",
+    ]
+
+    # r4 failed after the representative repeated resolved obj-3-grok-1 while
+    # no objections were open. The context must keep those ledgers separate.
+    r4_state = copy.deepcopy(final_state)
+    r4_state["open_objections"] = []
+    r4_state["resolutions"] = [
+        {
+            "objection_id": "obj-3-grok-1",
+            "status": "resolved",
+            "reason": "Step 5.5を追加した",
+            "cycle": 3,
+        }
+    ]
+    detached = controller._context_snapshot(r4_state, 4)
+    assert detached["open_objections"] == []
+    assert detached["resolutions"][0]["objection_id"] == "obj-3-grok-1"
+    detached["resolutions"][0]["reason"] = "tampered context"
+    assert r4_state["resolutions"][0]["reason"] == "Step 5.5を追加した"
 
 
 def test_closing_proposal_requires_a_final_objection_cycle(tmp_path: Path):
@@ -401,7 +507,11 @@ def test_failed_gunkan_audit_returns_plan_to_deliberation(tmp_path: Path):
     state = controller.audit(
         "council-audit-fail", MemberProfile("gunkan", "codex", "")
     )
-    assert state["status"] == "deliberating"
+    contract = state["capability_contract"]
+    fail_outcome = contract["commands"]["audit"]["outcomes"]["fail"]
+    assert state["status"] == fail_outcome["to"]
+    assert fail_outcome["creates"] == []
+    assert contract["artifacts"]["lifecycle"]["audit_fail"]["creates"] == []
     assert state["audits"][0]["verdict"] == "fail"
     assert state["open_objections"][-1] == {
         "id": "obj-audit-1-1",
@@ -816,3 +926,543 @@ def test_grok_backend_uses_strict_text_fallback_when_structured_output_is_null(
         {"transcript": []},
     )
     assert result["message"] == "fallback review"
+
+
+def test_capability_contract_content_is_exact():
+    contract = capability_contract_snapshot()
+    assert contract == {
+        "schema_version": 2,
+        "supported_commands": ["start", "advance", "audit", "status", "reopen"],
+        "commands": {
+            "start": {"from": ["absent"], "to": "deliberating"},
+            "advance": {
+                "from": ["deliberating", "closing"],
+                "outcomes": {
+                    "unresolved_or_not_converged": {
+                        "to": "deliberating",
+                        "when": {
+                            "any": [
+                                {"converged": False},
+                                {"blocking_objections": "present"},
+                                {"unresolved": "present"},
+                            ]
+                        },
+                    },
+                    "converged_candidate": {
+                        "to": "closing",
+                        "when": {
+                            "all": [
+                                {"converged": True},
+                                {"blocking_objections": "none"},
+                                {"unresolved": "none"},
+                                {
+                                    "any": [
+                                        {"prior_status": "deliberating"},
+                                        {"new_blocking_raised": True},
+                                        {"plan_unchanged": False},
+                                    ]
+                                },
+                            ]
+                        },
+                    },
+                    "unchanged_final_candidate_without_blockers": {
+                        "to": "awaiting_audit",
+                        "when": {
+                            "all": [
+                                {"prior_status": "closing"},
+                                {"converged": True},
+                                {"blocking_objections": "none"},
+                                {"unresolved": "none"},
+                                {"new_blocking_raised": False},
+                                {"plan_unchanged": True},
+                            ]
+                        },
+                    },
+                },
+            },
+            "audit": {
+                "from": ["awaiting_audit"],
+                "outcomes": {
+                    "pass": {
+                        "to": "dissolved",
+                        "creates": ["plan.md", "handoff.yaml"],
+                    },
+                    "fail": {"to": "deliberating", "creates": []},
+                },
+            },
+            "status": {
+                "from": [
+                    "deliberating",
+                    "closing",
+                    "awaiting_audit",
+                    "dissolved",
+                ],
+                "mutation": False,
+            },
+            "reopen": {"from": ["dissolved"], "to": "deliberating"},
+        },
+        "states": ["deliberating", "closing", "awaiting_audit", "dissolved"],
+        "artifacts": {
+            "always": ["state.yaml", "brief.txt"],
+            "after_gunkan_pass": ["plan.md", "handoff.yaml"],
+            "lifecycle": {
+                "audit_pass": {"creates": ["plan.md", "handoff.yaml"]},
+                "audit_fail": {"creates": []},
+                "reopen": {
+                    "retains": ["plan.md", "handoff.yaml"],
+                    "clears_state_fields": ["handoff_path"],
+                },
+            },
+        },
+        "handoff": {
+            "auto_dispatch": False,
+            "next_owner": "gunshi",
+            "dispatch_owner": "karo",
+            "implementation_owner": "ashigaru",
+            "auto_queue": False,
+        },
+    }
+    # Snapshot is a deep copy so callers cannot mutate the module constant.
+    contract["supported_commands"].append("end")
+    assert "end" not in CAPABILITY_CONTRACT["supported_commands"]
+
+
+def test_contract_matches_pass_status_reopen_and_artifact_lifecycle(tmp_path: Path):
+    backend = ScriptedBackend(
+        [
+            ("fable", "draft", draft_response()),
+            ("opus", "review", review_response("異議なし")),
+            ("sol", "review", review_response("異議なし")),
+            ("fable", "synthesize", synthesis_response("candidate", converged=True)),
+            ("opus", "review", review_response("最終案に異議なし")),
+            ("sol", "review", review_response("最終案に異議なし")),
+            ("fable", "synthesize", synthesis_response("candidate", converged=True)),
+            ("gunkan", "audit", audit_response()),
+        ]
+    )
+    controller = CouncilController(tmp_path, backend)
+    council_id = "council-contract-lifecycle"
+    directory = tmp_path / "queue/council" / council_id
+
+    started = controller.start(council_id, "遷移契約を確認する", config())
+    contract = started["capability_contract"]
+    assert started["status"] == contract["commands"]["start"]["to"]
+    assert all(
+        (directory / name).is_file() for name in contract["artifacts"]["always"]
+    )
+
+    closing = controller.advance(council_id)
+    assert closing["status"] == contract["commands"]["advance"]["outcomes"][
+        "converged_candidate"
+    ]["to"]
+    ready = controller.advance(council_id)
+    assert ready["status"] == contract["commands"]["advance"]["outcomes"][
+        "unchanged_final_candidate_without_blockers"
+    ]["to"]
+
+    state_path = directory / "state.yaml"
+    before_status = state_path.read_bytes()
+    assert controller.status(council_id) == ready
+    assert state_path.read_bytes() == before_status
+    assert contract["commands"]["status"]["mutation"] is False
+
+    dissolved = controller.audit(council_id, MemberProfile("gunkan", "codex", ""))
+    pass_outcome = contract["commands"]["audit"]["outcomes"]["pass"]
+    assert dissolved["status"] == pass_outcome["to"]
+    assert all((directory / name).is_file() for name in pass_outcome["creates"])
+
+    reopened = controller.reopen(council_id)
+    assert reopened["status"] == contract["commands"]["reopen"]["to"]
+    reopen_lifecycle = contract["artifacts"]["lifecycle"]["reopen"]
+    assert all((directory / name).is_file() for name in reopen_lifecycle["retains"])
+    assert all(
+        reopened[field] is None
+        for field in reopen_lifecycle["clears_state_fields"]
+    )
+
+
+def test_extract_council_command_claims_is_narrow():
+    claims = extract_council_command_claims(
+        {
+            "objective": "Use shogunate council advance after review.",
+            "scope": ["mentioning end without command prefix is fine"],
+            "steps": [
+                "Run `council end --id x` and then `council handoff`.",
+                "Also try council objection create then execute council plan update.",
+                "`council status` and ordinary council lifecycle prose are different.",
+            ],
+            "validation": ["`council audit` when ready"],
+            "stop_conditions": ["no NLP: do not invent end semantics"],
+            "reconvene_conditions": ["Execute council dissolve if requested"],
+        }
+    )
+    assert claims == [
+        "advance",
+        "end",
+        "handoff",
+        "objection create",
+        "plan update",
+        "status",
+        "audit",
+        "dissolve",
+    ]
+    # Identifier substrings must not produce claims (e.g. precouncil end).
+    assert (
+        extract_council_command_claims(
+            {
+                "objective": "precouncil end is an identifier, not a command",
+                "scope": ["mycouncil handoff stays prose"],
+                "steps": ["call precouncil end now"],
+                "validation": ["x"],
+                "stop_conditions": ["x"],
+                "reconvene_conditions": ["x"],
+            }
+        )
+        == []
+    )
+
+
+def test_live_e2e_r3_council_noun_phrases_are_not_command_claims():
+    # Regression from live-e2e-4cli-20260728-r3: these are ordinary English
+    # noun phrases, not requests to execute council subcommands.
+    r3_plan = {
+        "objective": "Council system coverage for four CLIs.",
+        "scope": ["Council lifecycle coverage."],
+        "steps": [
+            "Council cycles share transcripts.",
+        ],
+        "validation": ["Council state transitions match the contract."],
+        "stop_conditions": ["Council dissolution stays audit-gated."],
+        "reconvene_conditions": [
+            "Council prior behavior changed.",
+            "Council to deliberating behavior changed.",
+        ],
+    }
+    assert extract_council_command_claims(r3_plan) == []
+    assert unsupported_council_command_findings(
+        r3_plan, capability_contract_snapshot()
+    ) == []
+
+
+def test_explicit_known_unsupported_claims_stay_detectable():
+    findings = unsupported_council_command_findings(
+        {
+            "objective": "x",
+            "scope": ["x"],
+            "steps": [
+                "`council end --id x`",
+                "Run council handoff.",
+                "Execute council objection create.",
+                "Call council objection resolve.",
+                "Use council plan update.",
+                "shogunate council advance --id x",
+            ],
+            "validation": ["x"],
+            "stop_conditions": ["x"],
+            "reconvene_conditions": ["x"],
+        },
+        capability_contract_snapshot(),
+    )
+    assert findings == [
+        "unsupported council command: end",
+        "unsupported council command: handoff",
+        "unsupported council command: objection create",
+        "unsupported council command: objection resolve",
+        "unsupported council command: plan update",
+    ]
+
+
+def test_draft_review_synthesis_and_audit_share_capability_snapshot(tmp_path: Path):
+    backend = ScriptedBackend(
+        [
+            ("fable", "draft", draft_response()),
+            ("opus", "review", review_response("異議なし")),
+            ("sol", "review", review_response("異議なし")),
+            ("fable", "synthesize", synthesis_response("candidate", converged=True)),
+            ("opus", "review", review_response("最終案に異議なし")),
+            ("sol", "review", review_response("最終案に異議なし")),
+            ("fable", "synthesize", synthesis_response("candidate", converged=True)),
+            ("gunkan", "audit", audit_response()),
+        ]
+    )
+    controller = CouncilController(tmp_path, backend)
+    started = controller.start("council-contract-ctx", "契約を共有する", config())
+    assert started["capability_contract"] == capability_contract_snapshot()
+    assert controller.advance("council-contract-ctx")["status"] == "closing"
+    assert controller.advance("council-contract-ctx")["status"] == "awaiting_audit"
+    controller.audit("council-contract-ctx", MemberProfile("gunkan", "codex", ""))
+
+    snapshots = [call[2]["capability_contract"] for call in backend.calls]
+    assert len(snapshots) == 8
+    assert all(item == capability_contract_snapshot() for item in snapshots)
+    assert all("capability_contract" in call[2] for call in backend.calls)
+    assert all("trusted authority" in call[2]["protocol"] for call in backend.calls)
+
+
+def test_live_e2e_unsupported_council_commands_become_controller_blockers(
+    tmp_path: Path,
+):
+    # Regression from live-e2e-4cli-20260728-r1 invented subcommands.
+    bad_plan = plan("fictional-commands")
+    bad_plan["steps"] = [
+        "Run `council end --id live-e2e-4cli-20260728-r1`.",
+        "Then `council handoff --id live-e2e-4cli-20260728-r1`.",
+        "Register with `council objection create` and `council objection resolve`.",
+        "Sync with `council plan update --id live-e2e-4cli-20260728-r1`.",
+    ]
+    backend = ScriptedBackend(
+        [
+            (
+                "fable",
+                "draft",
+                {
+                    **draft_response(),
+                    "plan": bad_plan,
+                    "unresolved": [],
+                },
+            ),
+            ("opus", "review", review_response("異議なし")),
+            ("sol", "review", review_response("異議なし")),
+            (
+                "fable",
+                "synthesize",
+                {
+                    **synthesis_response("still-bad", converged=True),
+                    "plan": bad_plan,
+                },
+            ),
+        ]
+    )
+    controller = CouncilController(tmp_path, backend)
+    started = controller.start("council-fictional", "架空commandを止める", config())
+    assert started["status"] == "deliberating"
+    controller_blockers = [
+        item
+        for item in started["open_objections"]
+        if item["speaker"] == "controller" and item["blocking"]
+    ]
+    summaries = {item["summary"] for item in controller_blockers}
+    assert "unsupported council command: end" in summaries
+    assert "unsupported council command: handoff" in summaries
+    assert "unsupported council command: objection create" in summaries
+    assert "unsupported council command: objection resolve" in summaries
+    assert "unsupported council command: plan update" in summaries
+    assert any(
+        entry["speaker"] == "controller" and entry["kind"] == "objection"
+        for entry in started["transcript"]
+    )
+
+    advanced = controller.advance("council-fictional")
+    assert advanced["status"] == "deliberating"
+    assert advanced["status"] != "closing"
+    assert advanced["status"] != "awaiting_audit"
+    cycle_blockers = [
+        item
+        for item in advanced["open_objections"]
+        if item["speaker"] == "controller" and item["cycle"] == 1
+    ]
+    assert cycle_blockers
+    assert all(item["id"].startswith("obj-controller-1-") for item in cycle_blockers)
+    assert all(
+        not item["id"].startswith("obj-1-controller-") for item in cycle_blockers
+    )
+
+
+def test_supported_commands_only_plan_can_reach_awaiting_audit(tmp_path: Path):
+    good_plan = plan("supported-only")
+    good_plan["steps"] = [
+        "Use council advance after each review cycle.",
+        "`council status --id x` inspects progress.",
+        "Request shogunate council audit only after awaiting_audit.",
+        "If needed, execute council reopen after dissolve.",
+        "Execute council start for a new session.",
+    ]
+    backend = ScriptedBackend(
+        [
+            (
+                "fable",
+                "draft",
+                {**draft_response(), "plan": good_plan, "unresolved": []},
+            ),
+            ("opus", "review", review_response("異議なし")),
+            ("sol", "review", review_response("異議なし")),
+            (
+                "fable",
+                "synthesize",
+                {
+                    **synthesis_response("supported-only", converged=True),
+                    "plan": good_plan,
+                },
+            ),
+            ("opus", "review", review_response("最終案に異議なし")),
+            ("sol", "review", review_response("最終案に異議なし")),
+            (
+                "fable",
+                "synthesize",
+                {
+                    **synthesis_response("supported-only", converged=True),
+                    "plan": good_plan,
+                },
+            ),
+        ]
+    )
+    controller = CouncilController(tmp_path, backend)
+    started = controller.start("council-supported", "正常commandのみ", config())
+    assert started["open_objections"] == []
+    assert controller.advance("council-supported")["status"] == "closing"
+    ready = controller.advance("council-supported")
+    assert ready["status"] == "awaiting_audit"
+    assert not any(
+        item["speaker"] == "controller" for item in ready["open_objections"]
+    )
+
+
+def test_recovery_resolves_controller_blockers_after_removing_claims(tmp_path: Path):
+    bad_plan = plan("needs-cleanup")
+    bad_plan["steps"] = ["Execute council end after reviews."]
+    clean_plan = plan("cleaned")
+    clean_plan["steps"] = ["Use only council advance and council status."]
+    backend = ScriptedBackend(
+        [
+            (
+                "fable",
+                "draft",
+                {**draft_response(), "plan": bad_plan, "unresolved": []},
+            ),
+            ("opus", "review", review_response("controller blockerを確認")),
+            ("sol", "review", review_response("異議なし")),
+            (
+                "fable",
+                "synthesize",
+                {
+                    **synthesis_response("cleaned", converged=True),
+                    "plan": clean_plan,
+                    "resolutions": [
+                        {
+                            "objection_id": "obj-controller-0-1",
+                            "status": "resolved",
+                            "reason": "planから council end を除去した",
+                        }
+                    ],
+                },
+            ),
+            ("opus", "review", review_response("解決を確認")),
+            ("sol", "review", review_response("異議なし")),
+            (
+                "fable",
+                "synthesize",
+                {
+                    **synthesis_response("cleaned", converged=True),
+                    "plan": clean_plan,
+                },
+            ),
+        ]
+    )
+    controller = CouncilController(tmp_path, backend)
+    started = controller.start("council-recover", "違反を除去して復帰する", config())
+    assert any(
+        item["summary"] == "unsupported council command: end"
+        for item in started["open_objections"]
+    )
+    closing = controller.advance("council-recover")
+    assert closing["status"] == "closing"
+    assert closing["open_objections"] == []
+    ready = controller.advance("council-recover")
+    assert ready["status"] == "awaiting_audit"
+
+
+def test_controller_blocker_ids_do_not_collide_with_member_alias_controller(
+    tmp_path: Path,
+):
+    # Alias "controller" remains a valid member name; its member IDs keep the
+    # shape obj-{cycle}-{alias}-{index}. Capability blockers use a different
+    # namespace so resolution targets stay unambiguous.
+    members = {
+        "fable": MemberProfile("fable", "claude", "fable"),
+        "controller": MemberProfile("controller", "codex", "gpt-5.6-sol"),
+    }
+    council_config = CouncilConfig(members=members, representative="fable")
+    bad_plan = plan("alias-collision")
+    bad_plan["steps"] = ["Do not run council end."]
+    backend = ScriptedBackend(
+        [
+            (
+                "fable",
+                "draft",
+                {**draft_response(), "plan": plan("clean-draft"), "unresolved": []},
+            ),
+            (
+                "controller",
+                "review",
+                {
+                    "message": "member named controller objects",
+                    "objections": [
+                        {"summary": "member objection from alias controller", "blocking": True}
+                    ],
+                    "improvements": [],
+                },
+            ),
+            (
+                "fable",
+                "synthesize",
+                {
+                    **synthesis_response("with-end", converged=True),
+                    "plan": bad_plan,
+                },
+            ),
+        ]
+    )
+    controller = CouncilController(tmp_path, backend)
+    started = controller.start("council-alias-ctrl", "alias衝突を防ぐ", council_config)
+    assert started["open_objections"] == []
+    advanced = controller.advance("council-alias-ctrl")
+    member_ids = [
+        item["id"]
+        for item in advanced["open_objections"]
+        if item["speaker"] == "controller"
+        and item["summary"] == "member objection from alias controller"
+    ]
+    capability_ids = [
+        item["id"]
+        for item in advanced["open_objections"]
+        if item["summary"] == "unsupported council command: end"
+    ]
+    assert member_ids == ["obj-1-controller-1"]
+    assert capability_ids == ["obj-controller-1-1"]
+    assert member_ids[0] != capability_ids[0]
+    assert advanced["status"] == "deliberating"
+    transcript_ids = {entry["id"] for entry in advanced["transcript"]}
+    assert "msg-1-controller" in transcript_ids  # member review message id
+    assert "msg-controller-1-1" in transcript_ids  # capability blocker
+
+
+def test_legacy_state_without_capability_snapshot_stays_readable_and_advances(
+    tmp_path: Path,
+):
+    backend = ScriptedBackend(
+        [
+            ("fable", "draft", draft_response()),
+            ("opus", "review", review_response("異議なし")),
+            ("sol", "review", review_response("異議なし")),
+            ("fable", "synthesize", synthesis_response("legacy-ok", converged=False)),
+        ]
+    )
+    controller = CouncilController(tmp_path, backend)
+    controller.start("council-legacy", "旧state互換", config())
+    state_path = tmp_path / "queue/council/council-legacy/state.yaml"
+    state = yaml.safe_load(state_path.read_text(encoding="utf-8"))
+    state.pop("capability_contract")
+    state["schema_version"] = 2
+    state_path.write_text(yaml.safe_dump(state), encoding="utf-8")
+
+    # status must not rewrite missing snapshots.
+    loaded = controller.status("council-legacy")
+    assert "capability_contract" not in loaded
+    reloaded = yaml.safe_load(state_path.read_text(encoding="utf-8"))
+    assert "capability_contract" not in reloaded
+
+    advanced = controller.advance("council-legacy")
+    assert advanced["status"] == "deliberating"
+    assert advanced["capability_contract"] == capability_contract_snapshot()
+    review_context = backend.calls[1][2]
+    assert review_context["capability_contract"] == capability_contract_snapshot()

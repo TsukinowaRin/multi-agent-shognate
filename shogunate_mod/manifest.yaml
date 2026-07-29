@@ -35,6 +35,7 @@ canonical_paths:
   docs_agmsg_bridge_design: shogunate_mod/docs/AGMSG_BRIDGE_DESIGN.md
   docs_gunshi_council_design: shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md
   docs_role_failover_design: shogunate_mod/docs/DESIGN_2026-07-16_ROLE_FAILOVER.md
+  docs_report_provenance_design: shogunate_mod/docs/DESIGN_2026-07-29_REPORT_PROVENANCE.md
   docs_philosophy: shogunate_mod/docs/philosophy.md
   docs_readme: shogunate_mod/docs/README.md
   docs_readme_ja: shogunate_mod/docs/README_ja.md
@@ -111,6 +112,7 @@ canonical_paths:
   runtime_options: shogunate_mod/runtime/options.sh
   runtime_prompts: shogunate_mod/runtime/prompts.sh
   runtime_role_failover: shogunate_mod/runtime/role_failover.py
+  runtime_report_provenance: shogunate_mod/runtime/report_provenance.py
   runtime_role_failover_runner: shogunate_mod/runtime/role_failover_runner.sh
   runtime_shell_launcher: shogunate_mod/runtime/runtime_launcher.sh
   runtime_shogun_to_karo_bridge: shogunate_mod/runtime/shogun_to_karo_bridge.py

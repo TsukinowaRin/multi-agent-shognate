@@ -124,13 +124,26 @@ shogunate council --allow-paid-models start --id plan-001 --brief-file docs/brie
 shogunate council --allow-paid-models advance --id plan-001
 shogunate council --allow-paid-models audit --id plan-001
 shogunate council status --id plan-001
+shogunate council reopen --id plan-001
 ```
 
 `closing`は最終異議受付中、`awaiting_audit`はGunkan監査待ちです。監査PASS時
 だけ`plan.md`と`handoff.yaml`を作り、`dissolved`になります。引き継ぎ後は
-Gunshiが計画と品質、Karoが作業分解・割当、Ashigaruが実装を担当します。
-固定cycle数はありません。詳細は
+Gunshiが計画と品質、Karoが作業分解・割当、Ashigaruが実装を担当しますが、
+agentの自動起動やqueue自動生成はしません。controllerはcapability contractを
+各model contextへ渡します。このcontractにはcommand名だけでなく、実行できる状態、
+成功後の状態、監査結果と成果物、`reopen`後の保持条件も含まれます。
+`awaiting_audit`へ進むには、`closing`中の同じ最終案について、収束済み、blockerなし、
+未解決なし、新規blockerなしをもう一度確認する必要があります。
+`council end`や`council handoff`など未対応subcommandのclaimはblocking objectionとして
+自動で止めます。検査対象はbacktick内、`shogunate council ...`、実行を指示する
+動詞の直後にあるcommand形だけです。`council lifecycle`のような普通の名詞句は、
+plan fieldの文頭でもcommandとして扱いません。固定cycle数はありません。詳細は
 `shogunate_mod/docs/DESIGN_2026-07-25_GUNSHI_COUNCIL.md`を参照してください。
+
+各reviewと代表者のsynthesisには、現在の`open_objections`と解決済み`resolutions`を
+別々に渡します。代表者が`response.resolutions`で指定できるのは現在openなIDだけで、
+解決済みIDをもう一度指定するとcontrollerが拒否します。
 
 別 project を明示する場合:
 

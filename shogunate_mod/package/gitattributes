@@ -5,6 +5,13 @@
 *.sh text eol=lf
 *.command text eol=lf
 
+# Android Gradle wrapper has no .sh extension but must stay LF so a Linux
+# shell can interpret the shebang. Tracked separately from the export-ignore
+# block below; the file itself is excluded from release archives but kept LF
+# in the working tree / checkout for platform portability.
+android/gradlew text eol=lf
+shogunate_mod/mobile/android/gradlew text eol=lf
+
 # Shogunate package releases currently ship the tmux runtime only.
 android export-ignore
 android/** export-ignore

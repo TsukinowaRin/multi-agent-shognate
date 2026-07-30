@@ -215,7 +215,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/m
 再現性のために固定 release を入れたい場合だけ、version tag を指定します。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.13/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.13
+curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v5.2.0.14/scripts/shogunate_package_bootstrap.sh | bash -s -- --version v5.2.0.14
 ```
 
 各 GitHub Release ページには、その tag 固定の cURL も載せています。
@@ -427,6 +427,7 @@ v5.2.0.10
 v5.2.0.11
 v5.2.0.12
 v5.2.0.13
+v5.2.0.14
 ```
 
 各 release には必要に応じて以下を置きます。

@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## [5.2.0.14] - 2026-07-30
+
+### Added
+- Added leader-owned council transitions: Gunshi records one accountable leader, Gunkan audits the final plan, and approved councils hand implementation to Ashigaru.
+- Added pane-bound report receipts that tie task completion to the assigned role, runtime generation, task, parent command, CLI, and report contents.
+- Added CLI-specific bootstrap gates and diagnostics for Codex, Agy, Grok, Claude, and OpenCode.
+
+### Fixed
+- Rejected missing, stale, wrong-role, and self-agent reports before they can complete a command or pass a Gunkan audit.
+- Separated CLI launch, bootstrap submission, processing, and role-ready states so a sent prompt is not reported as a ready agent.
+- Redacted common URL, email, and token-shaped values from timeout snapshots stored for bootstrap diagnosis.
+
+### Changed
+- npm package metadata version updated to `5.2.0-14` for the `v5.2.0.14` release.
+
 ## [5.2.0.13] - 2026-07-18
 
 ### Added

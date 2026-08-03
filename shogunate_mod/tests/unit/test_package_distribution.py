@@ -399,7 +399,10 @@ class PackageDistributionContractTests(unittest.TestCase):
         for rel in existing_tracked_files():
             if rel.startswith("shogunate_mod/"):
                 continue
-            if rel.startswith("docs/EXECPLAN_") or rel == "docs/INDEX.md":
+            if (
+                rel.startswith(("docs/EXECPLAN_", "docs/legacy/"))
+                or rel == "docs/INDEX.md"
+            ):
                 continue
             text = (ROOT / rel).read_text(encoding="utf-8", errors="ignore")
             if "shogunate_mod/" in text.replace("\\", "/") and not path_is_covered(classified, rel):

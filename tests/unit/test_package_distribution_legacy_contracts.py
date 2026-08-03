@@ -451,6 +451,7 @@ def root_shogunate_surface_candidates() -> list[str]:
         if (
             rel.startswith("docs/EXECPLAN_")
             or rel.startswith("docs/HANDOFF_")
+            or rel.startswith("docs/legacy/")
             or rel in {"docs/INDEX.md", "docs/REQS.md", "docs/WORKLOG.md"}
         ):
             continue

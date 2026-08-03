@@ -62,12 +62,13 @@ plan_revision: 2
 - [x] (2026-08-03 JST) 公式AGMSG scriptで3 identityへ個別assignmentを配送し、2提案、代表者finalize、自動解散を確認。
 - [x] (2026-08-03 JST) Shogunate本体のnpm metadata、lockfile、Node CLI、npm/npx/nvm自動導入を削除し、cURL release archiveのみへ移行。
 - [x] (2026-08-03 JST) `shogunate configure`に役職ごとの人数選択を統合し、1人をsingle、2〜8人を代表者主導のデフォルトMoAとして保存。
+- [x] (2026-08-03 JST) commit `d0de4e4`のrelease archiveをcURL bootstrapでこのPCへ導入し、`help`、`configure --help`、`moa --help`とnpm資材非同梱を確認。
 
 ## 現在の停止点
 
-- 現在位置: 実装とworktree基準の検証完了。未コミット。
-- 未完了: commit後の`make package-check`と、system `sqlite3` CLIがある配布先での最終AGMSG再実行。Batsは未導入のため未実行。
-- 次の一手: 差分レビュー後にcommitし、`make package-check`を実行する。
+- 現在位置: 実装、commit後package gate、このPCへの導入が完了。origin push前。
+- 未完了: `codex/ci-green`のorigin pushと、system `sqlite3` CLIがある配布先での最終AGMSG再実行。Batsは未導入のため未実行。
+- 次の一手: 本書の導入結果をcommitし、`git push origin codex/ci-green`を実行する。
 - 次に読む文書: `docs/REQS.md`と本書の「成果と振り返り」。
 - 次に実行するコマンド: `git status --short --branch`。
 
@@ -100,7 +101,7 @@ approval: DEV-001 APPROVED user 2026-08-03 「npmは完全廃止して。もう�
 ## 成果と振り返り
 
 - 成果: 任意役職MoAの設定、一時展開、AGMSG配送、提案受理、代表者による正式確定、自動解散を実装。Shogunate本体の配布をcURL/GitHub Release archiveに一本化した。
-- 検証: package distribution 123 passed + 203 subtests、MoA/approval 31 passed、configure+MoA 18 passed、structure-check 11 passed、`shogunate configure`を含むworktree cURL install smoke PASS、security smoke PASS、template smoke exit 0、`git diff --check` PASS。先行実行でMoA単体15 passedと公式AGMSG E2EもPASS。
+- 検証: package distribution 123 passed + 203 subtests、MoA/approval 31 passed、configure+MoA 18 passed、structure-check 11 passed、`shogunate configure`を含むworktree cURL install smoke PASS、commit後`make package-check` PASS、security smoke PASS、template smoke exit 0、`git diff --check` PASS。commit `d0de4e4`を`/home/muro225/.shogunate/shogunate`へ導入し、`/home/muro225/.local/bin/shogunate`のhelp/configure/moa smokeもPASS。先行実行でMoA単体15 passedと公式AGMSG E2EもPASS。
 - 不足: Bats未導入のためBats suiteは未実行。production AGMSGが要求するsystem `sqlite3` CLIも未導入。隔離E2EではPython 3.12 SQLite互換helperを使用した。
 - 学び: 配布方式を廃止するときも、その方式に付属していた非依存の品質契約は別の配布面へ移す必要がある。
 - 目的との差分: AI CLIプロセス自体の自動起動は追加せず、AGMSGはidentity登録と起床通知に限定した。これは当初の権限境界を維持する意図的な差分である。

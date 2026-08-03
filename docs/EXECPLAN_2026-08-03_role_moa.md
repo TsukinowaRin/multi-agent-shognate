@@ -63,12 +63,13 @@ plan_revision: 2
 - [x] (2026-08-03 JST) Shogunate本体のnpm metadata、lockfile、Node CLI、npm/npx/nvm自動導入を削除し、cURL release archiveのみへ移行。
 - [x] (2026-08-03 JST) `shogunate configure`に役職ごとの人数選択を統合し、1人をsingle、2〜8人を代表者主導のデフォルトMoAとして保存。
 - [x] (2026-08-03 JST) commit `d0de4e4`のrelease archiveをcURL bootstrapでこのPCへ導入し、`help`、`configure --help`、`moa --help`とnpm資材非同梱を確認。
+- [x] (2026-08-03 JST) `codex/ci-green`をoriginへpushし、remote SHAとlocal HEADの一致を確認。
 
 ## 現在の停止点
 
-- 現在位置: 実装、commit後package gate、このPCへの導入が完了。origin push前。
-- 未完了: `codex/ci-green`のorigin pushと、system `sqlite3` CLIがある配布先での最終AGMSG再実行。Batsは未導入のため未実行。
-- 次の一手: 本書の導入結果をcommitし、`git push origin codex/ci-green`を実行する。
+- 現在位置: 実装、commit後package gate、このPCへの導入、`codex/ci-green`のpushが完了。
+- 未完了: system `sqlite3` CLIがある配布先での最終AGMSG再実行。Batsは未導入のため未実行。
+- 次の一手: このPCで`cd <project> && shogunate configure`を実行し、実際の役職構成を選ぶ。
 - 次に読む文書: `docs/REQS.md`と本書の「成果と振り返り」。
 - 次に実行するコマンド: `git status --short --branch`。
 

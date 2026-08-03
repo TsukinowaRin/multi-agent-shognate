@@ -11,7 +11,7 @@ import yaml
 
 def find_repo_root(start: Path) -> Path:
     for candidate in (start, *start.parents):
-        if (candidate / "package.json").is_file() and (candidate / "shogunate_mod" / "manifest.yaml").is_file():
+        if (candidate / "shogunate_mod" / "manifest.yaml").is_file():
             return candidate
     raise RuntimeError(f"repo root not found from {start}")
 

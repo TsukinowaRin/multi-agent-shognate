@@ -329,13 +329,18 @@ PYEOF
 
 require_curl_only_distribution() {
   python3 <<'PYEOF' || fail "Shogunate distribution must remain cURL-only"
-import json
 from pathlib import Path
 
-for package_path in (Path("package.json"), Path("shogunate_mod/package/package.json")):
-    package = json.loads(package_path.read_text(encoding="utf-8"))
-    if package.get("private") is not True:
-        raise SystemExit(f"{package_path} must set private=true to block npm publish")
+for forbidden in (
+    Path("package.json"),
+    Path("package-lock.json"),
+    Path("bin/shogunate.js"),
+    Path("shogunate_mod/package/package.json"),
+    Path("shogunate_mod/package/package-lock.json"),
+    Path("shogunate_mod/package/npm_cli.js"),
+):
+    if forbidden.exists():
+        raise SystemExit(f"obsolete npm/Node package asset must be removed: {forbidden}")
 
 for readme_path in (
     Path("README.md"),
@@ -346,6 +351,8 @@ for readme_path in (
     text = readme_path.read_text(encoding="utf-8")
     if "npx @tsukinowarin/shogunate" in text:
         raise SystemExit(f"{readme_path} must not advertise npm/npx installation")
+    if "not published as an npm package" in text or "npm packageとしては公開しません" in text:
+        raise SystemExit(f"{readme_path} must describe npm as removed, not unpublished")
 PYEOF
 }
 
@@ -365,8 +372,6 @@ if ! git check-ignore -q config/projects.yaml; then
   fail "config/projects.yaml must remain ignored (local project mappings must not be published)"
 fi
 
-require_same_file package.json shogunate_mod/package/package.json
-require_same_file package-lock.json shogunate_mod/package/package-lock.json
 require_same_file requirements.txt shogunate_mod/package/requirements.txt
 require_same_file Makefile shogunate_mod/development/Makefile
 require_same_file .gitmodules shogunate_mod/development/gitmodules

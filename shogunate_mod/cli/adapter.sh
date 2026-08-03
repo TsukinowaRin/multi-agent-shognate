@@ -1374,7 +1374,7 @@ validate_cli_availability() {
             ;;
         codex)
             _cli_adapter_find_executable codex &>/dev/null || {
-                echo "[ERROR] OpenAI Codex CLI not found. Install with: npm install -g @openai/codex" >&2
+                echo "[ERROR] OpenAI Codex CLI not found. Install Codex CLI without npm and ensure 'codex' is in PATH." >&2
                 return 1
             }
             ;;
@@ -1405,7 +1405,7 @@ validate_cli_availability() {
             ;;
         opencode)
             _cli_adapter_find_executable opencode &>/dev/null || {
-                echo "[ERROR] OpenCode CLI not found. Install with: npm install -g opencode-ai" >&2
+                echo "[ERROR] OpenCode CLI not found. Install from https://opencode.ai/docs/ and ensure 'opencode' is in PATH." >&2
                 return 1
             }
             ;;
@@ -1417,7 +1417,7 @@ validate_cli_availability() {
             ;;
         kilo)
             _cli_adapter_find_executable kilo &>/dev/null || {
-                echo "[ERROR] Kilo CLI not found. Install with: npm install -g @kilocode/cli" >&2
+                echo "[ERROR] Kilo CLI not found. Install Kilo CLI and ensure 'kilo' is in PATH." >&2
                 return 1
             }
             ;;

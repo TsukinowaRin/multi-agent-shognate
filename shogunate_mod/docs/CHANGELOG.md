@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Added
+- Added `shogunate moa` for default and task-scoped MoA profiles on any role, with required representatives, quorum, AGMSG assignment pointers, proposal provenance, and automatic dissolution.
+
+### Changed
+- `shogunate configure` now chooses each role's headcount and saves one member as `single` or two to eight members as a representative-led default MoA.
+- Removed Shogunate's npm package metadata, lockfiles, and Node-based command wrapper. The cURL bootstrap and GitHub Release archives are now the only distribution path, and first setup no longer installs or invokes npm/npx/nvm.
+
 ## [5.2.0.14] - 2026-07-30
 
 ### Added

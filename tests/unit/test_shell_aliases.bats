@@ -9,7 +9,7 @@ resolve_project_root() {
     local candidate
     candidate="$(cd "$1" && pwd)"
     while [[ "$candidate" != "/" ]]; do
-        if [[ -f "$candidate/package.json" && -f "$candidate/shogunate_mod/manifest.yaml" ]]; then
+        if [[ -f "$candidate/shogunate_mod/manifest.yaml" ]]; then
             printf '%s\n' "$candidate"
             return 0
         fi

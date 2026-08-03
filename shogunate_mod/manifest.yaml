@@ -19,6 +19,7 @@ canonical_paths:
   cli_antigravity_keyring: shogunate_mod/cli/antigravity_keyring.sh
   cli_adapter: shogunate_mod/cli/adapter.sh
   configure_agents: shogunate_mod/configure/agents.sh
+  configure_moa_template: shogunate_mod/configure/moa.yaml.sample
   configure_opencode_permissions: shogunate_mod/configure/opencode-permissions.yaml
   configure_opencode_tui: shogunate_mod/configure/opencode-tui.json
   configure_projects_template: shogunate_mod/configure/projects.yaml.sample
@@ -61,6 +62,7 @@ canonical_paths:
   instructions_source: shogunate_mod/instructions/source/
   localapi_repl: shogunate_mod/localapi/repl.py
   macos_runtime_launcher: shogunate_mod/macos/runtime_launcher.command
+  moa_role_runtime: shogunate_mod/moa/
   mobile_android: shogunate_mod/mobile/android/
   ntfy_auth: shogunate_mod/notify/ntfy_auth.sh
   ntfy_auth_sample: shogunate_mod/notify/ntfy_auth.env.sample
@@ -71,11 +73,8 @@ canonical_paths:
   package_first_setup: shogunate_mod/package/first_setup.sh
   package_gitattributes: shogunate_mod/package/gitattributes
   package_gitignore: shogunate_mod/package/gitignore
-  package_json: shogunate_mod/package/package.json
-  package_lock: shogunate_mod/package/package-lock.json
   package_memory_template: shogunate_mod/package/templates/memory/MEMORY.md.sample
   package_global_context_template: shogunate_mod/package/templates/memory/global_context.md.sample
-  package_npm_cli: shogunate_mod/package/npm_cli.js
   package_prepublish_check: shogunate_mod/package/prepublish_check.sh
   package_release_workflow: shogunate_mod/package/workflows/package-release.yml
   package_requirements: shogunate_mod/package/requirements.txt
@@ -164,7 +163,6 @@ canonical_paths:
 compatibility_wrappers:
   - first_setup.sh
   - setup.sh
-  - bin/shogunate.js
   - lib/agent_status.sh
   - lib/agent_registry.sh
   - lib/branch_policy.sh
@@ -249,7 +247,7 @@ current_core_touchpoints:
     reason: "Codex auto-load file is generated at the repository root and differs from upstream guidance."
     next_step: "Keep generated output at root, but keep generation rules and freshness checks in shogunate_mod/instructions."
   - path: README.md / README_ja.md
-    reason: "GitHub and npm display these root docs, while Shogunate package install, cURL, cwd-first, and Pair guidance is MOD-owned."
+    reason: "GitHub displays these root docs, while Shogunate cURL install, cwd-first, and Pair guidance is MOD-owned."
     next_step: "Keep root README files synchronized as compatibility copies of shogunate_mod/docs/README*.md."
   - path: CHANGELOG.md / CONTRIBUTING.md / SECURITY.md
     reason: "GitHub and package consumers read these root community docs, while Shogunate release notes, contribution rules, and security guidance are MOD-owned."
@@ -296,9 +294,9 @@ current_core_touchpoints:
   - path: .gitleaks.toml
     reason: "Secret scanning tools expect this root config path, while Shogunate-specific allowlists and custom secret rules are MOD-owned."
     next_step: "Keep root .gitleaks.toml synchronized as a compatibility copy of shogunate_mod/security/gitleaks.toml."
-  - path: package.json / package-lock.json / requirements.txt
-    reason: "Legacy Node compatibility checks and Python tooling require metadata/dependency files at the repository root, while the Shogunate package metadata source is MOD-owned. The Node metadata is private and is not a distribution channel."
-    next_step: "Keep root package.json, package-lock.json, and requirements.txt synchronized as compatibility copies of shogunate_mod/package/package*.json and shogunate_mod/package/requirements.txt; keep the metadata private and package-lock files out of runtime release archives."
+  - path: requirements.txt
+    reason: "Python tooling requires its dependency list at the repository root, while the Shogunate package dependency source is MOD-owned."
+    next_step: "Keep root requirements.txt synchronized as a compatibility copy of shogunate_mod/package/requirements.txt."
   - path: memory/ and saytask/
     reason: "User runtime state stays at the historical root paths, while first setup templates are MOD-owned."
     next_step: "Keep root sample files synchronized as compatibility copies of shogunate_mod/package/templates and keep generated private state ignored."
@@ -331,7 +329,7 @@ current_core_touchpoints:
     next_step: "Keep root templates synchronized as compatibility copies of shogunate_mod/templates/."
   - path: tests/
     reason: "Root test runners consume top-level, unit, and E2E test paths directly, while Shogunate-specific test behavior is MOD-owned."
-    next_step: "Keep root tests synchronized as compatibility copies of shogunate_mod/tests/, but keep both test trees out of runtime npm packages and release archives."
+    next_step: "Keep root tests synchronized as compatibility copies of shogunate_mod/tests/, but keep both test trees out of runtime release archives."
 target_direction:
   - "Keep upstream-like runtime entrypoints thin."
   - "Move Shogunate-only behavior into shogunate_mod/ first."

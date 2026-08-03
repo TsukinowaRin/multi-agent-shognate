@@ -87,12 +87,13 @@ shogunate                 # start runtime for the current directory
 shogunate clean           # clean start for the current directory
 shogunate resume          # resume this project's runtime state
 shogunate attach          # attach to this project's tmux session
-shogunate configure       # choose CLI per role for this project
+shogunate configure       # choose headcount, CLI, and default MoA per role
 shogunate where           # show project/runtime/engine/session paths
 shogunate projects        # list registered projects
 shogunate battlefield     # list/start/stop registered project runtimes
 shogunate app             # JSON API for mobile and desktop apps
 shogunate council         # convene a temporary Gunshi planning council
+shogunate moa             # configure or deploy any role as a representative-led MoA
 shogunate status          # show package/update metadata
 shogunate aliases         # print shell alias source command
 shogunate help            # show command help
@@ -151,6 +152,46 @@ There is no fixed cycle limit. See
 Every review and representative synthesis receives separate `open_objections`
 and resolved `resolutions` ledgers. A representative may reference only a
 currently open ID in `response.resolutions`; reusing a resolved ID is rejected.
+
+## Run Any Role as a MoA
+
+`shogunate moa` runs one role, such as Gunkan or Shogun, through several AI
+members. The role still has one external identity, and only its representative
+can finalize the official artifact.
+
+Use `shogunate configure` for the normal setup path. One person keeps the role
+in single mode; two to eight people make it a MoA. For a MoA, choose the
+representative first and then the remaining members. Shogunate generates the
+internal identity and runtime names.
+
+Automation and advanced setups can continue to use `shogunate moa configure`.
+This example makes Gunkan a three-member MoA by default. Shogunate stores the
+profile in `config/moa.yaml`.
+
+```bash
+shogunate moa configure gunkan --mode moa \
+  --member gemini=gunkan-gemini,gemini,gemini-3.1-pro,agy-gunkan-pane \
+  --member grok=gunkan-grok,grok,grok-4.5,grok-gunkan-pane \
+  --member codex=gunkan-codex,codex,gpt-5.6,codex-gunkan-pane \
+  --representative gemini \
+  --quorum 2 \
+  --decision-policy critical_veto
+
+shogunate moa agmsg-setup gunkan
+shogunate moa deploy gunkan --task-id audit-001 --brief-file docs/audit-brief.md
+```
+
+Passing the same `--member`, `--representative`, and `--quorum` options directly
+to `deploy` changes only that task. It does not rewrite the saved default.
+
+Each member reads the assignment path received through AGMSG and submits with
+the digest stored in that assignment. After quorum, the representative runs
+`shogunate moa finalize`. Shogunate saves the official artifact and receipt,
+then dissolves the MoA when `dissolve_after` is `finalized`.
+
+AGMSG carries notifications only. Tasks, proposals, and official artifacts
+remain authoritative under `queue/moa/`. `agmsg-setup` registers identities;
+it does not start AI CLI processes.
 
 Target another project explicitly:
 
@@ -233,7 +274,7 @@ Use the same installed bootstrap later:
 shogunate install --no-setup
 ```
 
-Shogunate is distributed through this cURL bootstrap and GitHub Release archives. It is not published as an npm package.
+Shogunate is distributed through this cURL bootstrap and GitHub Release archives. npm package metadata, lockfiles, and the Node-based CLI have been removed; installation and runtime do not use npm.
 
 ## What Shogunate Runs
 
@@ -286,7 +327,8 @@ The wrapper paths stay stable for existing installs and release cURL commands. N
 
 ## Role Configuration
 
-Open the role/CLI selector:
+Open the role configurator. For each role, one person means single mode and two
+or more people means a saved default MoA:
 
 ```bash
 shogunate configure

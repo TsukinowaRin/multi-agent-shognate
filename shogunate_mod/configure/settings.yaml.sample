@@ -45,6 +45,7 @@ preserve_paths:
 - .codex/
 - .shogunate/
 - .claude/
+- config/moa.yaml
 - projects/
 - context/local/
 - instructions/local/

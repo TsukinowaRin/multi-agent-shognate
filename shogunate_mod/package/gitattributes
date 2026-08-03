@@ -45,6 +45,7 @@ docs/DESIGN_2026-07-16_ROLE_FAILOVER.md export-ignore
 docs/INDEX.md export-ignore
 docs/WORKLOG.md export-ignore
 docs/EXECPLAN_* export-ignore
+docs/legacy/** export-ignore
 docs/HANDOVER_* export-ignore
 docs/HANDOFF_* export-ignore
 docs/UPSTREAM_SYNC_* export-ignore
@@ -57,8 +58,6 @@ shogunate_mod/github/FUNDING.yml export-ignore
 shogunate_mod/development/gitmodules export-ignore
 .gitignore export-ignore
 .gitattributes export-ignore
-package-lock.json export-ignore
-shogunate_mod/package/package-lock.json export-ignore
 shogunate_mod/package/workflows export-ignore
 shogunate_mod/package/workflows/** export-ignore
 shogunate_mod/package/gitattributes export-ignore

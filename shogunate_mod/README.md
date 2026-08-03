@@ -28,9 +28,10 @@ is Shogunate-only.
   launch commands, plus CLI-specific preflight helpers such as Antigravity
   keyring readiness.
 - `configure/` owns role/CLI/settings configuration, including the interactive
-  configurator used by `shogunate configure`, runtime role CLI updates, the
+  configurator used by `shogunate configure`, role headcount and default MoA
+  selection, runtime role CLI updates, the
   OS launchers for role configuration, live CLI switching, default
-  `config/settings.yaml` / `config/projects.yaml` templates, the OpenCode
+  `config/settings.yaml` / `config/projects.yaml` / `config/moa.yaml` templates, the OpenCode
   permission matrix and TUI keybinding config, OpenCode/Kilo project config
   sync, and the MOD canonical helpers `shogunate_mod/configure/agents.sh`,
   `shogunate_mod/configure/runtime_roles.py`,
@@ -49,7 +50,7 @@ is Shogunate-only.
 - `docs/` owns the public Shogunate README source for package install, cURL,
   cwd-first project runtime, Android Pair, supported CLI guidance, changelog,
   contribution rules, and security policy. Root `README.md`, `README_ja.md`,
-  `CHANGELOG.md`, `CONTRIBUTING.md`, and `SECURITY.md` remain GitHub/npm
+  `CHANGELOG.md`, `CONTRIBUTING.md`, and `SECURITY.md` remain GitHub
   compatibility copies.
 - `git/` owns Shogunate branch policy helpers used by deploy and branch
   maintenance scripts, including deploy verification, drift checks,
@@ -58,13 +59,13 @@ is Shogunate-only.
 - `github/` owns repository-level GitHub metadata that must also exist at root
   for GitHub to read it, such as funding metadata. Root `.github/FUNDING.yml`
   remains the GitHub compatibility copy.
-- `package/` owns cURL package install, first setup, private compatibility metadata,
+- `package/` owns cURL package install, first setup,
   first-run templates for `memory/` and `saytask/`, Python package
   requirements for build-time generation helpers, release archive
   `.gitattributes` rules, `.gitignore` package/source boundary rules, the
-  unpublished legacy Node wrapper, cwd-first workspace resolution, prepublish checks, GitHub
-  Actions package/test workflow sources, and the generated `shogunate`
-  command. Root `package*.json`, `requirements.txt`, `.gitattributes`,
+  cwd-first workspace resolution, prepublish checks, GitHub Actions
+  package/test workflow sources, and the generated Bash `shogunate` command.
+  Root `requirements.txt`, `.gitattributes`,
   `.gitignore`, `.github/workflows/`, `memory/MEMORY.md.sample`, and
   `saytask/streaks.yaml.sample` remain compatibility locations synchronized
   from MOD sources.
@@ -98,6 +99,8 @@ is Shogunate-only.
   the LocalAPI CLI adapter target.
 - `macos/` owns macOS Finder `.command` launchers. Root `.command` files
   remain compatibility entrypoints.
+- `moa/` owns role-scoped MoA defaults and temporary deployments, assignment
+  provenance, representative-only finalization, and AGMSG pointer delivery.
 - `mobile/android/` owns the Shogunate Android remote-control app source.
   Root `android/` remains the Android Studio / Gradle compatibility working
   tree, and Android build/cache/local APK artifacts stay outside runtime

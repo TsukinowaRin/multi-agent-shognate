@@ -177,6 +177,9 @@ Usage:
   shogunate open NAME_OR_ID  Select a registered project and resume it
   shogunate battlefield      List/start/stop registered project runtimes
   shogunate app              App-facing JSON API for hosts/projects/sessions/roles
+  shogunate council          Convene a temporary Gunshi planning council
+  shogunate moa              Configure or deploy any role as a MoA
+  shogunate approval-devices Manage app approval devices on this PC
   shogunate status          Show package update status
   shogunate aliases         Print shell alias setup command
   shogunate install [opts]  Run package bootstrap again
@@ -277,6 +280,7 @@ prepare_project_runtime() {
             --exclude '/.venv/' \
             --exclude '/config/settings.yaml' \
             --exclude '/config/projects.yaml' \
+            --exclude '/config/moa.yaml' \
             --exclude '/dashboard.md' \
             --exclude '/logs/' \
             --exclude '/queue/' \
@@ -288,6 +292,7 @@ prepare_project_runtime() {
             --exclude='./.venv' \
             --exclude='./config/settings.yaml' \
             --exclude='./config/projects.yaml' \
+            --exclude='./config/moa.yaml' \
             --exclude='./dashboard.md' \
             --exclude='./logs' \
             --exclude='./queue' \
@@ -410,6 +415,29 @@ case "\$command_name" in
         export SHOGUNATE_ENGINE_DIR="\$SHOGUNATE_INSTALL_DIR"
         export SHOGUNATE_COMMAND="\${SHOGUNATE_COMMAND:-\$0}"
         exec python3 "\$SHOGUNATE_INSTALL_DIR/shogunate_mod/battlefield/api.py" "\$@"
+        ;;
+    council)
+        shift || true
+        parse_project_args "\$@"
+        run_in_project_runtime
+        exec python3 "\$SHOGUNATE_INSTALL_DIR/shogunate_mod/gunshi/council.py" \
+            --project-root "\$SHOGUNATE_PROJECT_DIR" \
+            --runtime-root "\$SHOGUNATE_WORKSPACE_DIR" \
+            "\${RUNTIME_ARGS[@]}"
+        ;;
+    moa)
+        shift || true
+        parse_project_args "\$@"
+        run_in_project_runtime
+        exec python3 "\$SHOGUNATE_INSTALL_DIR/shogunate_mod/moa/manager.py" \
+            --project-root "\$SHOGUNATE_PROJECT_DIR" \
+            --runtime-root "\$SHOGUNATE_WORKSPACE_DIR" \
+            "\${RUNTIME_ARGS[@]}"
+        ;;
+    approval-devices|approval-device)
+        shift || true
+        cd "\$SHOGUNATE_INSTALL_DIR"
+        exec python3 -m shogunate_mod.approval.admin_cli "\$@"
         ;;
     open|use)
         shift || true

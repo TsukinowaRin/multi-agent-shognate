@@ -4,9 +4,11 @@ setup() {
   TEST_TMP="$(mktemp -d)"
   PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 
-  mkdir -p "$TEST_TMP/scripts" "$TEST_TMP/config" "$TEST_TMP/shogunate_mod/configure"
+  mkdir -p "$TEST_TMP/scripts" "$TEST_TMP/config" "$TEST_TMP/shogunate_mod/configure" "$TEST_TMP/shogunate_mod/moa"
   cp "$PROJECT_ROOT/scripts/configure_runtime_roles.py" "$TEST_TMP/scripts/configure_runtime_roles.py"
   cp "$PROJECT_ROOT/shogunate_mod/configure/runtime_roles.py" "$TEST_TMP/shogunate_mod/configure/runtime_roles.py"
+  cp "$PROJECT_ROOT/shogunate_mod/moa/__init__.py" "$TEST_TMP/shogunate_mod/moa/__init__.py"
+  cp "$PROJECT_ROOT/shogunate_mod/moa/manager.py" "$TEST_TMP/shogunate_mod/moa/manager.py"
   chmod +x "$TEST_TMP/scripts/configure_runtime_roles.py"
   chmod +x "$TEST_TMP/shogunate_mod/configure/runtime_roles.py"
 
@@ -87,12 +89,18 @@ PY
 @test "configure_runtime_roles: 対話入力でも model 入力なしで保存する" {
   run bash -lc "cd '$TEST_TMP' && printf '%s\n' \
     'codex' \
+    '1' \
     'antigravity' \
+    '1' \
     'codex' \
+    '1' \
     'opencode' \
+    '1' \
     'kilo' \
     '2' \
+    '1' \
     'claude' \
+    '1' \
     'localapi' \
     | python3 scripts/configure_runtime_roles.py >/dev/null"
   [ "$status" -eq 0 ]
@@ -118,10 +126,15 @@ PY
 @test "configure_runtime_roles: 対話プロンプトは core roles の後に足軽人数を聞く" {
   run bash -lc "cd '$TEST_TMP' && printf '%s\n' \
     'codex' \
+    '1' \
     'antigravity' \
+    '1' \
     'codex' \
+    '1' \
     'opencode' \
+    '1' \
     'kilo' \
+    '1' \
     '1' \
     'claude' \
     | python3 scripts/configure_runtime_roles.py"
@@ -132,11 +145,16 @@ import sys
 out = sys.argv[1]
 labels = [
     "cli.default を選択",
+    "shogun の担当者数",
     "shogun の CLI を選択",
+    "gunkan の担当者数",
     "gunkan の CLI を選択",
+    "karo の担当者数",
     "karo の CLI を選択",
+    "gunshi の担当者数",
     "gunshi の CLI を選択",
     "足軽人数を入力",
+    "ashigaru1 の担当者数",
     "ashigaru1 の CLI を選択",
 ]
 positions = [out.index(label) for label in labels]

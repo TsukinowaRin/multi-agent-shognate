@@ -10,7 +10,7 @@ import pytest
 
 def find_repo_root(start: Path) -> Path:
     for candidate in (start, *start.parents):
-        if (candidate / "package.json").is_file() and (candidate / "shogunate_mod" / "manifest.yaml").is_file():
+        if (candidate / "shogunate_mod" / "manifest.yaml").is_file():
             return candidate
     raise RuntimeError(f"repo root not found from {start}")
 
@@ -248,29 +248,8 @@ def test_local_admin_cli_lists_changes_and_revokes_devices(tmp_path: Path, capsy
     assert "cannot be modified" in json.loads(capsys.readouterr().err)["error"]
 
 
-def test_npm_cli_dispatches_to_local_device_management(tmp_path: Path):
-    os.chmod(tmp_path, 0o700)
-    path = tmp_path / "approval-devices.json"
-    store = RegistryFileStore(path)
-    registry = DeviceRegistry()
-    enroll(registry)
-    store.save(registry)
-
-    result = subprocess.run(
-        [
-            "node",
-            "bin/shogunate.js",
-            "approval-devices",
-            "--registry",
-            str(path),
-            "list",
-        ],
-        cwd=ROOT,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    payload = json.loads(result.stdout)
-    assert payload["devices"][0]["deviceId"] == "device-1"
+def test_curl_cli_dispatches_to_local_device_management():
+    bootstrap = (ROOT / "shogunate_mod/package/bootstrap.sh").read_text(encoding="utf-8")
+    assert "approval-devices|approval-device)" in bootstrap
+    assert "python3 -m shogunate_mod.approval.admin_cli" in bootstrap
+    assert "npm_cli.js" not in bootstrap

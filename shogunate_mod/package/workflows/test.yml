@@ -23,7 +23,7 @@ jobs:
       - name: Install bats-core (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo npm install -g bats
+          sudo apt-get install -y bats
 
       - name: Install bats-core (macOS)
         if: runner.os == 'macOS'
@@ -269,7 +269,7 @@ jobs:
           .venv/bin/pip install --quiet pyyaml
 
       - name: Install bats-core
-        run: sudo npm install -g bats
+        run: sudo apt-get install -y bats
 
       - name: Setup bats helpers
         run: |
@@ -323,7 +323,7 @@ jobs:
 
       - name: Install bats-core
         run: |
-          sudo npm install -g bats
+          sudo apt-get install -y bats
 
       - name: Setup bats helpers
         run: |

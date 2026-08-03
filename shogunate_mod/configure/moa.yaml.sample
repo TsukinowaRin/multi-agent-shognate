@@ -1,0 +1,26 @@
+schema_version: 1
+roles:
+  gunkan:
+    mode: moa
+    representative: gemini
+    members:
+      gemini:
+        agent: gunkan-gemini
+        type: gemini
+        model: gemini-3.1-pro
+        runtime: agy-gunkan-pane
+      grok:
+        agent: gunkan-grok
+        type: grok
+        model: grok-4.5
+        runtime: grok-gunkan-pane
+      codex:
+        agent: gunkan-codex
+        type: codex
+        model: gpt-5.6
+        runtime: codex-gunkan-pane
+    quorum: 2
+    decision_policy: critical_veto
+    dissolve_after: finalized
+  ashigaru1:
+    mode: single

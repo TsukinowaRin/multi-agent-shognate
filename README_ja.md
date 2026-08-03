@@ -87,12 +87,13 @@ shogunate                 # 現在の directory を対象に runtime 起動
 shogunate clean           # 現在の directory を対象に clean start
 shogunate resume          # この project の前回状態から resume
 shogunate attach          # この project の tmux session に attach
-shogunate configure       # この project の役職ごとの CLI を選ぶ
+shogunate configure       # 役職ごとの人数と CLI、デフォルトMoAを選ぶ
 shogunate where           # project/runtime/engine/session の場所を表示
 shogunate projects        # 登録済み project を一覧表示
 shogunate battlefield     # 登録済み project runtime の一覧・起動・終了
 shogunate app             # mobile / desktop app 用 JSON API
 shogunate council         # Gunshiの短命な計画会議
+shogunate moa             # 任意の役職を代表者つきMoAとして設定・展開
 shogunate status          # package/update metadata を表示
 shogunate aliases         # shell alias の source コマンドを表示
 shogunate help            # help
@@ -144,6 +145,39 @@ plan fieldの文頭でもcommandとして扱いません。固定cycle数はあ�
 各reviewと代表者のsynthesisには、現在の`open_objections`と解決済み`resolutions`を
 別々に渡します。代表者が`response.resolutions`で指定できるのは現在openなIDだけで、
 解決済みIDをもう一度指定するとcontrollerが拒否します。
+
+## 任意の役職をMoAにする
+
+`shogunate moa`は、GunkanやShogunなど1つの役職を複数のAIで動かします。
+外から見える役職は1つのままで、正式な成果物を確定できるのは代表者だけです。
+
+普段使う構成は`shogunate configure`で選べます。役職の担当者数を1人にすると通常構成、2〜8人にするとMoAになります。MoAでは代表者を先に選び、その後で残りのメンバーを選びます。内部用のIDとruntime名はShogunateが自動で作ります。
+
+自動化や詳細指定では、引き続き`shogunate moa configure`を使えます。次の例はGunkanをデフォルトで3名のMoAにします。設定は`config/moa.yaml`へ保存されます。
+
+```bash
+shogunate moa configure gunkan --mode moa \
+  --member gemini=gunkan-gemini,gemini,gemini-3.1-pro,agy-gunkan-pane \
+  --member grok=gunkan-grok,grok,grok-4.5,grok-gunkan-pane \
+  --member codex=gunkan-codex,codex,gpt-5.6,codex-gunkan-pane \
+  --representative gemini \
+  --quorum 2 \
+  --decision-policy critical_veto
+
+shogunate moa agmsg-setup gunkan
+shogunate moa deploy gunkan --task-id audit-001 --brief-file docs/audit-brief.md
+```
+
+`deploy`へ同じ`--member`、`--representative`、`--quorum`を直接渡すと、その任務だけ
+構成を変更できます。保存済みのデフォルト設定は変わりません。
+
+各メンバーはAGMSGで受け取ったassignment pathを読み、そこにあるdigestを付けて
+`shogunate moa submit`を実行します。定足数がそろった後、代表者が
+`shogunate moa finalize`を実行すると、正式成果物とreceiptが保存されます。
+`dissolve_after`が`finalized`なら、その時点でMoAは自動解散します。
+
+AGMSG本文は通知です。任務、提案、正式成果物の正本は`queue/moa/`にあります。
+`agmsg-setup`はidentityを登録しますが、AI CLIのprocess自体は起動しません。
 
 別 project を明示する場合:
 
@@ -226,7 +260,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukinowaRin/multi-agent-shognate/v
 shogunate install --no-setup
 ```
 
-Shogunate本体は、このcURL bootstrapとGitHub Release archiveだけで配布します。npm packageとしては公開しません。
+Shogunate本体は、このcURL bootstrapとGitHub Release archiveだけで配布します。npm用のpackage metadata、lockfile、Node製CLIは廃止済みで、導入と実行にnpmは使いません。
 
 ## Shogunate が動かすもの
 
@@ -279,7 +313,7 @@ stable compatibility entrypoints
 
 ## 役職と CLI の設定
 
-設定画面を開きます。
+設定画面を開きます。役職ごとに担当者数を選び、1人なら通常構成、2人以上ならMoAとして保存します。
 
 ```bash
 shogunate configure

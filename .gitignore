@@ -101,11 +101,7 @@
 
 # Development tooling
 !Makefile
-!package.json
-!package-lock.json
 !requirements.txt
-!bin/
-!bin/shogunate.js
 
 # Config (sample files only, no secrets)
 !config/
@@ -190,6 +186,9 @@
 !shogunate_mod/localapi/*.py
 !shogunate_mod/macos/
 !shogunate_mod/macos/*.command
+!shogunate_mod/moa/
+!shogunate_mod/moa/*.py
+!shogunate_mod/moa/*.md
 !shogunate_mod/mobile/
 !shogunate_mod/mobile/android/
 !shogunate_mod/mobile/android/**
@@ -255,6 +254,7 @@ shogunate_mod/mobile/android/release/*.apk
 !shogunate_mod/tests/fixtures/*.yaml
 !shogunate_mod/tests/helpers/
 !shogunate_mod/tests/helpers/*.bash
+!shogunate_mod/tests/helpers/*.py
 !shogunate_mod/tests/unit/
 !shogunate_mod/tests/unit/*.bats
 !shogunate_mod/tests/unit/*.py
@@ -403,6 +403,7 @@ queue/runtime/codd/
 !tests/*.bats
 !tests/helpers/
 !tests/helpers/*.bash
+!tests/helpers/*.py
 !tests/unit/
 !tests/unit/*.bats
 !tests/unit/*.py

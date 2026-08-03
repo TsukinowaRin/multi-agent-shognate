@@ -135,7 +135,11 @@ package-curl-smoke:
 		mkdir -p "$$home" "$$bin" "$$project" "$$tmp"; \
 		trap '\''rm -rf "$$work"'\'' EXIT; \
 		if [ -z "$${SHOGUNATE_PACKAGE_CURL_SMOKE_PACKAGE:-}" ]; then \
-			git archive --worktree-attributes --format=tar.gz --prefix=multi-agent-shognate/ HEAD -o "$$package"; \
+			index="$$work/index"; \
+			GIT_INDEX_FILE="$$index" git read-tree HEAD; \
+			GIT_INDEX_FILE="$$index" git add -A -- .; \
+			tree="$$(GIT_INDEX_FILE="$$index" git write-tree)"; \
+			git archive --worktree-attributes --format=tar.gz --prefix=multi-agent-shognate/ "$$tree" -o "$$package"; \
 		else \
 			test -f "$$package"; \
 		fi; \
@@ -149,6 +153,24 @@ package-curl-smoke:
 		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" where > "$$work/where.txt"; \
 		grep -F "Project:  $$(cd "$$project" && pwd -P)" "$$work/where.txt" >/dev/null; \
 		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" pair --help >/dev/null; \
+		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" council --help >/dev/null; \
+		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" moa --help >/dev/null; \
+		configure_log="$$work/configure.log"; \
+		if ! printf "%s\n" codex 1 codex 2 codex grok 1 codex 1 codex 1 1 codex \
+			| PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" configure >"$$configure_log" 2>&1; then \
+			cat "$$configure_log" >&2; \
+			exit 1; \
+		fi; \
+		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" moa --json show gunkan > "$$work/configure-moa-profile.json"; \
+		if ! grep -F "\"mode\": \"moa\"" "$$work/configure-moa-profile.json" >/dev/null \
+			|| ! grep -F "\"representative\": \"leader\"" "$$work/configure-moa-profile.json" >/dev/null; then \
+			cat "$$work/configure-moa-profile.json" >&2; \
+			exit 1; \
+		fi; \
+		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" moa --json configure gunkan --mode moa --member leader=gunkan-leader,codex,test-model,leader-runtime --member reviewer=gunkan-reviewer,grok,test-model,reviewer-runtime --representative leader --quorum 2 >/dev/null; \
+		PATH="$$bin:$$PATH" HOME="$$home" "$$bin/shogunate" --project "$$project" moa --json show gunkan > "$$work/moa-profile.json"; \
+		grep -F "\"mode\": \"moa\"" "$$work/moa-profile.json" >/dev/null; \
+		! find "$$prefix" -type f \( -name package.json -o -name package-lock.json -o -name npm_cli.js -o -name shogunate.js \) -print -quit | grep -q .; \
 		test -f "$$home/.shogunate/workspaces/"*/queue/runtime/target_project; \
 		echo "[PASS] package cURL smoke passed"; \
 	'
@@ -180,12 +202,10 @@ codd-gunkan:
 # Install test dependencies
 install-deps:
 	@echo "Installing test dependencies..."
-	@echo "1. Installing bats-core..."
-	@if command -v npm >/dev/null 2>&1; then \
-		npm install -g bats; \
-	else \
-		echo "ERROR: npm not found. Install Node.js first."; \
-		echo "Alternatively: brew install bats-core (Mac) or apt-get install bats (Linux)"; \
+	@echo "1. Checking bats-core..."
+	@if ! command -v bats >/dev/null 2>&1; then \
+		echo "ERROR: bats not found."; \
+		echo "Install with: apt-get install bats (Linux) or brew install bats-core (macOS)"; \
 		exit 1; \
 	fi
 	@echo "2. Setting up bats helpers..."

@@ -26,7 +26,7 @@ exit_with_error() {
 echo ""
 echo "  +============================================================+"
 echo "  |  [SHOGUN] multi-agent-shognate - Role Configurator         |"
-echo "  |      Choose CLI type per role and active ashigaru count     |"
+echo "  |      Choose role headcount, representative, and CLI         |"
 echo "  +============================================================+"
 echo ""
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-"""Configure coarse Shogunate runtime roles.
+"""Configure Shogunate role CLI types, headcount, and default MoA composition.
 
-This script intentionally edits only role CLI types and active ashigaru count.
 Model / reasoning / thinking preferences are left to each tmux pane's CLI state.
 """
 
@@ -11,6 +10,7 @@ import argparse
 import copy
 import os
 import re
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -20,8 +20,22 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from shogunate_mod.moa.manager import (  # noqa: E402
+    ALLOWED_MEMBER_TYPES,
+    MemberProfile,
+    MoaConfig,
+    MoaManager,
+    RoleProfile,
+    load_moa_config,
+    parse_role_profile,
+)
+
 DEFAULT_SETTINGS = ROOT / "config/settings.yaml"
 ALLOWED_CLIS = ("codex", "antigravity", "claude", "opencode", "kilo", "localapi", "kimi", "copilot", "cursor", "grok")
+MOA_ALLOWED_CLIS = tuple(item for item in ALLOWED_CLIS if item in ALLOWED_MEMBER_TYPES)
 LEGACY_CLI_ALIASES = {"gemini": "antigravity", "agy": "antigravity"}
 CORE_ROLES = ("shogun", "gunkan", "karo", "gunshi")
 MODEL_PREF_KEYS = ("model", "reasoning_effort", "thinking")
@@ -241,11 +255,19 @@ def current_ashigaru_count(cfg: dict[str, Any]) -> int:
     return 2
 
 
-def prompt_choice(label: str, default: str) -> str:
+def prompt_choice(
+    label: str,
+    default: str,
+    *,
+    choices: tuple[str, ...] = ALLOWED_CLIS,
+) -> str:
+    default = LEGACY_CLI_ALIASES.get(default, default)
+    if default not in choices:
+        default = "codex" if "codex" in choices else choices[0]
     while True:
         print("")
         print(label)
-        for idx, option in enumerate(ALLOWED_CLIS, start=1):
+        for idx, option in enumerate(choices, start=1):
             suffix = " [default]" if option == default else ""
             print(f"  {idx}) {option}{suffix}")
         raw = input("> ").strip()
@@ -253,10 +275,10 @@ def prompt_choice(label: str, default: str) -> str:
             return default
         if raw.isdigit():
             idx = int(raw)
-            if 1 <= idx <= len(ALLOWED_CLIS):
-                return ALLOWED_CLIS[idx - 1]
-        raw = raw.lower()
-        if raw in ALLOWED_CLIS:
+            if 1 <= idx <= len(choices):
+                return choices[idx - 1]
+        raw = LEGACY_CLI_ALIASES.get(raw.lower(), raw.lower())
+        if raw in choices:
             return raw
         print("入力エラー: CLI 種別を選択してください。")
 
@@ -270,6 +292,140 @@ def prompt_count(default: int) -> int:
         if raw.isdigit() and int(raw) >= 1:
             return int(raw)
         print("入力エラー: 足軽人数は 1以上の整数で指定してください。")
+
+
+def prompt_role_member_count(role: str, default: int) -> int:
+    while True:
+        print("")
+        raw = input(
+            f"{role} の担当者数 (1=single, 2〜8=MoA) [default: {default}]: "
+        ).strip()
+        if not raw:
+            return default
+        if raw.isdigit() and 1 <= int(raw) <= 8:
+            return int(raw)
+        print("入力エラー: 担当者数は 1〜8 で指定してください。")
+
+
+def _normalized_moa_cli(value: str) -> str:
+    normalized = LEGACY_CLI_ALIASES.get(value.strip().lower(), value.strip().lower())
+    return normalized if normalized in MOA_ALLOWED_CLIS else "codex"
+
+
+def _ordered_existing_members(profile: RoleProfile | None) -> list[MemberProfile]:
+    if profile is None or profile.mode != "moa" or profile.representative is None:
+        return []
+    representative = profile.members[profile.representative]
+    return [
+        representative,
+        *[
+            member
+            for alias, member in profile.members.items()
+            if alias != profile.representative
+        ],
+    ]
+
+
+def build_role_profile(
+    role: str,
+    member_types: list[str],
+    *,
+    existing: RoleProfile | None = None,
+) -> RoleProfile:
+    """Build one role default; the first member is always the representative."""
+    if len(member_types) == 1:
+        return RoleProfile.single()
+    if not 2 <= len(member_types) <= 8:
+        raise SystemExit(f"{role}: member count must be between 1 and 8")
+
+    previous = _ordered_existing_members(existing)
+    members: dict[str, MemberProfile] = {}
+    used_aliases: set[str] = set()
+    for index, raw_type in enumerate(member_types, start=1):
+        cli_type = _normalized_moa_cli(raw_type)
+        old = previous[index - 1] if index <= len(previous) else None
+        preferred_alias = old.alias if old else ("leader" if index == 1 else f"member{index}")
+        alias = preferred_alias
+        suffix = 2
+        while alias in used_aliases:
+            alias = f"{preferred_alias}{suffix}"
+            suffix += 1
+        used_aliases.add(alias)
+        agent = old.agent if old else f"{role}-{alias}"
+        runtime = old.runtime if old else f"{role}-{alias}"
+        old_type = _normalized_moa_cli(old.type) if old else ""
+        model = old.model if old and old_type == cli_type else ""
+        members[alias] = MemberProfile(
+            alias=alias,
+            agent=agent,
+            type=cli_type,
+            model=model,
+            runtime=runtime,
+        )
+
+    representative = next(iter(members))
+    if existing is not None and existing.mode == "moa":
+        quorum = min(max(2, existing.quorum), len(members))
+        decision_policy = existing.decision_policy
+        dissolve_after = existing.dissolve_after
+    else:
+        quorum = max(2, len(members) // 2 + 1)
+        decision_policy = "critical_veto" if role == "gunkan" else "representative"
+        dissolve_after = "finalized"
+    profile = RoleProfile(
+        mode="moa",
+        representative=representative,
+        members=members,
+        quorum=quorum,
+        decision_policy=decision_policy,
+        dissolve_after=dissolve_after,
+    )
+    return parse_role_profile(profile.to_dict(), field=f"roles.{role}")
+
+
+def prompt_role_composition(
+    role: str,
+    default_cli: str,
+    existing: RoleProfile | None,
+) -> tuple[str, RoleProfile]:
+    current_members = _ordered_existing_members(existing)
+    default_count = len(current_members) if current_members else 1
+    count = prompt_role_member_count(role, default_count)
+    if count == 1:
+        selected = prompt_choice(
+            f"{role} の CLI を選択", default_cli
+        )
+        return selected, RoleProfile.single()
+
+    print(f"\n{role} は {count}人のMoAです。まず代表者を選びます。")
+    representative_default = (
+        _normalized_moa_cli(current_members[0].type)
+        if current_members
+        else _normalized_moa_cli(default_cli)
+    )
+    member_types = [
+        prompt_choice(
+            f"{role} の代表者 CLI を選択",
+            representative_default,
+            choices=MOA_ALLOWED_CLIS,
+        )
+    ]
+    for index in range(2, count + 1):
+        member_default = (
+            _normalized_moa_cli(current_members[index - 1].type)
+            if index <= len(current_members)
+            else "codex"
+        )
+        member_types.append(
+            prompt_choice(
+                f"{role} のメンバー{index} CLI を選択",
+                member_default,
+                choices=MOA_ALLOWED_CLIS,
+            )
+        )
+    return member_types[0], build_role_profile(
+        role, member_types, existing=existing
+    )
 
 
 def ensure_cli_sections(cfg: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -356,9 +512,13 @@ def configure(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Configure only Shogunate role CLI types and active ashigaru count."
+        description="Configure Shogunate role CLI types, active ashigaru, and default MoA composition."
     )
     parser.add_argument("--settings", default=str(DEFAULT_SETTINGS), help="settings.yaml path")
+    parser.add_argument(
+        "--moa-config",
+        help="moa.yaml path (default: next to settings.yaml)",
+    )
     parser.add_argument("--default", choices=ALLOWED_CLIS, help="cli.default")
     parser.add_argument("--ashigaru-count", type=int, help="number of active ashigaru")
     parser.add_argument("--ashigaru-cli", choices=ALLOWED_CLIS, help="default CLI for unspecified ashigaru")
@@ -380,6 +540,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     settings_path = Path(args.settings)
+    moa_config_path = (
+        Path(args.moa_config)
+        if args.moa_config
+        else settings_path.with_name("moa.yaml")
+    )
     cfg = load_yaml(settings_path)
 
     provided_any = any(
@@ -401,6 +566,7 @@ def main() -> int:
 
     role_clis: dict[str, str] = {}
     role_fallbacks: dict[str, str | None] = {}
+    role_profiles: dict[str, RoleProfile] = {}
     if provided_any:
         for role in CORE_ROLES:
             value = getattr(args, role)
@@ -419,13 +585,27 @@ def main() -> int:
     else:
         print("=== Shogunate runtime role configurator ===")
         print(f"settings: {settings_path}")
+        print(f"MoA defaults: {moa_config_path}")
+        existing_moa = load_moa_config(moa_config_path)
         default_cli = prompt_choice("cli.default を選択", default_cli)
         for role in CORE_ROLES:
-            role_clis[role] = prompt_choice(f"{role} の CLI を選択", current_cli(cfg, role, default_cli))
+            role_cli, profile = prompt_role_composition(
+                role,
+                current_cli(cfg, role, default_cli),
+                existing_moa.roles.get(role),
+            )
+            role_clis[role] = role_cli
+            role_profiles[role] = profile
         ashigaru_count = prompt_count(ashigaru_count)
         for i in range(1, ashigaru_count + 1):
             role = f"ashigaru{i}"
-            role_clis[role] = prompt_choice(f"{role} の CLI を選択", current_cli(cfg, role, default_cli))
+            role_cli, profile = prompt_role_composition(
+                role,
+                current_cli(cfg, role, default_cli),
+                existing_moa.roles.get(role),
+            )
+            role_clis[role] = role_cli
+            role_profiles[role] = profile
 
     updated = configure(
         cfg,
@@ -438,9 +618,38 @@ def main() -> int:
 
     if args.dry_run:
         print(yaml.safe_dump(updated, sort_keys=False, allow_unicode=True), end="")
+        if role_profiles:
+            existing = load_moa_config(moa_config_path)
+            preview_roles = dict(existing.roles)
+            preview_roles.update(role_profiles)
+            print("---")
+            print("# config/moa.yaml")
+            print(
+                yaml.safe_dump(
+                    MoaConfig(roles=preview_roles).to_dict(),
+                    sort_keys=False,
+                    allow_unicode=True,
+                ),
+                end="",
+            )
     else:
         save_yaml(settings_path, updated)
+        if role_profiles:
+            resolved_settings = settings_path.resolve()
+            runtime_root = (
+                resolved_settings.parent.parent
+                if resolved_settings.parent.name == "config"
+                else resolved_settings.parent
+            )
+            manager = MoaManager(
+                runtime_root,
+                runtime_root,
+                config_path=moa_config_path,
+            )
+            manager.configure_many(role_profiles)
         print(f"[OK] updated {settings_path}")
+        if role_profiles:
+            print(f"[OK] updated {moa_config_path}")
         print("[OK] model/reasoning/thinking fields are left to pane-local CLI state")
     return 0
 

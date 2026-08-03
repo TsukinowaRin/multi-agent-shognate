@@ -236,76 +236,11 @@ fi
 RESULTS+=("tmux マウス設定: OK")
 
 # ============================================================
-# STEP 4: Node.js チェック
+# STEP 4: cURL-only runtime 確認
 # ============================================================
-log_step "STEP 4: Node.js チェック"
-
-if command -v node &> /dev/null; then
-    NODE_VERSION=$(node -v)
-    log_success "Node.js がインストール済みです ($NODE_VERSION)"
-
-    # バージョンチェック（18以上推奨）
-    NODE_MAJOR=$(echo $NODE_VERSION | cut -d'.' -f1 | tr -d 'v')
-    if [ "$NODE_MAJOR" -lt 18 ]; then
-        log_warn "Node.js 18以上を推奨します（現在: $NODE_VERSION）"
-        RESULTS+=("Node.js: OK (v$NODE_MAJOR - 要アップグレード推奨)")
-    else
-        RESULTS+=("Node.js: OK ($NODE_VERSION)")
-    fi
-else
-    log_warn "Node.js がインストールされていません"
-    echo ""
-
-    # nvm が既にインストール済みか確認
-    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-    if [ -s "$NVM_DIR/nvm.sh" ]; then
-        log_info "nvm が既にインストール済みです。Node.js をセットアップ中..."
-        \. "$NVM_DIR/nvm.sh"
-    else
-        # nvm 自動インストール
-        log_info "nvm をインストール中..."
-        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    fi
-
-    # nvm が利用可能なら Node.js をインストール
-    if command -v nvm &> /dev/null; then
-        log_info "Node.js 20 をインストール中..."
-        nvm install 20 || true
-        nvm use 20 || true
-
-        if command -v node &> /dev/null; then
-            NODE_VERSION=$(node -v)
-            log_success "Node.js インストール完了 ($NODE_VERSION)"
-            RESULTS+=("Node.js: インストール完了 ($NODE_VERSION)")
-        else
-            log_error "Node.js のインストールに失敗しました"
-            RESULTS+=("Node.js: インストール失敗")
-            HAS_ERROR=true
-        fi
-    elif [ "$HAS_ERROR" != true ]; then
-        log_error "nvm のインストールに失敗しました"
-        echo ""
-        echo "  手動でインストールしてください:"
-        echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash"
-        echo "    source ~/.bashrc"
-        echo "    nvm install 20"
-        echo ""
-        RESULTS+=("Node.js: 未インストール (nvm失敗)")
-        HAS_ERROR=true
-    fi
-fi
-
-# npm チェック
-if command -v npm &> /dev/null; then
-    NPM_VERSION=$(npm -v)
-    log_success "npm がインストール済みです (v$NPM_VERSION)"
-else
-    if command -v node &> /dev/null; then
-        log_warn "npm が見つかりません（Node.js と一緒にインストールされるはずです）"
-    fi
-fi
+log_step "STEP 4: cURL-only runtime 確認"
+log_success "Shogunate本体はNode.js/npmを導入・実行しません"
+RESULTS+=("cURL-only runtime: OK")
 
 # ============================================================
 # STEP 4.5: Python3 / venv / flock / file-watcher チェック
@@ -476,7 +411,7 @@ fi
 # ============================================================
 # STEP 5: Claude Code CLI チェック（ネイティブ版）
 # ※ npm版は公式非推奨（deprecated）。ネイティブ版を使用する。
-#    Node.jsはMCPサーバー（npx経由）で引き続き必要。
+#    ShogunateはNode.js/npm/npxを導入・実行しない。
 # ============================================================
 log_step "STEP 5: Claude Code CLI チェック"
 
@@ -893,16 +828,8 @@ if command -v claude &> /dev/null; then
         log_info "Memory MCP は既に設定済みです"
         RESULTS+=("Memory MCP: OK (設定済み)")
     else
-        log_info "Memory MCP を設定中..."
-        if claude mcp add memory \
-            -e MEMORY_FILE_PATH="$SCRIPT_DIR/memory/shogun_memory.jsonl" \
-            -- npx -y @modelcontextprotocol/server-memory 2>/dev/null; then
-            log_success "Memory MCP 設定完了"
-            RESULTS+=("Memory MCP: 設定完了")
-        else
-            log_warn "Memory MCP の設定に失敗しました（手動で設定可能）"
-            RESULTS+=("Memory MCP: 設定失敗 (手動設定可能)")
-        fi
+        log_warn "Memory MCP は未設定です。Shogunateからnpm/npxによる自動導入は行いません"
+        RESULTS+=("Memory MCP: 未設定 (自動導入なし)")
     fi
 else
     log_warn "claude コマンドが見つからないため Memory MCP 設定をスキップ"

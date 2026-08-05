@@ -156,8 +156,10 @@ def test_persistent_config_supports_default_moa_and_single(tmp_path: Path):
         manager.resolve_profile("ashigaru1")
 
 
-def test_deploy_writes_bound_assignments_and_sends_only_pointers(tmp_path: Path):
-    transport = RecordingTransport(failures={"gunkan-grok"})
+def test_deploy_writes_bound_assignments_and_notifies_only_the_representative(
+    tmp_path: Path,
+):
+    transport = RecordingTransport()
     manager = make_manager(tmp_path, transport)
     manager.configure("gunkan", profile())
     state = manager.deploy("gunkan", "task-42", write_brief(manager), sender="shogun")
@@ -165,13 +167,25 @@ def test_deploy_writes_bound_assignments_and_sends_only_pointers(tmp_path: Path)
     assert state["status"] == "active"
     assert state["generation"] == 1
     assert len(state["assignments"]) == 3
-    assert state["assignments"]["grok"]["delivery"]["ok"] is False
-    assert len(transport.calls) == 3
-    for sender, target, body in transport.calls:
-        assert sender == "shogun"
-        assert target.startswith("gunkan-")
-        assert "assignment pointer:" in body
-        assert "監査計画を作る" not in body
+
+    # External traffic keeps one address per role: only the representative is
+    # woken, so the existing watcher escalation ladder covers the whole role.
+    assert len(transport.calls) == 1
+    sender, target, body = transport.calls[0]
+    assert sender == "shogun"
+    assert target == "gunkan-gemini"
+    assert "assignment pointer:" in body
+    assert state["deployment_id"] in body
+    assert "監査計画を作る" not in body
+
+    assert state["assignments"]["gemini"]["delivery"]["ok"] is True
+    for alias in ("grok", "codex"):
+        # None separates "not sent yet" from "send failed"; the representative
+        # relays these through notify_members.
+        assert state["assignments"][alias]["delivery"]["ok"] is None
+        assert state["assignments"][alias]["delivery"]["detail"] == (
+            "representative-relay"
+        )
 
     assignment_path = manager.runtime_root / state["assignments"]["codex"]["path"]
     assignment = yaml.safe_load(assignment_path.read_text(encoding="utf-8"))
@@ -181,6 +195,112 @@ def test_deploy_writes_bound_assignments_and_sends_only_pointers(tmp_path: Path)
     assert assignment["brief_path"].endswith("/generation-1/brief.txt")
     assert "<assignment_digest>" in assignment["submission"]["command"]
     assert assignment["assignment_digest"] == state["assignments"]["codex"]["digest"]
+
+
+def test_deploy_records_representative_delivery_failure(tmp_path: Path):
+    transport = RecordingTransport(failures={"gunkan-gemini"})
+    manager = make_manager(tmp_path, transport)
+    manager.configure("gunkan", profile())
+    state = manager.deploy("gunkan", "task-fail", write_brief(manager), sender="shogun")
+
+    assert state["status"] == "active"
+    assert state["assignments"]["gemini"]["delivery"]["ok"] is False
+    assert state["assignments"]["gemini"]["delivery"]["detail"] == "simulated failure"
+
+
+def test_notify_members_fans_out_from_the_representative(tmp_path: Path, monkeypatch):
+    transport = RecordingTransport()
+    manager = make_manager(tmp_path, transport)
+    manager.configure("gunkan", profile())
+    state = manager.deploy("gunkan", "task-fan", write_brief(manager), sender="shogun")
+    deployment_id = state["deployment_id"]
+    transport.calls.clear()
+
+    monkeypatch.setenv("AGENT_ID", "gunkan-codex")
+    with pytest.raises(MoaError, match="only the representative"):
+        manager.notify_members("gunkan", "task-fan")
+
+    monkeypatch.setenv("AGENT_ID", "gunkan-gemini")
+    fanned = manager.notify_members("gunkan", "task-fan")
+
+    assert {target for _, target, _ in transport.calls} == {
+        "gunkan-grok",
+        "gunkan-codex",
+    }
+    for sender, _, body in transport.calls:
+        assert sender == "gunkan-gemini"
+        assert deployment_id in body
+        assert "監査計画を作る" not in body
+    for alias in ("grok", "codex"):
+        assert fanned["assignments"][alias]["delivery"]["ok"] is True
+
+
+def test_members_roster_is_published_on_deploy_and_cleared_on_dissolve(
+    tmp_path: Path,
+):
+    manager = make_manager(tmp_path)
+    manager.configure("gunkan", profile(dissolve_after="manual"))
+    manager.deploy("gunkan", "task-roster", write_brief(manager), sender="shogun")
+
+    roster = manager.runtime_root / "queue/runtime/moa_members.tsv"
+    rows = [
+        line.split("\t")
+        for line in roster.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert {row[0] for row in rows} == {
+        "gunkan-gemini",
+        "gunkan-grok",
+        "gunkan-codex",
+    }
+    assert all(row[1] == "gunkan" and row[2] == "task-roster" for row in rows)
+
+    manager.dissolve("gunkan", "task-roster")
+    # The supervisor treats an absent roster as "no MoA members", so the file
+    # is removed rather than left empty.
+    assert not roster.exists()
+
+
+def test_status_reports_inbox_read_state(tmp_path: Path):
+    manager = make_manager(tmp_path)
+    manager.configure("gunkan", profile())
+    state = manager.deploy("gunkan", "task-read", write_brief(manager), sender="shogun")
+    deployment_id = state["deployment_id"]
+
+    assert "read" not in manager.status("gunkan", "task-read")["assignments"]["gemini"][
+        "delivery"
+    ]
+
+    inbox_dir = manager.runtime_root / "queue/inbox"
+    inbox_dir.mkdir(parents=True, exist_ok=True)
+    inbox = inbox_dir / "gunkan-gemini.yaml"
+    inbox.write_text(
+        yaml.safe_dump(
+            {
+                "messages": [
+                    {
+                        "id": "msg-1",
+                        "from": "shogun",
+                        "type": "task_assigned",
+                        "content": f"pointer deployment_id={deployment_id}",
+                        "read": False,
+                    }
+                ]
+            },
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+    assert manager.status("gunkan", "task-read")["assignments"]["gemini"]["delivery"][
+        "read"
+    ] is False
+
+    data = yaml.safe_load(inbox.read_text(encoding="utf-8"))
+    data["messages"][0]["read"] = True
+    inbox.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    assert manager.status("gunkan", "task-read")["assignments"]["gemini"]["delivery"][
+        "read"
+    ] is True
 
 
 def test_temporary_profile_overrides_default_without_mutating_it(tmp_path: Path):
@@ -462,6 +582,12 @@ def test_official_agmsg_scripts_deliver_distinct_moa_assignments(
     runtime = e2e_root / "runtime"
     project.mkdir()
     runtime.mkdir()
+    # inbox is the default transport now; this case covers the AGMSG path that
+    # environments without tmux panes still depend on, so opt in explicitly.
+    (runtime / "config").mkdir()
+    (runtime / "config/settings.yaml").write_text(
+        yaml.safe_dump({"transport": {"mode": "agmsg"}}), encoding="utf-8"
+    )
     manager = MoaManager(project, runtime)
     manager.configure("gunkan", profile())
     setup = manager.agmsg_setup("gunkan")
@@ -474,6 +600,11 @@ def test_official_agmsg_scripts_deliver_distinct_moa_assignments(
         write_brief(manager, "AGMSG MoA E2E"),
         sender="shogun",
     )
+    assert state["assignments"]["gemini"]["delivery"]["ok"] is True
+
+    # deploy wakes the representative only; the rest arrive via the fan-out.
+    monkeypatch.setenv("AGENT_ID", "gunkan-gemini")
+    state = manager.notify_members("gunkan", "agmsg-e2e")
     assert all(
         item["delivery"]["ok"] for item in state["assignments"].values()
     ), state["assignments"]

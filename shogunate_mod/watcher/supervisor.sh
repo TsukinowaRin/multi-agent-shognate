@@ -147,6 +147,30 @@ refresh_karo_agents() {
     fi
 }
 
+# MoA members are temporary agents published by `shogunate moa deploy` and
+# removed on dissolve. They are not part of cli.agents, so without this roster
+# cleanup_stale_watchers would kill their watchers as unsupervised.
+refresh_moa_members() {
+    MOA_MEMBERS=()
+    [ -f "queue/runtime/moa_members.tsv" ] || return 0
+    mapfile -t MOA_MEMBERS < <(
+        awk -F '\t' 'NF>=1 && $1 != "" {print $1}' queue/runtime/moa_members.tsv \
+            | sort -u
+    )
+}
+
+agent_in_moa_members() {
+    local target="$1"
+    local a
+    # The roster is empty most of the time; guard the expansion because
+    # `set -u` treats an empty array as unbound on bash before 4.4.
+    [ "${#MOA_MEMBERS[@]}" -gt 0 ] || return 1
+    for a in "${MOA_MEMBERS[@]}"; do
+        [ "$a" = "$target" ] && return 0
+    done
+    return 1
+}
+
 agent_in_active_list() {
     local target="$1"
     local a
@@ -172,6 +196,7 @@ agent_is_supervised() {
     esac
     agent_in_active_list "$target" && return 0
     agent_in_karo_list "$target" && return 0
+    agent_in_moa_members "$target" && return 0
     return 1
 }
 
@@ -530,6 +555,7 @@ supervisor_tick() {
     local pane=""
     refresh_active_ashigaru
     refresh_karo_agents
+    refresh_moa_members
     cleanup_stale_watchers
 
     pane="$(resolve_agent_pane_target "shogun" || true)"
@@ -548,6 +574,16 @@ supervisor_tick() {
         start_watcher_if_missing "$karo_agent" "$pane" "logs/inbox_watcher_${karo_agent}.log"
     done
     for agent in "${ACTIVE_ASHIGARU[@]}"; do
+        pane="$(resolve_agent_pane_target "$agent" || true)"
+        [ -n "$pane" ] || continue
+        restart_shell_returned_codex_if_needed "$agent" "$pane"
+        start_watcher_if_missing "$agent" "$pane" "logs/inbox_watcher_${agent}.log"
+    done
+    # A rostered member without a pane is normal: the roster is published at
+    # deploy time, while the runtime brings the member up separately. Skip it
+    # this tick instead of failing the whole sweep.
+    [ "${#MOA_MEMBERS[@]}" -gt 0 ] || return 0
+    for agent in "${MOA_MEMBERS[@]}"; do
         pane="$(resolve_agent_pane_target "$agent" || true)"
         [ -n "$pane" ] || continue
         restart_shell_returned_codex_if_needed "$agent" "$pane"

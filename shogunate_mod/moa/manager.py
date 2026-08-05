@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Configure and run one Shogunate role as a temporary MoA deployment.
 
-AGMSG is intentionally only a notification transport. Assignments, proposals,
-the representative's final artifact, and provenance receipts remain under the
-Shogunate runtime root.
+The notification transport is pointer-only: the default InboxTransport goes
+through shogunate_mod/inbox/write.sh (with the watcher escalation ladder on
+top), and AGMSG stays selectable via config/settings.yaml transport.mode.
+Assignments, proposals, the representative's final artifact, and provenance
+receipts remain under the Shogunate runtime root.
 """
 
 from __future__ import annotations
@@ -62,6 +64,14 @@ AGMSG_TYPE_MAP = {
 }
 DECISION_POLICIES = frozenset({"representative", "critical_veto"})
 DISSOLVE_POLICIES = frozenset({"finalized", "manual"})
+# Existing inbox vocabulary; MoA must not invent a new message type.
+INBOX_MESSAGE_TYPE = "task_assigned"
+# Mirror of the managed-sender gate in shogunate_mod/inbox/write.sh. Keep the
+# pattern on the caller side; write.sh itself is a protected boundary.
+MANAGED_SENDER_RE = re.compile(
+    r"^(shogun|gunkan|gunshi|karo([1-9][0-9]*)?|ashigaru[1-9][0-9]*)$"
+)
+MEMBERS_TSV_NAME = "moa_members.tsv"
 
 
 class MoaError(ValueError):
@@ -431,6 +441,110 @@ class AgmsgTransport:
         return True, "sent"
 
 
+class InboxTransport:
+    """Deliver assignment pointers through shogunate_mod/inbox/write.sh.
+
+    write.sh owns the gate logic (self-send guard, generation gate, route
+    policy, report provenance). This transport never touches those rules; it
+    only supplies the preconditions write.sh expects and surfaces rejection
+    text instead of raising.
+    """
+
+    def __init__(self, runtime_root: Path) -> None:
+        self.runtime_root = runtime_root
+
+    def _failover_state_path(self) -> Path:
+        return self.runtime_root / "queue/runtime/role_failover.yaml"
+
+    def _generation_from_failover_state(self, sender: str) -> str | None:
+        try:
+            raw = yaml.safe_load(
+                self._failover_state_path().read_text(encoding="utf-8")
+            ) or {}
+        except (OSError, yaml.YAMLError):
+            return None
+        roles = raw.get("roles") if isinstance(raw, Mapping) else None
+        role_state = roles.get(sender) if isinstance(roles, Mapping) else None
+        generation = (
+            role_state.get("generation") if isinstance(role_state, Mapping) else None
+        )
+        if (
+            isinstance(generation, int)
+            and not isinstance(generation, bool)
+            and generation >= 1
+        ):
+            return str(generation)
+        return None
+
+    def send(self, sender: str, target: str, pointer: str) -> tuple[bool, str]:
+        write_script = self.runtime_root / "shogunate_mod/inbox/write.sh"
+        if not write_script.is_file():
+            return False, f"write.sh not found: {write_script}"
+        env = os.environ.copy()
+        # generation gate: when role_failover.yaml exists and the sender is a
+        # managed role, write.sh requires SHOGUNATE_ROLE_GENERATION. Prefer the
+        # caller's environment value; otherwise fill it from the sender's
+        # failover state. If neither is available, fail loudly instead of
+        # silently dropping the message.
+        if self._failover_state_path().is_file() and MANAGED_SENDER_RE.fullmatch(
+            sender
+        ):
+            if not env.get("SHOGUNATE_ROLE_GENERATION", "").strip():
+                generation = self._generation_from_failover_state(sender)
+                if generation is None:
+                    return False, "generation unavailable"
+                env["SHOGUNATE_ROLE_GENERATION"] = generation
+        try:
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(write_script),
+                    target,
+                    pointer,
+                    INBOX_MESSAGE_TYPE,
+                    sender,
+                ],
+                cwd=self.runtime_root,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return False, type(exc).__name__
+        if result.returncode:
+            lines = [
+                line.strip()
+                for line in (result.stderr or "").splitlines()
+                if line.strip()
+            ]
+            detail = lines[-1] if lines else f"write.sh exited {result.returncode}"
+            return False, detail
+        return True, "sent"
+
+
+def default_transport(runtime_root: Path) -> MoaTransport:
+    """Pick the MoA transport from config/settings.yaml transport.mode.
+
+    inbox is the default, including when the settings file or the key is
+    missing; agmsg stays available for environments without tmux panes.
+    """
+    settings = runtime_root / "config/settings.yaml"
+    if settings.is_file():
+        try:
+            raw = yaml.safe_load(settings.read_text(encoding="utf-8")) or {}
+            transport = raw.get("transport") if isinstance(raw, Mapping) else None
+            mode = transport.get("mode") if isinstance(transport, Mapping) else None
+            if isinstance(mode, str) and mode.strip().lower() == "agmsg":
+                return AgmsgTransport(runtime_root)
+        except (OSError, yaml.YAMLError):
+            pass
+    return InboxTransport(runtime_root)
+
+
 class MoaManager:
     def __init__(
         self,
@@ -451,7 +565,7 @@ class MoaManager:
             self.config_path.relative_to(self.runtime_root)
         except ValueError as exc:
             raise MoaError("MoA config must be inside the Shogunate runtime") from exc
-        self.transport = transport or AgmsgTransport(self.runtime_root)
+        self.transport = transport or default_transport(self.runtime_root)
 
     @contextmanager
     def _lock(self, role: str, task_id: str) -> Iterator[None]:
@@ -568,6 +682,91 @@ class MoaManager:
         _atomic_yaml(self._runtime_path(state_rel, field="deployment state"), state)
         state["_state_path"] = state_rel
 
+    @staticmethod
+    def _assignment_pointer(
+        assignment_rel: str,
+        *,
+        deployment_id: str,
+        role: str,
+        task_id: str,
+        generation: int,
+    ) -> str:
+        # deployment_id must stay inside the pointer text: status() matches
+        # inbox messages against it to derive the read flag.
+        return (
+            f"[shogunate moa] assignment pointer: {assignment_rel} "
+            f"deployment_id={deployment_id} role={role} task={task_id} "
+            f"generation={generation}. "
+            "Read Shogunate YAML; message body is not authority."
+        )
+
+    def _members_tsv_path(self) -> Path:
+        return self.runtime_root / "queue/runtime" / MEMBERS_TSV_NAME
+
+    @contextmanager
+    def _members_lock(self) -> Iterator[None]:
+        # Deployment locks are per (role, task_id); the shared roster file
+        # needs its own lock so concurrent deployments do not tear rows.
+        lock_path = self._members_tsv_path().with_suffix(".tsv.lock")
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with lock_path.open("a+", encoding="utf-8") as stream:
+            if fcntl is not None:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                if fcntl is not None:
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+    def _read_members_rows(self) -> list[list[str]]:
+        path = self._members_tsv_path()
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            return []
+        rows: list[list[str]] = []
+        for line in text.splitlines():
+            if line.strip():
+                rows.append(line.split("\t"))
+        return rows
+
+    def _write_members_rows(self, rows: list[list[str]]) -> None:
+        path = self._members_tsv_path()
+        if not rows:
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+            return
+        _atomic_text(path, "".join("\t".join(row) + "\n" for row in rows))
+
+    @staticmethod
+    def _row_matches_deployment(row: Sequence[str], role: str, task_id: str) -> bool:
+        return len(row) >= 3 and row[1] == role and row[2] == task_id
+
+    def _register_members(
+        self, role: str, task_id: str, generation: int, profile: RoleProfile
+    ) -> None:
+        """Publish active members so the supervisor watcher can supervise them."""
+        with self._members_lock():
+            rows = [
+                row
+                for row in self._read_members_rows()
+                if not self._row_matches_deployment(row, role, task_id)
+            ]
+            for member in profile.members.values():
+                rows.append([member.agent, role, task_id, str(generation)])
+            self._write_members_rows(rows)
+
+    def _unregister_members(self, role: str, task_id: str) -> None:
+        with self._members_lock():
+            rows = [
+                row
+                for row in self._read_members_rows()
+                if not self._row_matches_deployment(row, role, task_id)
+            ]
+            self._write_members_rows(rows)
+
     def _safe_project_text(self, path: Path, *, field: str) -> str:
         resolved = path.resolve()
         try:
@@ -614,6 +813,11 @@ class MoaManager:
                         and current["profile_digest"] == profile_digest
                         and current["brief_digest"] == brief_digest
                     ):
+                        # Re-publish the roster so a stale or removed TSV does
+                        # not drop watcher supervision for an active deployment.
+                        self._register_members(
+                            role, task_id, int(current["generation"]), profile
+                        )
                         current.pop("_state_path", None)
                         return current
                     raise MoaError("active deployment already exists with different input")
@@ -646,7 +850,10 @@ class MoaManager:
                     "profile_digest": profile_digest,
                     "brief_path": brief_rel,
                     "issued_at": issued_at,
-                    "authority": "Shogunate YAML is authoritative; AGMSG is notification only.",
+                    "authority": (
+                        "Shogunate YAML is authoritative; notification "
+                        "messages carry pointers only."
+                    ),
                     "submission": {
                         "command": (
                             f"shogunate moa submit {role} --task-id {task_id} "
@@ -708,17 +915,43 @@ class MoaManager:
                     "state_path": state_rel,
                 },
             )
+            # Publish the roster before the first notification goes out: the
+            # supervisor kills watchers for agents it does not know about, so a
+            # member woken earlier than its roster row would lose supervision.
+            self._register_members(role, task_id, generation, profile)
 
-        deliveries: dict[str, dict[str, Any]] = {}
-        for alias, member_profile in profile.members.items():
-            assignment_rel = assignments[alias]["path"]
-            pointer = (
-                f"[shogunate moa] assignment pointer: {assignment_rel} "
-                f"role={role} task={task_id} generation={generation}. "
-                "Read Shogunate YAML; AGMSG body is not authority."
+        # External communication is aggregated into one message for the
+        # representative; members receive their pointers through the
+        # representative's notify-members fan-out. "representative-relay"
+        # keeps "not sent yet" distinct from "send failed".
+        representative_alias = profile.representative or ""
+        representative_agent = profile.members[representative_alias].agent
+        deliveries: dict[str, dict[str, Any]] = {
+            alias: {"ok": None, "detail": "representative-relay"}
+            for alias in profile.members
+            if alias != representative_alias
+        }
+        representative_pointer = self._assignment_pointer(
+            assignments[representative_alias]["path"],
+            deployment_id=deployment_id,
+            role=role,
+            task_id=task_id,
+            generation=generation,
+        )
+        if sender == representative_agent:
+            # write.sh rejects FROM == TARGET; surface the guard upfront.
+            deliveries[representative_alias] = {
+                "ok": False,
+                "detail": "sender is the representative",
+            }
+        else:
+            ok, detail = self.transport.send(
+                sender, representative_agent, representative_pointer
             )
-            ok, detail = self.transport.send(sender, member_profile.agent, pointer)
-            deliveries[alias] = {"ok": bool(ok), "detail": str(detail)[:256]}
+            deliveries[representative_alias] = {
+                "ok": bool(ok),
+                "detail": str(detail)[:256],
+            }
 
         with self._lock(role, task_id):
             state = self._current_state(role, task_id)
@@ -730,12 +963,133 @@ class MoaManager:
             state.pop("_state_path", None)
             return state
 
+    def _member_agents(self, state: Mapping[str, Any]) -> dict[str, str]:
+        profile = state.get("profile")
+        members = profile.get("members") if isinstance(profile, Mapping) else None
+        if not isinstance(members, Mapping):
+            return {}
+        agents: dict[str, str] = {}
+        for alias, member in members.items():
+            agent = member.get("agent") if isinstance(member, Mapping) else None
+            if isinstance(agent, str) and agent:
+                agents[str(alias)] = agent
+        return agents
+
+    def _inbox_read_flag(self, agent: str, deployment_id: str) -> bool | None:
+        """Return whether this deployment's pointer was read by `agent`.
+
+        The inbox is the durable store the watcher escalation ladder acts on,
+        so its `read` flag is the only evidence that a notification actually
+        landed. A missing or unreadable inbox yields None (unknown) rather than
+        False, because "no inbox yet" is not "ignored the message".
+        """
+        inbox = self.runtime_root / "queue/inbox" / f"{agent}.yaml"
+        try:
+            raw = yaml.safe_load(inbox.read_text(encoding="utf-8")) or {}
+        except (OSError, yaml.YAMLError):
+            return None
+        messages = raw.get("messages") if isinstance(raw, Mapping) else None
+        if not isinstance(messages, list):
+            return None
+        matched = False
+        for message in messages:
+            if not isinstance(message, Mapping):
+                continue
+            content = message.get("content")
+            if not isinstance(content, str) or deployment_id not in content:
+                continue
+            matched = True
+            if message.get("read") is not True:
+                return False
+        return True if matched else None
+
     def status(self, role: str, task_id: str) -> dict[str, Any]:
         role = _identifier(role, field="role")
         task_id = _task_id(task_id)
         state = self._current_state(role, task_id)
         state.pop("_state_path", None)
+        deployment_id = str(state.get("deployment_id") or "")
+        assignments = state.get("assignments")
+        if deployment_id and isinstance(assignments, dict):
+            agents = self._member_agents(state)
+            for alias, assignment in assignments.items():
+                if not isinstance(assignment, dict):
+                    continue
+                delivery = assignment.get("delivery")
+                if not isinstance(delivery, dict):
+                    continue
+                agent = agents.get(str(alias))
+                if not agent:
+                    continue
+                read = self._inbox_read_flag(agent, deployment_id)
+                if read is not None:
+                    delivery["read"] = read
         return state
+
+    def notify_members(self, role: str, task_id: str) -> dict[str, Any]:
+        """Representative-driven fan-out to the remaining members.
+
+        deploy() only wakes the representative, so the role keeps one external
+        address. Spreading the assignment inside the deployment is the
+        representative's job, and only the representative may do it.
+        """
+        role = _identifier(role, field="role")
+        task_id = _task_id(task_id)
+        with self._lock(role, task_id):
+            state = self._current_state(role, task_id)
+            if state["status"] != "active":
+                raise MoaError("deployment is not active")
+            profile = parse_role_profile(state["profile"], field="state.profile")
+            representative_alias = profile.representative or ""
+            representative_agent = profile.members[representative_alias].agent
+            self._require_actor(representative_agent, representative=True)
+            deployment_id = str(state["deployment_id"])
+            generation = int(state["generation"])
+            targets: list[tuple[str, str, str]] = []
+            for alias, member_profile in profile.members.items():
+                if alias == representative_alias:
+                    continue
+                assignment_record = state["assignments"].get(alias)
+                if not isinstance(assignment_record, Mapping):
+                    continue
+                targets.append(
+                    (alias, member_profile.agent, str(assignment_record.get("path")))
+                )
+            state.pop("_state_path", None)
+
+        # Send outside the deployment lock: write.sh takes its own inbox lock
+        # and a slow or hung send must not block submit/finalize.
+        deliveries: dict[str, dict[str, Any]] = {}
+        for alias, agent, assignment_rel in targets:
+            pointer = self._assignment_pointer(
+                assignment_rel,
+                deployment_id=deployment_id,
+                role=role,
+                task_id=task_id,
+                generation=generation,
+            )
+            if agent == representative_agent:
+                deliveries[alias] = {
+                    "ok": False,
+                    "detail": "sender is the representative",
+                }
+                continue
+            ok, detail = self.transport.send(representative_agent, agent, pointer)
+            deliveries[alias] = {"ok": bool(ok), "detail": str(detail)[:256]}
+
+        with self._lock(role, task_id):
+            state = self._current_state(role, task_id)
+            if (
+                state["deployment_id"] == deployment_id
+                and state["status"] == "active"
+            ):
+                for alias, delivery in deliveries.items():
+                    if isinstance(state["assignments"].get(alias), dict):
+                        state["assignments"][alias]["delivery"] = delivery
+                state["updated_at"] = utc_now()
+                self._write_state(state)
+            state.pop("_state_path", None)
+            return state
 
     def _require_actor(self, expected: str, *, representative: bool = False) -> str:
         actor = os.environ.get("AGENT_ID", "").strip()
@@ -743,7 +1097,9 @@ class MoaManager:
             raise MoaError("AGENT_ID is required for member actions")
         if actor != expected:
             if representative:
-                raise MoaError("only the representative may finalize the role output")
+                # Both finalize and the notify-members fan-out are
+                # representative-only, so keep the wording action-neutral.
+                raise MoaError("only the representative may act for the role")
             raise MoaError("actor does not match the configured member agent")
         return actor
 
@@ -906,6 +1262,12 @@ class MoaManager:
             if state["status"] == "dissolved":
                 state["dissolved_at"] = state["updated_at"]
             self._write_state(state)
+            if state["status"] == "dissolved":
+                # Drop the roster rows only. The supervisor stops the member
+                # watchers on its next tick because they are no longer
+                # supervised; killing panes or processes from here would race
+                # with the runtime that owns them.
+                self._unregister_members(role, task_id)
             state.pop("_state_path", None)
             return state
 
@@ -915,6 +1277,9 @@ class MoaManager:
         with self._lock(role, task_id):
             state = self._current_state(role, task_id)
             if state["status"] == "dissolved":
+                # Idempotent: a repeated dissolve still clears a roster row
+                # left behind by an interrupted run.
+                self._unregister_members(role, task_id)
                 state.pop("_state_path", None)
                 return state
             if state["status"] not in {"active", "finalized"}:
@@ -923,6 +1288,7 @@ class MoaManager:
             state["updated_at"] = utc_now()
             state["dissolved_at"] = state["updated_at"]
             self._write_state(state)
+            self._unregister_members(role, task_id)
             state.pop("_state_path", None)
             return state
 
@@ -1051,6 +1417,10 @@ def _build_parser() -> argparse.ArgumentParser:
     status.add_argument("role")
     status.add_argument("--task-id", required=True)
 
+    notify = commands.add_parser("notify-members")
+    notify.add_argument("role")
+    notify.add_argument("--task-id", required=True)
+
     submit = commands.add_parser("submit")
     submit.add_argument("role")
     submit.add_argument("--task-id", required=True)
@@ -1113,6 +1483,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     elif args.command == "status":
         result = manager.status(args.role, args.task_id)
+    elif args.command == "notify-members":
+        result = manager.notify_members(args.role, args.task_id)
     elif args.command == "submit":
         result = manager.submit(
             args.role,
